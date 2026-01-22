@@ -1,0 +1,32 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"time"
+
+	_ "github.com/lib/pq"
+)
+
+var (
+	ErrNotFound          = errors.New("resource not found")
+	ErrConflict          = errors.New("resource already exists")
+	QueryTimeoutDuration = time.Second * 5
+)
+
+type Storage struct {
+	Users interface {
+		GetBySuperTokensID(ctx context.Context, supertokensUserID string) (*User, error)
+		GetByID(ctx context.Context, id string) (*User, error)
+		GetByEmail(ctx context.Context, email string) (*User, error)
+		Create(ctx context.Context, user *User) error
+		UpdateEmail(ctx context.Context, id string, email string) error
+	}
+}
+
+func NewStorage(db *sql.DB) Storage {
+	return Storage{
+		Users: &UsersStore{db: db},
+	}
+}
