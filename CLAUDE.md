@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HackUTD Portal - A hackathon management system with Go backend and React frontend, using SuperTokens authentication (passwordless magic links + Google OAuth).
+HARP (Hacker Applications & Review Platform) - A hackathon management system with Go backend and React frontend, using SuperTokens authentication (passwordless magic links + Google OAuth).
 
 ## Common Commands
 
