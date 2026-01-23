@@ -97,7 +97,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.UpdateApplicationRequest"
+                            "$ref": "#/definitions/main.UpdateApplicationPayload"
                         }
                     }
                 ],
@@ -110,6 +110,75 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Application not in draft status",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/applications/me/submit": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "applications"
+                ],
+                "summary": "Submit application",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Application"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing required fields",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -276,7 +345,7 @@ const docTemplate = `{
                 }
             }
         },
-        "main.UpdateApplicationRequest": {
+        "main.UpdateApplicationPayload": {
             "type": "object",
             "properties": {
                 "accommodations": {
@@ -300,7 +369,7 @@ const docTemplate = `{
                 "dietary_restrictions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/store.DietaryRestriction"
+                        "type": "string"
                     }
                 },
                 "ethnicity": {
@@ -313,6 +382,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
+                    "type": "string"
+                },
+                "github": {
+                    "description": "Social/Professional Links (all optional)",
                     "type": "string"
                 },
                 "hackathons_attended_count": {
@@ -328,6 +401,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "level_of_study": {
+                    "type": "string"
+                },
+                "linkedin": {
                     "type": "string"
                 },
                 "looking_forward": {
@@ -352,6 +428,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "university": {
+                    "type": "string"
+                },
+                "website": {
                     "type": "string"
                 },
                 "why_attend": {
@@ -406,7 +485,7 @@ const docTemplate = `{
                 "dietary_restrictions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/store.DietaryRestriction"
+                        "type": "string"
                     }
                 },
                 "ethnicity": {
@@ -419,6 +498,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
+                    "type": "string"
+                },
+                "github": {
+                    "description": "Social/Professional Links (all optional)",
                     "type": "string"
                 },
                 "hackathons_attended_count": {
@@ -437,6 +520,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "level_of_study": {
+                    "type": "string"
+                },
+                "linkedin": {
                     "type": "string"
                 },
                 "looking_forward": {
@@ -475,6 +561,9 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string"
                 },
+                "website": {
+                    "type": "string"
+                },
                 "why_attend": {
                     "type": "string"
                 }
@@ -506,33 +595,6 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "AuthMethodPasswordless",
                 "AuthMethodGoogle"
-            ]
-        },
-        "store.DietaryRestriction": {
-            "type": "string",
-            "enum": [
-                "vegan",
-                "vegetarian",
-                "halal",
-                "nuts",
-                "fish",
-                "wheat",
-                "dairy",
-                "eggs",
-                "no_beef",
-                "no_pork"
-            ],
-            "x-enum-varnames": [
-                "DietaryVegan",
-                "DietaryVegetarian",
-                "DietaryHalal",
-                "DietaryNuts",
-                "DietaryFish",
-                "DietaryWheat",
-                "DietaryDairy",
-                "DietaryEggs",
-                "DietaryNoBeef",
-                "DietaryNoPork"
             ]
         },
         "store.UserRole": {

@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS applications (
     first_hackathon_goals TEXT,
     looking_forward TEXT,
 
+    github VARCHAR(255),
+    linkedin VARCHAR(255),
+    website VARCHAR(255),
+
     hackathons_attended_count SMALLINT,
     software_experience_level VARCHAR(255),
     heard_about VARCHAR(255),
