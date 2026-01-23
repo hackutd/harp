@@ -2,12 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/hackutd/portal/internal/store"
 )
 
-type UpdateApplicationRequest struct {
+type UpdateApplicationPayload struct {
 	FirstName *string `json:"first_name"`
 	LastName  *string `json:"last_name"`
 	PhoneE164 *string `json:"phone_e164"`
@@ -31,9 +32,14 @@ type UpdateApplicationRequest struct {
 	SoftwareExperienceLevel *string `json:"software_experience_level"`
 	HeardAbout              *string `json:"heard_about"`
 
-	ShirtSize           *string                    `json:"shirt_size"`
-	DietaryRestrictions *[]store.DietaryRestriction `json:"dietary_restrictions"`
-	Accommodations      *string                    `json:"accommodations"`
+	ShirtSize           *string   `json:"shirt_size"`
+	DietaryRestrictions *[]string `json:"dietary_restrictions"`
+	Accommodations      *string   `json:"accommodations"`
+
+	// Social/Professional Links (all optional)
+	Github   *string `json:"github"`
+	LinkedIn *string `json:"linkedin"`
+	Website  *string `json:"website"`
 
 	AckApplication *bool `json:"ack_application"`
 	AckMLHCOC      *bool `json:"ack_mlh_coc"`
@@ -96,7 +102,7 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 //	@Tags			applications
 //	@Accept			json
 //	@Produce		json
-//	@Param			application	body		UpdateApplicationRequest	true	"Fields to update"
+//	@Param			application	body		UpdateApplicationPayload	true	"Fields to update"
 //	@Success		200			{object}	store.Application
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
@@ -126,7 +132,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	var req UpdateApplicationRequest
+	var req UpdateApplicationPayload
 	if err := readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -196,6 +202,15 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	if req.Accommodations != nil {
 		application.Accommodations = req.Accommodations
 	}
+	if req.Github != nil {
+		application.Github = req.Github
+	}
+	if req.LinkedIn != nil {
+		application.LinkedIn = req.LinkedIn
+	}
+	if req.Website != nil {
+		application.Website = req.Website
+	}
 	if req.AckApplication != nil {
 		application.AckApplication = *req.AckApplication
 	}
@@ -219,6 +234,125 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// submitApplicationHandler submits the user's draft application
+//
+//	@Summary		Submit application
+//	@Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
+//	@Tags			applications
+//	@Produce		json
+//	@Success		200	{object}	store.Application
+//	@Failure		400	{object}	object{error=string}	"Missing required fields"
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}
+//	@Failure		409	{object}	object{error=string}	"Application not in draft status"
+//	@Security		CookieAuth
+//	@Router			/applications/me/submit [post]
 func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, nil)
+		return
+	}
 
+	application, err := app.store.Application.GetByUserID(r.Context(), user.ID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("application not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if application.Status != store.StatusDraft {
+		app.conflictResponse(w, r, errors.New("application already submitted"))
+		return
+	}
+
+	// Validate required fields
+	var missing []string
+
+	if application.FirstName == nil {
+		missing = append(missing, "first_name")
+	}
+	if application.LastName == nil {
+		missing = append(missing, "last_name")
+	}
+	if application.PhoneE164 == nil {
+		missing = append(missing, "phone_e164")
+	}
+	if application.Age == nil {
+		missing = append(missing, "age")
+	}
+	if application.CountryOfResidence == nil {
+		missing = append(missing, "country_of_residence")
+	}
+	if application.Gender == nil {
+		missing = append(missing, "gender")
+	}
+	if application.Race == nil {
+		missing = append(missing, "race")
+	}
+	if application.Ethnicity == nil {
+		missing = append(missing, "ethnicity")
+	}
+	if application.University == nil {
+		missing = append(missing, "university")
+	}
+	if application.Major == nil {
+		missing = append(missing, "major")
+	}
+	if application.LevelOfStudy == nil {
+		missing = append(missing, "level_of_study")
+	}
+	if application.WhyAttend == nil {
+		missing = append(missing, "why_attend")
+	}
+	if application.HackathonsLearned == nil {
+		missing = append(missing, "hackathons_learned")
+	}
+	if application.FirstHackathonGoals == nil {
+		missing = append(missing, "first_hackathon_goals")
+	}
+	if application.LookingForward == nil {
+		missing = append(missing, "looking_forward")
+	}
+	if application.HackathonsAttendedCount == nil {
+		missing = append(missing, "hackathons_attended_count")
+	}
+	if application.SoftwareExperienceLevel == nil {
+		missing = append(missing, "software_experience_level")
+	}
+	if application.HeardAbout == nil {
+		missing = append(missing, "heard_about")
+	}
+	if application.ShirtSize == nil {
+		missing = append(missing, "shirt_size")
+	}
+
+	// Validate acknowledgments
+	if !application.AckApplication {
+		missing = append(missing, "ack_application")
+	}
+	if !application.AckMLHCOC {
+		missing = append(missing, "ack_mlh_coc")
+	}
+	if !application.AckMLHPrivacy {
+		missing = append(missing, "ack_mlh_privacy")
+	}
+
+	if len(missing) > 0 {
+		app.badRequestResponse(w, r, fmt.Errorf("missing required fields: %v", missing))
+		return
+	}
+
+	// Submit the application
+	if err := app.store.Application.Submit(r.Context(), application); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }

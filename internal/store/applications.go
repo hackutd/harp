@@ -35,6 +35,7 @@ const (
 	DietaryNoPork     DietaryRestriction = "no_pork"
 )
 
+
 type Application struct {
 	ID     string            `json:"id"`
 	UserID string            `json:"user_id"`
@@ -63,9 +64,14 @@ type Application struct {
 	SoftwareExperienceLevel *string `json:"software_experience_level"`
 	HeardAbout              *string `json:"heard_about"`
 
-	ShirtSize           *string              `json:"shirt_size"`
-	DietaryRestrictions []DietaryRestriction `json:"dietary_restrictions"`
-	Accommodations      *string              `json:"accommodations"`
+	ShirtSize           *string  `json:"shirt_size"`
+	DietaryRestrictions []string `json:"dietary_restrictions"`
+	Accommodations      *string  `json:"accommodations"`
+
+	// Social/Professional Links (all optional)
+	Github   *string `json:"github"`
+	LinkedIn *string `json:"linkedin"`
+	Website  *string `json:"website"`
 
 	AckApplication  bool `json:"ack_application"`
 	AckMLHCOC       bool `json:"ack_mlh_coc"`
@@ -93,6 +99,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 			why_attend, hackathons_learned, first_hackathon_goals, looking_forward,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
+			github, linkedin, website,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at
 		FROM applications
@@ -108,6 +115,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.WhyAttend, &app.HackathonsLearned, &app.FirstHackathonGoals, &app.LookingForward,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
+		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 	)
@@ -174,10 +182,13 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 			shirt_size = $20,
 			dietary_restrictions = $21,
 			accommodations = $22,
-			ack_application = $23,
-			ack_mlh_coc = $24,
-			ack_mlh_privacy = $25,
-			opt_in_mlh_emails = $26
+			github = $23,
+			linkedin = $24,
+			website = $25,
+			ack_application = $26,
+			ack_mlh_coc = $27,
+			ack_mlh_privacy = $28,
+			opt_in_mlh_emails = $29
 		WHERE id = $1
 		RETURNING updated_at
 	`
@@ -190,12 +201,36 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 		app.WhyAttend, app.HackathonsLearned, app.FirstHackathonGoals, app.LookingForward,
 		app.HackathonsAttendedCount, app.SoftwareExperienceLevel, app.HeardAbout,
 		app.ShirtSize, pq.Array(app.DietaryRestrictions), app.Accommodations,
+		app.Github, app.LinkedIn, app.Website,
 		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
 	).Scan(&app.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *ApplicationsStore) Submit(ctx context.Context, app *Application) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET status = 'submitted', submitted_at = NOW()
+		WHERE id = $1 AND status = 'draft'
+		RETURNING status, submitted_at, updated_at
+	`
+
+	err := s.db.QueryRowContext(ctx, query, app.ID).Scan(
+		&app.Status, &app.SubmittedAt, &app.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrConflict // Already submitted or not found
 		}
 		return err
 	}
