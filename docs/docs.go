@@ -72,6 +72,87 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "applications"
+                ],
+                "summary": "Update application",
+                "parameters": [
+                    {
+                        "description": "Fields to update",
+                        "name": "application",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Application"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Application not in draft status",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/auth/check-email": {
@@ -192,6 +273,89 @@ const docTemplate = `{
                 },
                 "exists": {
                     "type": "boolean"
+                }
+            }
+        },
+        "main.UpdateApplicationRequest": {
+            "type": "object",
+            "properties": {
+                "accommodations": {
+                    "type": "string"
+                },
+                "ack_application": {
+                    "type": "boolean"
+                },
+                "ack_mlh_coc": {
+                    "type": "boolean"
+                },
+                "ack_mlh_privacy": {
+                    "type": "boolean"
+                },
+                "age": {
+                    "type": "integer"
+                },
+                "country_of_residence": {
+                    "type": "string"
+                },
+                "dietary_restrictions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DietaryRestriction"
+                    }
+                },
+                "ethnicity": {
+                    "type": "string"
+                },
+                "first_hackathon_goals": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "hackathons_attended_count": {
+                    "type": "integer"
+                },
+                "hackathons_learned": {
+                    "type": "string"
+                },
+                "heard_about": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "level_of_study": {
+                    "type": "string"
+                },
+                "looking_forward": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string"
+                },
+                "opt_in_mlh_emails": {
+                    "type": "boolean"
+                },
+                "phone_e164": {
+                    "type": "string"
+                },
+                "race": {
+                    "type": "string"
+                },
+                "shirt_size": {
+                    "type": "string"
+                },
+                "software_experience_level": {
+                    "type": "string"
+                },
+                "university": {
+                    "type": "string"
+                },
+                "why_attend": {
+                    "type": "string"
                 }
             }
         },

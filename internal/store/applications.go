@@ -146,3 +146,58 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 
 	return nil
 }
+
+func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications SET
+			first_name = $2,
+			last_name = $3,
+			phone_e164 = $4,
+			age = $5,
+			country_of_residence = $6,
+			gender = $7,
+			race = $8,
+			ethnicity = $9,
+			university = $10,
+			major = $11,
+			level_of_study = $12,
+			why_attend = $13,
+			hackathons_learned = $14,
+			first_hackathon_goals = $15,
+			looking_forward = $16,
+			hackathons_attended_count = $17,
+			software_experience_level = $18,
+			heard_about = $19,
+			shirt_size = $20,
+			dietary_restrictions = $21,
+			accommodations = $22,
+			ack_application = $23,
+			ack_mlh_coc = $24,
+			ack_mlh_privacy = $25,
+			opt_in_mlh_emails = $26
+		WHERE id = $1
+		RETURNING updated_at
+	`
+
+	err := s.db.QueryRowContext(ctx, query,
+		app.ID,
+		app.FirstName, app.LastName, app.PhoneE164, app.Age,
+		app.CountryOfResidence, app.Gender, app.Race, app.Ethnicity,
+		app.University, app.Major, app.LevelOfStudy,
+		app.WhyAttend, app.HackathonsLearned, app.FirstHackathonGoals, app.LookingForward,
+		app.HackathonsAttendedCount, app.SoftwareExperienceLevel, app.HeardAbout,
+		app.ShirtSize, pq.Array(app.DietaryRestrictions), app.Accommodations,
+		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
+	).Scan(&app.UpdatedAt)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
