@@ -120,17 +120,23 @@ func (app *application) mount() http.Handler {
 
 		// Swagger docs
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
-		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
+		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		// Authenticated routes
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
+			
 			// Hacker Routes
+			r.Route("/applications", func(r chi.Router) {
+				r.Get("/me", app.getOrCreateApplicationHandler)
+				r.Patch("/me", app.updateApplicationHandler)
+				r.Post("/me/submit", app.submitApplicationHandler)
+			})
 
 			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
-				
+
 			})
 
 			r.Group(func(r chi.Router) {

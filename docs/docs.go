@@ -24,6 +24,56 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/applications/me": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "applications"
+                ],
+                "summary": "Get or create application",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Application"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/check-email": {
             "get": {
                 "description": "Checks if an email is registered and returns the auth method used",
@@ -165,6 +215,124 @@ const docTemplate = `{
                 }
             }
         },
+        "store.Application": {
+            "type": "object",
+            "properties": {
+                "accommodations": {
+                    "type": "string"
+                },
+                "ack_application": {
+                    "type": "boolean"
+                },
+                "ack_mlh_coc": {
+                    "type": "boolean"
+                },
+                "ack_mlh_privacy": {
+                    "type": "boolean"
+                },
+                "age": {
+                    "type": "integer"
+                },
+                "country_of_residence": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "dietary_restrictions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DietaryRestriction"
+                    }
+                },
+                "ethnicity": {
+                    "type": "string"
+                },
+                "first_hackathon_goals": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "hackathons_attended_count": {
+                    "type": "integer"
+                },
+                "hackathons_learned": {
+                    "type": "string"
+                },
+                "heard_about": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "level_of_study": {
+                    "type": "string"
+                },
+                "looking_forward": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string"
+                },
+                "opt_in_mlh_emails": {
+                    "type": "boolean"
+                },
+                "phone_e164": {
+                    "type": "string"
+                },
+                "race": {
+                    "type": "string"
+                },
+                "shirt_size": {
+                    "type": "string"
+                },
+                "software_experience_level": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/store.ApplicationStatus"
+                },
+                "submitted_at": {
+                    "type": "string"
+                },
+                "university": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "why_attend": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.ApplicationStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "submitted",
+                "accepted",
+                "rejected",
+                "waitlisted"
+            ],
+            "x-enum-varnames": [
+                "StatusDraft",
+                "StatusSubmitted",
+                "StatusAccepted",
+                "StatusRejected",
+                "StatusWaitlisted"
+            ]
+        },
         "store.AuthMethod": {
             "type": "string",
             "enum": [
@@ -174,6 +342,33 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "AuthMethodPasswordless",
                 "AuthMethodGoogle"
+            ]
+        },
+        "store.DietaryRestriction": {
+            "type": "string",
+            "enum": [
+                "vegan",
+                "vegetarian",
+                "halal",
+                "nuts",
+                "fish",
+                "wheat",
+                "dairy",
+                "eggs",
+                "no_beef",
+                "no_pork"
+            ],
+            "x-enum-varnames": [
+                "DietaryVegan",
+                "DietaryVegetarian",
+                "DietaryHalal",
+                "DietaryNuts",
+                "DietaryFish",
+                "DietaryWheat",
+                "DietaryDairy",
+                "DietaryEggs",
+                "DietaryNoBeef",
+                "DietaryNoPork"
             ]
         },
         "store.UserRole": {
@@ -191,8 +386,10 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
-        "BasicAuth": {
-            "type": "basic"
+        "CookieAuth": {
+            "type": "apiKey",
+            "name": "sAccessToken",
+            "in": "cookie"
         }
     }
 }`
