@@ -126,32 +126,6 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (s *UsersStore) UpdateEmail(ctx context.Context, id string, email string) error {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	query := `
-		UPDATE users
-		SET email = $1, updated_at = now()
-		WHERE id = $2
-	`
-
-	result, err := s.db.ExecContext(ctx, query, email, id)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return ErrNotFound
-	}
-
-	return nil
-}
-
 func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

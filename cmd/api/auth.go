@@ -9,7 +9,7 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// UserResponse is the JSON response for user data
+// JSON response for user data
 type UserResponse struct {
 	ID        string         `json:"id"`
 	Email     string         `json:"email"`
@@ -48,13 +48,12 @@ func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// CheckEmailResponse is the JSON response for email auth method check
+// JSON response for email auth method check
 type CheckEmailResponse struct {
 	Exists     bool              `json:"exists"`
 	AuthMethod *store.AuthMethod `json:"auth_method,omitempty"`
 }
 
-// checkEmailAuthMethodHandler checks if an email exists and returns its auth method
 //
 //	@Summary		Check email auth method
 //	@Description	Checks if an email is registered and returns the auth method used
@@ -75,7 +74,7 @@ func (app *application) checkEmailAuthMethodHandler(w http.ResponseWriter, r *ht
 	user, err := app.store.Users.GetByEmail(r.Context(), email)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			// Email not registered - safe to proceed with any auth method
+			// Email not registered
 			if err := app.jsonResponse(w, http.StatusOK, CheckEmailResponse{Exists: false}); err != nil {
 				app.internalServerError(w, r, err)
 			}
