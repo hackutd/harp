@@ -21,7 +21,6 @@ type Storage struct {
 		GetByID(ctx context.Context, id string) (*User, error)
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
-		UpdateEmail(ctx context.Context, id string, email string) error
 	}
 }
 
