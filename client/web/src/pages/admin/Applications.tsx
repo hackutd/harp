@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useApplicationsStore } from '../../store';
 import { Button } from '../../components/ui/button';
@@ -12,10 +12,17 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui/table';
+import type { BackendApplicationStatus } from '../../types';
 
 export default function Applications() {
-  const { applications, loading, fetchApplications } = useApplicationsStore();
-  const [filter, setFilter] = useState<string>('all');
+  const {
+    applications,
+    loading,
+    nextCursor,
+    prevCursor,
+    currentStatus,
+    fetchApplications,
+  } = useApplicationsStore();
 
   useEffect(() => {
     fetchApplications();
@@ -29,18 +36,37 @@ export default function Applications() {
         return 'bg-red-100 text-red-800';
       case 'waitlisted':
         return 'bg-yellow-100 text-yellow-800';
-      case 'in_review':
+      case 'submitted':
         return 'bg-blue-100 text-blue-800';
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const filteredApplications = filter === 'all'
-    ? applications
-    : applications.filter(app => app.status === filter);
+  const handleStatusFilter = (status: BackendApplicationStatus | null) => {
+    fetchApplications({ status });
+  };
 
-  if (loading) {
+  const handleNextPage = () => {
+    if (nextCursor) {
+      fetchApplications({ cursor: nextCursor });
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (prevCursor) {
+      fetchApplications({ cursor: prevCursor, direction: 'backward' });
+    }
+  };
+
+  const formatName = (firstName: string | null, lastName: string | null) => {
+    if (!firstName && !lastName) return '-';
+    return `${firstName ?? ''} ${lastName ?? ''}`.trim();
+  };
+
+  if (loading && applications.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -60,40 +86,46 @@ export default function Applications() {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-4 items-center">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              onClick={() => setFilter('all')}
+              variant={currentStatus === null ? 'default' : 'outline'}
+              onClick={() => handleStatusFilter(null)}
+              disabled={loading}
             >
-              All ({applications.length})
+              All
             </Button>
             <Button
-              variant={filter === 'pending' ? 'default' : 'outline'}
-              onClick={() => setFilter('pending')}
+              variant={currentStatus === 'draft' ? 'default' : 'outline'}
+              onClick={() => handleStatusFilter('draft')}
+              disabled={loading}
             >
-              Pending
+              Draft
             </Button>
             <Button
-              variant={filter === 'in_review' ? 'default' : 'outline'}
-              onClick={() => setFilter('in_review')}
+              variant={currentStatus === 'submitted' ? 'default' : 'outline'}
+              onClick={() => handleStatusFilter('submitted')}
+              disabled={loading}
             >
-              In Review
+              Submitted
             </Button>
             <Button
-              variant={filter === 'accepted' ? 'default' : 'outline'}
-              onClick={() => setFilter('accepted')}
+              variant={currentStatus === 'accepted' ? 'default' : 'outline'}
+              onClick={() => handleStatusFilter('accepted')}
+              disabled={loading}
             >
               Accepted
             </Button>
             <Button
-              variant={filter === 'waitlisted' ? 'default' : 'outline'}
-              onClick={() => setFilter('waitlisted')}
+              variant={currentStatus === 'waitlisted' ? 'default' : 'outline'}
+              onClick={() => handleStatusFilter('waitlisted')}
+              disabled={loading}
             >
               Waitlisted
             </Button>
             <Button
-              variant={filter === 'rejected' ? 'default' : 'outline'}
-              onClick={() => setFilter('rejected')}
+              variant={currentStatus === 'rejected' ? 'default' : 'outline'}
+              onClick={() => handleStatusFilter('rejected')}
+              disabled={loading}
             >
               Rejected
             </Button>
@@ -110,56 +142,84 @@ export default function Applications() {
           <CardHeader>
             <CardTitle>Applications</CardTitle>
             <CardDescription>
-              {filteredApplications.length} application(s) found
+              {applications.length} application(s) on this page
+              {currentStatus && ` (filtered by ${currentStatus})`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>School</TableHead>
-                  <TableHead>Major</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredApplications.length === 0 ? (
+            <div className="relative">
+              {loading && (
+                <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              )}
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
-                      No applications found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>University</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredApplications.map((app) => (
-                    <TableRow key={app.id}>
-                      <TableCell className="font-medium">
-                        {app.firstName} {app.lastName}
-                      </TableCell>
-                      <TableCell>{app.email}</TableCell>
-                      <TableCell>{app.school}</TableCell>
-                      <TableCell>{app.major}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(app.status)}>
-                          {app.status.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(app.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Link to={`/admin/applications/${app.id}`}>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </Link>
+                </TableHeader>
+                <TableBody>
+                  {applications.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-gray-500">
+                        No applications found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    applications.map((app) => (
+                      <TableRow key={app.id}>
+                        <TableCell className="font-medium">
+                          {formatName(app.first_name, app.last_name)}
+                        </TableCell>
+                        <TableCell>{app.email}</TableCell>
+                        <TableCell>{app.university ?? '-'}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(app.status)}>
+                            {app.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {app.submitted_at
+                            ? new Date(app.submitted_at).toLocaleDateString()
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Link to={`/admin/applications/${app.id}`}>
+                            <Button variant="ghost" size="sm">View</Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination Controls */}
+            {(prevCursor || nextCursor) && (
+              <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevPage}
+                  disabled={!prevCursor || loading}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleNextPage}
+                  disabled={!nextCursor || loading}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

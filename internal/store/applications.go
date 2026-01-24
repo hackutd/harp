@@ -3,7 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -35,6 +38,68 @@ const (
 	DietaryNoPork     DietaryRestriction = "no_pork"
 )
 
+// PaginationDirection for bidirectional cursor traversal
+type PaginationDirection string
+
+const (
+	DirectionForward  PaginationDirection = "forward"
+	DirectionBackward PaginationDirection = "backward"
+)
+
+// ApplicationCursor represents pagination cursor
+type ApplicationCursor struct {
+	CreatedAt time.Time `json:"c"`
+	ID        string    `json:"i"`
+}
+
+// ApplicationListFilters for query filtering
+type ApplicationListFilters struct {
+	Status *ApplicationStatus
+}
+
+// ApplicationListItem is a lightweight view for admin listing
+type ApplicationListItem struct {
+	ID          string            `json:"id"`
+	UserID      string            `json:"user_id"`
+	Email       string            `json:"email"`
+	Status      ApplicationStatus `json:"status"`
+	FirstName   *string           `json:"first_name"`
+	LastName    *string           `json:"last_name"`
+	University  *string           `json:"university"`
+	SubmittedAt *time.Time        `json:"submitted_at"`
+	CreatedAt   time.Time         `json:"created_at"`
+}
+
+// ApplicationListResult contains paginated results
+type ApplicationListResult struct {
+	Applications []ApplicationListItem `json:"applications"`
+	NextCursor   *string               `json:"next_cursor,omitempty"`
+	PrevCursor   *string               `json:"prev_cursor,omitempty"`
+	HasMore      bool                  `json:"has_more"`
+}
+
+// EncodeCursor creates a base64-encoded cursor string
+func EncodeCursor(createdAt time.Time, id string) string {
+	cursor := ApplicationCursor{CreatedAt: createdAt, ID: id}
+	data, _ := json.Marshal(cursor)
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+// DecodeCursor parses a base64-encoded cursor string
+func DecodeCursor(encoded string) (*ApplicationCursor, error) {
+	data, err := base64.URLEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cursor encoding")
+	}
+	var cursor ApplicationCursor
+	if err := json.Unmarshal(data, &cursor); err != nil {
+		return nil, fmt.Errorf("invalid cursor format")
+	}
+	if cursor.ID == "" || cursor.CreatedAt.IsZero() {
+		return nil, fmt.Errorf("invalid cursor: missing fields")
+	}
+	return &cursor, nil
+}
 
 type Application struct {
 	ID     string            `json:"id"`
@@ -234,4 +299,139 @@ func (s *ApplicationsStore) Submit(ctx context.Context, app *Application) error 
 		return err
 	}
 	return nil
+}
+
+// Cursor pagination for admin applications view
+func (s *ApplicationsStore) List(
+	ctx context.Context,
+	filters ApplicationListFilters,
+	cursor *ApplicationCursor,
+	direction PaginationDirection,
+	limit int,
+) (*ApplicationListResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	// Clamp limit (default 50, max 100)
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	var cursorTime *time.Time
+	var cursorID *string
+	if cursor != nil {
+		cursorTime = &cursor.CreatedAt
+		cursorID = &cursor.ID
+	}
+
+	// Forward query (default): ORDER BY created_at DESC, id DESC
+	// Backward query: ORDER BY created_at ASC, id ASC (then reverse results)
+	var query string
+	if direction == DirectionBackward && cursor != nil {
+		query = `
+			SELECT a.id, a.user_id, u.email, a.status,
+			       a.first_name, a.last_name, a.university,
+			       a.submitted_at, a.created_at
+			FROM applications a
+			INNER JOIN users u ON a.user_id = u.id
+			WHERE ($1::application_status IS NULL OR a.status = $1)
+			  AND (a.created_at, a.id) > ($2, $3::uuid)
+			ORDER BY a.created_at ASC, a.id ASC
+			LIMIT $4`
+	} else {
+		query = `
+			SELECT a.id, a.user_id, u.email, a.status,
+			       a.first_name, a.last_name, a.university,
+			       a.submitted_at, a.created_at
+			FROM applications a
+			INNER JOIN users u ON a.user_id = u.id
+			WHERE ($1::application_status IS NULL OR a.status = $1)
+			  AND ($2::timestamptz IS NULL OR (a.created_at, a.id) < ($2, $3::uuid))
+			ORDER BY a.created_at DESC, a.id DESC
+			LIMIT $4`
+	}
+
+	// Fetch limit+1 to determine hasMore
+	queryLimit := limit + 1
+
+	var statusParam interface{}
+	if filters.Status != nil {
+		statusParam = *filters.Status
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]ApplicationListItem, 0, limit)
+	for rows.Next() {
+		var item ApplicationListItem
+		if err := rows.Scan(
+			&item.ID, &item.UserID, &item.Email, &item.Status,
+			&item.FirstName, &item.LastName, &item.University,
+			&item.SubmittedAt, &item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	hasMore := len(items) > limit
+	if hasMore {
+		items = items[:limit]
+	}
+
+	// Reverse if backward direction
+	if direction == DirectionBackward {
+		for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
+			items[i], items[j] = items[j], items[i]
+		}
+	}
+
+	result := &ApplicationListResult{
+		Applications: items,
+		HasMore:      hasMore,
+	}
+
+	// Generate cursors
+	if len(items) > 0 {
+		//  Going Backwards
+		if direction == DirectionBackward {
+			lastItem := items[len(items)-1]
+			nc := EncodeCursor(lastItem.CreatedAt, lastItem.ID)
+			result.NextCursor = &nc
+
+			// Prev cursor only if there are more items
+			if hasMore {
+				firstItem := items[0]
+				pc := EncodeCursor(firstItem.CreatedAt, firstItem.ID)
+				result.PrevCursor = &pc
+			}
+		} else {
+			// Next cursor (default)
+			if hasMore {
+				lastItem := items[len(items)-1]
+				nc := EncodeCursor(lastItem.CreatedAt, lastItem.ID)
+				result.NextCursor = &nc
+			}
+
+			// Prev cursor
+			if cursor != nil {
+				firstItem := items[0]
+				pc := EncodeCursor(firstItem.CreatedAt, firstItem.ID)
+				result.PrevCursor = &pc
+			}
+		}
+	}
+
+	return result, nil
 }

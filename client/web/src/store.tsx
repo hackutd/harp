@@ -1,7 +1,7 @@
 
 import { create } from "zustand";
 import Session from "supertokens-auth-react/recipe/session";
-import type { User, Application, UserRole } from "./types.d";
+import type { User, UserRole, ApplicationListItem, ApplicationListResult, BackendApplicationStatus } from "./types.d";
 import { getRequest } from "./lib/api";
 
 // Auth error info for handling auth method mismatch
@@ -32,7 +32,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (res.status === 200 && res.data) {
       set({ user: res.data, loading: false });
     } else {
-      // Store auth error for handling (especially 409 auth method mismatch)
+      // 409 auth method mismatch
       set({
         user: null,
         loading: false,
@@ -57,28 +57,96 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 }));
 
-// Applications Store
-interface ApplicationsState {
-  applications: Application[];
-  loading: boolean;
-  fetchApplications: () => Promise<void>;
-  setApplications: (applications: Application[]) => void;
+// Applications Store cursor pagination
+interface FetchParams {
+  cursor?: string;
+  status?: BackendApplicationStatus | null; // null = clear filter, undefined = keep current
+  direction?: 'forward' | 'backward';
 }
 
-export const useApplicationsStore = create<ApplicationsState>((set) => ({
+interface ApplicationsState {
+  applications: ApplicationListItem[];
+  loading: boolean;
+  nextCursor: string | null;
+  prevCursor: string | null;
+  hasMore: boolean;
+  currentStatus: BackendApplicationStatus | null;
+  fetchApplications: (params?: FetchParams) => Promise<void>;
+  setStatusFilter: (status: BackendApplicationStatus | null) => void;
+  resetPagination: () => void;
+}
+
+export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   applications: [],
   loading: false,
-  fetchApplications: async () => {
+  nextCursor: null,
+  prevCursor: null,
+  hasMore: false,
+  currentStatus: null,
+
+  fetchApplications: async (params?: FetchParams) => {
     set({ loading: true });
-    const res = await getRequest<Application[]>(
-      "/v1/admin/applications",
-      "applications"
-    );
-    if (res.status === 200 && res.data) {
-      set({ applications: res.data, loading: false });
+
+    const queryParams = new URLSearchParams();
+
+    // grab status
+    let status: BackendApplicationStatus | null;
+    if (params && 'status' in params) {
+      // could be null to clear or a value
+      status = params.status ?? null;
     } else {
-      set({ applications: [], loading: false });
+      // No status in params -> keep current filter
+      status = get().currentStatus;
+    }
+
+    if (status) {
+      queryParams.set('status', status);
+    }
+
+    if (params?.cursor) {
+      queryParams.set('cursor', params.cursor);
+    }
+
+    if (params?.direction) {
+      queryParams.set('direction', params.direction);
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = `/v1/admin/applications${queryString ? `?${queryString}` : ''}`;
+
+    const res = await getRequest<ApplicationListResult>(endpoint, "applications");
+
+    if (res.status === 200 && res.data) {
+      set({
+        applications: res.data.applications,
+        nextCursor: res.data.next_cursor,
+        prevCursor: res.data.prev_cursor,
+        hasMore: res.data.has_more,
+        loading: false,
+        currentStatus: status,
+      });
+    } else {
+      set({
+        applications: [],
+        nextCursor: null,
+        prevCursor: null,
+        hasMore: false,
+        loading: false,
+      });
     }
   },
-  setApplications: (applications) => set({ applications }),
+
+  setStatusFilter: (status) => {
+    set({ currentStatus: status });
+  },
+
+  resetPagination: () => {
+    set({
+      applications: [],
+      nextCursor: null,
+      prevCursor: null,
+      hasMore: false,
+      currentStatus: null,
+    });
+  },
 }));

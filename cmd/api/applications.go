@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/hackutd/portal/internal/store"
 )
@@ -358,6 +359,85 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// listApplicationsHandler lists applications with cursor pagination for admins
+//
+//	@Summary		List applications (Admin)
+//	@Description	Lists all applications with cursor-based pagination and optional status filter
+//	@Tags			admin
+//	@Produce		json
+//	@Param			cursor		query		string	false	"Pagination cursor"
+//	@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
+//	@Param			limit		query		int		false	"Page size (default 50, max 100)"
+//	@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
+//	@Success		200			{object}	store.ApplicationListResult
+//	@Failure		400			{object}	object{error=string}
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		403			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications [get]
+func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	// Parse cursor
+	var cursor *store.ApplicationCursor
+	if cursorStr := query.Get("cursor"); cursorStr != "" {
+		var err error
+		cursor, err = store.DecodeCursor(cursorStr)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("invalid cursor"))
+			return
+		}
+	}
+
+	// Parse status filter
+	var filters store.ApplicationListFilters
+	if statusStr := query.Get("status"); statusStr != "" {
+		status := store.ApplicationStatus(statusStr)
+		switch status {
+		case store.StatusDraft, store.StatusSubmitted, store.StatusAccepted,
+			store.StatusRejected, store.StatusWaitlisted:
+			filters.Status = &status
+		default:
+			app.badRequestResponse(w, r, errors.New("invalid status value"))
+			return
+		}
+	}
+
+	// Parse limit
+	limit := 50
+	if limitStr := query.Get("limit"); limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err != nil || parsedLimit < 1 || parsedLimit > 100 {
+			app.badRequestResponse(w, r, errors.New("limit must be between 1 and 100"))
+			return
+		}
+		limit = parsedLimit
+	}
+
+	// Parse direction
+	direction := store.DirectionForward
+	if dirStr := query.Get("direction"); dirStr != "" {
+		switch store.PaginationDirection(dirStr) {
+		case store.DirectionForward, store.DirectionBackward:
+			direction = store.PaginationDirection(dirStr)
+		default:
+			app.badRequestResponse(w, r, errors.New("direction must be 'forward' or 'backward'"))
+			return
+		}
+	}
+
+	result, err := app.store.Application.List(r.Context(), filters, cursor, direction, limit)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
