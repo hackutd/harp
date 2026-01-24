@@ -136,7 +136,7 @@ func (app *application) mount() http.Handler {
 			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
-
+				r.Get("/admin/applications", app.listApplicationsHandler)
 			})
 
 			r.Group(func(r chi.Router) {

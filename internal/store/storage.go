@@ -27,6 +27,7 @@ type Storage struct {
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error
+		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 	}
 }
 
