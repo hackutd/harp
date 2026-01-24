@@ -361,10 +361,13 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 150,
+                    "minimum": 1
                 },
                 "country_of_residence": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "dietary_restrictions": {
                     "type": "array",
@@ -373,44 +376,55 @@ const docTemplate = `{
                     }
                 },
                 "ethnicity": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "first_hackathon_goals": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "first_name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "gender": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "github": {
                     "description": "Social/Professional Links (all optional)",
                     "type": "string"
                 },
                 "hackathons_attended_count": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "hackathons_learned": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "heard_about": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "last_name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "level_of_study": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "linkedin": {
                     "type": "string"
                 },
                 "looking_forward": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "major": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "opt_in_mlh_emails": {
                     "type": "boolean"
@@ -419,22 +433,27 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "race": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "shirt_size": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "software_experience_level": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "university": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "website": {
                     "type": "string"
                 },
                 "why_attend": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 }
             }
         },
@@ -474,10 +493,13 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 150,
+                    "minimum": 1
                 },
                 "country_of_residence": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "created_at": {
                     "type": "string"
@@ -489,47 +511,57 @@ const docTemplate = `{
                     }
                 },
                 "ethnicity": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "first_hackathon_goals": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "first_name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "gender": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "github": {
-                    "description": "Social/Professional Links (all optional)",
                     "type": "string"
                 },
                 "hackathons_attended_count": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "hackathons_learned": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "heard_about": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "id": {
                     "type": "string"
                 },
                 "last_name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "level_of_study": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "linkedin": {
                     "type": "string"
                 },
                 "looking_forward": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "major": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "opt_in_mlh_emails": {
                     "type": "boolean"
@@ -538,13 +570,16 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "race": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "shirt_size": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "software_experience_level": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
@@ -553,7 +588,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "university": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "updated_at": {
                     "type": "string"
@@ -565,7 +601,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "why_attend": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 }
             }
         },

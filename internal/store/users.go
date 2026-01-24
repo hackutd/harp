@@ -25,10 +25,10 @@ const (
 
 type User struct {
 	ID                string     `json:"id"`
-	SuperTokensUserID string     `json:"supertokens_user_id"`
-	Email             string     `json:"email"`
-	Role              UserRole   `json:"role"`
-	AuthMethod        AuthMethod `json:"auth_method"`
+	SuperTokensUserID string     `json:"supertokens_user_id" validate:"required"`
+	Email             string     `json:"email" validate:"required,email"`
+	Role              UserRole   `json:"role" validate:"required,oneof=hacker admin super_admin"`
+	AuthMethod        AuthMethod `json:"auth_method" validate:"required,oneof=passwordless google"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
