@@ -9,37 +9,37 @@ import (
 )
 
 type UpdateApplicationPayload struct {
-	FirstName *string `json:"first_name"`
-	LastName  *string `json:"last_name"`
-	PhoneE164 *string `json:"phone_e164"`
-	Age       *int16  `json:"age"`
+	FirstName *string `json:"first_name" validate:"omitempty,min=1"`
+	LastName  *string `json:"last_name" validate:"omitempty,min=1"`
+	PhoneE164 *string `json:"phone_e164" validate:"omitempty,e164"`
+	Age       *int16  `json:"age" validate:"omitempty,min=1,max=150"`
 
-	CountryOfResidence *string `json:"country_of_residence"`
-	Gender             *string `json:"gender"`
-	Race               *string `json:"race"`
-	Ethnicity          *string `json:"ethnicity"`
+	CountryOfResidence *string `json:"country_of_residence" validate:"omitempty,min=1"`
+	Gender             *string `json:"gender" validate:"omitempty,min=1"`
+	Race               *string `json:"race" validate:"omitempty,min=1"`
+	Ethnicity          *string `json:"ethnicity" validate:"omitempty,min=1"`
 
-	University   *string `json:"university"`
-	Major        *string `json:"major"`
-	LevelOfStudy *string `json:"level_of_study"`
+	University   *string `json:"university" validate:"omitempty,min=1"`
+	Major        *string `json:"major" validate:"omitempty,min=1"`
+	LevelOfStudy *string `json:"level_of_study" validate:"omitempty,min=1"`
 
-	WhyAttend           *string `json:"why_attend"`
-	HackathonsLearned   *string `json:"hackathons_learned"`
-	FirstHackathonGoals *string `json:"first_hackathon_goals"`
-	LookingForward      *string `json:"looking_forward"`
+	WhyAttend           *string `json:"why_attend" validate:"omitempty,min=1"`
+	HackathonsLearned   *string `json:"hackathons_learned" validate:"omitempty,min=1"`
+	FirstHackathonGoals *string `json:"first_hackathon_goals" validate:"omitempty,min=1"`
+	LookingForward      *string `json:"looking_forward" validate:"omitempty,min=1"`
 
-	HackathonsAttendedCount *int16  `json:"hackathons_attended_count"`
-	SoftwareExperienceLevel *string `json:"software_experience_level"`
-	HeardAbout              *string `json:"heard_about"`
+	HackathonsAttendedCount *int16  `json:"hackathons_attended_count" validate:"omitempty,min=0"`
+	SoftwareExperienceLevel *string `json:"software_experience_level" validate:"omitempty,min=1"`
+	HeardAbout              *string `json:"heard_about" validate:"omitempty,min=1"`
 
-	ShirtSize           *string   `json:"shirt_size"`
+	ShirtSize           *string   `json:"shirt_size" validate:"omitempty,min=1"`
 	DietaryRestrictions *[]string `json:"dietary_restrictions"`
 	Accommodations      *string   `json:"accommodations"`
 
 	// Social/Professional Links (all optional)
-	Github   *string `json:"github"`
-	LinkedIn *string `json:"linkedin"`
-	Website  *string `json:"website"`
+	Github   *string `json:"github" validate:"omitempty,url"`
+	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
+	Website  *string `json:"website" validate:"omitempty,url"`
 
 	AckApplication *bool `json:"ack_application"`
 	AckMLHCOC      *bool `json:"ack_mlh_coc"`
@@ -134,6 +134,11 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 
 	var req UpdateApplicationPayload
 	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -346,7 +351,7 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Submit the application
+	// Submit!
 	if err := app.store.Application.Submit(r.Context(), application); err != nil {
 		app.internalServerError(w, r, err)
 		return
