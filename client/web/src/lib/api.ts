@@ -108,6 +108,41 @@ export async function putRequest<T>(
 }
 
 /**
+ * Generic PATCH request
+ */
+export async function patchRequest<T>(
+  endpoint: string,
+  body: unknown,
+  errorContext?: string
+): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const json = await response.json().catch(() => null);
+
+    return {
+      status: response.status,
+      data: response.ok ? json : undefined,
+      error: !response.ok
+        ? json?.error || `Failed to update ${errorContext || endpoint}`
+        : undefined,
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      error: error instanceof Error ? error.message : "Network error",
+    };
+  }
+}
+
+/**
  * Generic DELETE request
  */
 export async function deleteRequest<T>(

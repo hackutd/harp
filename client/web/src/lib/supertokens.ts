@@ -8,22 +8,6 @@ import Session from 'supertokens-auth-react/recipe/session';
 export const isGoogleAuthEnabled = import.meta.env.VITE_GOOGLE_AUTH_ENABLED === 'true';
 
 export function initSuperTokens() {
-  const recipes = [
-    Passwordless.init({
-      contactMethod: 'EMAIL',
-    }),
-    Session.init(),
-  ];
-
-  // Only add ThirdParty recipe if Google OAuth is enabled
-  if (isGoogleAuthEnabled) {
-    recipes.splice(1, 0, ThirdParty.init({
-      signInAndUpFeature: {
-        providers: [Google.init()],
-      },
-    }));
-  }
-
   SuperTokens.init({
     appInfo: {
       appName: 'HackUTD Portal',
@@ -31,6 +15,19 @@ export function initSuperTokens() {
       websiteDomain: window.location.origin,
       apiBasePath: '/auth',
     },
-    recipeList: recipes,
+    recipeList: [
+      Passwordless.init({
+        contactMethod: 'EMAIL',
+      }),
+      // Only Google OAuth is enabled
+      ...(isGoogleAuthEnabled
+        ? [ThirdParty.init({
+            signInAndUpFeature: {
+              providers: [Google.init()],
+            },
+          })]
+        : []),
+      Session.init(),
+    ],
   });
 }

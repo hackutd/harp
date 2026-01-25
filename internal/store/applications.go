@@ -151,6 +151,48 @@ type ApplicationsStore struct {
 	db *sql.DB
 }
 
+func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Application, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT id, user_id, status,
+			first_name, last_name, phone_e164, age,
+			country_of_residence, gender, race, ethnicity,
+			university, major, level_of_study,
+			why_attend, hackathons_learned, first_hackathon_goals, looking_forward,
+			hackathons_attended_count, software_experience_level, heard_about,
+			shirt_size, dietary_restrictions, accommodations,
+			github, linkedin, website,
+			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
+			submitted_at, created_at, updated_at
+		FROM applications
+		WHERE id = $1
+	`
+
+	var app Application
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&app.ID, &app.UserID, &app.Status,
+		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
+		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
+		&app.University, &app.Major, &app.LevelOfStudy,
+		&app.WhyAttend, &app.HackathonsLearned, &app.FirstHackathonGoals, &app.LookingForward,
+		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
+		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
+		&app.Github, &app.LinkedIn, &app.Website,
+		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &app, nil
+}
+
 func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Application, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
