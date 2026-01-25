@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRequest, postRequest, errorAlert } from "../../lib/api";
+import { getRequest, patchRequest, errorAlert } from "../../lib/api";
 import type { Application } from "../../types";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -12,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { Textarea } from "../../components/ui/textarea";
 
 export default function Apply() {
   const navigate = useNavigate();
@@ -21,14 +20,11 @@ export default function Apply() {
   const [application, setApplication] = useState<Application | null>(null);
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    school: "",
+    first_name: "",
+    last_name: "",
+    university: "",
     major: "",
-    graduationYear: new Date().getFullYear(),
-    shirtSize: "",
-    dietaryRestrictions: "",
+    shirt_size: "",
     github: "",
     linkedin: "",
   });
@@ -43,14 +39,11 @@ export default function Apply() {
       if (res.status === 200 && res.data) {
         setApplication(res.data);
         setFormData({
-          firstName: res.data.firstName,
-          lastName: res.data.lastName,
-          email: res.data.email,
-          school: res.data.school,
-          major: res.data.major,
-          graduationYear: res.data.graduationYear,
-          shirtSize: res.data.shirtSize || "",
-          dietaryRestrictions: res.data.dietaryRestrictions || "",
+          first_name: res.data.first_name || "",
+          last_name: res.data.last_name || "",
+          university: res.data.university || "",
+          major: res.data.major || "",
+          shirt_size: res.data.shirt_size || "",
           github: res.data.github || "",
           linkedin: res.data.linkedin || "",
         });
@@ -65,13 +58,14 @@ export default function Apply() {
     e.preventDefault();
     setSubmitting(true);
 
-    const res = await postRequest<Application>(
-      "/v1/applications",
+    const res = await patchRequest<Application>(
+      "/v1/applications/me",
       formData,
       "application"
     );
 
-    if (res.status === 200 || res.status === 201) {
+    if (res.status === 200 && res.data) {
+      setApplication(res.data);
       navigate("/app/status");
     } else {
       errorAlert(res);
@@ -97,7 +91,7 @@ export default function Apply() {
         <div className="max-w-2xl mx-auto">
           <div className="mb-6">
             <Button variant="ghost" onClick={() => navigate("/app")}>
-              ← Back to Dashboard
+              &larr; Back to Dashboard
             </Button>
           </div>
 
@@ -114,23 +108,23 @@ export default function Apply() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name *</Label>
+                    <Label htmlFor="first_name">First Name *</Label>
                     <Input
-                      id="firstName"
-                      value={formData.firstName}
+                      id="first_name"
+                      value={formData.first_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
+                        setFormData({ ...formData, first_name: e.target.value })
                       }
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Label htmlFor="last_name">Last Name *</Label>
                     <Input
-                      id="lastName"
-                      value={formData.lastName}
+                      id="last_name"
+                      value={formData.last_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
+                        setFormData({ ...formData, last_name: e.target.value })
                       }
                       required
                     />
@@ -138,82 +132,36 @@ export default function Apply() {
                 </div>
 
                 <div>
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="university">University *</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
+                    id="university"
+                    value={formData.university}
                     onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
+                      setFormData({ ...formData, university: e.target.value })
                     }
                     required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="school">School *</Label>
+                  <Label htmlFor="major">Major *</Label>
                   <Input
-                    id="school"
-                    value={formData.school}
+                    id="major"
+                    value={formData.major}
                     onChange={(e) =>
-                      setFormData({ ...formData, school: e.target.value })
+                      setFormData({ ...formData, major: e.target.value })
                     }
                     required
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="major">Major *</Label>
-                    <Input
-                      id="major"
-                      value={formData.major}
-                      onChange={(e) =>
-                        setFormData({ ...formData, major: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="graduationYear">Graduation Year *</Label>
-                    <Input
-                      id="graduationYear"
-                      type="number"
-                      value={formData.graduationYear}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          graduationYear: parseInt(e.target.value),
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <Label htmlFor="shirtSize">Shirt Size</Label>
+                  <Label htmlFor="shirt_size">Shirt Size</Label>
                   <Input
-                    id="shirtSize"
-                    value={formData.shirtSize}
+                    id="shirt_size"
+                    value={formData.shirt_size}
                     onChange={(e) =>
-                      setFormData({ ...formData, shirtSize: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="dietaryRestrictions">
-                    Dietary Restrictions
-                  </Label>
-                  <Textarea
-                    id="dietaryRestrictions"
-                    value={formData.dietaryRestrictions}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        dietaryRestrictions: e.target.value,
-                      })
+                      setFormData({ ...formData, shirt_size: e.target.value })
                     }
                   />
                 </div>
@@ -244,10 +192,10 @@ export default function Apply() {
 
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting
-                    ? "Submitting..."
+                    ? "Saving..."
                     : application
-                    ? "Update Application"
-                    : "Submit Application"}
+                      ? "Update Application"
+                      : "Save Application"}
                 </Button>
               </form>
             </CardContent>

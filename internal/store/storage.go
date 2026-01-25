@@ -24,6 +24,7 @@ type Storage struct {
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
+		GetByID(ctx context.Context, id string) (*Application, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error

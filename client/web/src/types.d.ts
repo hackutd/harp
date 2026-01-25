@@ -19,21 +19,39 @@ export interface User {
 
 export interface Application {
   id: string;
-  userId: string;
-  status: ApplicationStatus;
-  firstName: string;
-  lastName: string;
-  email: string;
-  school: string;
-  major: string;
-  graduationYear: number;
-  shirtSize?: string;
-  dietaryRestrictions?: string;
-  resume?: string;
-  github?: string;
-  linkedin?: string;
-  createdAt: string;
-  updatedAt: string;
+  user_id: string;
+  status: BackendApplicationStatus;
+  first_name: string | null;
+  last_name: string | null;
+  phone_e164: string | null;
+  age: number | null;
+  country_of_residence: string | null;
+  gender: string | null;
+  race: string | null;
+  ethnicity: string | null;
+  university: string | null;
+  major: string | null;
+  level_of_study: string | null;
+  why_attend: string | null;
+  hackathons_learned: string | null;
+  first_hackathon_goals: string | null;
+  looking_forward: string | null;
+  hackathons_attended_count: number | null;
+  software_experience_level: string | null;
+  heard_about: string | null;
+  shirt_size: string | null;
+  dietary_restrictions: string[];
+  accommodations: string | null;
+  github: string | null;
+  linkedin: string | null;
+  website: string | null;
+  ack_application: boolean;
+  ack_mlh_coc: boolean;
+  ack_mlh_privacy: boolean;
+  opt_in_mlh_emails: boolean;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ApiResponse<T = unknown> {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi"
 	"github.com/hackutd/portal/internal/store"
 )
 
@@ -438,6 +439,42 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getApplication returns a single application by ID for admin review
+//
+//	@Summary		Get application by ID (Admin)
+//	@Description	Returns a single application by its ID
+//	@Tags			admin
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	store.Application
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID} [get]
+func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
+	applicationID := chi.URLParam(r, "applicationID")
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	application, err := app.store.Application.GetByID(r.Context(), applicationID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("application not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
