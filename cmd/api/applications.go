@@ -493,11 +493,11 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 // getApplication returns a single application by ID for admin review
 //
 //	@Summary		Get application by ID (Admin)
-//	@Description	Returns a single application by its ID
+//	@Description	Returns a single application by its ID with embedded short answer questions
 //	@Tags			admin
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
-//	@Success		200				{object}	store.Application
+//	@Success		200				{object}	ApplicationWithQuestions
 //	@Failure		400				{object}	object{error=string}
 //	@Failure		401				{object}	object{error=string}
 //	@Failure		403				{object}	object{error=string}
@@ -521,7 +521,20 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+	// Fetch questions to embed in response
+	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	// Return application with embedded questions
+	response := ApplicationWithQuestions{
+		Application:          application,
+		ShortAnswerQuestions: questions,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
