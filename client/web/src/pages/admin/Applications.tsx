@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useApplicationsStore } from '../../store';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -12,6 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { SectionCards } from '../../components/admin/section-cards';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ApplicationStatus } from '../../types';
 
 export default function Applications() {
@@ -21,12 +23,16 @@ export default function Applications() {
     nextCursor,
     prevCursor,
     currentStatus,
+    stats,
+    statsLoading,
     fetchApplications,
+    fetchStats,
   } = useApplicationsStore();
 
   useEffect(() => {
     fetchApplications();
-  }, [fetchApplications]);
+    fetchStats();
+  }, [fetchApplications, fetchStats]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -45,7 +51,8 @@ export default function Applications() {
     }
   };
 
-  const handleStatusFilter = (status: ApplicationStatus | null) => {
+  const handleStatusFilter = (value: string) => {
+    const status = value === 'all' ? null : (value as ApplicationStatus);
     fetchApplications({ status });
   };
 
@@ -79,57 +86,89 @@ export default function Applications() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Applications Management</h1>
-        <p className="text-gray-600 mt-2">Review and manage hacker applications</p>
+      <SectionCards stats={stats} loading={statsLoading} />
+
+      <div className="flex items-center justify-between">
+        <Tabs
+          value={currentStatus ?? 'all'}
+          onValueChange={handleStatusFilter}
+          className="w-auto"
+        >
+          <TabsList>
+            <TabsTrigger value="all" disabled={loading} className="font-normal">
+              All
+              {stats && (
+                <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                  {stats.total_applications}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="draft" disabled={loading} className="font-normal">
+              Draft
+              {stats && stats.draft > 0 && (
+                <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                  {stats.draft}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="submitted" disabled={loading} className="font-normal">
+              Submitted
+              {stats && stats.submitted > 0 && (
+                <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                  {stats.submitted}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="accepted" disabled={loading} className="font-normal">
+              Accepted
+              {stats && stats.accepted > 0 && (
+                <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                  {stats.accepted}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="waitlisted" disabled={loading} className="font-normal">
+              Waitlisted
+              {stats && stats.waitlisted > 0 && (
+                <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                  {stats.waitlisted}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="rejected" disabled={loading} className="font-normal">
+              Rejected
+              {stats && stats.rejected > 0 && (
+                <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                  {stats.rejected}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrevPage}
+            disabled={!prevCursor || loading}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextPage}
+            disabled={!nextCursor || loading}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={currentStatus === null ? 'default' : 'outline'}
-          onClick={() => handleStatusFilter(null)}
-          disabled={loading}
-        >
-          All
-        </Button>
-        <Button
-          variant={currentStatus === 'draft' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilter('draft')}
-          disabled={loading}
-        >
-          Draft
-        </Button>
-        <Button
-          variant={currentStatus === 'submitted' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilter('submitted')}
-          disabled={loading}
-        >
-          Submitted
-        </Button>
-        <Button
-          variant={currentStatus === 'accepted' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilter('accepted')}
-          disabled={loading}
-        >
-          Accepted
-        </Button>
-        <Button
-          variant={currentStatus === 'waitlisted' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilter('waitlisted')}
-          disabled={loading}
-        >
-          Waitlisted
-        </Button>
-        <Button
-          variant={currentStatus === 'rejected' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilter('rejected')}
-          disabled={loading}
-        >
-          Rejected
-        </Button>
-      </div>
-
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Applications</CardTitle>
           <CardDescription>
@@ -137,53 +176,69 @@ export default function Applications() {
             {currentStatus && ` (filtered by ${currentStatus})`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="relative">
+        <CardContent className="p-0">
+          <div className="relative overflow-x-auto p-6 pt-0">
             {loading && (
               <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
               </div>
             )}
-            <Table>
+            <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
               <TableHeader>
                 <TableRow>
+                  <TableHead>Status</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Age</TableHead>
+                  <TableHead>Country</TableHead>
+                  <TableHead>Gender</TableHead>
                   <TableHead>University</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Major</TableHead>
+                  <TableHead>Level of Study</TableHead>
+                  <TableHead>Hackathons</TableHead>
                   <TableHead>Submitted</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {applications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-gray-500">
+                    <TableCell colSpan={14} className="text-center text-gray-500">
                       No applications found
                     </TableCell>
                   </TableRow>
                 ) : (
                   applications.map((app) => (
                     <TableRow key={app.id}>
-                      <TableCell className="font-medium">
-                        {formatName(app.first_name, app.last_name)}
-                      </TableCell>
-                      <TableCell>{app.email}</TableCell>
-                      <TableCell>{app.university ?? '-'}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(app.status)}>
                           {app.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatName(app.first_name, app.last_name)}
+                      </TableCell>
+                      <TableCell>{app.email}</TableCell>
+                      <TableCell>{app.phone_e164 ?? '-'}</TableCell>
+                      <TableCell>{app.age ?? '-'}</TableCell>
+                      <TableCell>{app.country_of_residence ?? '-'}</TableCell>
+                      <TableCell>{app.gender ?? '-'}</TableCell>
+                      <TableCell>{app.university ?? '-'}</TableCell>
+                      <TableCell>{app.major ?? '-'}</TableCell>
+                      <TableCell>{app.level_of_study ?? '-'}</TableCell>
+                      <TableCell>{app.hackathons_attended_count ?? '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {app.submitted_at
                           ? new Date(app.submitted_at).toLocaleDateString()
                           : '-'}
                       </TableCell>
-                      <TableCell>
-                        <Link to={`/admin/applications/${app.id}`}>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </Link>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(app.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(app.updated_at).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
                   ))
@@ -191,25 +246,6 @@ export default function Applications() {
               </TableBody>
             </Table>
           </div>
-
-          {(prevCursor || nextCursor) && (
-            <div className="flex justify-between items-center mt-4 pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={handlePrevPage}
-                disabled={!prevCursor || loading}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleNextPage}
-                disabled={!nextCursor || loading}
-              >
-                Next
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

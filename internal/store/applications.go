@@ -59,15 +59,23 @@ type ApplicationListFilters struct {
 
 // ApplicationListItem is a lightweight view for admin listing
 type ApplicationListItem struct {
-	ID          string            `json:"id"`
-	UserID      string            `json:"user_id"`
-	Email       string            `json:"email"`
-	Status      ApplicationStatus `json:"status"`
-	FirstName   *string           `json:"first_name"`
-	LastName    *string           `json:"last_name"`
-	University  *string           `json:"university"`
-	SubmittedAt *time.Time        `json:"submitted_at"`
-	CreatedAt   time.Time         `json:"created_at"`
+	ID                      string            `json:"id"`
+	UserID                  string            `json:"user_id"`
+	Email                   string            `json:"email"`
+	Status                  ApplicationStatus `json:"status"`
+	FirstName               *string           `json:"first_name"`
+	LastName                *string           `json:"last_name"`
+	PhoneE164               *string           `json:"phone_e164"`
+	Age                     *int16            `json:"age"`
+	CountryOfResidence      *string           `json:"country_of_residence"`
+	Gender                  *string           `json:"gender"`
+	University              *string           `json:"university"`
+	Major                   *string           `json:"major"`
+	LevelOfStudy            *string           `json:"level_of_study"`
+	HackathonsAttendedCount *int16            `json:"hackathons_attended_count"`
+	SubmittedAt             *time.Time        `json:"submitted_at"`
+	CreatedAt               time.Time         `json:"created_at"`
+	UpdatedAt               time.Time         `json:"updated_at"`
 }
 
 // ApplicationListResult contains paginated results
@@ -76,6 +84,17 @@ type ApplicationListResult struct {
 	NextCursor   *string               `json:"next_cursor,omitempty"`
 	PrevCursor   *string               `json:"prev_cursor,omitempty"`
 	HasMore      bool                  `json:"has_more"`
+}
+
+// ApplicationStats contains aggregated stats for all applications
+type ApplicationStats struct {
+	TotalApplications int64   `json:"total_applications"`
+	Submitted         int64   `json:"submitted"`
+	Accepted          int64   `json:"accepted"`
+	Rejected          int64   `json:"rejected"`
+	Waitlisted        int64   `json:"waitlisted"`
+	Draft             int64   `json:"draft"`
+	AcceptanceRate    float64 `json:"acceptance_rate"`
 }
 
 // EncodeCursor creates a base64-encoded cursor string
@@ -370,8 +389,11 @@ func (s *ApplicationsStore) List(
 	if direction == DirectionBackward && cursor != nil {
 		query = `
 			SELECT a.id, a.user_id, u.email, a.status,
-			       a.first_name, a.last_name, a.university,
-			       a.submitted_at, a.created_at
+			       a.first_name, a.last_name, a.phone_e164, a.age,
+			       a.country_of_residence, a.gender,
+			       a.university, a.major, a.level_of_study,
+			       a.hackathons_attended_count,
+			       a.submitted_at, a.created_at, a.updated_at
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -381,8 +403,11 @@ func (s *ApplicationsStore) List(
 	} else {
 		query = `
 			SELECT a.id, a.user_id, u.email, a.status,
-			       a.first_name, a.last_name, a.university,
-			       a.submitted_at, a.created_at
+			       a.first_name, a.last_name, a.phone_e164, a.age,
+			       a.country_of_residence, a.gender,
+			       a.university, a.major, a.level_of_study,
+			       a.hackathons_attended_count,
+			       a.submitted_at, a.created_at, a.updated_at
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -410,8 +435,11 @@ func (s *ApplicationsStore) List(
 		var item ApplicationListItem
 		if err := rows.Scan(
 			&item.ID, &item.UserID, &item.Email, &item.Status,
-			&item.FirstName, &item.LastName, &item.University,
-			&item.SubmittedAt, &item.CreatedAt,
+			&item.FirstName, &item.LastName, &item.PhoneE164, &item.Age,
+			&item.CountryOfResidence, &item.Gender,
+			&item.University, &item.Major, &item.LevelOfStudy,
+			&item.HackathonsAttendedCount,
+			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -471,4 +499,42 @@ func (s *ApplicationsStore) List(
 	}
 
 	return result, nil
+}
+
+// GetStats returns aggregated application statistics
+func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE status = 'submitted') AS submitted,
+			COUNT(*) FILTER (WHERE status = 'accepted') AS accepted,
+			COUNT(*) FILTER (WHERE status = 'rejected') AS rejected,
+			COUNT(*) FILTER (WHERE status = 'waitlisted') AS waitlisted,
+			COUNT(*) FILTER (WHERE status = 'draft') AS draft
+		FROM applications
+	`
+
+	var stats ApplicationStats
+	err := s.db.QueryRowContext(ctx, query).Scan(
+		&stats.TotalApplications,
+		&stats.Submitted,
+		&stats.Accepted,
+		&stats.Rejected,
+		&stats.Waitlisted,
+		&stats.Draft,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate acceptance rate: accepted / (submitted + accepted + rejected + waitlisted)
+	reviewed := stats.Submitted + stats.Accepted + stats.Rejected + stats.Waitlisted
+	if reviewed > 0 {
+		stats.AcceptanceRate = float64(stats.Accepted) / float64(reviewed) * 100
+	}
+
+	return &stats, nil
 }
