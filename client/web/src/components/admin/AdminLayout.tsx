@@ -68,7 +68,7 @@ export default function AdminLayout() {
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col p-4 pt-0">
+        <div className="flex flex-1 flex-col p-4 pt-0 min-w-0 overflow-hidden">
           <Outlet />
         </div>
       </SidebarInset>

@@ -119,6 +119,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/stats": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns aggregated statistics for all applications",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get application stats (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.ApplicationStats"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/applications/{applicationID}": {
             "get": {
                 "security": [
@@ -929,6 +987,12 @@ const docTemplate = `{
         "store.ApplicationListItem": {
             "type": "object",
             "properties": {
+                "age": {
+                    "type": "integer"
+                },
+                "country_of_residence": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -938,10 +1002,25 @@ const docTemplate = `{
                 "first_name": {
                     "type": "string"
                 },
+                "gender": {
+                    "type": "string"
+                },
+                "hackathons_attended_count": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "string"
                 },
                 "last_name": {
+                    "type": "string"
+                },
+                "level_of_study": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string"
+                },
+                "phone_e164": {
                     "type": "string"
                 },
                 "status": {
@@ -951,6 +1030,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "university": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 },
                 "user_id": {
@@ -975,6 +1057,32 @@ const docTemplate = `{
                 },
                 "prev_cursor": {
                     "type": "string"
+                }
+            }
+        },
+        "store.ApplicationStats": {
+            "type": "object",
+            "properties": {
+                "acceptance_rate": {
+                    "type": "number"
+                },
+                "accepted": {
+                    "type": "integer"
+                },
+                "draft": {
+                    "type": "integer"
+                },
+                "rejected": {
+                    "type": "integer"
+                },
+                "submitted": {
+                    "type": "integer"
+                },
+                "total_applications": {
+                    "type": "integer"
+                },
+                "waitlisted": {
+                    "type": "integer"
                 }
             }
         },

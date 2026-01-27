@@ -30,6 +30,7 @@ type Storage struct {
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
+		GetStats(ctx context.Context) (*ApplicationStats, error)
 	}
 	Settings interface {
 		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)

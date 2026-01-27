@@ -1,6 +1,6 @@
 
 import { create } from "zustand";
-import type { User, ApplicationListItem, ApplicationListResult, ApplicationStatus } from "./types.d";
+import type { User, ApplicationListItem, ApplicationListResult, ApplicationStatus, ApplicationStats } from "./types.d";
 import { getRequest } from "./lib/api";
 
 // Auth error info for handling auth method mismatch
@@ -57,7 +57,10 @@ interface ApplicationsState {
   prevCursor: string | null;
   hasMore: boolean;
   currentStatus: ApplicationStatus | null;
+  stats: ApplicationStats | null;
+  statsLoading: boolean;
   fetchApplications: (params?: FetchParams) => Promise<void>;
+  fetchStats: () => Promise<void>;
   setStatusFilter: (status: ApplicationStatus | null) => void;
   resetPagination: () => void;
 }
@@ -69,6 +72,8 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   prevCursor: null,
   hasMore: false,
   currentStatus: null,
+  stats: null,
+  statsLoading: false,
 
   fetchApplications: async (params?: FetchParams) => {
     set({ loading: true });
@@ -119,6 +124,18 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
         hasMore: false,
         loading: false,
       });
+    }
+  },
+
+  fetchStats: async () => {
+    set({ statsLoading: true });
+
+    const res = await getRequest<ApplicationStats>("/v1/admin/applications/stats", "stats");
+
+    if (res.status === 200 && res.data) {
+      set({ stats: res.data, statsLoading: false });
+    } else {
+      set({ stats: null, statsLoading: false });
     }
   },
 

@@ -387,6 +387,30 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// getApplicationStatsHandler returns aggregated application statistics
+//
+//	@Summary		Get application stats (Admin)
+//	@Description	Returns aggregated statistics for all applications
+//	@Tags			admin
+//	@Produce		json
+//	@Success		200	{object}	store.ApplicationStats
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/stats [get]
+func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *http.Request) {
+	stats, err := app.store.Application.GetStats(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, stats); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // listApplicationsHandler lists applications with cursor pagination for admins
 //
 //	@Summary		List applications (Admin)
