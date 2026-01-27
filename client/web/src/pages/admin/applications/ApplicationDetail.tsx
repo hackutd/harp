@@ -1,24 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getRequest, putRequest, errorAlert } from "../../lib/api";
-import type { Application, ApplicationStatus } from "../../types";
-import { Button } from "../../components/ui/button";
+import { toast } from "sonner";
+import { getRequest, putRequest, errorAlert } from "@/lib/api";
+import type { Application, ApplicationStatus } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-import { Label } from "../../components/ui/label";
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
+} from "@/components/ui/select";
 
 export default function ApplicationDetail() {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +61,7 @@ export default function ApplicationDetail() {
 
     if (res.status === 200 && res.data) {
       setApplication(res.data);
-      alert("Status updated successfully");
+      toast.success("Status updated successfully");
     } else {
       errorAlert(res);
     }

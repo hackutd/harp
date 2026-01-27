@@ -4,7 +4,7 @@ import { useUserStore } from '../../store';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 
-export default function App() {
+export default function Dashboard() {
   const { user, clearUser } = useUserStore();
   const navigate = useNavigate();
 

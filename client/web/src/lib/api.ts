@@ -1,5 +1,6 @@
 // Centralized API client - all HTTP requests go through here
 
+import { toast } from "sonner";
 import type { ApiResponse } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
@@ -176,12 +177,11 @@ export async function deleteRequest<T>(
 }
 
 /**
- * Display error alert to user
+ * Display error toast to user
  */
 export function errorAlert(res: ApiResponse, customMessage?: string): void {
   const message = customMessage || res.error || "An unexpected error occurred";
-  // Using browser alert for now - can be replaced with toast/notification system
-  alert(message);
+  toast.error(message);
 }
 
 /**

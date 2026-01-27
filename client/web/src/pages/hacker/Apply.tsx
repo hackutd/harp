@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ApplicationWizard } from "@/components/apply/ApplicationWizard";
+import { ApplicationWizard } from "@/features/application-wizard/ApplicationWizard";
 import { useUserStore } from "@/store";
 
 export default function Apply() {
