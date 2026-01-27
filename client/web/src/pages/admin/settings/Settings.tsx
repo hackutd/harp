@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useUserStore } from '../../store';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { useUserStore } from '@/store';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Settings() {
   const { user } = useUserStore();

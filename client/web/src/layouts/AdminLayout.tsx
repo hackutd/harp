@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { AppSidebar } from '@/components/admin/app-sidebar';
+import { AppSidebar } from '@/features/admin-navigation/app-sidebar';
 import {
   Breadcrumb,
   BreadcrumbItem,

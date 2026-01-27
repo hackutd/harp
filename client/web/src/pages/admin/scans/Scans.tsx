@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { getRequest, errorAlert } from "../../lib/api";
-import type { Scan } from "../../types";
-import { Button } from "../../components/ui/button";
+import { getRequest, errorAlert } from "@/lib/api";
+import type { Scan } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../components/ui/card";
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../components/ui/table";
+} from "@/components/ui/table";
 
 export default function Scans() {
   const [loading, setLoading] = useState(true);

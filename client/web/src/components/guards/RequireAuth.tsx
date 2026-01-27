@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
-import { useUserStore } from "../../store";
+import { useUserStore } from "@/store";
 
 interface RequireAuthProps {
   children: React.ReactNode;

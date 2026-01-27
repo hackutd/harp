@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useApplicationsStore } from '../../store';
-import { getRequest, errorAlert } from '../../lib/api';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Label } from '../../components/ui/label';
+import { useApplicationsStore } from '@/store';
+import { getRequest, errorAlert } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -12,13 +12,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/table';
-import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { SectionCards } from '../../components/admin/section-cards';
+} from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SectionCards } from '@/features/admin-navigation/section-cards';
 import { ChevronLeft, ChevronRight, Maximize2, X } from 'lucide-react';
-import type { ApplicationStatus, Application } from '../../types';
+import type { ApplicationStatus, Application } from '@/types';
 
-export default function Applications() {
+export default function ApplicationsList() {
   const {
     applications,
     loading,
@@ -211,7 +211,7 @@ export default function Applications() {
 
       <div className="flex">
         <Card className={`overflow-hidden flex flex-col max-h-[calc(100vh-180px)] ${selectedApplicationId ? 'w-1/2 rounded-r-none' : 'w-full'}`}>
-          <CardHeader className="flex-shrink-0">
+          <CardHeader className="shrink-0">
             <CardDescription>
               {applications.length} application(s) on this page
               {currentStatus && ` (filtered by ${currentStatus})`}
@@ -304,8 +304,8 @@ export default function Applications() {
         </Card>
 
         {selectedApplicationId && (
-          <Card className="w-1/2 flex-shrink-0 rounded-l-none border-l-0 flex flex-col max-h-[calc(100vh-180px)] !py-0 !gap-0">
-            <div className="flex items-center justify-between flex-shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
+          <Card className="w-1/2 shrink-0 rounded-l-none border-l-0 flex flex-col max-h-[calc(100vh-180px)] py-0! gap-0!">
+            <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
               <div className="flex items-center gap-2">
                 {detailLoading ? (
                   <p className="font-semibold text-muted-foreground">Loading...</p>

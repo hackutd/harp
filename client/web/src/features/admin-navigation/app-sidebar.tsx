@@ -12,8 +12,8 @@ import {
   Settings,
 } from "lucide-react"
 import { useLocation, Link } from "react-router-dom"
-import { NavSection } from '@/components/admin/nav-section'
-import { NavUser } from '@/components/admin/nav-user'
+import { NavSection } from '@/features/admin-navigation/nav-section'
+import { NavUser } from '@/features/admin-navigation/nav-user'
 import {
   Sidebar,
   SidebarContent,
