@@ -143,7 +143,8 @@ func (app *application) mount() http.Handler {
 			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
-
+				r.Get("/superadmin/settings", app.getSettingsHandler)
+				r.Put("/superadmin/settings", app.updateSettingsHandler)
 			})
 		})
 	})

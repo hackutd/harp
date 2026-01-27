@@ -142,6 +142,17 @@ func sessionOverrides() *sessmodels.OverrideStruct {
 					accessTokenPayload = map[string]interface{}{}
 				}
 				accessTokenPayload["role"] = string(DefaultSessionRole)
+
+				// Store profile picture URL in session database (from Google OAuth)
+				if userContext != nil {
+					if pictureURL, ok := (*userContext)["profilePictureUrl"].(string); ok && pictureURL != "" {
+						if sessionDataInDatabase == nil {
+							sessionDataInDatabase = map[string]interface{}{}
+						}
+						sessionDataInDatabase["profilePictureUrl"] = pictureURL
+					}
+				}
+
 				return origCreateNewSession(userID, accessTokenPayload, sessionDataInDatabase, disableAntiCsrf, tenantId, userContext)
 			}
 
@@ -167,6 +178,23 @@ func googleOverrides(appStore store.Storage) *tpmodels.OverrideStruct {
 				if err := rejectIfExistingUserAuthDiffers(appStore, email, store.AuthMethodGoogle); err != nil {
 					return tpmodels.SignInUpResponse{}, err
 				}
+
+				// grab picture from Google profile and pass to session via userContext
+				var pictureURL string
+				if rawUserInfoFromProvider.FromUserInfoAPI != nil {
+					if url, ok := rawUserInfoFromProvider.FromUserInfoAPI["picture"].(string); ok && url != "" {
+						pictureURL = url
+					}
+				}
+				if pictureURL == "" && rawUserInfoFromProvider.FromIdTokenPayload != nil {
+					if url, ok := rawUserInfoFromProvider.FromIdTokenPayload["picture"].(string); ok && url != "" {
+						pictureURL = url
+					}
+				}
+				if pictureURL != "" {
+					(*userContext)["profilePictureUrl"] = pictureURL
+				}
+
 				return origSignInUp(thirdPartyID, thirdPartyUserID, email, oAuthTokens, rawUserInfoFromProvider, tenantId, userContext)
 			}
 

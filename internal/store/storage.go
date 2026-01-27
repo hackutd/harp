@@ -21,6 +21,7 @@ type Storage struct {
 		GetByID(ctx context.Context, id string) (*User, error)
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
+		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
@@ -30,11 +31,16 @@ type Storage struct {
 		Submit(ctx context.Context, app *Application) error
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 	}
+	Settings interface {
+		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
+		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
 	return Storage{
-		Users: &UsersStore{db: db},
+		Users:       &UsersStore{db: db},
 		Application: &ApplicationsStore{db: db},
-}
+		Settings:    &SettingsStore{db: db},
+	}
 }

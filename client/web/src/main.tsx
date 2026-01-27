@@ -25,11 +25,17 @@ import Apply from "./pages/app/Apply";
 import Status from "./pages/app/Status";
 
 // Admin pages
+import AdminLayout from "./components/admin/AdminLayout";
 import Applications from "./pages/admin/Applications";
 import ApplicationDetail from "./pages/admin/ApplicationDetail";
 import Settings from "./pages/admin/Settings";
 import Scans from "./pages/admin/Scans";
 import SuperAdmin from "./pages/superadmin/SuperAdmin";
+import Assigned from "./pages/admin/Assigned";
+import Completed from "./pages/admin/Completed";
+import Groups from "./pages/admin/Groups";
+import HackerPack from "./pages/admin/HackerPack";
+import Questions from "./pages/admin/Questions";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -80,38 +86,52 @@ const router = createBrowserRouter([
     ),
   },
 
-  // Admin routes
+  // Admin routes with shared sidebar layout
   {
-    path: "/admin/applications",
+    path: "/admin",
     element: (
       <RequireAdmin>
-        <Applications />
+        <AdminLayout />
       </RequireAdmin>
     ),
-  },
-  {
-    path: "/admin/applications/:id",
-    element: (
-      <RequireAdmin>
-        <ApplicationDetail />
-      </RequireAdmin>
-    ),
-  },
-  {
-    path: "/admin/settings",
-    element: (
-      <RequireAdmin>
-        <Settings />
-      </RequireAdmin>
-    ),
-  },
-  {
-    path: "/admin/scans",
-    element: (
-      <RequireAdmin>
-        <Scans />
-      </RequireAdmin>
-    ),
+    children: [
+      {
+        path: "applications",
+        element: <Applications />,
+      },
+      {
+        path: "applications/:id",
+        element: <ApplicationDetail />,
+      },
+      {
+        path: "settings",
+        element: <Settings />,
+      },
+      {
+        path: "scans",
+        element: <Scans />,
+      },
+      {
+        path: "assigned",
+        element: <Assigned />,
+      },
+      {
+        path: "completed",
+        element: <Completed />,
+      },
+      {
+        path: "groups",
+        element: <Groups />,
+      },
+      {
+        path: "hacker-pack",
+        element: <HackerPack />,
+      },
+      {
+        path: "questions",
+        element: <Questions />,
+      },
+    ],
   },
 
   // Super Admin routes
@@ -132,5 +152,3 @@ root.render(
     </SuperTokensWrapper>
   </React.StrictMode>
 );
-
-

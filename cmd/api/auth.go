@@ -11,11 +11,12 @@ import (
 
 // JSON response for user data
 type UserResponse struct {
-	ID        string         `json:"id"`
-	Email     string         `json:"email"`
-	Role      store.UserRole `json:"role"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	ID                string         `json:"id"`
+	Email             string         `json:"email"`
+	Role              store.UserRole `json:"role"`
+	ProfilePictureUrl *string        `json:"profilePictureUrl,omitempty"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
 }
 
 // getCurrentUserHandler returns the currently authenticated user
@@ -36,11 +37,12 @@ func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	response := UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:                user.ID,
+		Email:             user.Email,
+		Role:              user.Role,
+		ProfilePictureUrl: user.ProfilePictureURL,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

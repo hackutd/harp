@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/hackutd/portal/internal/store"
@@ -25,10 +27,7 @@ type UpdateApplicationPayload struct {
 	Major        *string `json:"major" validate:"omitempty,min=1"`
 	LevelOfStudy *string `json:"level_of_study" validate:"omitempty,min=1"`
 
-	WhyAttend           *string `json:"why_attend" validate:"omitempty,min=1"`
-	HackathonsLearned   *string `json:"hackathons_learned" validate:"omitempty,min=1"`
-	FirstHackathonGoals *string `json:"first_hackathon_goals" validate:"omitempty,min=1"`
-	LookingForward      *string `json:"looking_forward" validate:"omitempty,min=1"`
+	ShortAnswerResponses json.RawMessage `json:"short_answer_responses"`
 
 	HackathonsAttendedCount *int16  `json:"hackathons_attended_count" validate:"omitempty,min=0"`
 	SoftwareExperienceLevel *string `json:"software_experience_level" validate:"omitempty,min=1"`
@@ -47,6 +46,12 @@ type UpdateApplicationPayload struct {
 	AckMLHCOC      *bool `json:"ack_mlh_coc"`
 	AckMLHPrivacy  *bool `json:"ack_mlh_privacy"`
 	OptInMLHEmails *bool `json:"opt_in_mlh_emails"`
+}
+
+// ApplicationWithQuestions embeds questions in the response for the hacker
+type ApplicationWithQuestions struct {
+	*store.Application
+	ShortAnswerQuestions []store.ShortAnswerQuestion `json:"short_answer_questions"`
 }
 
 // getOrCreateApplicationHandler returns the user's application, creating a draft if none exists
@@ -92,7 +97,20 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		}
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+	// Fetch questions to embed in response
+	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	// Return application with embedded questions
+	response := ApplicationWithQuestions{
+		Application:          application,
+		ShortAnswerQuestions: questions,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -179,17 +197,8 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	if req.LevelOfStudy != nil {
 		application.LevelOfStudy = req.LevelOfStudy
 	}
-	if req.WhyAttend != nil {
-		application.WhyAttend = req.WhyAttend
-	}
-	if req.HackathonsLearned != nil {
-		application.HackathonsLearned = req.HackathonsLearned
-	}
-	if req.FirstHackathonGoals != nil {
-		application.FirstHackathonGoals = req.FirstHackathonGoals
-	}
-	if req.LookingForward != nil {
-		application.LookingForward = req.LookingForward
+	if req.ShortAnswerResponses != nil {
+		application.ShortAnswerResponses = req.ShortAnswerResponses
 	}
 	if req.HackathonsAttendedCount != nil {
 		application.HackathonsAttendedCount = req.HackathonsAttendedCount
@@ -312,18 +321,32 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	if application.LevelOfStudy == nil {
 		missing = append(missing, "level_of_study")
 	}
-	if application.WhyAttend == nil {
-		missing = append(missing, "why_attend")
+
+	// Validate dynamic short answer questions
+	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
 	}
-	if application.HackathonsLearned == nil {
-		missing = append(missing, "hackathons_learned")
+
+	var responses map[string]string
+	if application.ShortAnswerResponses != nil {
+		if err := json.Unmarshal(application.ShortAnswerResponses, &responses); err != nil {
+			responses = make(map[string]string)
+		}
+	} else {
+		responses = make(map[string]string)
 	}
-	if application.FirstHackathonGoals == nil {
-		missing = append(missing, "first_hackathon_goals")
+
+	for _, q := range questions {
+		if q.Required {
+			answer, exists := responses[q.ID]
+			if !exists || strings.TrimSpace(answer) == "" {
+				missing = append(missing, "short_answer:"+q.ID)
+			}
+		}
 	}
-	if application.LookingForward == nil {
-		missing = append(missing, "looking_forward")
-	}
+
 	if application.HackathonsAttendedCount == nil {
 		missing = append(missing, "hackathons_attended_count")
 	}

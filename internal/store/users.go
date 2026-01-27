@@ -29,6 +29,7 @@ type User struct {
 	Email             string     `json:"email" validate:"required,email"`
 	Role              UserRole   `json:"role" validate:"required,oneof=hacker admin super_admin"`
 	AuthMethod        AuthMethod `json:"auth_method" validate:"required,oneof=passwordless google"`
+	ProfilePictureURL *string    `json:"profile_picture_url,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
@@ -42,7 +43,7 @@ func (s *UsersStore) GetBySuperTokensID(ctx context.Context, supertokensUserID s
 	defer cancel()
 
 	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, created_at, updated_at
+		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
 		FROM users
 		WHERE supertokens_user_id = $1
 	`
@@ -54,6 +55,7 @@ func (s *UsersStore) GetBySuperTokensID(ctx context.Context, supertokensUserID s
 		&user.Email,
 		&user.Role,
 		&user.AuthMethod,
+		&user.ProfilePictureURL,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -72,7 +74,7 @@ func (s *UsersStore) GetByID(ctx context.Context, id string) (*User, error) {
 	defer cancel()
 
 	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, created_at, updated_at
+		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -84,6 +86,7 @@ func (s *UsersStore) GetByID(ctx context.Context, id string) (*User, error) {
 		&user.Email,
 		&user.Role,
 		&user.AuthMethod,
+		&user.ProfilePictureURL,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -102,8 +105,8 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO users (supertokens_user_id, email, role, auth_method)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (supertokens_user_id, email, role, auth_method, profile_picture_url)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -114,6 +117,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		user.Email,
 		user.Role,
 		user.AuthMethod,
+		user.ProfilePictureURL,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
@@ -131,7 +135,7 @@ func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error
 	defer cancel()
 
 	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, created_at, updated_at
+		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -143,6 +147,7 @@ func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error
 		&user.Email,
 		&user.Role,
 		&user.AuthMethod,
+		&user.ProfilePictureURL,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -154,4 +159,31 @@ func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error
 	}
 
 	return &user, nil
+}
+
+func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET profile_picture_url = $1, updated_at = NOW()
+		WHERE supertokens_user_id = $2
+	`
+
+	result, err := s.db.ExecContext(ctx, query, pictureURL, supertokensUserID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }

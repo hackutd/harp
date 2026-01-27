@@ -10,7 +10,7 @@ export default function Apply() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="mb-6">
             <Button variant="ghost" onClick={() => navigate("/app")}>
               &larr; Back to Dashboard

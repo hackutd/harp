@@ -1,7 +1,6 @@
 
 import { create } from "zustand";
-import Session from "supertokens-auth-react/recipe/session";
-import type { User, UserRole, ApplicationListItem, ApplicationListResult, BackendApplicationStatus } from "./types.d";
+import type { User, ApplicationListItem, ApplicationListResult, ApplicationStatus } from "./types.d";
 import { getRequest } from "./lib/api";
 
 // Auth error info for handling auth method mismatch
@@ -19,10 +18,9 @@ interface UserState {
   setUser: (user: User | null) => void;
   clearUser: () => void;
   clearAuthError: () => void;
-  syncRoleFromSession: () => Promise<void>;
 }
 
-export const useUserStore = create<UserState>((set, get) => ({
+export const useUserStore = create<UserState>((set) => ({
   user: null,
   loading: false,
   authError: null,
@@ -43,24 +41,12 @@ export const useUserStore = create<UserState>((set, get) => ({
   setUser: (user) => set({ user }),
   clearUser: () => set({ user: null, authError: null }),
   clearAuthError: () => set({ authError: null }),
-  syncRoleFromSession: async () => {
-    const currentUser = get().user;
-    if (!currentUser) return;
-
-    if (await Session.doesSessionExist()) {
-      const payload = await Session.getAccessTokenPayloadSecurely();
-      const sessionRole = payload?.role as UserRole | undefined;
-      if (sessionRole && sessionRole !== currentUser.role) {
-        set({ user: { ...currentUser, role: sessionRole } });
-      }
-    }
-  },
 }));
 
 // Applications Store cursor pagination
 interface FetchParams {
   cursor?: string;
-  status?: BackendApplicationStatus | null; // null = clear filter, undefined = keep current
+  status?: ApplicationStatus | null; // null = clear filter, undefined = keep current
   direction?: 'forward' | 'backward';
 }
 
@@ -70,9 +56,9 @@ interface ApplicationsState {
   nextCursor: string | null;
   prevCursor: string | null;
   hasMore: boolean;
-  currentStatus: BackendApplicationStatus | null;
+  currentStatus: ApplicationStatus | null;
   fetchApplications: (params?: FetchParams) => Promise<void>;
-  setStatusFilter: (status: BackendApplicationStatus | null) => void;
+  setStatusFilter: (status: ApplicationStatus | null) => void;
   resetPagination: () => void;
 }
 
@@ -90,7 +76,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
     const queryParams = new URLSearchParams();
 
     // grab status
-    let status: BackendApplicationStatus | null;
+    let status: ApplicationStatus | null;
     if (params && 'status' in params) {
       // could be null to clear or a value
       status = params.status ?? null;

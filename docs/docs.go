@@ -504,6 +504,145 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/superadmin/settings": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns all hackathon settings including short answer questions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Get settings (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.SettingsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Replaces all short answer questions with the provided array",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Update settings (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Questions to set",
+                        "name": "settings",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateSettingsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.SettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -515,6 +654,17 @@ const docTemplate = `{
                 },
                 "exists": {
                     "type": "boolean"
+                }
+            }
+        },
+        "main.SettingsResponse": {
+            "type": "object",
+            "properties": {
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ShortAnswerQuestion"
+                    }
                 }
             }
         },
@@ -552,10 +702,6 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 1
                 },
-                "first_hackathon_goals": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "first_name": {
                     "type": "string",
                     "minLength": 1
@@ -572,10 +718,6 @@ const docTemplate = `{
                     "type": "integer",
                     "minimum": 0
                 },
-                "hackathons_learned": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "heard_about": {
                     "type": "string",
                     "minLength": 1
@@ -590,10 +732,6 @@ const docTemplate = `{
                 },
                 "linkedin": {
                     "type": "string"
-                },
-                "looking_forward": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "major": {
                     "type": "string",
@@ -613,6 +751,12 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 1
                 },
+                "short_answer_responses": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "software_experience_level": {
                     "type": "string",
                     "minLength": 1
@@ -623,10 +767,20 @@ const docTemplate = `{
                 },
                 "website": {
                     "type": "string"
-                },
-                "why_attend": {
-                    "type": "string",
-                    "minLength": 1
+                }
+            }
+        },
+        "main.UpdateSettingsPayload": {
+            "type": "object",
+            "required": [
+                "questions"
+            ],
+            "properties": {
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ShortAnswerQuestion"
+                    }
                 }
             }
         },
@@ -640,6 +794,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "profilePictureUrl": {
                     "type": "string"
                 },
                 "role": {
@@ -687,10 +844,6 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 1
                 },
-                "first_hackathon_goals": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "first_name": {
                     "type": "string",
                     "minLength": 1
@@ -705,10 +858,6 @@ const docTemplate = `{
                 "hackathons_attended_count": {
                     "type": "integer",
                     "minimum": 0
-                },
-                "hackathons_learned": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "heard_about": {
                     "type": "string",
@@ -728,10 +877,6 @@ const docTemplate = `{
                 "linkedin": {
                     "type": "string"
                 },
-                "looking_forward": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "major": {
                     "type": "string",
                     "minLength": 1
@@ -749,6 +894,12 @@ const docTemplate = `{
                 "shirt_size": {
                     "type": "string",
                     "minLength": 1
+                },
+                "short_answer_responses": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "software_experience_level": {
                     "type": "string",
@@ -772,10 +923,6 @@ const docTemplate = `{
                 },
                 "website": {
                     "type": "string"
-                },
-                "why_attend": {
-                    "type": "string",
-                    "minLength": 1
                 }
             }
         },
@@ -858,6 +1005,32 @@ const docTemplate = `{
                 "AuthMethodPasswordless",
                 "AuthMethodGoogle"
             ]
+        },
+        "store.ShortAnswerQuestion": {
+            "type": "object",
+            "required": [
+                "id",
+                "question"
+            ],
+            "properties": {
+                "display_order": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "id": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 1
+                },
+                "question": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            }
         },
         "store.UserRole": {
             "type": "string",
