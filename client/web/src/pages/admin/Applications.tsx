@@ -267,7 +267,7 @@ export default function Applications() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6"
+                              className="opacity-0 cursor-pointer group-hover:opacity-100 transition-opacity h-6 w-6"
                               onClick={() => setSelectedApplicationId(app.id)}
                             >
                               <Maximize2 className="h-4 w-4 text-muted-foreground" />
