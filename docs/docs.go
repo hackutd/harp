@@ -184,7 +184,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a single application by its ID",
+                "description": "Returns a single application by its ID with embedded short answer questions",
                 "produces": [
                     "application/json"
                 ],
@@ -205,7 +205,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/store.Application"
+                            "$ref": "#/definitions/main.ApplicationWithQuestions"
                         }
                     },
                     "400": {
@@ -704,6 +704,131 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.ApplicationWithQuestions": {
+            "type": "object",
+            "properties": {
+                "accommodations": {
+                    "type": "string"
+                },
+                "ack_application": {
+                    "type": "boolean"
+                },
+                "ack_mlh_coc": {
+                    "type": "boolean"
+                },
+                "ack_mlh_privacy": {
+                    "type": "boolean"
+                },
+                "age": {
+                    "type": "integer",
+                    "maximum": 150,
+                    "minimum": 1
+                },
+                "country_of_residence": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "dietary_restrictions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ethnicity": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "first_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "gender": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "github": {
+                    "type": "string"
+                },
+                "hackathons_attended_count": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "heard_about": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "level_of_study": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "linkedin": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "opt_in_mlh_emails": {
+                    "type": "boolean"
+                },
+                "phone_e164": {
+                    "type": "string"
+                },
+                "race": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "shirt_size": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "short_answer_questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ShortAnswerQuestion"
+                    }
+                },
+                "short_answer_responses": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "software_experience_level": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "status": {
+                    "$ref": "#/definitions/store.ApplicationStatus"
+                },
+                "submitted_at": {
+                    "type": "string"
+                },
+                "university": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                }
+            }
+        },
         "main.CheckEmailResponse": {
             "type": "object",
             "properties": {
