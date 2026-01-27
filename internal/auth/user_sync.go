@@ -11,8 +11,7 @@ import (
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 )
 
-// Creates a new user in the database from a SuperTokens session.
-func CreateUserFromSession(ctx context.Context, sessionContainer sessmodels.SessionContainer, appStore store.Storage, googleOAuthEnabled bool) (*store.User, error) {
+func CreateUserFromSession(ctx context.Context, sessionContainer sessmodels.SessionContainer, appStore store.Storage, googleOAuthEnabled bool, profilePictureURL *string) (*store.User, error) {
 	supertokensUserID := sessionContainer.GetUserID()
 
 	// Try to get user from passwordless recipe first
@@ -48,6 +47,7 @@ func CreateUserFromSession(ctx context.Context, sessionContainer sessmodels.Sess
 		Email:             email,
 		Role:              store.RoleHacker,
 		AuthMethod:        authMethod,
+		ProfilePictureURL: profilePictureURL,
 	}
 
 	if err := appStore.Users.Create(ctx, user); err != nil {

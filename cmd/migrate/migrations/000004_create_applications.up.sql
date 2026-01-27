@@ -1,4 +1,3 @@
--- status for app lifecycle
 DO $$ BEGIN
     CREATE TYPE application_status AS ENUM ('draft', 'submitted', 'accepted', 'rejected', 'waitlisted');
 EXCEPTION
@@ -41,10 +40,7 @@ CREATE TABLE IF NOT EXISTS applications (
     major VARCHAR(255),
     level_of_study VARCHAR(255),
 
-    why_attend TEXT,
-    hackathons_learned TEXT,
-    first_hackathon_goals TEXT,
-    looking_forward TEXT,
+    short_answer_responses JSONB NOT NULL DEFAULT '{}',
 
     github VARCHAR(255),
     linkedin VARCHAR(255),

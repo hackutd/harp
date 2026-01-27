@@ -39,12 +39,9 @@ export const experienceSchema = z.object({
   heard_about: z.string().min(1, "This field is required"),
 });
 
-// Step 4: Short Answers
+// Step 4: Short Answers (dynamic questions - validation at submit time)
 export const shortAnswerSchema = z.object({
-  why_attend: z.string().min(1, "This field is required"),
-  hackathons_learned: z.string().min(1, "This field is required"),
-  first_hackathon_goals: z.string().min(1, "This field is required"),
-  looking_forward: z.string().min(1, "This field is required"),
+  short_answer_responses: z.record(z.string(), z.string()).default({}),
 });
 
 // Step 5: Event Info
@@ -87,7 +84,6 @@ export const sponsorInfoSchema = z.object({
 });
 
 // Step 7: Review - Acknowledgments
-// Using refine() for boolean checks since z.literal(true) in Zod v4 works differently
 export const acknowledgmentsSchema = z.object({
   ack_application: z
     .boolean()
@@ -134,12 +130,7 @@ export const STEP_FIELDS: Record<number, (keyof ApplicationFormData)[]> = {
   ],
   1: ["university", "major", "level_of_study"],
   2: ["hackathons_attended_count", "software_experience_level", "heard_about"],
-  3: [
-    "why_attend",
-    "hackathons_learned",
-    "first_hackathon_goals",
-    "looking_forward",
-  ],
+  3: ["short_answer_responses"],
   4: ["shirt_size", "dietary_restrictions", "accommodations"],
   5: ["github", "linkedin", "website"],
   6: [

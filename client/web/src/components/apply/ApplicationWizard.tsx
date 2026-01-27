@@ -26,7 +26,7 @@ import {
   STEP_FIELDS,
 } from "@/lib/validations/applicationSchema";
 import { getRequest, patchRequest, postRequest, errorAlert } from "@/lib/api";
-import type { Application } from "@/types";
+import type { Application, ShortAnswerQuestion } from "@/types";
 
 interface ApplicationWizardProps {
   userEmail?: string;
@@ -71,10 +71,7 @@ const defaultValues: ApplicationFormData = {
   hackathons_attended_count: 0,
   software_experience_level: "",
   heard_about: "",
-  why_attend: "",
-  hackathons_learned: "",
-  first_hackathon_goals: "",
-  looking_forward: "",
+  short_answer_responses: {},
   shirt_size: "",
   dietary_restrictions: [] as DietaryRestriction[],
   accommodations: "",
@@ -104,10 +101,7 @@ function transformApplicationToFormData(app: Application): ApplicationFormData {
     hackathons_attended_count: app.hackathons_attended_count ?? 0,
     software_experience_level: app.software_experience_level ?? "",
     heard_about: app.heard_about ?? "",
-    why_attend: app.why_attend ?? "",
-    hackathons_learned: app.hackathons_learned ?? "",
-    first_hackathon_goals: app.first_hackathon_goals ?? "",
-    looking_forward: app.looking_forward ?? "",
+    short_answer_responses: app.short_answer_responses ?? {},
     shirt_size: app.shirt_size ?? "",
     dietary_restrictions: (app.dietary_restrictions ?? []) as DietaryRestriction[],
     accommodations: app.accommodations ?? "",
@@ -142,10 +136,6 @@ function transformFormDataToPayload(
     "level_of_study",
     "software_experience_level",
     "heard_about",
-    "why_attend",
-    "hackathons_learned",
-    "first_hackathon_goals",
-    "looking_forward",
     "shirt_size",
     "accommodations",
     "github",
@@ -173,6 +163,9 @@ function transformFormDataToPayload(
   // Array field
   payload.dietary_restrictions = data.dietary_restrictions || [];
 
+  // Short answer responses
+  payload.short_answer_responses = data.short_answer_responses || {};
+
   // Boolean fields
   payload.ack_application = data.ack_application;
   payload.ack_mlh_coc = data.ack_mlh_coc;
@@ -189,6 +182,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<Application | null>(null);
+  const [questions, setQuestions] = useState<ShortAnswerQuestion[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -207,6 +201,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       );
       if (res.status === 200 && res.data) {
         setApplication(res.data);
+        if (res.data.short_answer_questions) {
+          setQuestions(res.data.short_answer_questions);
+        }
         const formData = transformApplicationToFormData(res.data);
         form.reset({ ...defaultValues, ...formData });
       }
@@ -288,6 +285,22 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const isValid = await form.trigger();
     if (!isValid) {
       setApiError("Please complete all required fields before submitting");
+      setSubmitting(false);
+      return;
+    }
+
+    // Validate required short answer questions
+    const responses = form.getValues("short_answer_responses") || {};
+    const missingQuestions: string[] = [];
+    for (const q of questions) {
+      if (q.required && (!responses[q.id] || !responses[q.id].trim())) {
+        missingQuestions.push(q.question);
+      }
+    }
+    if (missingQuestions.length > 0) {
+      setApiError(
+        `Please answer the following required questions: ${missingQuestions.join(", ")}`
+      );
       setSubmitting(false);
       return;
     }
@@ -382,13 +395,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       case 2:
         return <ExperienceStep />;
       case 3:
-        return <ShortAnswerStep />;
+        return <ShortAnswerStep questions={questions} />;
       case 4:
         return <EventInfoStep />;
       case 5:
         return <SponsorInfoStep />;
       case 6:
-        return <ReviewStep onEditStep={goToStep} userEmail={userEmail} />;
+        return <ReviewStep onEditStep={goToStep} userEmail={userEmail} questions={questions} />;
       default:
         return null;
     }

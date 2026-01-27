@@ -120,10 +120,7 @@ type Application struct {
 	Major        *string `json:"major" validate:"omitempty,min=1"`
 	LevelOfStudy *string `json:"level_of_study" validate:"omitempty,min=1"`
 
-	WhyAttend           *string `json:"why_attend" validate:"omitempty,min=1"`
-	HackathonsLearned   *string `json:"hackathons_learned" validate:"omitempty,min=1"`
-	FirstHackathonGoals *string `json:"first_hackathon_goals" validate:"omitempty,min=1"`
-	LookingForward      *string `json:"looking_forward" validate:"omitempty,min=1"`
+	ShortAnswerResponses json.RawMessage `json:"short_answer_responses"`
 
 	HackathonsAttendedCount *int16  `json:"hackathons_attended_count" validate:"omitempty,min=0"`
 	SoftwareExperienceLevel *string `json:"software_experience_level" validate:"omitempty,min=1"`
@@ -160,7 +157,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			first_name, last_name, phone_e164, age,
 			country_of_residence, gender, race, ethnicity,
 			university, major, level_of_study,
-			why_attend, hackathons_learned, first_hackathon_goals, looking_forward,
+			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin, website,
@@ -176,7 +173,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
 		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
 		&app.University, &app.Major, &app.LevelOfStudy,
-		&app.WhyAttend, &app.HackathonsLearned, &app.FirstHackathonGoals, &app.LookingForward,
+		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website,
@@ -202,7 +199,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 			first_name, last_name, phone_e164, age,
 			country_of_residence, gender, race, ethnicity,
 			university, major, level_of_study,
-			why_attend, hackathons_learned, first_hackathon_goals, looking_forward,
+			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin, website,
@@ -218,7 +215,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
 		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
 		&app.University, &app.Major, &app.LevelOfStudy,
-		&app.WhyAttend, &app.HackathonsLearned, &app.FirstHackathonGoals, &app.LookingForward,
+		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website,
@@ -242,12 +239,13 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 	query := `
 		INSERT INTO applications (user_id)
 		VALUES ($1)
-		RETURNING id, status, dietary_restrictions, ack_application, ack_mlh_coc,
-				  ack_mlh_privacy, opt_in_mlh_emails, created_at, updated_at
+		RETURNING id, status, short_answer_responses, dietary_restrictions,
+				  ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
+				  created_at, updated_at
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.UserID).Scan(
-		&app.ID, &app.Status, pq.Array(&app.DietaryRestrictions),
+		&app.ID, &app.Status, &app.ShortAnswerResponses, pq.Array(&app.DietaryRestrictions),
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.CreatedAt, &app.UpdatedAt,
 	)
@@ -278,23 +276,20 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 			university = $10,
 			major = $11,
 			level_of_study = $12,
-			why_attend = $13,
-			hackathons_learned = $14,
-			first_hackathon_goals = $15,
-			looking_forward = $16,
-			hackathons_attended_count = $17,
-			software_experience_level = $18,
-			heard_about = $19,
-			shirt_size = $20,
-			dietary_restrictions = $21,
-			accommodations = $22,
-			github = $23,
-			linkedin = $24,
-			website = $25,
-			ack_application = $26,
-			ack_mlh_coc = $27,
-			ack_mlh_privacy = $28,
-			opt_in_mlh_emails = $29
+			short_answer_responses = $13,
+			hackathons_attended_count = $14,
+			software_experience_level = $15,
+			heard_about = $16,
+			shirt_size = $17,
+			dietary_restrictions = $18,
+			accommodations = $19,
+			github = $20,
+			linkedin = $21,
+			website = $22,
+			ack_application = $23,
+			ack_mlh_coc = $24,
+			ack_mlh_privacy = $25,
+			opt_in_mlh_emails = $26
 		WHERE id = $1
 		RETURNING updated_at
 	`
@@ -304,7 +299,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 		app.FirstName, app.LastName, app.PhoneE164, app.Age,
 		app.CountryOfResidence, app.Gender, app.Race, app.Ethnicity,
 		app.University, app.Major, app.LevelOfStudy,
-		app.WhyAttend, app.HackathonsLearned, app.FirstHackathonGoals, app.LookingForward,
+		app.ShortAnswerResponses,
 		app.HackathonsAttendedCount, app.SoftwareExperienceLevel, app.HeardAbout,
 		app.ShirtSize, pq.Array(app.DietaryRestrictions), app.Accommodations,
 		app.Github, app.LinkedIn, app.Website,
@@ -343,7 +338,7 @@ func (s *ApplicationsStore) Submit(ctx context.Context, app *Application) error 
 	return nil
 }
 
-// Cursor pagination for admin applications view
+// Cursor pagination for applciations
 func (s *ApplicationsStore) List(
 	ctx context.Context,
 	filters ApplicationListFilters,
@@ -354,7 +349,7 @@ func (s *ApplicationsStore) List(
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	// Clamp limit (default 50, max 100)
+	// default 50, max 100
 	if limit <= 0 {
 		limit = 50
 	}

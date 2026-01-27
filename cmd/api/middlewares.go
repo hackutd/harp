@@ -68,11 +68,20 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Extract profile picture URL from session data (stored by Google OAuth)
+		var profilePictureURL *string
+		sessionData, err := sessionContainer.GetSessionDataInDatabase()
+		if err == nil && sessionData != nil {
+			if pictureURL, ok := sessionData["profilePictureUrl"].(string); ok && pictureURL != "" {
+				profilePictureURL = &pictureURL
+			}
+		}
+
 		user, err := app.store.Users.GetBySuperTokensID(r.Context(), sessionContainer.GetUserID())
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
 				googleEnabled := app.config.supertokens.googleClientID != ""
-				user, err = auth.CreateUserFromSession(r.Context(), sessionContainer, app.store, googleEnabled)
+				user, err = auth.CreateUserFromSession(r.Context(), sessionContainer, app.store, googleEnabled, profilePictureURL)
 				if err != nil {
 					var authErr *auth.AuthMethodMismatchError
 					if errors.As(err, &authErr) {
@@ -86,6 +95,21 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 			} else {
 				app.internalServerError(w, r, err)
 				return
+			}
+		} else {
+			// User exists - update profile picture if it changed (for Google users)
+			if user.AuthMethod == store.AuthMethodGoogle && profilePictureURL != nil {
+				currentPicture := ""
+				if user.ProfilePictureURL != nil {
+					currentPicture = *user.ProfilePictureURL
+				}
+				if *profilePictureURL != currentPicture {
+					if err := app.store.Users.UpdateProfilePicture(r.Context(), user.SuperTokensUserID, profilePictureURL); err != nil {
+						app.logger.Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
+					} else {
+						user.ProfilePictureURL = profilePictureURL
+					}
+				}
 			}
 		}
 

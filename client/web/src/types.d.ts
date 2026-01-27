@@ -2,6 +2,13 @@
 
 export type UserRole = 'hacker' | 'admin' | 'super_admin';
 
+export interface ShortAnswerQuestion {
+  id: string;
+  question: string;
+  required: boolean;
+  display_order: number;
+}
+
 export type ApplicationStatus =
   | 'pending'
   | 'in_review'
@@ -13,6 +20,7 @@ export interface User {
   id: string;
   email: string;
   role: UserRole;
+  profilePictureUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,7 +28,7 @@ export interface User {
 export interface Application {
   id: string;
   user_id: string;
-  status: BackendApplicationStatus;
+  status: ApplicationStatus;
   first_name: string | null;
   last_name: string | null;
   phone_e164: string | null;
@@ -32,10 +40,8 @@ export interface Application {
   university: string | null;
   major: string | null;
   level_of_study: string | null;
-  why_attend: string | null;
-  hackathons_learned: string | null;
-  first_hackathon_goals: string | null;
-  looking_forward: string | null;
+  short_answer_responses: Record<string, string> | null;
+  short_answer_questions: ShortAnswerQuestion[];
   hackathons_attended_count: number | null;
   software_experience_level: string | null;
   heard_about: string | null;
@@ -68,8 +74,7 @@ export interface Scan {
   scannedBy: string;
 }
 
-// Backend application status values (used in admin list)
-export type BackendApplicationStatus =
+export type ApplicationStatus =
   | 'draft'
   | 'submitted'
   | 'accepted'
@@ -81,7 +86,7 @@ export interface ApplicationListItem {
   id: string;
   user_id: string;
   email: string;
-  status: BackendApplicationStatus;
+  status: ApplicationStatus;
   first_name: string | null;
   last_name: string | null;
   university: string | null;

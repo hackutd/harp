@@ -21,10 +21,12 @@ import {
   DIETARY_RESTRICTION_OPTIONS,
   HEARD_ABOUT_OPTIONS,
 } from "@/lib/validations/applicationSchema";
+import type { ShortAnswerQuestion } from "@/types";
 
 interface ReviewStepProps {
   onEditStep: (stepIndex: number) => void;
   userEmail?: string;
+  questions: ShortAnswerQuestion[];
 }
 
 // Helper to get label from options
@@ -75,9 +77,14 @@ function ReviewField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ReviewStep({ onEditStep, userEmail }: ReviewStepProps) {
+export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps) {
   const form = useFormContext<ApplicationFormData>();
   const values = form.watch();
+
+  const sortedQuestions = [...questions].sort(
+    (a, b) => a.display_order - b.display_order
+  );
+  const responses = values.short_answer_responses || {};
 
   return (
     <div className="space-y-6">
@@ -136,36 +143,20 @@ export function ReviewStep({ onEditStep, userEmail }: ReviewStepProps) {
       {/* Short Answers */}
       <ReviewSection title="Short Answer Questions" stepIndex={3} onEdit={onEditStep}>
         <div className="space-y-3">
-          <div>
-            <p className="text-muted-foreground text-xs mb-1">
-              Why do you want to attend?
-            </p>
-            <p className="whitespace-pre-wrap">{values.why_attend || "Not provided"}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs mb-1">
-              Hackathon learnings
-            </p>
-            <p className="whitespace-pre-wrap">
-              {values.hackathons_learned || "Not provided"}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs mb-1">
-              First hackathon goals
-            </p>
-            <p className="whitespace-pre-wrap">
-              {values.first_hackathon_goals || "Not provided"}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs mb-1">
-              Looking forward to
-            </p>
-            <p className="whitespace-pre-wrap">
-              {values.looking_forward || "Not provided"}
-            </p>
-          </div>
+          {sortedQuestions.length === 0 ? (
+            <p className="text-muted-foreground">No questions configured.</p>
+          ) : (
+            sortedQuestions.map((q) => (
+              <div key={q.id}>
+                <p className="text-muted-foreground text-xs mb-1">
+                  {q.question} {q.required && "*"}
+                </p>
+                <p className="whitespace-pre-wrap">
+                  {responses[q.id] || "Not provided"}
+                </p>
+              </div>
+            ))
+          )}
         </div>
       </ReviewSection>
 
