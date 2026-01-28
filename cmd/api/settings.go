@@ -7,36 +7,36 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// UpdateSettingsPayload for updating questions
-type UpdateSettingsPayload struct {
+// UpdateShortAnswerQuestionsPayload for updating short answer questions
+type UpdateShortAnswerQuestionsPayload struct {
 	Questions []store.ShortAnswerQuestion `json:"questions" validate:"required,dive"`
 }
 
-// SettingsResponse wraps settings for API response
-type SettingsResponse struct {
+// ShortAnswerQuestionsResponse wraps short answer questions for API response
+type ShortAnswerQuestionsResponse struct {
 	Questions []store.ShortAnswerQuestion `json:"questions"`
 }
 
-// getSettingsHandler returns current settings including short answer questions
+// getShortAnswerQuestions returns all short answer questions
 //
-//	@Summary		Get settings (Super Admin)
-//	@Description	Returns all hackathon settings including short answer questions
+//	@Summary		Get short answer questions (Super Admin)
+//	@Description	Returns all configurable short answer questions for hacker applications
 //	@Tags			superadmin
 //	@Produce		json
-//	@Success		200	{object}	SettingsResponse
+//	@Success		200	{object}	ShortAnswerQuestionsResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/settings [get]
-func (app *application) getSettingsHandler(w http.ResponseWriter, r *http.Request) {
+//	@Router			/superadmin/settings/saquestions [get]
+func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.Request) {
 	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := SettingsResponse{
+	response := ShortAnswerQuestionsResponse{
 		Questions: questions,
 	}
 
@@ -45,23 +45,23 @@ func (app *application) getSettingsHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// updateSettingsHandler replaces short answer questions
+// updateShortAnswerQuestions replaces all short answer questions
 //
-//	@Summary		Update settings (Super Admin)
+//	@Summary		Update short answer questions (Super Admin)
 //	@Description	Replaces all short answer questions with the provided array
 //	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
-//	@Param			settings	body		UpdateSettingsPayload	true	"Questions to set"
-//	@Success		200			{object}	SettingsResponse
+//	@Param			questions	body		UpdateShortAnswerQuestionsPayload	true	"Questions to set"
+//	@Success		200			{object}	ShortAnswerQuestionsResponse
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/settings [put]
-func (app *application) updateSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	var req UpdateSettingsPayload
+//	@Router			/superadmin/settings/saquestions [put]
+func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *http.Request) {
+	var req UpdateShortAnswerQuestionsPayload
 	if err := readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -87,11 +87,15 @@ func (app *application) updateSettingsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	response := SettingsResponse{
+	response := ShortAnswerQuestionsResponse{
 		Questions: req.Questions,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request) {
+
 }
