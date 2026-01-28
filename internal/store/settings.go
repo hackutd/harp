@@ -15,7 +15,7 @@ type ShortAnswerQuestion struct {
 	DisplayOrder int    `json:"display_order" validate:"min=0"`
 }
 
-// SettingsStore handles database operations for settings
+// SettingsStore handles database operations for hackathon settings (e.g., short answer questions)
 type SettingsStore struct {
 	db *sql.DB
 }

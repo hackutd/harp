@@ -563,26 +563,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings": {
+        "/superadmin/settings/saquestions": {
             "get": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns all hackathon settings including short answer questions",
+                "description": "Returns all configurable short answer questions for hacker applications",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "superadmin"
                 ],
-                "summary": "Get settings (Super Admin)",
+                "summary": "Get short answer questions (Super Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.SettingsResponse"
+                            "$ref": "#/definitions/main.ShortAnswerQuestionsResponse"
                         }
                     },
                     "401": {
@@ -636,15 +636,15 @@ const docTemplate = `{
                 "tags": [
                     "superadmin"
                 ],
-                "summary": "Update settings (Super Admin)",
+                "summary": "Update short answer questions (Super Admin)",
                 "parameters": [
                     {
                         "description": "Questions to set",
-                        "name": "settings",
+                        "name": "questions",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.UpdateSettingsPayload"
+                            "$ref": "#/definitions/main.UpdateShortAnswerQuestionsPayload"
                         }
                     }
                 ],
@@ -652,7 +652,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.SettingsResponse"
+                            "$ref": "#/definitions/main.ShortAnswerQuestionsResponse"
                         }
                     },
                     "400": {
@@ -840,7 +840,7 @@ const docTemplate = `{
                 }
             }
         },
-        "main.SettingsResponse": {
+        "main.ShortAnswerQuestionsResponse": {
             "type": "object",
             "properties": {
                 "questions": {
@@ -953,7 +953,7 @@ const docTemplate = `{
                 }
             }
         },
-        "main.UpdateSettingsPayload": {
+        "main.UpdateShortAnswerQuestionsPayload": {
             "type": "object",
             "required": [
                 "questions"
