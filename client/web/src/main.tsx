@@ -31,11 +31,9 @@ import ApplicationsList from "./pages/admin/applications/ApplicationsList";
 import ApplicationDetail from "./pages/admin/applications/ApplicationDetail";
 import Assigned from "./pages/admin/reviews/Assigned";
 import Completed from "./pages/admin/reviews/Completed";
-import Settings from "./pages/admin/settings/Settings";
 import Scans from "./pages/admin/scans/Scans";
 import Groups from "./pages/admin/groups/Groups";
 import HackerPack from "./pages/admin/hacker-pack/HackerPack";
-import Questions from "./pages/admin/questions/Questions";
 
 // Super Admin pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
@@ -107,10 +105,6 @@ const router = createBrowserRouter([
         element: <ApplicationDetail />,
       },
       {
-        path: "settings",
-        element: <Settings />,
-      },
-      {
         path: "scans",
         element: <Scans />,
       },
@@ -129,10 +123,6 @@ const router = createBrowserRouter([
       {
         path: "hacker-pack",
         element: <HackerPack />,
-      },
-      {
-        path: "questions",
-        element: <Questions />,
       },
     ],
   },
