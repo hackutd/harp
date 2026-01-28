@@ -7,11 +7,10 @@ import {
   CircleCheck,
   Package,
   UsersRound,
-  HelpCircle,
   ScanLine,
   Settings,
 } from "lucide-react"
-import { useLocation, Link } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 import { NavSection } from '@/features/admin-navigation/nav-section'
 import { NavUser } from '@/features/admin-navigation/nav-user'
 import {
@@ -24,6 +23,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { useUserStore } from '@/store'
 import { useSidebar } from '@/components/ui/sidebar'
+import { SettingsDialog } from '@/features/super-admin-settings/SettingsDialog'
 
 const applicantsNav = [
   {
@@ -59,11 +59,6 @@ const eventNav = [
     url: "/admin/groups",
     icon: UsersRound,
   },
-  {
-    name: "Questions",
-    url: "/admin/questions",
-    icon: HelpCircle,
-  },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -89,19 +84,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSection label="Event" items={eventNav} currentPath={location.pathname} />
       </SidebarContent>
       <SidebarFooter>
-        <Separator />
-        <Link
-          to="/admin/settings"
-          className="flex items-center justify-between px-2 py-2 hover:bg-sidebar-accent rounded-md transition-colors"
-        >
-          {state === "expanded" && (
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm">Settings</span>
-              <span className="text-xs text-muted-foreground">Super Admins ONLY</span>
-            </div>
-          )}
-          <Settings className="size-5" />
-        </Link>
+        {user?.role === 'super_admin' && (
+          <>
+            <Separator />
+            <SettingsDialog
+              trigger={
+                <button className="flex items-center justify-between px-2 py-2 hover:bg-sidebar-accent rounded-md transition-colors w-full">
+                  {state === "expanded" && (
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-sm">Settings</span>
+                      <span className="text-xs text-muted-foreground">Super Admins ONLY</span>
+                    </div>
+                  )}
+                  <Settings className="size-5" />
+                </button>
+              }
+            />
+          </>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
