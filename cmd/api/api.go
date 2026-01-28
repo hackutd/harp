@@ -136,19 +136,21 @@ func (app *application) mount() http.Handler {
 			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
-				r.Get("/admin/applications", app.listApplicationsHandler)
-				r.Get("/admin/applications/stats", app.getApplicationStatsHandler)
-				r.Get("/admin/applications/{applicationID}", app.getApplication)
+				r.Route("/admin", func(r chi.Router) {
+					r.Get("/applications", app.listApplicationsHandler)
+					r.Get("/applications/stats", app.getApplicationStatsHandler)
+					r.Get("/applications/{applicationID}", app.getApplication)
+				})
 			})
 
 			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
-				r.Route("/superadmin/settings", func(r chi.Router) {
-					r.Get("/saquestions", app.getShortAnswerQuestions)
-					r.Put("/saquestions", app.updateShortAnswerQuestions)
-					r.Post("/superadmin/settings/reviews-per-app", app.setReviewsPerApp)
-					
+				r.Route("/superadmin", func(r chi.Router) {
+					r.Get("/settings/saquestions", app.getShortAnswerQuestions)
+					r.Put("/settings/saquestions", app.updateShortAnswerQuestions)
+					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
+					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
 				})
 			})
 		})

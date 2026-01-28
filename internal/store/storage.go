@@ -35,6 +35,8 @@ type Storage struct {
 	Settings interface {
 		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
+		GetReviewsPerApplication(ctx context.Context) (int, error)
+		SetReviewsPerApplication(ctx context.Context, value int) error
 	}
 }
 
