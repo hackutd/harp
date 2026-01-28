@@ -21,6 +21,7 @@ type SettingsStore struct {
 }
 
 const SettingsKeyShortAnswerQuestions = "short_answer_questions"
+const SettingsKeyReviewsPerApplication = "reviews_per_application"
 
 // GetShortAnswerQuestions returns the parsed questions array
 func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error) {
@@ -48,6 +49,54 @@ func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAns
 	}
 
 	return questions, nil
+}
+
+// GetReviewsPerApplication returns the configured number of reviews per application
+func (s *SettingsStore) GetReviewsPerApplication(ctx context.Context) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewsPerApplication).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 3, nil
+		}
+		return 0, err
+	}
+
+	var count int
+	if err := json.Unmarshal(value, &count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// SetReviewsPerApplication updates the number of reviews required per application
+func (s *SettingsStore) SetReviewsPerApplication(ctx context.Context, value int) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyReviewsPerApplication, jsonValue)
+	return err
 }
 
 // UpdateShortAnswerQuestions replaces all questions with the provided array
