@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { SuperTokensWrapper } from "supertokens-auth-react";
 import { initSuperTokens } from "./lib/supertokens";
 import { Toaster } from "./components/ui/sonner";
@@ -96,6 +96,10 @@ const router = createBrowserRouter([
       </RequireAdmin>
     ),
     children: [
+      {
+        index: true,
+        element: <Navigate to="/admin/applications" replace />,
+      },
       {
         path: "applications",
         element: <ApplicationsList />,
