@@ -121,3 +121,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom fast spin animation */
+@keyframes spin-fast {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hover\:animate-spin-fast:hover {
+  animation: spin-fast 0.5s linear infinite;
+  transform-origin: center center;
+}
