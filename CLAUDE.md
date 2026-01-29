@@ -104,6 +104,83 @@ Optional:
 - `FRONTEND_URL` (default: `http://localhost:3000`) - CORS origin
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - Google OAuth credentials
 
+## Coding Patterns
+
+### Store Layer (internal/store/)
+
+**Models:** Define structs with `json` and `validate` tags. Use pointer types (`*string`, `*int16`, `*time.Time`) for nullable DB columns. Use `json.RawMessage` for JSONB columns, `[]string` with `pq.Array()` for PostgreSQL arrays.
+
+**Enums:** Define as `type MyEnum string` with constants:
+
+```go
+type ApplicationStatus string
+const (
+    StatusDraft     ApplicationStatus = "draft"
+    StatusSubmitted ApplicationStatus = "submitted"
+)
+```
+
+**Store structs:** Each domain gets a struct holding `*sql.DB` and an interface in the `Storage` struct:
+
+```go
+type MyStore struct { db *sql.DB }
+```
+
+Registered in `NewStorage()` in `storage.go`.
+
+**Query methods:** Always use 5-second context timeout, map `sql.ErrNoRows` to `ErrNotFound`:
+
+```go
+func (s *MyStore) GetByID(ctx context.Context, id string) (*MyModel, error) {
+    ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+    defer cancel()
+    // QueryRowContext → Scan
+    // errors.Is(err, sql.ErrNoRows) → return nil, ErrNotFound
+}
+```
+
+**Updates:** Use `RETURNING` to scan updated values back into the struct. Upserts use `ON CONFLICT ... DO UPDATE`.
+
+### API Handlers (cmd/api/)
+
+**Handler pattern** (5 steps):
+
+1. Parse JSON body: `readJSON(w, r, &payload)` — enforces 1MB limit, disallows unknown fields
+2. Validate: `Validate.Struct(payload)` — uses `validator/v10` tags
+3. Business logic / additional validation
+4. Call store method with `r.Context()`
+5. Return response: `app.jsonResponse(w, http.StatusOK, responseStruct)`
+
+**Request/Response types:** Define payload structs with `json` + `validate` tags, and response wrapper structs:
+
+```go
+type CreateThingPayload struct {
+    Name string `json:"name" validate:"required,min=1,max=100"`
+}
+type ThingResponse struct {
+    Thing store.Thing `json:"thing"`
+}
+```
+
+**Error responses:** Use helpers — `badRequestResponse` (400), `notFoundResponse` (404), `conflictResponse` (409), `internalServerError` (500), `unauthorizedErrorResponse` (401), `forbiddenResponse` (403).
+
+**URL params:** `chi.URLParam(r, "paramName")` for path parameters like `{applicationID}`.
+
+**Current user:** `getUserFromContext(r.Context())` returns `*store.User` set by `AuthRequiredMiddleware`.
+
+**Swagger annotations:** Add `@Summary`, `@Description`, `@Tags`, `@Accept`/`@Produce`, `@Param`, `@Success`, `@Failure`, `@Security CookieAuth`, `@Router` comments above each handler.
+
+### Route Registration (cmd/api/api.go)
+
+- Hacker routes: `/v1/applications/*` — requires `AuthRequiredMiddleware`
+- Admin routes: `/v1/admin/*` — requires `RequireRoleMiddleware(store.RoleAdmin)`
+- Super admin routes: `/v1/superadmin/*` — requires `RequireRoleMiddleware(store.RoleSuperAdmin)`
+- Use `r.Group()` to scope middleware, `r.Route()` to scope path prefixes
+
+### Validation Tags (validator/v10)
+
+Common tags: `required`, `omitempty`, `min=N`, `max=N`, `email`, `url`, `e164`, `oneof=val1 val2`, `dive` (validate slice elements)
+
 ## Development Notes
 
 - Vite proxies `/auth/*` and `/v1/*` to backend (port 8080) in dev mode
