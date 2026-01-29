@@ -322,6 +322,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/reviews/next": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Automatically assigns the next submitted application needing review to the current admin and returns it",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get next review assignment (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ReviewResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No applications need review",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/reviews/pending": {
             "get": {
                 "security": [
@@ -783,6 +852,64 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/applications/assign": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Finds all submitted applications needing more reviews and assigns them to admins using workload balancing",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Batch assign reviews (SuperAdmin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.BatchAssignmentResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -1699,6 +1826,14 @@ const docTemplate = `{
                 "AuthMethodPasswordless",
                 "AuthMethodGoogle"
             ]
+        },
+        "store.BatchAssignmentResult": {
+            "type": "object",
+            "properties": {
+                "reviews_created": {
+                    "type": "integer"
+                }
+            }
         },
         "store.ReviewVote": {
             "type": "string",

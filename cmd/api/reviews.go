@@ -89,6 +89,78 @@ func (app *application) getApplicationReviews(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// batchAssignReviews assigns reviews to admins for all submitted applications needing reviews
+//
+//	@Summary		Batch assign reviews (SuperAdmin)
+//	@Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
+//	@Tags			superadmin
+//	@Produce		json
+//	@Success		200	{object}	store.BatchAssignmentResult
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/assign [post]
+func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Request) {
+	reviewsPerApp, err := app.store.Settings.GetReviewsPerApplication(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	result, err := app.store.ApplicationReviews.BatchAssign(r.Context(), reviewsPerApp)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getNextReview assigns and returns the next unreviewed application for the current admin
+//
+//	@Summary		Get next review assignment (Admin)
+//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
+//	@Tags			admin
+//	@Produce		json
+//	@Success		200	{object}	ReviewResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}	"No applications need review"
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/next [get]
+func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+
+	reviewsPerApp, err := app.store.Settings.GetReviewsPerApplication(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	review, err := app.store.ApplicationReviews.AssignNextForAdmin(r.Context(), user.ID, reviewsPerApp)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("no applications need review"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	response := ReviewResponse{
+		Review: *review,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // submitVote records an admin's vote on an assigned review
 //
 //	@Summary		Submit vote on a review (Admin)
