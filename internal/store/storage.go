@@ -42,6 +42,8 @@ type Storage struct {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
 		GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReview, error)
 		GetByApplicationID(ctx context.Context, applicationID string) ([]ApplicationReview, error)
+		BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error)
+		AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error)
 	}
 }
 
