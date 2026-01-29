@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardCheck, HelpCircle, UserCog } from "lucide-react"
+import { ClipboardCheck, HelpCircle, Loader2, UserCog } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,12 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { getRequest, putRequest, errorAlert } from "@/lib/api"
+import { toast } from "sonner"
+import type { ShortAnswerQuestion } from "../../types"
+import { QuestionsTab } from "./tabs/QuestionsTab"
+import { SetAdminTab } from "./tabs/SetAdminTab"
+import { ReviewsPerAppTab } from "./tabs/ReviewsPerAppTab"
 
 type SettingsTab = 'questions' | 'set-admin' | 'reviews-per-app'
 
@@ -32,13 +38,61 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [open, setOpen] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<SettingsTab>('questions')
 
+  const [questions, setQuestions] = React.useState<ShortAnswerQuestion[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!open) return
+    const fetchQuestions = async () => {
+      setLoading(true)
+      const res = await getRequest<{ questions: ShortAnswerQuestion[] }>(
+        "/v1/superadmin/settings/saquestions",
+        "short answer questions"
+      )
+      if (res.status === 200 && res.data) {
+        setQuestions(res.data.questions ?? [])
+      } else {
+        errorAlert(res)
+      }
+      setLoading(false)
+    }
+    fetchQuestions()
+  }, [open])
+
   const handleCancel = () => {
     setOpen(false)
   }
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    setOpen(false)
+  const handleSave = async () => {
+    if (activeTab === 'questions') {
+      // Validate that all questions have text
+      const emptyQuestion = questions.find(q => !q.question.trim())
+      if (emptyQuestion) {
+        toast.error("All questions must have text")
+        return
+      }
+
+      setSaving(true)
+      const payload = questions.map((q, i) => ({
+        ...q,
+        display_order: i + 1,
+      }))
+      const res = await putRequest<{ questions: ShortAnswerQuestion[] }>(
+        "/v1/superadmin/settings/saquestions",
+        { questions: payload },
+        "short answer questions"
+      )
+      if (res.status === 200 && res.data) {
+        setQuestions(res.data.questions)
+        toast.success("Questions saved")
+      } else {
+        errorAlert(res)
+      }
+      setSaving(false)
+    } else {
+      setOpen(false)
+    }
   }
 
   return (
@@ -75,36 +129,14 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           </div>
 
           {/* Right content area */}
-          <div className="flex-1 flex flex-col bg-zinc-950">
-            <ScrollArea className="flex-1">
+          <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-8">
                 {activeTab === 'questions' && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg text-zinc-100">Short Answer Questions</h3>
-                    <p className="text-sm text-zinc-400">
-                      Configure application short answer questions.
-                    </p>
-                    {/* Future implementation area */}
-                  </div>
+                  <QuestionsTab questions={questions} setQuestions={setQuestions} loading={loading} />
                 )}
-                {activeTab === 'set-admin' && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg text-zinc-100">Set Admin</h3>
-                    <p className="text-sm text-zinc-400">
-                      Manage admin roles and permissions.
-                    </p>
-                    {/* Future implementation area */}
-                  </div>
-                )}
-                {activeTab === 'reviews-per-app' && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg text-zinc-100">Reviews Per Application</h3>
-                    <p className="text-sm text-zinc-400">
-                      Set the number of reviews required for each application.
-                    </p>
-                    {/* Future implementation area */}
-                  </div>
-                )}
+                {activeTab === 'set-admin' && <SetAdminTab />}
+                {activeTab === 'reviews-per-app' && <ReviewsPerAppTab />}
               </div>
             </ScrollArea>
 
@@ -113,8 +145,19 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
               <Button variant="ghost" onClick={handleCancel} className="text-zinc-400 cursor-pointer hover:text-zinc-100 hover:bg-zinc-800">
                 Cancel
               </Button>
-              <Button onClick={handleSave} className="bg-zinc-100 text-zinc-900 cursor-pointer hover:bg-zinc-200">
-                Save
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-zinc-100 text-zinc-900 cursor-pointer hover:bg-zinc-200 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save"
+                )}
               </Button>
             </DialogFooter>
           </div>
