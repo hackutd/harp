@@ -140,6 +140,9 @@ func (app *application) mount() http.Handler {
 					r.Get("/applications", app.listApplicationsHandler)
 					r.Get("/applications/stats", app.getApplicationStatsHandler)
 					r.Get("/applications/{applicationID}", app.getApplication)
+					r.Get("/applications/{applicationID}/reviews", app.getApplicationReviews)
+					r.Get("/reviews/pending", app.getPendingReviews)
+					r.Put("/reviews/{reviewID}", app.submitVote)
 				})
 			})
 

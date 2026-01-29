@@ -38,12 +38,18 @@ type Storage struct {
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
 	}
+	ApplicationReviews interface {
+		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
+		GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReview, error)
+		GetByApplicationID(ctx context.Context, applicationID string) ([]ApplicationReview, error)
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
 	return Storage{
 		Users:       &UsersStore{db: db},
 		Application: &ApplicationsStore{db: db},
-		Settings:    &SettingsStore{db: db},
+		Settings:           &SettingsStore{db: db},
+		ApplicationReviews: &ApplicationReviewsStore{db: db},
 	}
 }
