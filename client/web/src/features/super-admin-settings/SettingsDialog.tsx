@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { HelpCircle, UserCog } from "lucide-react"
+import { ClipboardCheck, HelpCircle, UserCog } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -16,11 +16,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
-type SettingsTab = 'questions' | 'set-admin'
+type SettingsTab = 'questions' | 'set-admin' | 'reviews-per-app'
 
 const settingsTabs = [
   { id: 'questions' as const, label: 'Questions', icon: HelpCircle },
   { id: 'set-admin' as const, label: 'Set Admin', icon: UserCog },
+  { id: 'reviews-per-app' as const, label: 'Reviews', icon: ClipboardCheck },
 ]
 
 interface SettingsDialogProps {
@@ -91,6 +92,15 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                     <h3 className="text-lg text-zinc-100">Set Admin</h3>
                     <p className="text-sm text-zinc-400">
                       Manage admin roles and permissions.
+                    </p>
+                    {/* Future implementation area */}
+                  </div>
+                )}
+                {activeTab === 'reviews-per-app' && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg text-zinc-100">Reviews Per Application</h3>
+                    <p className="text-sm text-zinc-400">
+                      Set the number of reviews required for each application.
                     </p>
                     {/* Future implementation area */}
                   </div>
