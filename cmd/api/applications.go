@@ -490,6 +490,64 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
+type SetStatusPayload struct {
+	Status store.ApplicationStatus `json:"status" validate:"required,oneof=accepted rejected waitlisted"`
+}
+
+type ApplicationResponse struct {
+	Application *store.Application `json:"application"`
+}
+
+// setApplicationStatus sets the final status on an application (superadmin only)
+//
+//	@Summary		Set application status (Super Admin)
+//	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
+//	@Tags			superadmin
+//	@Accept			json
+//	@Produce		json
+//	@Param			applicationID	path		string				true	"Application ID"
+//	@Param			status			body		SetStatusPayload	true	"New status"
+//	@Success		200				{object}	ApplicationResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/{applicationID}/status [patch]
+func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Request) {
+	applicationID := chi.URLParam(r, "applicationID")
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	var payload SetStatusPayload
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	application, err := app.store.Application.SetStatus(r.Context(), applicationID, payload.Status)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("application not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, ApplicationResponse{Application: application}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // getApplication returns a single application by ID for admin review
 //
 //	@Summary		Get application by ID (Admin)

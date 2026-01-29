@@ -156,6 +156,7 @@ func (app *application) mount() http.Handler {
 					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
 					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
 					r.Post("/applications/assign", app.batchAssignReviews)
+					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
 				})
 			})
 		})

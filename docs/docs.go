@@ -916,6 +916,107 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/applications/{applicationID}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the final status (accepted, rejected, or waitlisted) on an application",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Set application status (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New status",
+                        "name": "status",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetStatusPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/reviews-per-app": {
             "get": {
                 "security": [
@@ -1196,9 +1297,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.ApplicationResponse": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "$ref": "#/definitions/store.Application"
+                }
+            }
+        },
         "main.ApplicationWithQuestions": {
             "type": "object",
             "properties": {
+                "accept_votes": {
+                    "type": "integer"
+                },
                 "accommodations": {
                     "type": "string"
                 },
@@ -1280,6 +1392,15 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 1
                 },
+                "reject_votes": {
+                    "type": "integer"
+                },
+                "reviews_assigned": {
+                    "type": "integer"
+                },
+                "reviews_completed": {
+                    "type": "integer"
+                },
                 "shirt_size": {
                     "type": "string",
                     "minLength": 1
@@ -1315,6 +1436,9 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                },
+                "waitlist_votes": {
+                    "type": "integer"
                 },
                 "website": {
                     "type": "string"
@@ -1369,6 +1493,26 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 10,
                     "minimum": 1
+                }
+            }
+        },
+        "main.SetStatusPayload": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "enum": [
+                        "accepted",
+                        "rejected",
+                        "waitlisted"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.ApplicationStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -1549,6 +1693,9 @@ const docTemplate = `{
         "store.Application": {
             "type": "object",
             "properties": {
+                "accept_votes": {
+                    "type": "integer"
+                },
                 "accommodations": {
                     "type": "string"
                 },
@@ -1630,6 +1777,15 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 1
                 },
+                "reject_votes": {
+                    "type": "integer"
+                },
+                "reviews_assigned": {
+                    "type": "integer"
+                },
+                "reviews_completed": {
+                    "type": "integer"
+                },
                 "shirt_size": {
                     "type": "string",
                     "minLength": 1
@@ -1660,6 +1816,9 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string"
                 },
+                "waitlist_votes": {
+                    "type": "integer"
+                },
                 "website": {
                     "type": "string"
                 }
@@ -1668,6 +1827,9 @@ const docTemplate = `{
         "store.ApplicationListItem": {
             "type": "object",
             "properties": {
+                "accept_votes": {
+                    "type": "integer"
+                },
                 "age": {
                     "type": "integer"
                 },
@@ -1704,6 +1866,15 @@ const docTemplate = `{
                 "phone_e164": {
                     "type": "string"
                 },
+                "reject_votes": {
+                    "type": "integer"
+                },
+                "reviews_assigned": {
+                    "type": "integer"
+                },
+                "reviews_completed": {
+                    "type": "integer"
+                },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
                 },
@@ -1718,6 +1889,9 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                },
+                "waitlist_votes": {
+                    "type": "integer"
                 }
             }
         },
