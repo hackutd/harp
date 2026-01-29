@@ -76,6 +76,11 @@ type ApplicationListItem struct {
 	SubmittedAt             *time.Time        `json:"submitted_at"`
 	CreatedAt               time.Time         `json:"created_at"`
 	UpdatedAt               time.Time         `json:"updated_at"`
+	AcceptVotes             int               `json:"accept_votes"`
+	RejectVotes             int               `json:"reject_votes"`
+	WaitlistVotes           int               `json:"waitlist_votes"`
+	ReviewsAssigned         int               `json:"reviews_assigned"`
+	ReviewsCompleted        int               `json:"reviews_completed"`
 }
 
 // ApplicationListResult contains paginated results
@@ -161,6 +166,12 @@ type Application struct {
 	SubmittedAt *time.Time `json:"submitted_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
+
+	AcceptVotes      int `json:"accept_votes"`
+	RejectVotes      int `json:"reject_votes"`
+	WaitlistVotes    int `json:"waitlist_votes"`
+	ReviewsAssigned  int `json:"reviews_assigned"`
+	ReviewsCompleted int `json:"reviews_completed"`
 }
 
 type ApplicationsStore struct {
@@ -181,7 +192,8 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin, website,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at
+			submitted_at, created_at, updated_at,
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
 		FROM applications
 		WHERE id = $1
 	`
@@ -198,6 +210,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -223,7 +236,8 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin, website,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at
+			submitted_at, created_at, updated_at,
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
 		FROM applications
 		WHERE user_id = $1
 	`
@@ -240,6 +254,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -393,7 +408,8 @@ func (s *ApplicationsStore) List(
 			       a.country_of_residence, a.gender,
 			       a.university, a.major, a.level_of_study,
 			       a.hackathons_attended_count,
-			       a.submitted_at, a.created_at, a.updated_at
+			       a.submitted_at, a.created_at, a.updated_at,
+			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -407,7 +423,8 @@ func (s *ApplicationsStore) List(
 			       a.country_of_residence, a.gender,
 			       a.university, a.major, a.level_of_study,
 			       a.hackathons_attended_count,
-			       a.submitted_at, a.created_at, a.updated_at
+			       a.submitted_at, a.created_at, a.updated_at,
+			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -440,6 +457,7 @@ func (s *ApplicationsStore) List(
 			&item.University, &item.Major, &item.LevelOfStudy,
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
+			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted,
 		); err != nil {
 			return nil, err
 		}
@@ -499,6 +517,51 @@ func (s *ApplicationsStore) List(
 	}
 
 	return result, nil
+}
+
+func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET status = $2, updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, user_id, status,
+			first_name, last_name, phone_e164, age,
+			country_of_residence, gender, race, ethnicity,
+			university, major, level_of_study,
+			short_answer_responses,
+			hackathons_attended_count, software_experience_level, heard_about,
+			shirt_size, dietary_restrictions, accommodations,
+			github, linkedin, website,
+			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
+			submitted_at, created_at, updated_at,
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
+	`
+
+	var app Application
+	err := s.db.QueryRowContext(ctx, query, id, status).Scan(
+		&app.ID, &app.UserID, &app.Status,
+		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
+		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
+		&app.University, &app.Major, &app.LevelOfStudy,
+		&app.ShortAnswerResponses,
+		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
+		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
+		&app.Github, &app.LinkedIn, &app.Website,
+		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &app, nil
 }
 
 // GetStats returns aggregated application statistics
