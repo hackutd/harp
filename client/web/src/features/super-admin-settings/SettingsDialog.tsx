@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { getRequest, putRequest, errorAlert } from "@/lib/api"
+import { getRequest, putRequest, postRequest, errorAlert } from "@/lib/api"
 import { toast } from "sonner"
 import type { ShortAnswerQuestion } from "../../types"
 import { QuestionsTab } from "./tabs/QuestionsTab"
@@ -42,6 +42,9 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
 
+  const [reviewsPerApp, setReviewsPerApp] = React.useState(1)
+  const [reviewsPerAppLoading, setReviewsPerAppLoading] = React.useState(false)
+
   React.useEffect(() => {
     if (!open) return
     const fetchQuestions = async () => {
@@ -57,7 +60,21 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       }
       setLoading(false)
     }
+    const fetchReviewsPerApp = async () => {
+      setReviewsPerAppLoading(true)
+      const res = await getRequest<{ reviews_per_application: number }>(
+        "/v1/superadmin/settings/reviews-per-app",
+        "reviews per application"
+      )
+      if (res.status === 200 && res.data) {
+        setReviewsPerApp(res.data.reviews_per_application)
+      } else {
+        errorAlert(res)
+      }
+      setReviewsPerAppLoading(false)
+    }
     fetchQuestions()
+    fetchReviewsPerApp()
   }, [open])
 
   const handleCancel = () => {
@@ -86,6 +103,25 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       if (res.status === 200 && res.data) {
         setQuestions(res.data.questions)
         toast.success("Questions saved")
+      } else {
+        errorAlert(res)
+      }
+      setSaving(false)
+    } else if (activeTab === 'reviews-per-app') {
+      if (reviewsPerApp < 1 || reviewsPerApp > 10) {
+        toast.error("Reviews per application must be between 1 and 10")
+        return
+      }
+
+      setSaving(true)
+      const res = await postRequest<{ reviews_per_application: number }>(
+        "/v1/superadmin/settings/reviews-per-app",
+        { reviews_per_application: reviewsPerApp },
+        "reviews per application"
+      )
+      if (res.status === 200 && res.data) {
+        setReviewsPerApp(res.data.reviews_per_application)
+        toast.success("Reviews per application saved")
       } else {
         errorAlert(res)
       }
@@ -136,7 +172,13 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                   <QuestionsTab questions={questions} setQuestions={setQuestions} loading={loading} />
                 )}
                 {activeTab === 'set-admin' && <SetAdminTab />}
-                {activeTab === 'reviews-per-app' && <ReviewsPerAppTab />}
+                {activeTab === 'reviews-per-app' && (
+                  <ReviewsPerAppTab
+                    reviewsPerApp={reviewsPerApp}
+                    setReviewsPerApp={setReviewsPerApp}
+                    loading={reviewsPerAppLoading}
+                  />
+                )}
               </div>
             </ScrollArea>
 
@@ -148,7 +190,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-zinc-100 text-zinc-900 cursor-pointer hover:bg-zinc-200 disabled:opacity-50"
+                className="bg-zinc-100 text-zinc-900 cursor-pointer hover:bg-zinc-300 disabled:opacity-50"
               >
                 {saving ? (
                   <>

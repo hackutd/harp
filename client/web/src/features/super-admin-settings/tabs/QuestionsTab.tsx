@@ -49,7 +49,7 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
           {questions.map((q, index) => (
             <div
               key={q.id}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3"
+              className="bg-zinc-900 rounded-md p-4 space-y-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <span className="text-xs text-zinc-500 pt-1 shrink-0">
@@ -59,7 +59,7 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
                   value={q.question}
                   onChange={(e) => updateQuestion(index, "question", e.target.value)}
                   placeholder="Enter question text..."
-                  className="flex-1 min-h-[60px] bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 resize-none"
+                  className="flex-1 min-h-[30px] bg-zinc-800 border-0 rounded-sm text-zinc-100 placeholder:text-zinc-500 resize-none"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -68,7 +68,7 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
                     id={`required-${q.id}`}
                     checked={q.required}
                     onCheckedChange={(checked) => updateQuestion(index, "required", checked === true)}
-                    className="border-zinc-500 data-[state=checked]:bg-zinc-100 data-[state=checked]:text-zinc-900 data-[state=checked]:border-zinc-100"
+                    className="border-zinc-500 cursor-pointer data-[state=checked]:bg-zinc-100 data-[state=checked]:text-zinc-900 data-[state=checked]:border-zinc-100"
                   />
                   <Label htmlFor={`required-${q.id}`} className="text-sm text-zinc-300 cursor-pointer">
                     Required
