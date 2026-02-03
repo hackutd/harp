@@ -70,7 +70,7 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
             >
               <Minus className="size-3" />
             </Button>
-            <span className="w-8 text-center text-lg font-medium text-zinc-100">{reviewsPerApp}</span>
+            <span className="w-8 text-center text-md font-light text-zinc-100">{reviewsPerApp}</span>
             <Button
               variant="outline"
               size="icon"

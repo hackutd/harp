@@ -17,8 +17,11 @@ import {
 
 const routeNames: Record<string, string> = {
   '/admin/applications': 'All Applicants',
-  '/admin/scans': 'Scanner',
-  '/admin/settings': 'Settings',
+  '/admin/assigned': 'Assigned',
+  '/admin/completed': 'Completed',
+  '/admin/scans': 'Scans',
+  '/admin/hacker-pack': 'Hacker Pack',
+  '/admin/groups': 'Groups',
 };
 
 export default function AdminLayout() {

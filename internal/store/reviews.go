@@ -29,6 +29,28 @@ type ApplicationReview struct {
 	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
+// ApplicationReviewWithDetails includes application info for display in the review list
+type ApplicationReviewWithDetails struct {
+	ApplicationReview
+	// Application fields
+	FirstName               *string `json:"first_name"`
+	LastName                *string `json:"last_name"`
+	Email                   string  `json:"email"`
+	Age                     *int16  `json:"age"`
+	University              *string `json:"university"`
+	Major                   *string `json:"major"`
+	CountryOfResidence      *string `json:"country_of_residence"`
+	HackathonsAttendedCount *int16  `json:"hackathons_attended_count"`
+}
+
+// ReviewNote represents a note from an admin review (without vote information)
+type ReviewNote struct {
+	AdminID    string    `json:"admin_id"`
+	AdminEmail string    `json:"admin_email"`
+	Notes      string    `json:"notes"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 // ApplicationReviewsStore handles database operations for application reviews
 type ApplicationReviewsStore struct {
 	db *sql.DB
@@ -63,16 +85,23 @@ func (s *ApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID strin
 	return &review, nil
 }
 
-// GetPendingByAdminID returns all reviews assigned to an admin that haven't been voted on yet
-func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReview, error) {
+// GetPendingByAdminID returns all reviews assigned to an admin that haven't been voted on yet,
+// including application details for display
+func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-		SELECT id, application_id, admin_id, vote, notes, assigned_at, reviewed_at, created_at, updated_at
-		FROM application_reviews
-		WHERE admin_id = $1 AND vote IS NULL
-		ORDER BY assigned_at ASC
+		SELECT
+			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
+			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
+			a.first_name, a.last_name, u.email, a.age,
+			a.university, a.major, a.country_of_residence, a.hackathons_attended_count
+		FROM application_reviews ar
+		JOIN applications a ON ar.application_id = a.id
+		JOIN users u ON a.user_id = u.id
+		WHERE ar.admin_id = $1 AND ar.vote IS NULL
+		ORDER BY ar.assigned_at ASC
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, adminID)
@@ -81,14 +110,16 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 	}
 	defer rows.Close()
 
-	reviews := []ApplicationReview{}
+	reviews := []ApplicationReviewWithDetails{}
 	for rows.Next() {
-		var review ApplicationReview
+		var review ApplicationReviewWithDetails
 		if err := rows.Scan(
 			&review.ID, &review.ApplicationID, &review.AdminID,
 			&review.Vote, &review.Notes,
 			&review.AssignedAt, &review.ReviewedAt,
 			&review.CreatedAt, &review.UpdatedAt,
+			&review.FirstName, &review.LastName, &review.Email, &review.Age,
+			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttendedCount,
 		); err != nil {
 			return nil, err
 		}
@@ -139,6 +170,43 @@ func (s *ApplicationReviewsStore) GetByApplicationID(ctx context.Context, applic
 	}
 
 	return reviews, nil
+}
+
+// GetNotesByApplicationID returns all non-empty notes for a specific application (without votes)
+func (s *ApplicationReviewsStore) GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT ar.admin_id, u.email, ar.notes, ar.created_at
+		FROM application_reviews ar
+		JOIN users u ON ar.admin_id = u.id
+		WHERE ar.application_id = $1 AND ar.notes IS NOT NULL AND ar.notes != ''
+		ORDER BY ar.created_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	notes := []ReviewNote{}
+	for rows.Next() {
+		var note ReviewNote
+		if err := rows.Scan(
+			&note.AdminID, &note.AdminEmail, &note.Notes, &note.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		notes = append(notes, note)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return notes, nil
 }
 
 // BatchAssignmentResult contains stats about a batch assignment operation
