@@ -24,13 +24,23 @@ type ReviewsListResponse struct {
 	Reviews []store.ApplicationReview `json:"reviews"`
 }
 
+// PendingReviewsListResponse wraps pending reviews with application details
+type PendingReviewsListResponse struct {
+	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
+}
+
+// NotesListResponse wraps a list of review notes for API response
+type NotesListResponse struct {
+	Notes []store.ReviewNote `json:"notes"`
+}
+
 // getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
 //
 //	@Summary		Get pending reviews (Admin)
-//	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet
+//	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
 //	@Tags			admin
 //	@Produce		json
-//	@Success		200	{object}	ReviewsListResponse
+//	@Success		200	{object}	PendingReviewsListResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
@@ -45,7 +55,7 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	response := ReviewsListResponse{
+	response := PendingReviewsListResponse{
 		Reviews: reviews,
 	}
 
@@ -82,6 +92,42 @@ func (app *application) getApplicationReviews(w http.ResponseWriter, r *http.Req
 
 	response := ReviewsListResponse{
 		Reviews: reviews,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getApplicationNotes returns all notes for a specific application (without votes)
+//
+//	@Summary		Get notes for an application (Admin)
+//	@Description	Returns all reviewer notes for a specific application without exposing votes
+//	@Tags			admin
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	NotesListResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/notes [get]
+func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Request) {
+	applicationID := chi.URLParam(r, "applicationID")
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	notes, err := app.store.ApplicationReviews.GetNotesByApplicationID(r.Context(), applicationID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := NotesListResponse{
+		Notes: notes,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

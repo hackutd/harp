@@ -255,6 +255,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/{applicationID}/notes": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns all reviewer notes for a specific application without exposing votes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get notes for an application (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.NotesListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/applications/{applicationID}/reviews": {
             "get": {
                 "security": [
@@ -398,7 +476,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns all reviews assigned to the current admin that haven't been voted on yet",
+                "description": "Returns all reviews assigned to the current admin that haven't been voted on yet, including application details",
                 "produces": [
                     "application/json"
                 ],
@@ -410,7 +488,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewsListResponse"
+                            "$ref": "#/definitions/main.PendingReviewsListResponse"
                         }
                     },
                     "401": {
@@ -1456,6 +1534,28 @@ const docTemplate = `{
                 }
             }
         },
+        "main.NotesListResponse": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ReviewNote"
+                    }
+                }
+            }
+        },
+        "main.PendingReviewsListResponse": {
+            "type": "object",
+            "properties": {
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationReviewWithDetails"
+                    }
+                }
+            }
+        },
         "main.ReviewResponse": {
             "type": "object",
             "properties": {
@@ -1947,6 +2047,63 @@ const docTemplate = `{
                 }
             }
         },
+        "store.ApplicationReviewWithDetails": {
+            "type": "object",
+            "properties": {
+                "admin_id": {
+                    "type": "string"
+                },
+                "age": {
+                    "type": "integer"
+                },
+                "application_id": {
+                    "type": "string"
+                },
+                "assigned_at": {
+                    "type": "string"
+                },
+                "country_of_residence": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "description": "Application fields",
+                    "type": "string"
+                },
+                "hackathons_attended_count": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
+                "university": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "vote": {
+                    "$ref": "#/definitions/store.ReviewVote"
+                }
+            }
+        },
         "store.ApplicationStats": {
             "type": "object",
             "properties": {
@@ -2006,6 +2163,23 @@ const docTemplate = `{
             "properties": {
                 "reviews_created": {
                     "type": "integer"
+                }
+            }
+        },
+        "store.ReviewNote": {
+            "type": "object",
+            "properties": {
+                "admin_email": {
+                    "type": "string"
+                },
+                "admin_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
                 }
             }
         },

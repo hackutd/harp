@@ -89,7 +89,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Separator />
             <SettingsDialog
               trigger={
-                <button className="flex items-center justify-between px-2 py-2 hover:bg-sidebar-accent rounded-md transition-colors w-full">
+                <button className="flex cursor-pointer items-center justify-between px-2 py-2 hover:bg-sidebar-accent rounded-md transition-colors w-full">
                   {state === "expanded" && (
                     <div className="flex flex-col text-left">
                       <span className="font-semibold text-sm">Settings</span>

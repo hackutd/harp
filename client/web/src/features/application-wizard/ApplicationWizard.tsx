@@ -439,7 +439,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
             <AlertTitle>Saved!</AlertTitle>
             <AlertDescription>Your progress has been saved.</AlertDescription>
           </Alert>
-        )}
+        )} 
 
         <FormProvider {...form}>
           <form onSubmit={(e) => e.preventDefault()}>
