@@ -196,14 +196,9 @@ export const useReviewsStore = create<ReviewsState>((set) => ({
     });
 
     if (res.ok) {
-      const data = await res.json().catch(() => ({}));
-      // Update the review in place with the returned data
+      // Remove the review from the list (it's no longer pending)
       set((state) => ({
-        reviews: state.reviews.map((r) =>
-          r.id === reviewId
-            ? { ...r, vote: payload.vote, notes: payload.notes ?? r.notes, reviewed_at: data.review?.reviewed_at ?? new Date().toISOString() }
-            : r
-        ),
+        reviews: state.reviews.filter((r) => r.id !== reviewId),
         submitting: false,
       }));
       return { success: true };
