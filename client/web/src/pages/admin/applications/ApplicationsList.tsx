@@ -195,7 +195,7 @@ export default function ApplicationsList() {
             disabled={!prevCursor || loading}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+              Prev
           </Button>
           <Button
             variant="outline"
