@@ -32,17 +32,21 @@ export default function AssignedPage() {
   const [isExpanded, setIsExpanded] = useState(false);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const selectReview = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (!id) {
+      setApplicationDetail(null);
+      setOtherReviewerNotes([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPendingReviews();
   }, [fetchPendingReviews]);
 
   // Fetch full application and other reviewers' notes when a review is selected
   useEffect(() => {
-    if (!selectedId) {
-      setApplicationDetail(null);
-      setOtherReviewerNotes([]);
-      return;
-    }
+    if (!selectedId) return;
 
     const selectedReview = reviews.find((r) => r.id === selectedId);
     if (!selectedReview) return;
@@ -128,12 +132,12 @@ export default function AssignedPage() {
           delete next[id];
           return next;
         });
-        setSelectedId(nextReview?.id ?? null);
+        selectReview(nextReview?.id ?? null);
       } else {
         alert(result.error || 'Failed to submit vote');
       }
     },
-    [submitting, reviews, getNotes, submitVote]
+    [submitting, reviews, getNotes, submitVote, selectReview]
   );
 
   const handleNotesChange = useCallback((id: string, notes: string) => {
@@ -141,10 +145,9 @@ export default function AssignedPage() {
   }, []);
 
   const handleClosePanel = useCallback(() => {
-    setSelectedId(null);
-    setApplicationDetail(null);
+    selectReview(null);
     setIsExpanded(false);
-  }, []);
+  }, [selectReview]);
 
   const handleCloseExpanded = useCallback(() => {
     setIsExpanded(false);
@@ -157,7 +160,7 @@ export default function AssignedPage() {
     submitting,
     notesTextareaRef,
     onVote: handleVote,
-    onNavigate: setSelectedId,
+    onNavigate: selectReview,
     onCloseExpanded: handleCloseExpanded,
   });
 
@@ -193,7 +196,7 @@ export default function AssignedPage() {
                 reviews={reviews}
                 selectedId={selectedId}
                 loading={loading}
-                onSelectReview={setSelectedId}
+                onSelectReview={selectReview}
                 getVote={getVote}
               />
             </CardContent>

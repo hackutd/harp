@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+
 import { AdminLayout } from "@/layouts";
 import {
   AllApplicantsPage,
