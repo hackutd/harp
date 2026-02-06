@@ -114,7 +114,7 @@ func (app *application) mount() http.Handler {
 	})
 
 	r.Route("/v1", func(r chi.Router) {
-		// Public + basic auth
+		// Basic auth
 		r.With(app.BasicAuthMiddleware).Get("/health", app.healthCheckHandler)
 		r.With(app.BasicAuthMiddleware).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
@@ -122,7 +122,6 @@ func (app *application) mount() http.Handler {
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
 		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
-		// Authenticated routes
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
 			
@@ -133,7 +132,7 @@ func (app *application) mount() http.Handler {
 				r.Post("/me/submit", app.submitApplicationHandler)
 			})
 
-			r.Group(func(r chi.Router) {
+			r.Group(func(r chi.Router) { // TODO clea up this routing
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
@@ -143,16 +142,14 @@ func (app *application) mount() http.Handler {
 					r.Get("/applications/stats", app.getApplicationStatsHandler)
 					r.Get("/applications/{applicationID}", app.getApplication)
 
-					// Assigned
-					r.Get("/applications/{applicationID}/reviews", app.getApplicationReviews)
+					// Assigned Applications
+					r.Get("/applications/{applicationID}/reviews", app.getApplicationReviews) // TODO look into if even needed
 					r.Get("/applications/{applicationID}/notes", app.getApplicationNotes)
 					r.Get("/reviews/pending", app.getPendingReviews)
 					r.Get("/reviews/next", app.getNextReview)
 					r.Put("/reviews/{reviewID}", app.submitVote)
 
 					// Completed 
-
-					
 
 					// Scans
 
@@ -167,9 +164,12 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
-					// 
+					
+					// Application Config 
 					r.Get("/settings/saquestions", app.getShortAnswerQuestions)
 					r.Put("/settings/saquestions", app.updateShortAnswerQuestions)
+
+					// Reviews Config
 					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
 					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
 					r.Post("/applications/assign", app.batchAssignReviews)

@@ -1,0 +1,39 @@
+version: "3"
+
+dotenv:
+  - ".env"
+
+vars:
+  MIGRATIONS_PATH: "./cmd/migrate/migrations"
+
+tasks:
+  migrate-create:
+    desc: Create a new migration (task migrate-create -- name_here)
+    cmds:
+      - migrate create -seq -ext sql -dir "{{.MIGRATIONS_PATH}}" "{{.CLI_ARGS}}"
+
+  migrate-up:
+    desc: Apply all migrations
+    cmds:
+      - migrate -path="{{.MIGRATIONS_PATH}}" -database="{{.DB_ADDR}}" up
+
+  migrate-down:
+    desc: Roll back one migration
+    cmds:
+      - migrate -path="{{.MIGRATIONS_PATH}}" -database="{{.DB_ADDR}}" down
+
+  seed:
+    desc: Run seed script
+    cmds:
+      - go run cmd/migrate/seed/main.go
+
+  gen-docs:
+    desc: Generate Swagger docs
+    cmds:
+      - swag init -d cmd/api,internal/store -g main.go -o docs --parseDependency
+      - swag fmt
+
+  test:
+    desc: Run all Go tests
+    cmds:
+      - go test -v ./...
