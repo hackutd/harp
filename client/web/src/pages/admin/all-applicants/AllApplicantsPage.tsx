@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 
-import { SectionCards } from './components/SectionCards';
 import { ApplicationDetailPanel } from './components/ApplicationDetailPanel';
 import { ApplicationsTable } from './components/ApplicationsTable';
 import { PaginationControls } from './components/PaginationControls';
+import { SectionCards } from './components/SectionCards';
 import { StatusFilterTabs } from './components/StatusFilterTabs';
 import { useApplicationDetail } from './hooks/useApplicationDetail';
 import { useApplicationsStore } from './store';
