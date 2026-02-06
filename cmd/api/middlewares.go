@@ -48,7 +48,7 @@ func (app *application) BasicAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// request rate limits per IP
+// Rate limits per IP
 func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
@@ -68,7 +68,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Extract profile picture URL from session data (stored by Google OAuth)
+		// Grab profile picture URL from - Google OAuth
 		var profilePictureURL *string
 		sessionData, err := sessionContainer.GetSessionDataInDatabase()
 		if err == nil && sessionData != nil {
@@ -97,7 +97,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				return
 			}
 		} else {
-			// User exists - update profile picture if it changed (for Google users)
+			// User exists - update profile picture if it changed
 			if user.AuthMethod == store.AuthMethodGoogle && profilePictureURL != nil {
 				currentPicture := ""
 				if user.ProfilePictureURL != nil {

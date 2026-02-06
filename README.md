@@ -19,7 +19,7 @@ Hackathon management system with Go backend and React frontend.
 docker-compose up -d
 
 # Run migrations
-make migrate-up
+task migrate-up
 
 # Start backend (port 8080)
 air

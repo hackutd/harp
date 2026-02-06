@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { AppSidebar } from '@/features/admin-navigation/app-sidebar';
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,6 +14,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { AppSidebar } from '@/pages/admin/_shared';
 
 const routeNames: Record<string, string> = {
   '/admin/applications': 'All Applicants',
@@ -59,7 +65,12 @@ export default function AdminLayout() {
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarTrigger className="-ml-1 cursor-pointer" />
+              </TooltipTrigger>
+              <TooltipContent side="right">Toggle sidebar (⌘B)</TooltipContent>
+            </Tooltip>
             <Separator
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
