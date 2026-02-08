@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const version = "0.0.0"
+const version = "0.0.0" // semver
 
 //	@title						HackPortal API
 //	@version					1.0
