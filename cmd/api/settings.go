@@ -87,9 +87,7 @@ func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *htt
 		return
 	}
 
-	response := ShortAnswerQuestionsResponse{
-		Questions: req.Questions,
-	}
+	response := ShortAnswerQuestionsResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
@@ -166,9 +164,7 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	response := ReviewsPerAppResponse{
-		ReviewsPerApplication: req.ReviewsPerApplication,
-	}
+	response := ReviewsPerAppResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
