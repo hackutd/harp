@@ -53,13 +53,6 @@ type supertokensConfig struct {
 
 type authConfig struct {
 	basic basicConfig
-	token tokenConfig
-}
-
-type tokenConfig struct {
-	secret string
-	exp    time.Duration
-	iss    string
 }
 
 type basicConfig struct {
