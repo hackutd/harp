@@ -9,7 +9,7 @@ export function initSuperTokens() {
   SuperTokens.init({
     appInfo: {
       appName: 'HackUTD Harp',
-      apiDomain: import.meta.env.VITE_API_URL || window.location.origin,
+      apiDomain: window.location.origin,
       websiteDomain: window.location.origin,
       apiBasePath: '/auth',
     },

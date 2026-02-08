@@ -34,7 +34,7 @@ type config struct {
 	addr        string
 	db          dbConfig
 	env         string
-	apiURL      string
+	appURL      string
 	frontendURL string
 	mail        mailConfig
 	auth        authConfig
@@ -46,7 +46,6 @@ type supertokensConfig struct {
 	appName            string
 	connectionURI      string
 	apiKey             string
-	apiBasePath        string
 	googleClientID     string
 	googleClientSecret string
 }
@@ -85,7 +84,7 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Recoverer)
 
 	// CORS only needed in development when frontend runs on a different origin
-	if app.config.frontendURL != app.config.apiURL {
+	if app.config.frontendURL != app.config.appURL {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   []string{app.config.frontendURL},
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
