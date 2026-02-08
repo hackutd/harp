@@ -84,12 +84,15 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{app.config.frontendURL},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   append([]string{"Content-Type"}, supertokens.GetAllCORSHeaders()...),
-		AllowCredentials: true,
-	}))
+	// CORS only needed in development when frontend runs on a different origin
+	if app.config.frontendURL != app.config.apiURL {
+		r.Use(cors.Handler(cors.Options{
+			AllowedOrigins:   []string{app.config.frontendURL},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders:   append([]string{"Content-Type"}, supertokens.GetAllCORSHeaders()...),
+			AllowCredentials: true,
+		}))
+	}
 
 	// SuperTokens middleware handles /auth/ routes automatically
 	r.Use(supertokens.Middleware)
@@ -170,6 +173,9 @@ func (app *application) mount() http.Handler {
 			})
 		})
 	})
+
+	// Serve frontend static files (SPA with client-side routing fallback)
+	r.Handle("/*", app.spaHandler("./static"))
 
 	return r
 }
