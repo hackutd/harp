@@ -41,9 +41,11 @@ func main() {
 	}
 	
 	// Init configs
+	appURL := env.GetString("APP_URL", "http://localhost:8080")
+
 	cfg := config{
 		addr:   env.GetString("ADDR", ":8080"),
-		apiURL: env.GetString("EXTERNAL_URL", "localhost:8080"), // <- for swagger
+		appURL: appURL,
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", "postgres://admin:adminpassword@localhost:5432/portal?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
@@ -69,12 +71,11 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL: env.GetString("FRONTEND_URL", "http://localhost:3000"),
+		frontendURL: env.GetString("FRONTEND_URL", appURL),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),
 			apiKey:             env.GetRequiredString("SUPERTOKENS_API_KEY"),
-			apiBasePath:        env.GetString("SUPERTOKENS_API_BASE_PATH", "/auth"),
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
 			googleClientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
 		},
@@ -106,8 +107,8 @@ func main() {
 		AppName:            cfg.supertokens.appName,
 		ConnectionURI:      cfg.supertokens.connectionURI,
 		APIKey:             cfg.supertokens.apiKey,
-		APIBasePath:        cfg.supertokens.apiBasePath,
-		APIURL:             cfg.apiURL,
+		APIBasePath:        "/auth",
+		APIURL:             cfg.appURL,
 		FrontendURL:        cfg.frontendURL,
 		GoogleClientID:     cfg.supertokens.googleClientID,
 		GoogleClientSecret: cfg.supertokens.googleClientSecret,
