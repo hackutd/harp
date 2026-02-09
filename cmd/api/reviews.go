@@ -19,11 +19,6 @@ type ReviewResponse struct {
 	Review store.ApplicationReview `json:"review"`
 }
 
-// ReviewsListResponse wraps a list of application reviews for API response
-type ReviewsListResponse struct {
-	Reviews []store.ApplicationReview `json:"reviews"`
-}
-
 // PendingReviewsListResponse wraps pending reviews with application details
 type PendingReviewsListResponse struct {
 	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
@@ -56,41 +51,6 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 	}
 
 	response := PendingReviewsListResponse{
-		Reviews: reviews,
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
-// getApplicationReviews returns all reviews for a specific application
-//
-//	@Summary		Get reviews for an application (Admin)
-//	@Description	Returns all reviews (pending and completed) for a specific application
-//	@Tags			admin
-//	@Produce		json
-//	@Param			applicationID	path		string	true	"Application ID"
-//	@Success		200				{object}	ReviewsListResponse
-//	@Failure		401				{object}	object{error=string}
-//	@Failure		403				{object}	object{error=string}
-//	@Failure		500				{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/admin/applications/{applicationID}/reviews [get]
-func (app *application) getApplicationReviews(w http.ResponseWriter, r *http.Request) {
-	applicationID := chi.URLParam(r, "applicationID")
-	if applicationID == "" {
-		app.badRequestResponse(w, r, errors.New("application ID is required"))
-		return
-	}
-
-	reviews, err := app.store.ApplicationReviews.GetByApplicationID(r.Context(), applicationID)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	response := ReviewsListResponse{
 		Reviews: reviews,
 	}
 

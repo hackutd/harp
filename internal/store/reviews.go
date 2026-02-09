@@ -133,45 +133,6 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 	return reviews, nil
 }
 
-// GetByApplicationID returns all reviews for a specific application
-func (s *ApplicationReviewsStore) GetByApplicationID(ctx context.Context, applicationID string) ([]ApplicationReview, error) {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	query := `
-		SELECT id, application_id, admin_id, vote, notes, assigned_at, reviewed_at, created_at, updated_at
-		FROM application_reviews
-		WHERE application_id = $1
-		ORDER BY assigned_at ASC
-	`
-
-	rows, err := s.db.QueryContext(ctx, query, applicationID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	reviews := []ApplicationReview{}
-	for rows.Next() {
-		var review ApplicationReview
-		if err := rows.Scan(
-			&review.ID, &review.ApplicationID, &review.AdminID,
-			&review.Vote, &review.Notes,
-			&review.AssignedAt, &review.ReviewedAt,
-			&review.CreatedAt, &review.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		reviews = append(reviews, review)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return reviews, nil
-}
-
 // GetNotesByApplicationID returns all non-empty notes for a specific application (without votes)
 func (s *ApplicationReviewsStore) GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
