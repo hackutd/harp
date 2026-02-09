@@ -87,7 +87,7 @@ export default function AllApplicantsPage() {
       <div className="flex">
         <Card className={`overflow-hidden flex flex-col max-h-[calc(100vh-180px)] ${selectedApplicationId ? 'w-1/2 rounded-r-none' : 'w-full'}`}>
           <CardHeader className="shrink-0">
-            <CardDescription>
+            <CardDescription className='font-light'>
               {applications.length} application(s) on this page
               {currentStatus && ` (filtered by ${currentStatus})`}
             </CardDescription>
