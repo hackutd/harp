@@ -16,7 +16,6 @@ export default function AuthOAuthCallback() {
         const response = await signInAndUp();
 
         if (response.status === "OK") {
-          // Successfully signed in, redirect to auth callback to complete flow
           navigate("/auth/callback");
         } else if (response.status === "NO_EMAIL_GIVEN_BY_PROVIDER") {
           setError(
@@ -26,7 +25,6 @@ export default function AuthOAuthCallback() {
           setError("Sign in not allowed. Please contact support.");
         }
       } catch (err) {
-        // SuperTokens throws Response objects when backend returns an error
         if (err instanceof Response) {
           try {
             const body = await err.json();
@@ -42,10 +40,7 @@ export default function AuthOAuthCallback() {
               return;
             }
           } catch {
-            // Failed to parse response body
-          }
-          // Check if it's a 500 error (likely our auth method check failed)
-          if (err.status === 500) {
+          } if (err.status === 500) {
             setError(
               "This email may already be registered with a different sign-in method. Please try using the magic link option instead."
             );

@@ -22,7 +22,7 @@ import {
 import { AppSidebar } from '@/pages/admin/_shared';
 
 const routeNames: Record<string, string> = {
-  '/admin/applications': 'All Applicants',
+  '/admin/all-applicants': 'All Applicants',
   '/admin/assigned': 'Assigned',
   '/admin/completed': 'Completed',
   '/admin/scans': 'Scans',
@@ -41,7 +41,7 @@ export default function AdminLayout() {
       return (
         <>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/admin/applications">All Applicants</BreadcrumbLink>
+            <BreadcrumbLink href="/admin/all-applicants">All Applicants</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>

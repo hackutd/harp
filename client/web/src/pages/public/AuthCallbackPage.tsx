@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Session, { signOut } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
@@ -20,42 +20,32 @@ export default function AuthCallback() {
   const authError = useUserStore((state) => state.authError);
   const clearAuthError = useUserStore((state) => state.clearAuthError);
   const navigate = useNavigate();
-  const hasRun = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Prevent running multiple times (React StrictMode + state changes)
-    if (hasRun.current) return;
-    hasRun.current = true;
 
     const handleCallback = async () => {
-      // Check if session exists
       const sessionExists = await Session.doesSessionExist();
-
+      
       if (sessionExists) {
-        // Fetch user profile from our backend
         await fetchUser();
 
-        // Get the user and error from store
         const { user, authError: error } = useUserStore.getState();
 
         if (user) {
           // Redirect based on role
           if (user.role === "admin" || user.role === "super_admin") {
-            navigate("/admin/applications", { replace: true });
+            navigate("/admin/all-applicants", { replace: true });
           } else {
             navigate("/app", { replace: true });
           }
         } else if (error && error.status === 409) {
-          // Auth method mismatch - sign out and show error
           await signOut();
           setIsLoading(false);
         } else {
-          // Other error - redirect to login
           navigate("/", { replace: true });
         }
       } else {
-        // No session, redirect to login
         navigate("/", { replace: true });
       }
     };
