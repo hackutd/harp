@@ -1,31 +1,32 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import { AdminLayout } from "@/layouts";
-import {
-  AllApplicantsPage,
-  AssignedPage,
-  CompletedPage,
-  GroupsPage,
-  HackerPackPage,
-  ScansPage,
-} from "@/pages/admin";
-import {
-  ApplyPage,
-  DashboardPage,
-  StatusPage,
-} from "@/pages/hacker";
+import { PageLoader } from "@/components/PageLoader";
+// Auth pages stay eager (critical path)
 import {
   AuthCallbackPage,
   AuthOAuthCallbackPage,
   AuthVerifyPage,
   LoginPage,
 } from "@/pages/public";
-import { DashboardPage as SuperAdminDashboardPage } from "@/pages/superadmin";
 import {
   RequireAdmin,
   RequireAuth,
   RequireSuperAdmin,
 } from "@/shared/auth";
+
+// Lazy-loaded pages
+const AdminLayout = lazy(() => import("@/layouts/AdminLayout"));
+const AllApplicantsPage = lazy(() => import("@/pages/admin/all-applicants/AllApplicantsPage"));
+const AssignedPage = lazy(() => import("@/pages/admin/assigned/AssignedPage"));
+const CompletedPage = lazy(() => import("@/pages/admin/completed/CompletedPage"));
+const GroupsPage = lazy(() => import("@/pages/admin/groups/GroupsPage"));
+const HackerPackPage = lazy(() => import("@/pages/admin/hacker-pack/HackerPackPage"));
+const ScansPage = lazy(() => import("@/pages/admin/scans/ScansPage"));
+const DashboardPage = lazy(() => import("@/pages/hacker/dashboard/DashboardPage"));
+const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
+const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
+const SuperAdminDashboardPage = lazy(() => import("@/pages/superadmin/dashboard/DashboardPage"));
 
 export const router = createBrowserRouter([
   // Public routes
@@ -51,7 +52,9 @@ export const router = createBrowserRouter([
     path: "/app",
     element: (
       <RequireAuth>
-        <DashboardPage />
+        <Suspense fallback={<PageLoader />}>
+          <DashboardPage />
+        </Suspense>
       </RequireAuth>
     ),
   },
@@ -59,7 +62,9 @@ export const router = createBrowserRouter([
     path: "/app/apply",
     element: (
       <RequireAuth>
-        <ApplyPage />
+        <Suspense fallback={<PageLoader />}>
+          <ApplyPage />
+        </Suspense>
       </RequireAuth>
     ),
   },
@@ -67,7 +72,9 @@ export const router = createBrowserRouter([
     path: "/app/status",
     element: (
       <RequireAuth>
-        <StatusPage />
+        <Suspense fallback={<PageLoader />}>
+          <StatusPage />
+        </Suspense>
       </RequireAuth>
     ),
   },
@@ -77,7 +84,9 @@ export const router = createBrowserRouter([
     path: "/admin",
     element: (
       <RequireAdmin>
-        <AdminLayout />
+        <Suspense fallback={<PageLoader />}>
+          <AdminLayout />
+        </Suspense>
       </RequireAdmin>
     ),
     children: [
@@ -87,27 +96,51 @@ export const router = createBrowserRouter([
       },
       {
         path: "all-applicants",
-        element: <AllApplicantsPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AllApplicantsPage />
+          </Suspense>
+        ),
       },
       {
         path: "scans",
-        element: <ScansPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ScansPage />
+          </Suspense>
+        ),
       },
       {
         path: "assigned",
-        element: <AssignedPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AssignedPage />
+          </Suspense>
+        ),
       },
       {
         path: "completed",
-        element: <CompletedPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <CompletedPage />
+          </Suspense>
+        ),
       },
       {
         path: "groups",
-        element: <GroupsPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <GroupsPage />
+          </Suspense>
+        ),
       },
       {
         path: "hacker-pack",
-        element: <HackerPackPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <HackerPackPage />
+          </Suspense>
+        ),
       },
     ],
   },
@@ -117,7 +150,9 @@ export const router = createBrowserRouter([
     path: "/superadmin",
     element: (
       <RequireSuperAdmin>
-        <SuperAdminDashboardPage />
+        <Suspense fallback={<PageLoader />}>
+          <SuperAdminDashboardPage />
+        </Suspense>
       </RequireSuperAdmin>
     ),
   },

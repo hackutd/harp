@@ -7,12 +7,10 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// UpdateShortAnswerQuestionsPayload for updating short answer questions
 type UpdateShortAnswerQuestionsPayload struct {
 	Questions []store.ShortAnswerQuestion `json:"questions" validate:"required,dive"`
 }
 
-// ShortAnswerQuestionsResponse wraps short answer questions for API response
 type ShortAnswerQuestionsResponse struct {
 	Questions []store.ShortAnswerQuestion `json:"questions"`
 }

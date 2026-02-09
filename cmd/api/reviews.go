@@ -8,28 +8,23 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// SubmitVotePayload for submitting a vote on a review
 type SubmitVotePayload struct {
 	Vote  store.ReviewVote `json:"vote" validate:"required,oneof=accept reject waitlist"`
 	Notes *string          `json:"notes" validate:"omitempty,max=1000"`
 }
 
-// ReviewResponse wraps an application review for API response
 type ReviewResponse struct {
 	Review store.ApplicationReview `json:"review"`
 }
 
-// PendingReviewsListResponse wraps pending reviews with application details
 type PendingReviewsListResponse struct {
 	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
 }
 
-// CompletedReviewsListResponse wraps completed reviews with application details
 type CompletedReviewsListResponse struct {
 	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
 }
 
-// NotesListResponse wraps a list of review notes for API response
 type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
