@@ -188,8 +188,27 @@ export default function AssignedPage() {
               selectedId ? 'w-1/2 rounded-r-none' : 'w-full'
             }`}
           >
-            <CardHeader className="shrink-0">
-              <CardDescription>{reviews.length} review(s) assigned to you</CardDescription>
+            <CardHeader className="shrink-0 flex flex-row items-center justify-between">
+              <CardDescription className='font-light'>{reviews.length} review(s) assigned to you</CardDescription>
+              {reviews.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer font-light"
+                      onClick={() => {
+                        selectReview(reviews[0].id);
+                        setIsExpanded(true);
+                      }}
+                    >
+                      <ClipboardPen className="h-4 w-4 mr-1.5" />
+                      Start Grading
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Grade {formatName(reviews[0].first_name, reviews[0].last_name)}</TooltipContent>
+                </Tooltip>
+              )}
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-hidden">
               <ReviewsTable

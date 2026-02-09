@@ -131,7 +131,7 @@ export default function CompletedPage() {
           }`}
         >
           <CardHeader className="shrink-0">
-            <CardDescription>{reviews.length} completed review(s)</CardDescription>
+            <CardDescription className='font-light'>{reviews.length} completed review(s)</CardDescription>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <CompletedReviewsTable
