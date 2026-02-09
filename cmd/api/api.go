@@ -124,7 +124,7 @@ func (app *application) mount() http.Handler {
 				r.Post("/me/submit", app.submitApplicationHandler)
 			})
 
-			r.Group(func(r chi.Router) { // TODO clea up this routing
+			r.Group(func(r chi.Router) { // TODO clean up this routing
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
@@ -171,7 +171,7 @@ func (app *application) mount() http.Handler {
 		})
 	})
 
-	// Serve frontend static files (SPA with client-side routing fallback)
+	// frontend static files
 	r.Handle("/*", app.spaHandler("./static"))
 
 	return r

@@ -62,7 +62,6 @@ export default function AuthVerify() {
     );
   }
 
-  // Error states (expired, invalid, error)
   return (
     <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">

@@ -16,25 +16,18 @@ RUN npm run build
 FROM golang:1.24 AS builder
 WORKDIR /app
 
-# Cache deps
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/api ./cmd/api
 
-# Stage 3: Runtime
+# Stage 3: Main container 
 FROM scratch
 WORKDIR /app
 
-# CA certs for HTTPS
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-# Go binary
 COPY --from=builder /app/api ./api
-
-# Frontend static files
 COPY --from=frontend /app/client/web/dist ./static
 
 EXPOSE 8080
