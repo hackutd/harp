@@ -133,6 +133,54 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 	return reviews, nil
 }
 
+// GetCompletedByAdminID returns all reviews completed by an admin (vote is not null),
+// including application details for display
+func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT
+			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
+			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
+			a.first_name, a.last_name, u.email, a.age,
+			a.university, a.major, a.country_of_residence, a.hackathons_attended_count
+		FROM application_reviews ar
+		JOIN applications a ON ar.application_id = a.id
+		JOIN users u ON a.user_id = u.id
+		WHERE ar.admin_id = $1 AND ar.vote IS NOT NULL
+		ORDER BY ar.reviewed_at DESC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, adminID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reviews := []ApplicationReviewWithDetails{}
+	for rows.Next() {
+		var review ApplicationReviewWithDetails
+		if err := rows.Scan(
+			&review.ID, &review.ApplicationID, &review.AdminID,
+			&review.Vote, &review.Notes,
+			&review.AssignedAt, &review.ReviewedAt,
+			&review.CreatedAt, &review.UpdatedAt,
+			&review.FirstName, &review.LastName, &review.Email, &review.Age,
+			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttendedCount,
+		); err != nil {
+			return nil, err
+		}
+		reviews = append(reviews, review)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return reviews, nil
+}
+
 // GetNotesByApplicationID returns all non-empty notes for a specific application (without votes)
 func (s *ApplicationReviewsStore) GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)

@@ -140,7 +140,8 @@ func (app *application) mount() http.Handler {
 					r.Get("/reviews/next", app.getNextReview)
 					r.Put("/reviews/{reviewID}", app.submitVote)
 
-					// Completed 
+					// Completed
+					r.Get("/reviews/completed", app.getCompletedReviews)
 
 					// Scans
 

@@ -40,7 +40,9 @@ export default function AuthOAuthCallback() {
               return;
             }
           } catch {
-          } if (err.status === 500) {
+            // JSON parse fail
+          }
+          if (err.status === 500) {
             setError(
               "This email may already be registered with a different sign-in method. Please try using the magic link option instead."
             );
