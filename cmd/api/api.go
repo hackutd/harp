@@ -135,7 +135,6 @@ func (app *application) mount() http.Handler {
 					r.Get("/applications/{applicationID}", app.getApplication)
 
 					// Assigned Applications
-					r.Get("/applications/{applicationID}/reviews", app.getApplicationReviews) // TODO look into if even needed
 					r.Get("/applications/{applicationID}/notes", app.getApplicationNotes)
 					r.Get("/reviews/pending", app.getPendingReviews)
 					r.Get("/reviews/next", app.getNextReview)

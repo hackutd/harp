@@ -333,73 +333,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/applications/{applicationID}/reviews": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Returns all reviews (pending and completed) for a specific application",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Get reviews for an application (Admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Application ID",
-                        "name": "applicationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.ReviewsListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/admin/reviews/next": {
             "get": {
                 "security": [
@@ -1561,17 +1494,6 @@ const docTemplate = `{
             "properties": {
                 "review": {
                     "$ref": "#/definitions/store.ApplicationReview"
-                }
-            }
-        },
-        "main.ReviewsListResponse": {
-            "type": "object",
-            "properties": {
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/store.ApplicationReview"
-                    }
                 }
             }
         },

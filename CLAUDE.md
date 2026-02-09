@@ -80,5 +80,5 @@ Vite dev server proxies `/v1/*` and most `/auth/*` to Go backend (port 8080). Fr
 
 **Auth:** `GET /auth/check-email`, `GET /auth/me`
 **Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`
-**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/reviews`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`
+**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`
 **Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`
