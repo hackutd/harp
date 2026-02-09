@@ -24,6 +24,11 @@ type PendingReviewsListResponse struct {
 	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
 }
 
+// CompletedReviewsListResponse wraps completed reviews with application details
+type CompletedReviewsListResponse struct {
+	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
+}
+
 // NotesListResponse wraps a list of review notes for API response
 type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
@@ -51,6 +56,36 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 	}
 
 	response := PendingReviewsListResponse{
+		Reviews: reviews,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getCompletedReviews returns reviews that the current admin has already voted on
+//
+//	@Summary		Get completed reviews (Admin)
+//	@Description	Returns all reviews the current admin has completed (voted on), including application details
+//	@Tags			admin
+//	@Produce		json
+//	@Success		200	{object}	CompletedReviewsListResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/completed [get]
+func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+
+	reviews, err := app.store.ApplicationReviews.GetCompletedByAdminID(r.Context(), user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := CompletedReviewsListResponse{
 		Reviews: reviews,
 	}
 
