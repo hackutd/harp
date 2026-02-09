@@ -101,11 +101,9 @@ func (app *application) mount() http.Handler {
 		r.Use(app.RateLimiterMiddleware)
 	}
 
-	// auth endpoints not handled by SuperTokens
-	r.Route("/auth", func(r chi.Router) {
-		r.Get("/check-email", app.checkEmailAuthMethodHandler)
-		r.With(app.AuthRequiredMiddleware).Get("/me", app.getCurrentUserHandler)
-	})
+	// Auth endpoints not handled by SuperTokens
+	r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
+	r.With(app.AuthRequiredMiddleware).Get("/auth/me", app.getCurrentUserHandler)
 
 	r.Route("/v1", func(r chi.Router) {
 		// Basic auth
