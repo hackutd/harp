@@ -84,7 +84,13 @@ func main() {
 	// Init Logger
 	logger := zap.Must(zap.NewProduction()).Sugar()
 	defer logger.Sync()
-	
+
+	logger.Infow("config loaded",
+		"appURL", cfg.appURL,
+		"frontendURL", cfg.frontendURL,
+		"env", cfg.env,
+	)
+
 	// Init Database
 	db, err := db.New(
 		cfg.db.addr,
