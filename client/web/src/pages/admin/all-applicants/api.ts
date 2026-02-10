@@ -6,7 +6,7 @@ import type { ApplicationListResult, ApplicationStats, ApplicationStatus,FetchPa
 /**
  * Fetch paginated applications with optional status filter
  */
-export async function fetchApplications(params?: FetchParams): Promise<ApiResponse<ApplicationListResult>> {
+export async function fetchApplications(params?: FetchParams, signal?: AbortSignal): Promise<ApiResponse<ApplicationListResult>> {
   const queryParams = new URLSearchParams();
 
   if (params?.status) {
@@ -22,23 +22,23 @@ export async function fetchApplications(params?: FetchParams): Promise<ApiRespon
   }
 
   const queryString = queryParams.toString();
-  const endpoint = `/v1/admin/applications${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/admin/applications${queryString ? `?${queryString}` : ''}`;
 
-  return getRequest<ApplicationListResult>(endpoint, "applications");
+  return getRequest<ApplicationListResult>(endpoint, "applications", signal);
 }
 
 /**
  * Fetch application statistics
  */
-export async function fetchApplicationStats(): Promise<ApiResponse<ApplicationStats>> {
-  return getRequest<ApplicationStats>("/v1/admin/applications/stats", "stats");
+export async function fetchApplicationStats(signal?: AbortSignal): Promise<ApiResponse<ApplicationStats>> {
+  return getRequest<ApplicationStats>("/admin/applications/stats", "stats", signal);
 }
 
 /**
  * Fetch a single application by ID
  */
 export async function fetchApplicationById(id: string): Promise<ApiResponse<Application>> {
-  return getRequest<Application>(`/v1/admin/applications/${id}`, "application");
+  return getRequest<Application>(`/admin/applications/${id}`, "application");
 }
 
 /**
@@ -49,7 +49,7 @@ export async function updateApplicationStatus(
   status: ApplicationStatus
 ): Promise<ApiResponse<Application>> {
   return putRequest<Application>(
-    `/v1/admin/applications/${id}`,
+    `/admin/applications/${id}`,
     { status },
     "application status"
   );

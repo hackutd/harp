@@ -18,15 +18,16 @@ export function useApplicationDetail(applicationId: string | null): UseApplicati
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       setLoading(true);
       const res = await getRequest<Application>(
-        `/v1/admin/applications/${applicationId}`,
-        'application'
+        `/admin/applications/${applicationId}`,
+        'application',
+        controller.signal
       );
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
 
       if (res.status === 200 && res.data) {
         setDetail(res.data);
@@ -37,7 +38,7 @@ export function useApplicationDetail(applicationId: string | null): UseApplicati
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [applicationId]);
 

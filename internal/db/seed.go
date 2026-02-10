@@ -73,23 +73,36 @@ func Seed(_ store.Storage, db *sql.DB) {
 
 	clean(db)
 
-	adminIDs, hackerIDs := seedUsers(db, 5000)
+	adminIDs, hackerIDs := seedUsers(db, 1000)
 	appIDs, appStatuses := seedApplications(db, hackerIDs)
 	seedReviews(db, adminIDs, appIDs, appStatuses)
 
 	log.Println("Seeding complete!")
 }
 
+func mustBegin(db *sql.DB) *sql.Tx {
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatalf("failed to begin transaction: %v", err)
+	}
+	return tx
+}
+
 func clean(db *sql.DB) {
+	tx := mustBegin(db)
 	for _, t := range []string{"application_reviews", "applications", "users"} {
-		if _, err := db.Exec(fmt.Sprintf("DELETE FROM %s", t)); err != nil {
+		if _, err := tx.Exec(fmt.Sprintf("DELETE FROM %s", t)); err != nil {
 			log.Fatalf("failed to clean %s: %v", t, err)
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("failed to commit clean: %v", err)
 	}
 	log.Println("  cleaned existing data")
 }
 
 func seedUsers(db *sql.DB, hackerCount int) (adminIDs, hackerIDs []string) {
+	tx := mustBegin(db)
 	query := `
 		INSERT INTO users (supertokens_user_id, email, role, auth_method)
 		VALUES ($1, $2, $3, $4)
@@ -97,7 +110,7 @@ func seedUsers(db *sql.DB, hackerCount int) (adminIDs, hackerIDs []string) {
 	`
 	insert := func(stID, email, role, auth string) string {
 		var id string
-		if err := db.QueryRow(query, stID, email, role, auth).Scan(&id); err != nil {
+		if err := tx.QueryRow(query, stID, email, role, auth).Scan(&id); err != nil {
 			log.Fatalf("failed to insert user %s: %v", email, err)
 		}
 		return id
@@ -119,11 +132,15 @@ func seedUsers(db *sql.DB, hackerCount int) (adminIDs, hackerIDs []string) {
 		hackerIDs = append(hackerIDs, id)
 	}
 
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("failed to commit users: %v", err)
+	}
 	log.Printf("  inserted %d users (%d admins + %d hackers)", 4+hackerCount, 4, hackerCount)
 	return adminIDs, hackerIDs
 }
 
 func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []string) {
+	tx := mustBegin(db)
 	query := `
 		INSERT INTO applications (
 			user_id, status,
@@ -163,7 +180,7 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 		}
 
 		var id string
-		err := db.QueryRow(query,
+		err := tx.QueryRow(query,
 			userID, status,
 			first, last, fmt.Sprintf("+1214555%04d", i%10000), int16(18+rng.Intn(10)),
 			pick(countries), pick(genders), "Asian", "Hispanic",
@@ -184,6 +201,9 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 		appStatuses = append(appStatuses, status)
 	}
 
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("failed to commit applications: %v", err)
+	}
 	log.Printf("  inserted %d applications", len(appIDs))
 	return appIDs, appStatuses
 }
@@ -205,6 +225,7 @@ func pickStatus() string {
 }
 
 func seedReviews(db *sql.DB, adminIDs, appIDs, appStatuses []string) {
+	tx := mustBegin(db)
 	query := `
 		INSERT INTO application_reviews (application_id, admin_id, vote, notes, reviewed_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -224,17 +245,20 @@ func seedReviews(db *sql.DB, adminIDs, appIDs, appStatuses []string) {
 		numReviewers := min(2+rng.Intn(2), len(adminIDs))
 		perm := rng.Perm(len(adminIDs))
 
-		for j := 0; j < numReviewers; j++ {
+		for j := range numReviewers {
 			adminID := adminIDs[perm[j]]
 			vote, notes, reviewedAt := buildVote(status, allVotes)
 
-			if _, err := db.Exec(query, appID, adminID, vote, notes, reviewedAt); err != nil {
+			if _, err := tx.Exec(query, appID, adminID, vote, notes, reviewedAt); err != nil {
 				log.Fatalf("failed to insert review for app %s: %v", appID, err)
 			}
 			count++
 		}
 	}
 
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("failed to commit reviews: %v", err)
+	}
 	log.Printf("  inserted %d reviews", count)
 }
 

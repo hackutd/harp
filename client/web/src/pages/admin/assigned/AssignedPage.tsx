@@ -41,7 +41,9 @@ export default function AssignedPage() {
   }, []);
 
   useEffect(() => {
-    fetchPendingReviews();
+    const controller = new AbortController();
+    fetchPendingReviews(controller.signal);
+    return () => controller.abort();
   }, [fetchPendingReviews]);
 
   // Fetch full application and other reviewers' notes when a review is selected
@@ -51,7 +53,7 @@ export default function AssignedPage() {
     const selectedReview = reviews.find((r) => r.id === selectedId);
     if (!selectedReview) return;
 
-    let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       setDetailLoading(true);
@@ -59,16 +61,18 @@ export default function AssignedPage() {
 
       const [appRes, notesRes] = await Promise.all([
         getRequest<Application>(
-          `/v1/admin/applications/${selectedReview.application_id}`,
-          'application'
+          `/admin/applications/${selectedReview.application_id}`,
+          'application',
+          controller.signal
         ),
         getRequest<NotesListResponse>(
-          `/v1/admin/applications/${selectedReview.application_id}/notes`,
-          'notes'
+          `/admin/applications/${selectedReview.application_id}/notes`,
+          'notes',
+          controller.signal
         ),
       ]);
 
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
 
       if (appRes.status === 200 && appRes.data) {
         setApplicationDetail(appRes.data);
@@ -85,7 +89,7 @@ export default function AssignedPage() {
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [selectedId, reviews]);
 

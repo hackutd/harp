@@ -10,7 +10,7 @@ import (
 
 func main() {
 	addr := env.GetRequiredString("DB_ADDR")
-	conn, err := db.New(addr, 3, 3, "15m")
+	conn, err := db.New(addr, 25, 25, "15m")
 	if err != nil {
 		log.Fatal(err)
 	}

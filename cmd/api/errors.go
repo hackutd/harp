@@ -1,15 +1,21 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/hackutd/portal/internal/store"
 )
 
 func (app *application) internalServerError(w http.ResponseWriter, r *http.Request, err error) {
+	// Don't log or respond for cancelled requests — client is already gone
+	if r.Context().Err() == context.Canceled {
+		return
+	}
+
 	app.logger.Errorw("internal error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 
-	writeJSONError(w, http.StatusInternalServerError, 
+	writeJSONError(w, http.StatusInternalServerError,
 	"the server encounttered a problem")
 }
 

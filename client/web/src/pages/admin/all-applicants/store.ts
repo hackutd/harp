@@ -12,8 +12,8 @@ export interface ApplicationsState {
   currentStatus: ApplicationStatus | null;
   stats: ApplicationStats | null;
   statsLoading: boolean;
-  fetchApplications: (params?: FetchParams) => Promise<void>;
-  fetchStats: () => Promise<void>;
+  fetchApplications: (params?: FetchParams, signal?: AbortSignal) => Promise<void>;
+  fetchStats: (signal?: AbortSignal) => Promise<void>;
   setStatusFilter: (status: ApplicationStatus | null) => void;
   resetPagination: () => void;
 }
@@ -28,7 +28,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   stats: null,
   statsLoading: false,
 
-  fetchApplications: async (params?: FetchParams) => {
+  fetchApplications: async (params?: FetchParams, signal?: AbortSignal) => {
     set({ loading: true });
 
     // Determine status to use
@@ -42,7 +42,9 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
     const res = await apiFetchApplications({
       ...params,
       status,
-    });
+    }, signal);
+
+    if (signal?.aborted) return;
 
     if (res.status === 200 && res.data) {
       set({
@@ -64,10 +66,12 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
     }
   },
 
-  fetchStats: async () => {
+  fetchStats: async (signal?: AbortSignal) => {
     set({ statsLoading: true });
 
-    const res = await fetchApplicationStats();
+    const res = await fetchApplicationStats(signal);
+
+    if (signal?.aborted) return;
 
     if (res.status === 200 && res.data) {
       set({ stats: res.data, statsLoading: false });
