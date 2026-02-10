@@ -3,15 +3,62 @@ package store
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/lib/pq"
 )
+
+// StringArray implements sql.Scanner and driver.Valuer for PostgreSQL text[] columns.
+type StringArray []string
+
+func (a *StringArray) Scan(src any) error {
+	if src == nil {
+		*a = nil
+		return nil
+	}
+	s, ok := src.(string)
+	if !ok {
+		if b, ok2 := src.([]byte); ok2 {
+			s = string(b)
+		} else {
+			return fmt.Errorf("StringArray.Scan: unsupported type %T", src)
+		}
+	}
+	s = strings.TrimSpace(s)
+	if s == "{}" || s == "" {
+		*a = StringArray{}
+		return nil
+	}
+	// Strip outer braces: {item1,item2} -> item1,item2
+	s = s[1 : len(s)-1]
+	parts := strings.Split(s, ",")
+	result := make([]string, len(parts))
+	for i, p := range parts {
+		// Strip surrounding quotes if present
+		p = strings.TrimSpace(p)
+		if len(p) >= 2 && p[0] == '"' && p[len(p)-1] == '"' {
+			p = p[1 : len(p)-1]
+		}
+		result[i] = p
+	}
+	*a = result
+	return nil
+}
+
+func (a StringArray) Value() (driver.Value, error) {
+	if a == nil {
+		return nil, nil
+	}
+	parts := make([]string, len(a))
+	for i, s := range a {
+		parts[i] = `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+	}
+	return "{" + strings.Join(parts, ",") + "}", nil
+}
 
 type ApplicationStatus string
 
@@ -206,7 +253,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.University, &app.Major, &app.LevelOfStudy,
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
-		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
+		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
@@ -250,7 +297,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.University, &app.Major, &app.LevelOfStudy,
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
-		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
+		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
@@ -279,7 +326,7 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.UserID).Scan(
-		&app.ID, &app.Status, &app.ShortAnswerResponses, pq.Array(&app.DietaryRestrictions),
+		&app.ID, &app.Status, &app.ShortAnswerResponses, (*StringArray)(&app.DietaryRestrictions),
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.CreatedAt, &app.UpdatedAt,
 	)
@@ -335,7 +382,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 		app.University, app.Major, app.LevelOfStudy,
 		app.ShortAnswerResponses,
 		app.HackathonsAttendedCount, app.SoftwareExperienceLevel, app.HeardAbout,
-		app.ShirtSize, pq.Array(app.DietaryRestrictions), app.Accommodations,
+		app.ShirtSize, StringArray(app.DietaryRestrictions), app.Accommodations,
 		app.Github, app.LinkedIn, app.Website,
 		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
 	).Scan(&app.UpdatedAt)
@@ -548,7 +595,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 		&app.University, &app.Major, &app.LevelOfStudy,
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
-		&app.ShirtSize, pq.Array(&app.DietaryRestrictions), &app.Accommodations,
+		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
