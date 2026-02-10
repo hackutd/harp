@@ -7,7 +7,6 @@ import type { ApiResponse } from "@/types";
 const API_VERSION = "/v1";
 
 function buildUrl(endpoint: string): string {
-  if (endpoint.startsWith("/auth")) return endpoint;
   return `${API_VERSION}${endpoint}`;
 }
 
