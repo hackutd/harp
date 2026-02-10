@@ -10,6 +10,7 @@ import (
 	"github.com/hackutd/portal/internal/auth"
 	"github.com/hackutd/portal/internal/db"
 	"github.com/hackutd/portal/internal/env"
+	"github.com/hackutd/portal/internal/logger"
 	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/ratelimiter"
 	"github.com/hackutd/portal/internal/store"
@@ -82,7 +83,7 @@ func main() {
 	}
 
 	// Init Logger
-	logger := zap.Must(zap.NewProduction()).Sugar()
+	logger := logger.New(cfg.env)
 	defer logger.Sync()
 
 	// Init Database
