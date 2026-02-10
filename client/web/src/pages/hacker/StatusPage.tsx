@@ -21,7 +21,7 @@ export default function Status() {
   useEffect(() => {
     const loadData = async () => {
       const res = await getRequest<Application>(
-        "/v1/applications/me",
+        "/applications/me",
         "application"
       );
       if (res.status === 200 && res.data) {

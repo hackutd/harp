@@ -4,14 +4,15 @@ import { toast } from "sonner";
 
 import type { ApiResponse } from "@/types";
 
-const API_BASE_URL = "";
+const API_BASE_URL = "/v1";
 
 /**
  * Generic GET request
  */
 export async function getRequest<T>(
   endpoint: string,
-  errorContext?: string
+  errorContext?: string,
+  signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -20,6 +21,7 @@ export async function getRequest<T>(
       headers: {
         "Content-Type": "application/json",
       },
+      signal,
     });
 
     const json = await response.json().catch(() => null);
@@ -32,6 +34,9 @@ export async function getRequest<T>(
         : undefined,
     };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { status: 0, error: "Request aborted" };
+    }
     return {
       status: 500,
       error: error instanceof Error ? error.message : "Network error",
@@ -45,7 +50,8 @@ export async function getRequest<T>(
 export async function postRequest<T>(
   endpoint: string,
   body: unknown,
-  errorContext?: string
+  errorContext?: string,
+  signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -55,6 +61,7 @@ export async function postRequest<T>(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      signal,
     });
 
     const json = await response.json().catch(() => null);
@@ -67,6 +74,9 @@ export async function postRequest<T>(
         : undefined,
     };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { status: 0, error: "Request aborted" };
+    }
     return {
       status: 500,
       error: error instanceof Error ? error.message : "Network error",
@@ -80,7 +90,8 @@ export async function postRequest<T>(
 export async function putRequest<T>(
   endpoint: string,
   body: unknown,
-  errorContext?: string
+  errorContext?: string,
+  signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -90,6 +101,7 @@ export async function putRequest<T>(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      signal,
     });
 
     const json = await response.json().catch(() => null);
@@ -102,6 +114,9 @@ export async function putRequest<T>(
         : undefined,
     };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { status: 0, error: "Request aborted" };
+    }
     return {
       status: 500,
       error: error instanceof Error ? error.message : "Network error",
@@ -115,7 +130,8 @@ export async function putRequest<T>(
 export async function patchRequest<T>(
   endpoint: string,
   body: unknown,
-  errorContext?: string
+  errorContext?: string,
+  signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -125,6 +141,7 @@ export async function patchRequest<T>(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      signal,
     });
 
     const json = await response.json().catch(() => null);
@@ -137,6 +154,9 @@ export async function patchRequest<T>(
         : undefined,
     };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { status: 0, error: "Request aborted" };
+    }
     return {
       status: 500,
       error: error instanceof Error ? error.message : "Network error",
@@ -149,7 +169,8 @@ export async function patchRequest<T>(
  */
 export async function deleteRequest<T>(
   endpoint: string,
-  errorContext?: string
+  errorContext?: string,
+  signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -158,6 +179,7 @@ export async function deleteRequest<T>(
       headers: {
         "Content-Type": "application/json",
       },
+      signal,
     });
 
     const json = await response.json().catch(() => null);
@@ -170,6 +192,9 @@ export async function deleteRequest<T>(
         : undefined,
     };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { status: 0, error: "Request aborted" };
+    }
     return {
       status: 500,
       error: error instanceof Error ? error.message : "Network error",

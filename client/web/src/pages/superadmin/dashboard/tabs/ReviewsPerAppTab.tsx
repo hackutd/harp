@@ -31,7 +31,7 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
     setConfirmOpen(false)
     setAssigning(true)
     const res = await postRequest<{ reviews_created: number }>(
-      "/v1/superadmin/applications/assign",
+      "/superadmin/applications/assign",
       {},
       "batch assign reviews"
     )

@@ -28,8 +28,10 @@ export default function AllApplicantsPage() {
   const { detail: applicationDetail, loading: detailLoading, clear: clearDetail } = useApplicationDetail(selectedApplicationId);
 
   useEffect(() => {
-    fetchApplications();
-    fetchStats();
+    const controller = new AbortController();
+    fetchApplications(undefined, controller.signal);
+    fetchStats(controller.signal);
+    return () => controller.abort();
   }, [fetchApplications, fetchStats]);
 
   const handleClosePanel = () => {

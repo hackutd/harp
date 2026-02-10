@@ -9,7 +9,7 @@ export interface ReviewsState {
   reviews: Review[];
   loading: boolean;
   submitting: boolean;
-  fetchPendingReviews: () => Promise<void>;
+  fetchPendingReviews: (signal?: AbortSignal) => Promise<void>;
   submitVote: (reviewId: string, payload: SubmitVotePayload) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -18,10 +18,12 @@ export const useReviewsStore = create<ReviewsState>((set) => ({
   loading: false,
   submitting: false,
 
-  fetchPendingReviews: async () => {
+  fetchPendingReviews: async (signal?: AbortSignal) => {
     set({ loading: true });
 
-    const res = await fetchPendingReviews();
+    const res = await fetchPendingReviews(signal);
+
+    if (signal?.aborted) return;
 
     if (res.status === 200 && res.data) {
       set({ reviews: res.data.reviews, loading: false });

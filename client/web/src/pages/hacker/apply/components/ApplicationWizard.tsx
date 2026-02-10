@@ -195,7 +195,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   useEffect(() => {
     const loadApplication = async () => {
       const res = await getRequest<Application>(
-        "/v1/applications/me",
+        "/applications/me",
         "application"
       );
       if (res.status === 200 && res.data) {
@@ -260,7 +260,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const payload = transformFormDataToPayload(formData);
 
     const res = await patchRequest<Application>(
-      "/v1/applications/me",
+      "/applications/me",
       payload,
       "application"
     );
@@ -309,7 +309,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const payload = transformFormDataToPayload(formData);
 
     const saveRes = await patchRequest<Application>(
-      "/v1/applications/me",
+      "/applications/me",
       payload,
       "application"
     );
@@ -323,7 +323,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
     // Now submit
     const submitRes = await postRequest<Application>(
-      "/v1/applications/me/submit",
+      "/applications/me/submit",
       {},
       "application"
     );

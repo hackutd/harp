@@ -52,7 +52,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     const fetchQuestions = async () => {
       setLoading(true)
       const res = await getRequest<{ questions: ShortAnswerQuestion[] }>(
-        "/v1/superadmin/settings/saquestions",
+        "/superadmin/settings/saquestions",
         "short answer questions"
       )
       if (res.status === 200 && res.data) {
@@ -65,7 +65,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     const fetchReviewsPerApp = async () => {
       setReviewsPerAppLoading(true)
       const res = await getRequest<{ reviews_per_application: number }>(
-        "/v1/superadmin/settings/reviews-per-app",
+        "/superadmin/settings/reviews-per-app",
         "reviews per application"
       )
       if (res.status === 200 && res.data) {
@@ -98,7 +98,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
         display_order: i + 1,
       }))
       const res = await putRequest<{ questions: ShortAnswerQuestion[] }>(
-        "/v1/superadmin/settings/saquestions",
+        "/superadmin/settings/saquestions",
         { questions: payload },
         "short answer questions"
       )
@@ -117,7 +117,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
 
       setSaving(true)
       const res = await postRequest<{ reviews_per_application: number }>(
-        "/v1/superadmin/settings/reviews-per-app",
+        "/superadmin/settings/reviews-per-app",
         { reviews_per_application: reviewsPerApp },
         "reviews per application"
       )
