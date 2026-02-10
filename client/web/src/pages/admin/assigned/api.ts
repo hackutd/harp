@@ -1,6 +1,6 @@
 // Application Review feature API layer
 
-import { getRequest } from "@/shared/lib/api";
+import { getRequest, putRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
 import type { NotesListResponse, PendingReviewsResponse, SubmitVotePayload } from "./types";
@@ -19,18 +19,12 @@ export async function submitReviewVote(
   reviewId: string,
   payload: SubmitVotePayload
 ): Promise<{ success: boolean; error?: string }> {
-  const res = await fetch(`/admin/reviews/${reviewId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(payload),
-  });
+  const res = await putRequest(`/admin/reviews/${reviewId}`, payload, "vote");
 
-  if (res.ok) {
+  if (res.status === 200) {
     return { success: true };
   } else {
-    const data = await res.json().catch(() => ({}));
-    return { success: false, error: data.error || 'Failed to submit vote' };
+    return { success: false, error: res.error || 'Failed to submit vote' };
   }
 }
 
