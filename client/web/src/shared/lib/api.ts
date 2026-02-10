@@ -4,7 +4,12 @@ import { toast } from "sonner";
 
 import type { ApiResponse } from "@/types";
 
-const API_BASE_URL = "/v1";
+const API_VERSION = "/v1";
+
+function buildUrl(endpoint: string): string {
+  if (endpoint.startsWith("/auth")) return endpoint;
+  return `${API_VERSION}${endpoint}`;
+}
 
 /**
  * Generic GET request
@@ -15,7 +20,7 @@ export async function getRequest<T>(
   signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${buildUrl(endpoint)}`, {
       method: "GET",
       credentials: "include", // cookies for SuperTokens session
       headers: {
@@ -54,7 +59,7 @@ export async function postRequest<T>(
   signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${buildUrl(endpoint)}`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -94,7 +99,7 @@ export async function putRequest<T>(
   signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${buildUrl(endpoint)}`, {
       method: "PUT",
       credentials: "include",
       headers: {
@@ -134,7 +139,7 @@ export async function patchRequest<T>(
   signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${buildUrl(endpoint)}`, {
       method: "PATCH",
       credentials: "include",
       headers: {
@@ -173,7 +178,7 @@ export async function deleteRequest<T>(
   signal?: AbortSignal
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${buildUrl(endpoint)}`, {
       method: "DELETE",
       credentials: "include",
       headers: {
