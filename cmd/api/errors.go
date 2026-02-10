@@ -15,9 +15,7 @@ func (app *application) internalServerError(w http.ResponseWriter, r *http.Reque
 
 	app.logger.Errorw("internal error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 
-	// Include actual error in response for debugging (TODO: remove after diagnosing prod 500s)
-	msg := "internal error: " + err.Error()
-	writeJSONError(w, http.StatusInternalServerError, msg)
+	writeJSONError(w, http.StatusInternalServerError, "the server encountered a problem")
 }
 
 func (app *application) forbiddenResponse(w http.ResponseWriter, r *http.Request, err error) {
