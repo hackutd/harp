@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  audit:
+  backend-audit:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -33,4 +33,39 @@ jobs:
       run: staticcheck ./...
 
     - name: Run Tests
-      run: go test -race ./...  
+      run: go test -race ./...
+
+  frontend-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/web
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: client/web/package-lock.json
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Type Check & Build
+      run: npm run build
+
+    - name: Dependency Audit
+      run: npm audit --audit-level=high
+
+    - name: Run Tests
+      run: |
+        if [ -d "__tests__" ] || find src -name '*.test.*' -o -name '*.spec.*' 2>/dev/null | grep -q .; then
+          npx vitest run
+        else
+          echo "No test files found, skipping"
+        fi  
