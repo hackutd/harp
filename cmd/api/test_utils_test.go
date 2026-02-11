@@ -21,14 +21,13 @@ import (
 
 var initSuperTokensOnce sync.Once
 
-// initTestSuperTokens initializes SuperTokens with a dummy config so that mount() doesn't panic.
-// This only needs to run once per test binary execution.
+// dummy config so mount() doesn't panic
 func initTestSuperTokens(t *testing.T) {
 	t.Helper()
 	initSuperTokensOnce.Do(func() {
 		err := supertokens.Init(supertokens.TypeInput{
 			Supertokens: &supertokens.ConnectionInfo{
-				ConnectionURI: "http://localhost:3567", // not actually contacted
+				ConnectionURI: "http://localhost:3567",
 			},
 			AppInfo: supertokens.AppInfo{
 				AppName:       "test",
@@ -55,7 +54,7 @@ func newTestApplication(t *testing.T) *application {
 	initTestSuperTokens(t)
 
 	logger := zap.NewNop().Sugar()
-	// Uncomment to enable logs during debugging:
+	// Uncomment uncomment below for debugging
 	// logger = zap.Must(zap.NewProduction()).Sugar()
 
 	mockStore := store.NewMockStore()
@@ -96,20 +95,19 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 	}
 }
 
-// addBasicAuth adds valid Basic Auth credentials to a request
 func addBasicAuth(req *http.Request) {
 	creds := base64.StdEncoding.EncodeToString([]byte("testuser:testpass"))
 	req.Header.Set("Authorization", "Basic "+creds)
 }
 
-// setUserContext injects a user into the request context, bypassing AuthRequiredMiddleware.
-// Use this for testing handlers that expect an authenticated user without going through SuperTokens.
+// for testing handlers without going through SuperTokens
 func setUserContext(req *http.Request, user *store.User) *http.Request {
 	ctx := context.WithValue(req.Context(), userContextKey, user)
 	return req.WithContext(ctx)
 }
 
-// newTestUser returns a basic hacker user for tests
+// Test Users:
+
 func newTestUser() *store.User {
 	return &store.User{
 		ID:                "user-1",
@@ -122,7 +120,6 @@ func newTestUser() *store.User {
 	}
 }
 
-// newAdminUser returns an admin user for tests
 func newAdminUser() *store.User {
 	return &store.User{
 		ID:                "admin-1",
@@ -135,7 +132,6 @@ func newAdminUser() *store.User {
 	}
 }
 
-// newSuperAdminUser returns a super admin user for tests
 func newSuperAdminUser() *store.User {
 	return &store.User{
 		ID:                "superadmin-1",
