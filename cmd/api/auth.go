@@ -32,7 +32,7 @@ type UserResponse struct {
 func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
-		app.unauthorizedErrorResponse(w, r, nil)
+		app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
 		return
 	}
 
