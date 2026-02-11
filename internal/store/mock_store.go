@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockUsersStore is a mock implementation of the Users interface
+// mock implementation of the Users interface
 type MockUsersStore struct {
 	mock.Mock
 }
@@ -45,7 +45,7 @@ func (m *MockUsersStore) UpdateProfilePicture(ctx context.Context, supertokensUs
 	return args.Error(0)
 }
 
-// MockApplicationStore is a mock implementation of the Application interface
+// mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
 }
@@ -105,7 +105,7 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 	return args.Get(0).(*Application), args.Error(1)
 }
 
-// MockSettingsStore is a mock implementation of the Settings interface
+// mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock
 }
@@ -186,7 +186,7 @@ func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, ad
 	return args.Get(0).(*ApplicationReview), args.Error(1)
 }
 
-// NewMockStore returns a Storage with all mock implementations
+// returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
 		Users:              &MockUsersStore{},
