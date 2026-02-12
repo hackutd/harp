@@ -33,6 +33,12 @@ tasks:
       - swag init -d cmd/api,internal/store -g main.go -o docs --parseDependency
       - swag fmt
 
+  setup-hooks:
+    desc: Configure git to use project hooks (run once after cloning)
+    cmds:
+      - git config core.hooksPath .github/hooks
+      - echo "Git hooks configured successfully."
+
   test:
     desc: Run all Go tests
     cmds:

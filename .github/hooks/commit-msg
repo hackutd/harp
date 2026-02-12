@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+commit_msg=$(head -1 "$1")
+
+# Allow merge commits
+if echo "$commit_msg" | grep -qE '^Merge '; then
+  exit 0
+fi
+
+# Conventional Commits: type(scope): description  OR  type: description
+# Optional ! before : for breaking changes (e.g., feat!: or feat(api)!:)
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "ERROR: Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "  Format: <type>(<scope>): <description>"
+  echo "  Types:  feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo ""
+  echo "  Examples:"
+  echo "    feat(auth): add Google OAuth login"
+  echo "    fix: resolve cursor pagination bug"
+  echo "    docs: update API route documentation"
+  echo "    chore!: drop support for Node 16"
+  echo ""
+  exit 1
+fi
