@@ -498,6 +498,11 @@ type ApplicationResponse struct {
 	Application *store.Application `json:"application"`
 }
 
+type EmailListResponse struct {
+	Emails []string `json:"emails"`
+	Count  int      `json:"count"`
+}
+
 // setApplicationStatus sets the final status on an application (superadmin only)
 //
 //	@Summary		Set application status (Super Admin)
@@ -595,4 +600,40 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
+	statusStr := chi.URLParam(r, "status")
+	if statusStr == "" {
+		app.badRequestResponse(w, r, errors.New("status is required"))
+		return
+	}
+
+	var emails []string
+	var err error
+	if statusStr != "" {
+		status := store.ApplicationStatus(statusStr)
+		switch status {
+		case store.StatusAccepted,
+			store.StatusRejected, store.StatusWaitlisted:
+			emails, err = app.store.Application.GetEmailsByStatus(r.Context(), status)
+		default:
+			app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
+			return
+		}
+	}
+
+	if err != nil {
+		app.internalServerError(w, r, err)
+	}
+
+	response := EmailListResponse{
+		Emails: emails,
+		Count:  len(emails),
+	}
+
+	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+
 }

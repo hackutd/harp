@@ -20,27 +20,27 @@ import (
 
 const version = "0.0.0" // semver
 
-//	@title						HackPortal API
-//	@version					1.0
-//	@description				API for HackPortal
-//	@termsOfService				http://swagger.io/terms/
-//	@contact.name				API Support
-//	@contact.url				http://www.swagger.io/support
-//	@contact.email				support@swagger.io
-//	@license.name				Apache 2.0
-//	@license.url				http://www.apache.org/licenses/LICENSE-2.0.html
-//	@BasePath					/v1
-//	@securityDefinitions.apikey	CookieAuth
-//	@in							cookie
-//	@name						sAccessToken
+// @title						HackPortal API
+// @version					1.0
+// @description				API for HackPortal
+// @termsOfService				http://swagger.io/terms/
+// @contact.name				API Support
+// @contact.url				http://www.swagger.io/support
+// @contact.email				support@swagger.io
+// @license.name				Apache 2.0
+// @license.url				http://www.apache.org/licenses/LICENSE-2.0.html
+// @BasePath					/v1
+// @securityDefinitions.apikey	CookieAuth
+// @in							cookie
+// @name						sAccessToken
 func main() {
 
 	// Load env
-	err := godotenv.Load(".env");
-	if err != nil{
+	err := godotenv.Load(".env")
+	if err != nil {
 		log.Println(err)
 	}
-	
+
 	// Init configs
 	appURL := env.GetString("APP_URL", "http://localhost:8080")
 

@@ -4,7 +4,6 @@ import (
 	"github.com/sendgrid/sendgrid-go"
 )
 
-
 type SendGridMailer struct {
 	fromEmail string
 	apiKey    string
@@ -20,5 +19,3 @@ func NewSendGrid(apiKey, fromEmail string) *SendGridMailer {
 		client:    client,
 	}
 }
-
-
