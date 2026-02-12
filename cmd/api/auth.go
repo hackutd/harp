@@ -56,16 +56,15 @@ type CheckEmailResponse struct {
 	AuthMethod *store.AuthMethod `json:"auth_method,omitempty"`
 }
 
-//
-//	@Summary		Check email auth method
-//	@Description	Checks if an email is registered and returns the auth method used
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			email	query		string	true	"Email address to check"
-//	@Success		200		{object}	CheckEmailResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Router			/auth/check-email [get]
+// @Summary		Check email auth method
+// @Description	Checks if an email is registered and returns the auth method used
+// @Tags			auth
+// @Accept			json
+// @Produce		json
+// @Param			email	query		string	true	"Email address to check"
+// @Success		200		{object}	CheckEmailResponse
+// @Failure		400		{object}	object{error=string}
+// @Router			/auth/check-email [get]
 func (app *application) checkEmailAuthMethodHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	if email == "" {

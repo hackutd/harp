@@ -332,7 +332,7 @@ func TestGetApplicationStats(t *testing.T) {
 			Rejected:          10,
 			Waitlisted:        5,
 			Draft:             15,
-			AcceptanceRate:     23.5,
+			AcceptanceRate:    23.5,
 		}
 
 		mockApps.On("GetStats").Return(stats, nil).Once()
@@ -489,4 +489,9 @@ func TestSetApplicationStatus(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 	})
+}
+
+func TestGetApplicantEmailsByStatus(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore) //TODO: write test function. NOT FINISHED
 }

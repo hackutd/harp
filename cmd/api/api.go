@@ -23,11 +23,11 @@ import (
 )
 
 type application struct {
-	config        config
-	store         store.Storage
-	logger        *zap.SugaredLogger
-	mailer        mailer.Client
-	rateLimiter   ratelimiter.Limiter
+	config      config
+	store       store.Storage
+	logger      *zap.SugaredLogger
+	mailer      mailer.Client
+	rateLimiter ratelimiter.Limiter
 }
 
 type config struct {
@@ -65,14 +65,14 @@ type mailConfig struct {
 }
 
 type sendGridConfig struct {
-	apiKey string 
+	apiKey string
 }
 
 type dbConfig struct {
-	addr string
-	maxOpenConns int 
-	maxIdleConns int 
-	maxIdleTime string // TODO: LOOK INTO NOT USING A STRING FOR TIME
+	addr         string
+	maxOpenConns int
+	maxIdleConns int
+	maxIdleTime  string // TODO: LOOK INTO NOT USING A STRING FOR TIME
 }
 
 func (app *application) mount() http.Handler {
@@ -115,7 +115,7 @@ func (app *application) mount() http.Handler {
 
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
-			
+
 			// Hacker Routes
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
@@ -127,7 +127,7 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
-					
+
 					// All Applicants
 					r.Get("/applications", app.listApplicationsHandler)
 					r.Get("/applications/stats", app.getApplicationStatsHandler)
@@ -153,8 +153,8 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
-					
-					// Application Config 
+
+					// Application Config
 					r.Get("/settings/saquestions", app.getShortAnswerQuestions)
 					r.Put("/settings/saquestions", app.updateShortAnswerQuestions)
 
@@ -162,6 +162,7 @@ func (app *application) mount() http.Handler {
 					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
 					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
 					r.Post("/applications/assign", app.batchAssignReviews)
+					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
 					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
 				})
 			})
@@ -175,25 +176,25 @@ func (app *application) mount() http.Handler {
 }
 
 func (app *application) run(mux http.Handler) error {
-	
+
 	server := &http.Server{
-		Addr: app.config.addr,
-		Handler: mux,
+		Addr:         app.config.addr,
+		Handler:      mux,
 		WriteTimeout: time.Second * 30,
-		ReadTimeout: time.Second * 10,
-		IdleTimeout: time.Minute,
+		ReadTimeout:  time.Second * 10,
+		IdleTimeout:  time.Minute,
 	}
 
-	// Graceful shutdown 
+	// Graceful shutdown
 	shutdown := make(chan error)
 
-	go func () {
+	go func() {
 		quit := make(chan os.Signal, 1)
 
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 		s := <-quit
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		app.logger.Infow("server caught", "signal", s.String())

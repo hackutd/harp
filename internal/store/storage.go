@@ -32,6 +32,7 @@ type Storage struct {
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
+		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error)
 	}
 	Settings interface {
 		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
@@ -51,8 +52,8 @@ type Storage struct {
 
 func NewStorage(db *sql.DB) Storage {
 	return Storage{
-		Users:       &UsersStore{db: db},
-		Application: &ApplicationsStore{db: db},
+		Users:              &UsersStore{db: db},
+		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 	}
