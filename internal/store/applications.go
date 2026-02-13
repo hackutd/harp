@@ -648,3 +648,33 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 
 	return &stats, nil
 }
+
+func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+				SELECT u.email
+				FROM applications a
+				INNER JOIN users u ON a.user_id = u.id
+				WHERE a.status = $1
+				ORDER BY u.email`
+
+	rows, err := s.db.QueryContext(ctx, query, status)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var emails []string
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			return nil, err
+		}
+		emails = append(emails, email)
+	}
+
+	return emails, nil
+}
