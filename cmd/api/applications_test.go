@@ -491,7 +491,9 @@ func TestSetApplicationStatus(t *testing.T) {
 	})
 }
 
-//func TestGetApplicantEmailsByStatus(t *testing.T) {
-//	app := newTestApplication(t)
-//	mockApps := app.store.Application.(*store.MockApplicationStore) //TODO: write test function. NOT FINISHED
-//}
+// func TestGetApplicantEmailsByStatus(t *testing.T) {
+// 	app := newTestApplication(t)
+// 	mockApps := app.store.Application.(*store.MockApplicationStore) //TODO: write test function. NOT FINISHED
+//
+// 	mockApps.On("GetEmailsByStatus", user.ID).Return(application, nil).Once()
+// }
