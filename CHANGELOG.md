@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/hackutd/harp/compare/v1.0.0...v1.1.0) (2026-02-13)
+
+
+### Features
+
+* update api version automatically ([60cc395](https://github.com/hackutd/harp/commit/60cc395060a93cd7d9595d4aace28140c4912d11))
+
+
+### Bug Fixes
+
+* auto udpating sem. version for api ([4002c0b](https://github.com/hackutd/harp/commit/4002c0bc6a89834e59fdfafc5789ea2ac544a514))
+* testing auto updating semver HOPE THIS WORKS ([34892fc](https://github.com/hackutd/harp/commit/34892fcfa02bbba2887dd842fa2edae838e39230))
+
 ## 1.0.0 (2026-02-13)
 
 
