@@ -1,0 +1,53 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Go
+/api
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Air live reload
+tmp/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# macOS
+.DS_Store
+
+# Node.js (client/)
+client/web/node_modules/
+client/web/dist/
+client/web/dist-ssr/
+client/web/.vite/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Claude
+.claude/
+
+# Generated docs
+docs/swagger.json
+docs/swagger.yaml
