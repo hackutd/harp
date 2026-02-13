@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/hackutd/harp/compare/v1.0.0...v1.1.0) (2026-02-13)
+
+
+### Features
+
+* update api version automatically ([60cc395](https://github.com/hackutd/harp/commit/60cc395060a93cd7d9595d4aace28140c4912d11))
+
 ## 1.0.0 (2026-02-13)
 
 
