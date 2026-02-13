@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Run gofmt on staged .go files
+staged_go_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+
+if [ -z "$staged_go_files" ]; then
+  exit 0
+fi
+
+# Format and re-stage
+unformatted=$(gofmt -l $staged_go_files)
+
+if [ -n "$unformatted" ]; then
+  echo "Formatting Go files with gofmt..."
+  echo ""
+  gofmt -w $unformatted
+  echo "$unformatted" | xargs git add
+  echo "  Reformatted and re-staged:"
+  for f in $unformatted; do
+    echo "    $f"
+  done
+  echo ""
+fi
