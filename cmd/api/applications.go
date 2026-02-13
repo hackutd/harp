@@ -498,6 +498,11 @@ type ApplicationResponse struct {
 	Application *store.Application `json:"application"`
 }
 
+type EmailListResponse struct {
+	Emails []string `json:"emails"`
+	Count  int      `json:"count"`
+}
+
 // setApplicationStatus sets the final status on an application (superadmin only)
 //
 //	@Summary		Set application status (Super Admin)
@@ -595,4 +600,53 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// getApplicantEmailsByStatusHandler returns emails of applicants filtered by status
+//
+//	@Summary		Get applicant emails by status (Super Admin)
+//	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
+//	@Tags			superadmin
+//	@Produce		json
+//	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
+//	@Success		200		{object}	EmailListResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/emails [get]
+func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
+	statusStr := r.URL.Query().Get("status")
+	if statusStr == "" {
+		app.badRequestResponse(w, r, errors.New("status is required"))
+		return
+	}
+
+	var emails []string
+	var err error
+
+	switch status := store.ApplicationStatus(statusStr); status {
+	case store.StatusAccepted,
+		store.StatusRejected, store.StatusWaitlisted:
+		emails, err = app.store.Application.GetEmailsByStatus(r.Context(), status)
+	default:
+		app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
+		return
+	}
+
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := EmailListResponse{
+		Emails: emails,
+		Count:  len(emails),
+	}
+
+	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+
 }

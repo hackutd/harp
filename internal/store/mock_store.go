@@ -105,6 +105,14 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 	return args.Get(0).(*Application), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error) {
+	args := m.Called(status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
 // mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock

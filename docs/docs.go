@@ -985,6 +985,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/applications/emails": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Get applicant emails by status (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application status (accepted, rejected, or waitlisted)",
+                        "name": "status",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.EmailListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/applications/{applicationID}/status": {
             "patch": {
                 "security": [
@@ -1532,6 +1610,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/store.ApplicationReviewWithDetails"
+                    }
+                }
+            }
+        },
+        "main.EmailListResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "emails": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

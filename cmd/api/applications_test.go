@@ -490,3 +490,10 @@ func TestSetApplicationStatus(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 }
+
+// func TestGetApplicantEmailsByStatus(t *testing.T) {
+// 	app := newTestApplication(t)
+// 	mockApps := app.store.Application.(*store.MockApplicationStore) //TODO: write test function. NOT FINISHED
+//
+// 	mockApps.On("GetEmailsByStatus", user.ID).Return(application, nil).Once()
+// }
