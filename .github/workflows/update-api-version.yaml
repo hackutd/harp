@@ -37,11 +37,11 @@ jobs:
           git add cmd/api/main.go
           git commit -m "chore: update api version to ${{ steps.get_version.outputs.VERSION }}"
           git push origin "$BRANCH"
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "chore: update api version to ${{ steps.get_version.outputs.VERSION }}" \
             --body "Automated PR to update the API version constant to match CHANGELOG.md." \
             --base main \
-            --head "$BRANCH" \
-            --auto --squash
+            --head "$BRANCH")
+          gh pr merge "$PR_URL" --auto --squash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
