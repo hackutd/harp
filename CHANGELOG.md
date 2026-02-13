@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/hackutd/harp/compare/v1.1.0...v1.1.1) (2026-02-13)
+
+
+### Bug Fixes
+
+* update changelog grep to match release-please bracket format ([f91795c](https://github.com/hackutd/harp/commit/f91795c15f8be54623bfabb0ed46169d568e745b))
+
 ## [1.1.0](https://github.com/hackutd/harp/compare/v1.0.0...v1.1.0) (2026-02-13)
 
 
