@@ -52,8 +52,3 @@ lerna-debug.log*
 docs/swagger.json
 docs/swagger.yaml
 
-# Anishalle stuff
-.direnv/
-.envrc
-flake.lock
-flake.nix

@@ -602,6 +602,20 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getApplicantEmailsByStatusHandler returns emails of applicants filtered by status
+//
+//	@Summary		Get applicant emails by status (Super Admin)
+//	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
+//	@Tags			superadmin
+//	@Produce		json
+//	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
+//	@Success		200		{object}	EmailListResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/emails [get]
 func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
 	statusStr := r.URL.Query().Get("status")
 	if statusStr == "" {
@@ -611,20 +625,19 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 
 	var emails []string
 	var err error
-	if statusStr != "" {
-		status := store.ApplicationStatus(statusStr)
-		switch status {
-		case store.StatusAccepted,
-			store.StatusRejected, store.StatusWaitlisted:
-			emails, err = app.store.Application.GetEmailsByStatus(r.Context(), status)
-		default:
-			app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
-			return
-		}
+
+	switch status := store.ApplicationStatus(statusStr); status {
+	case store.StatusAccepted,
+		store.StatusRejected, store.StatusWaitlisted:
+		emails, err = app.store.Application.GetEmailsByStatus(r.Context(), status)
+	default:
+		app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
+		return
 	}
 
 	if err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 
 	response := EmailListResponse{
