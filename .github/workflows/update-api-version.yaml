@@ -6,27 +6,42 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Extract latest version from CHANGELOG.md
         id: get_version
         run: |
           VERSION=$(grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1)
-          echo "::set-output name=VERSION::$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Update version in cmd/api/main.go
         run: |
           sed -i "s/const version = \".*\"/const version = \"${{ steps.get_version.outputs.VERSION }}\"/" cmd/api/main.go
 
-      - name: Commit and push if changed
+      - name: Create PR if changed
         run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          BRANCH="chore/update-version-${{ steps.get_version.outputs.VERSION }}"
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
+          git checkout -b "$BRANCH"
           git add cmd/api/main.go
-          git commit -m "Update version to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
-          git push
+          git commit -m "chore: update api version to ${{ steps.get_version.outputs.VERSION }}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: update api version to ${{ steps.get_version.outputs.VERSION }}" \
+            --body "Automated PR to update the API version constant to match CHANGELOG.md." \
+            --base main \
+            --head "$BRANCH" \
+            --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
