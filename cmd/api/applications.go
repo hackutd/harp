@@ -603,7 +603,7 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
-	statusStr := chi.URLParam(r, "status")
+	statusStr := r.URL.Query().Get("status")
 	if statusStr == "" {
 		app.badRequestResponse(w, r, errors.New("status is required"))
 		return
