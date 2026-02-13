@@ -3,7 +3,7 @@ package mailer
 import "embed"
 
 const (
-	FromName                     = "HackUTD"
+	FromName = "HackUTD"
 )
 
 var FS embed.FS

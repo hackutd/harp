@@ -7,6 +7,7 @@ import (
 )
 
 // healthCheckHandler godoc
+//
 //	@Summary		Health check endpoint
 //	@Description	Returns the health status of the API
 //	@Tags			health
@@ -16,9 +17,9 @@ import (
 //	@Security		BasicAuth
 //	@Router			/health [get]
 func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	data := map[string]string {
-		"status": "ok", 
-		"env": app.config.env,
+	data := map[string]string{
+		"status": "ok",
+		"env":    app.config.env,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -332,7 +332,7 @@ func TestGetApplicationStats(t *testing.T) {
 			Rejected:          10,
 			Waitlisted:        5,
 			Draft:             15,
-			AcceptanceRate:     23.5,
+			AcceptanceRate:    23.5,
 		}
 
 		mockApps.On("GetStats").Return(stats, nil).Once()
