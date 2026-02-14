@@ -168,3 +168,77 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 		app.internalServerError(w, r, err)
 	}
 }
+
+// SetReviewAssignmentEnabledPayload for setting whether review assignment is enabled
+type SetReviewAssignmentEnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+// ReviewAssignmentEnabledResponse wraps the review assignment enabled value for API response
+type ReviewAssignmentEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getReviewAssignmentEnabled returns the current review assignment enabled setting
+//
+//	@Summary		Get review assignment enabled state (Super Admin)
+//	@Description	Returns whether automatic review assignment is enabled
+//	@Tags			superadmin
+//	@Produce		json
+//	@Success		200	{object}	ReviewAssignmentEnabledResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/review-assignment-enabled [get]
+func (app *application) getReviewAssignmentEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetReviewAssignmentEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ReviewAssignmentEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setReviewAssignmentEnabled updates the review assignment enabled setting
+//
+//	@Summary		Set review assignment enabled state (Super Admin)
+//	@Description	Updates whether automatic review assignment is enabled
+//	@Tags			superadmin
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetReviewAssignmentEnabledPayload	true	"Review assignment enabled state"
+//	@Success		200		{object}	ReviewAssignmentEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/review-assignment-enabled [post]
+func (app *application) setReviewAssignmentEnabled(w http.ResponseWriter, r *http.Request) {
+	var req SetReviewAssignmentEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetReviewAssignmentEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ReviewAssignmentEnabledResponse{
+		Enabled: req.Enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
