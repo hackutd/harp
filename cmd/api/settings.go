@@ -234,9 +234,7 @@ func (app *application) setReviewAssignmentEnabled(w http.ResponseWriter, r *htt
 		return
 	}
 
-	response := ReviewAssignmentEnabledResponse{
-		Enabled: req.Enabled,
-	}
+	response := ReviewAssignmentEnabledResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
