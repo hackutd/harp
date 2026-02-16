@@ -1,5 +1,5 @@
 import { Loader2, Minus, Plus, Shuffle } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import {
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { errorAlert, postRequest } from "@/shared/lib/api"
+import { errorAlert, getRequest, postRequest } from "@/shared/lib/api"
 
 interface ReviewsPerAppTabProps {
   reviewsPerApp: number
@@ -29,6 +29,19 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [reviewAssignmentEnabled, setReviewAssignmentEnabled] = useState(true)
   const [togglingAssignment, setTogglingAssignment] = useState(false)
+
+  useEffect(() => {
+    async function fetchReviewAssignmentEnabled() {
+      const res = await getRequest<{ enabled: boolean }>(
+        "/superadmin/settings/review-assignment-enabled",
+        "fetch review assignment enabled"
+      )
+      if (res.status === 200 && res.data !== undefined) {
+        setReviewAssignmentEnabled(res.data.enabled)
+      }
+    }
+    fetchReviewAssignmentEnabled()
+  }, [])
 
   async function handleBatchAssign() {
     setConfirmOpen(false)
