@@ -123,7 +123,7 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
         <CardHeader>
           <CardTitle className="font-normal text-zinc-100">Enable Review Assignment</CardTitle>
           <CardDescription className="text-zinc-400">
-            Allow super admins to automatically assign submitted applications to admin reviewers.
+            Allow super admins to enable/disable themselves from vote reviews.
           </CardDescription>
         </CardHeader>
         <CardContent>

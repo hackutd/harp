@@ -240,7 +240,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		SELECT u.id
 		FROM users u
 		LEFT JOIN application_reviews ar ON u.id = ar.admin_id AND ar.vote IS NULL
-		WHERE u.role IN ('admin', 'super_admin')
+		WHERE u.role IN ('admin', 'super_admin') AND u.review_assignment_enabled = TRUE
 		GROUP BY u.id, u.created_at
 		ORDER BY COUNT(ar.id) ASC, u.created_at ASC
 	`

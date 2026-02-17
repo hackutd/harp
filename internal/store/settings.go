@@ -120,50 +120,39 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 	return err
 }
 
-// GetReviewAssignmentEnabled returns whether review assignment is enabled
+// GetReviewAssignmentEnabled returns whether review assignment is enabled for admins
+// Returns true if any admin has review_assignment_enabled = true
 func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-		SELECT value
-		FROM settings
-		WHERE key = $1
+		SELECT EXISTS(
+			SELECT 1 FROM users 
+			WHERE role IN ('admin', 'super_admin') AND review_assignment_enabled = TRUE
+		)
 	`
 
-	var value []byte
-	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentEnabled).Scan(&value)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return true, nil
-		}
-		return false, err
-	}
-
 	var enabled bool
-	if err := json.Unmarshal(value, &enabled); err != nil {
+	err := s.db.QueryRowContext(ctx, query).Scan(&enabled)
+	if err != nil {
 		return false, err
 	}
 
 	return enabled, nil
 }
 
-// SetReviewAssignmentEnabled updates whether review assignment is enabled
+// SetReviewAssignmentEnabled updates whether review assignment is enabled for all admins
 func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, enabled bool) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	jsonValue, err := json.Marshal(enabled)
-	if err != nil {
-		return err
-	}
-
 	query := `
-		INSERT INTO settings (key, value)
-		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+		UPDATE users 
+		SET review_assignment_enabled = $1, updated_at = NOW()
+		WHERE role IN ('admin', 'super_admin')
 	`
 
-	_, err = s.db.ExecContext(ctx, query, SettingsKeyReviewAssignmentEnabled, jsonValue)
+	_, err := s.db.ExecContext(ctx, query, enabled)
 	return err
 }
