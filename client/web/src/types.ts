@@ -93,6 +93,7 @@ export interface Application {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  ai_percentage: number | null;
 }
 
 export interface ApiResponse<T = unknown> {

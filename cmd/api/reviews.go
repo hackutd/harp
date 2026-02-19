@@ -29,6 +29,14 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
+type SetAIPercentagePayload struct {
+	AIPercentage int16 `json:"ai_percentage" validate:"required,min=0,max=100"`
+}
+
+type AIPercentageResponse struct {
+	AIPercentage int16 `json:"ai_percentage"`
+}
+
 // getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
 //
 //	@Summary		Get pending reviews (Admin)
@@ -247,6 +255,49 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 
 	response := ReviewResponse{
 		Review: *review,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) {
+
+	applicationID := chi.URLParam(r, "applicationID")
+
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("Application ID is required"))
+		return
+	}
+
+	user := getUserFromContext(r.Context())
+
+	var req SetAIPercentagePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err := app.store.ApplicationReviews.SetAIPercentage(r.Context(), applicationID, user.ID, req.AIPercentage)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percentage already set"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	response := AIPercentageResponse{
+		AIPercentage: req.AIPercentage,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

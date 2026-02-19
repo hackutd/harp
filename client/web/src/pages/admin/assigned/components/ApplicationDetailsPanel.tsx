@@ -1,4 +1,10 @@
+import { useState } from 'react';
+
+import { Check, Pencil, X } from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Application } from '@/types';
 
@@ -16,6 +22,23 @@ export function ApplicationDetailsPanel({
   isExpanded,
 }: ApplicationDetailsPanelProps) {
   const gridCols = isExpanded ? 'grid-cols-4' : 'grid-cols-2';
+
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+
+  function startEditing() {
+    setInputValue(application.ai_percentage?.toString() ?? '');
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+  }
+
+  function saveEditing() {
+    // TODO: integrate with API
+    setEditing(false);
+  }
 
   return (
     <div className="space-y-6 pb-2">
@@ -115,6 +138,44 @@ export function ApplicationDetailsPanel({
           </div>
         </div>
       )}
+
+      {/* AI Percentage */}
+      <div>
+        <h4 className="text-sm font-semibold mb-2">AI Analysis</h4>
+        <div className="text-sm">
+          <Label className="text-muted-foreground text-xs">AI Percentage</Label>
+          {editing ? (
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="h-7 w-24 text-sm"
+                autoFocus
+              />
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEditing}>
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditing}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              {application.ai_percentage != null ? (
+                <p>{application.ai_percentage}%</p>
+              ) : (
+                <p className="text-muted-foreground italic">Not set</p>
+              )}
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={startEditing}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Event Preferences */}
       <div>
