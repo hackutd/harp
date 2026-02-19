@@ -181,6 +181,7 @@ export default function CompletedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={false}
+                      onAiPercentageUpdate={() => {}}
                     />
 
                     {/* Reviewer notes section */}
