@@ -49,7 +49,7 @@ export async function setAIPercentage(
   if (res.status === 200) {
     return { success: true };
   } else {
-    if (res.data === "not found") {
+    if (res.error === "not found") {
       return {success: false, error: "You do not have permission to change this review's percentage, only the assigned admin can"}
     }
     else{
