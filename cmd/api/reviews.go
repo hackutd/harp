@@ -262,6 +262,23 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// setAIPercentage records the AI-generated content percentage for an assigned application review
+//
+//	@Summary		Set AI percentage on a review (Admin)
+//	@Description	Records the estimated AI-generated content percentage for an application assigned to the current admin
+//	@Tags			admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			applicationID	path		string					true	"Application ID"
+//	@Param			payload			body		SetAIPercentagePayload	true	"AI percentage (0–100)"
+//	@Success		200				{object}	AIPercentageResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/aiPercent [put]
 func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) {
 
 	applicationID := chi.URLParam(r, "applicationID")
