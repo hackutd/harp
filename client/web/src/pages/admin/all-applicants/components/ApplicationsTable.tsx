@@ -105,7 +105,7 @@ export function ApplicationsTable({
                 <TableCell className="whitespace-nowrap">
                   {new Date(app.updated_at).toLocaleDateString()}
                 </TableCell>
-                <TableCell>{app.ai_percentage ?? '-'}</TableCell>
+                <TableCell>{app.ai_percentage != null ? `${app.ai_percentage}%` : '-'}</TableCell>
               </TableRow>
             ))
           )}
