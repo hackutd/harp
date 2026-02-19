@@ -255,6 +255,107 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/{applicationID}/aiPercent": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Records the estimated AI-generated content percentage for an application assigned to the current admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Set AI percentage on a review (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "AI percentage (0–100)",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetAIPercentagePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.AIPercentageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/applications/{applicationID}/notes": {
             "get": {
                 "security": [
@@ -1444,6 +1545,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.AIPercentageResponse": {
+            "type": "object",
+            "properties": {
+                "ai_percentage": {
+                    "type": "integer"
+                }
+            }
+        },
         "main.ApplicationResponse": {
             "type": "object",
             "properties": {
@@ -1666,6 +1775,19 @@ const docTemplate = `{
             "properties": {
                 "reviews_per_application": {
                     "type": "integer"
+                }
+            }
+        },
+        "main.SetAIPercentagePayload": {
+            "type": "object",
+            "required": [
+                "ai_percentage"
+            ],
+            "properties": {
+                "ai_percentage": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 0
                 }
             }
         },
