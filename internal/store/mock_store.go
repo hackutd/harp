@@ -45,6 +45,16 @@ func (m *MockUsersStore) UpdateProfilePicture(ctx context.Context, supertokensUs
 	return args.Error(0)
 }
 
+func (m *MockUsersStore) GetReviewAssignmentEnabledForUser(ctx context.Context, userID string) (bool, error) {
+	args := m.Called(userID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockUsersStore) SetReviewAssignmentEnabledForUser(ctx context.Context, userID string, enabled bool) error {
+	args := m.Called(userID, enabled)
+	return args.Error(0)
+}
+
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
@@ -138,16 +148,6 @@ func (m *MockSettingsStore) GetReviewsPerApplication(ctx context.Context) (int, 
 
 func (m *MockSettingsStore) SetReviewsPerApplication(ctx context.Context, value int) error {
 	args := m.Called(value)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetReviewAssignmentEnabled(ctx context.Context) (bool, error) {
-	args := m.Called()
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetReviewAssignmentEnabled(ctx context.Context, enabled bool) error {
-	args := m.Called(enabled)
 	return args.Error(0)
 }
 

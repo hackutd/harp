@@ -120,39 +120,4 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 	return err
 }
 
-// GetReviewAssignmentEnabled returns whether review assignment is enabled for admins
-// Returns true if any admin has review_assignment_enabled = true
-func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context) (bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	query := `
-		SELECT EXISTS(
-			SELECT 1 FROM users 
-			WHERE role IN ('admin', 'super_admin') AND review_assignment_enabled = TRUE
-		)
-	`
-
-	var enabled bool
-	err := s.db.QueryRowContext(ctx, query).Scan(&enabled)
-	if err != nil {
-		return false, err
-	}
-
-	return enabled, nil
-}
-
-// SetReviewAssignmentEnabled updates whether review assignment is enabled for all admins
-func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, enabled bool) error {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	query := `
-		UPDATE users 
-		SET review_assignment_enabled = $1, updated_at = NOW()
-		WHERE role IN ('admin', 'super_admin')
-	`
-
-	_, err := s.db.ExecContext(ctx, query, enabled)
-	return err
-}
+// (Review assignment handled on users; methods moved to users.go)

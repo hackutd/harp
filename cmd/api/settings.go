@@ -192,15 +192,23 @@ type ReviewAssignmentEnabledResponse struct {
 //	@Security		CookieAuth
 //	@Router			/superadmin/settings/review-assignment-enabled [get]
 func (app *application) getReviewAssignmentEnabled(w http.ResponseWriter, r *http.Request) {
-	enabled, err := app.store.Settings.GetReviewAssignmentEnabled(r.Context())
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("unauthorized"))
+		return
+	}
+
+	enabled, err := app.store.Users.GetReviewAssignmentEnabledForUser(r.Context(), user.ID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, err)
+			return
+		}
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ReviewAssignmentEnabledResponse{
-		Enabled: enabled,
-	}
+	response := ReviewAssignmentEnabledResponse{Enabled: enabled}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
@@ -229,7 +237,17 @@ func (app *application) setReviewAssignmentEnabled(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if err := app.store.Settings.SetReviewAssignmentEnabled(r.Context(), req.Enabled); err != nil {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("unauthorized"))
+		return
+	}
+
+	if err := app.store.Users.SetReviewAssignmentEnabledForUser(r.Context(), user.ID, req.Enabled); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, err)
+			return
+		}
 		app.internalServerError(w, r, err)
 		return
 	}

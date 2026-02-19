@@ -191,3 +191,53 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 
 	return nil
 }
+
+// GetReviewAssignmentEnabledForUser returns review_assignment_enabled for a specific admin user
+func (s *UsersStore) GetReviewAssignmentEnabledForUser(ctx context.Context, userID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT review_assignment_enabled
+		FROM users
+		WHERE id = $1 AND role IN ('admin', 'super_admin')
+	`
+
+	var enabled bool
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(&enabled)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrNotFound
+		}
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetReviewAssignmentEnabledForUser updates review_assignment_enabled for a single user (admin)
+func (s *UsersStore) SetReviewAssignmentEnabledForUser(ctx context.Context, userID string, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET review_assignment_enabled = $1, updated_at = NOW()
+		WHERE id = $2 AND role IN ('admin', 'super_admin')
+	`
+
+	result, err := s.db.ExecContext(ctx, query, enabled, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

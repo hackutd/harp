@@ -22,6 +22,8 @@ type Storage struct {
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
+		GetReviewAssignmentEnabledForUser(ctx context.Context, userID string) (bool, error)
+		SetReviewAssignmentEnabledForUser(ctx context.Context, userID string, enabled bool) error
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
@@ -39,8 +41,6 @@ type Storage struct {
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
-		GetReviewAssignmentEnabled(ctx context.Context) (bool, error)
-		SetReviewAssignmentEnabled(ctx context.Context, enabled bool) error
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
