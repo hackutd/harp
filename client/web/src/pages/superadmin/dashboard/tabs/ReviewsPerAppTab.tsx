@@ -1,5 +1,5 @@
-import { Loader2, Minus, Plus,Shuffle } from "lucide-react"
-import { useState } from "react"
+import { Loader2, Minus, Plus, Shuffle } from "lucide-react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import {
@@ -13,9 +13,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent,CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { errorAlert,postRequest } from "@/shared/lib/api"
+import { Switch } from "@/components/ui/switch"
+import { errorAlert, getRequest, postRequest } from "@/shared/lib/api"
 
 interface ReviewsPerAppTabProps {
   reviewsPerApp: number
@@ -26,6 +27,21 @@ interface ReviewsPerAppTabProps {
 export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: ReviewsPerAppTabProps) {
   const [assigning, setAssigning] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [reviewAssignmentEnabled, setReviewAssignmentEnabled] = useState(true)
+  const [togglingAssignment, setTogglingAssignment] = useState(false)
+
+  useEffect(() => {
+    async function fetchReviewAssignmentEnabled() {
+      const res = await getRequest<{ enabled: boolean }>(
+        "/superadmin/settings/review-assignment-enabled",
+        "fetch review assignment enabled"
+      )
+      if (res.status === 200 && res.data !== undefined) {
+        setReviewAssignmentEnabled(res.data.enabled)
+      }
+    }
+    fetchReviewAssignmentEnabled()
+  }, [])
 
   async function handleBatchAssign() {
     setConfirmOpen(false)
@@ -41,6 +57,22 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
       errorAlert(res)
     }
     setAssigning(false)
+  }
+
+  async function handleToggleAssignmentEnabled(enabled: boolean) {
+    setTogglingAssignment(true)
+    const res = await postRequest<{ enabled: boolean }>(
+      "/superadmin/settings/review-assignment-enabled",
+      { enabled },
+      "review assignment toggle"
+    )
+    if (res.status === 200 && res.data !== undefined) {
+      setReviewAssignmentEnabled(res.data.enabled)
+      toast.success(`Review assignment ${res.data.enabled ? "enabled" : "disabled"}`)
+    } else {
+      errorAlert(res)
+    }
+    setTogglingAssignment(false)
   }
 
   if (loading) {
@@ -89,7 +121,30 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
 
       <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
         <CardHeader>
-          <CardTitle className="font-normal text-zinc-100">Batch Assign Reviews</CardTitle>
+          <CardTitle className="font-normal text-zinc-100">Enable Review Assignment</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Allow super admins to automatically assign submitted applications to admin reviewers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-300">
+              {reviewAssignmentEnabled ? "Enabled" : "Disabled"}
+            </span>
+            <Switch
+              checked={reviewAssignmentEnabled}
+              onCheckedChange={handleToggleAssignmentEnabled}
+              disabled={togglingAssignment}
+              className="data-[state=checked]:bg-zinc-100"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator className="bg-zinc-800" />
+      <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
+        <CardHeader>
+          <CardTitle className="font-normal text-zinc-100">Auto Assign Reviews</CardTitle>
           <CardDescription className="text-zinc-400">
             Auto-assigns admins to submitted applications using workload balancing. Safe to run multiple times.
           </CardDescription>
