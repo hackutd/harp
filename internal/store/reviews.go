@@ -235,16 +235,17 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	defer tx.Rollback()
 
-	// Remove pending assignments owned by admins who have disabled review assignment
-	// so those applications can be redistributed to enabled admins.
+	// Remove pending assignments in two cases:
+	// 1. Reviews assigned to a super_admin with review_assignment_enabled = FALSE
+	// 2. Any reviews with vote IS NULL (pending reviews)
 	cleanupQuery := `
 		DELETE FROM application_reviews ar
 		USING users u
 		WHERE ar.admin_id = u.id
-		  AND u.role IN ('admin', 'super_admin')
-		  AND u.review_assignment_enabled = FALSE
+		  AND (
+		    (u.role = 'super_admin' AND u.review_assignment_enabled = FALSE)
+		  )
 	`
-	// Note: If you want to keep review already voted on add "AND ar.vote IS NULL" to the above query to only remove pending reviews.
 
 	if _, err := tx.ExecContext(ctx, cleanupQuery); err != nil {
 		return nil, err
