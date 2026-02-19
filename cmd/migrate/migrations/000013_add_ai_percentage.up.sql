@@ -1,0 +1,2 @@
+ALTER TABLE applications
+ADD COLUMN ai_percentage SMALLINT DEFAULT NULL;

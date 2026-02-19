@@ -152,7 +152,7 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at
+			submitted_at, ai_percentage
 		) VALUES (
 			$1,  $2,
 			$3,  $4,  $5,  $6,
@@ -163,7 +163,7 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 			$18, $19, $20,
 			$21, $22,
 			$23, $24, $25, $26,
-			$27
+			$27, NULL
 		) RETURNING id
 	`
 

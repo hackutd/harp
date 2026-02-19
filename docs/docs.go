@@ -1475,6 +1475,9 @@ const docTemplate = `{
                     "maximum": 150,
                     "minimum": 1
                 },
+                "ai_percentage": {
+                    "type": "integer"
+                },
                 "country_of_residence": {
                     "type": "string",
                     "minLength": 1
@@ -1896,6 +1899,9 @@ const docTemplate = `{
                     "maximum": 150,
                     "minimum": 1
                 },
+                "ai_percentage": {
+                    "type": "integer"
+                },
                 "country_of_residence": {
                     "type": "string",
                     "minLength": 1
@@ -2014,6 +2020,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "age": {
+                    "type": "integer"
+                },
+                "ai_percentage": {
                     "type": "integer"
                 },
                 "country_of_residence": {

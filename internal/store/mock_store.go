@@ -194,6 +194,11 @@ func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, ad
 	return args.Get(0).(*ApplicationReview), args.Error(1)
 }
 
+func (m *MockApplicationReviewsStore) SetAIPercentage(ctx context.Context, applicationID string, adminID string, percentage int16) error {
+	args := m.Called(applicationID, adminID, percentage)
+	return args.Error(0)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
