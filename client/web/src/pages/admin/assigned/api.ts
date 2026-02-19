@@ -39,3 +39,22 @@ export async function fetchReviewNotes(
     "review notes"
   );
 }
+
+export async function setAIPercentage(
+  applicationId: string,
+  payload: { ai_percentage: number }
+): Promise<{ success: boolean; error?: string }> {
+  const res = await putRequest(`/admin/applications/${applicationId}/aiPercent`, payload);
+
+  if (res.status === 200) {
+    return { success: true };
+  } else {
+    if (res.data === "not found") {
+      return {success: false, error: "You do not have permission to change this review's percentage, only the assigned admin can"}
+    }
+    else{
+      return { success: false, error: res.error || 'Failed to set AI Percentage' };
+    }
+  }
+
+}
