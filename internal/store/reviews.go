@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"time"
 )
@@ -236,140 +235,14 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	defer tx.Rollback()
 
-	// Ensure all super_admins exist in the review assignment setting.
-	// This acts as a backfill for any super_admins that were created before this setting existed
-	// or were added to the database manually.
-	var entries []ReviewAssignmentEntry
-
-	selectSettingQuery := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
-	var value []byte
-	err = tx.QueryRowContext(ctx, selectSettingQuery, SettingsKeyReviewAssignmentToggle).Scan(&value)
-
-	isNewSetting := false
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-		isNewSetting = true
-		entries = []ReviewAssignmentEntry{}
-	} else {
-		if jerr := json.Unmarshal(value, &entries); jerr != nil {
-			var ids []string
-			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-				entries = []ReviewAssignmentEntry{}
-				for _, id := range ids {
-					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-				}
-			} else {
-				entries = []ReviewAssignmentEntry{}
-			}
-		}
-	}
-
-	// Only run the full backfill query if entries might be out of sync
-	needsBackfill := isNewSetting
-	if !isNewSetting {
-		var adminCount int
-		countQuery := `SELECT COUNT(*) FROM users WHERE role = 'super_admin'`
-		if err := tx.QueryRowContext(ctx, countQuery).Scan(&adminCount); err != nil {
-			return nil, err
-		}
-		needsBackfill = adminCount != len(entries)
-	}
-
-	if needsBackfill {
-		backfillAdminsQuery := `
-			SELECT u.id
-			FROM users u
-			WHERE u.role = 'super_admin'
-		`
-		adminRows, err := tx.QueryContext(ctx, backfillAdminsQuery)
-		if err != nil {
-			return nil, err
-		}
-
-		var allAdminIDs []string
-		for adminRows.Next() {
-			var id string
-			if err := adminRows.Scan(&id); err != nil {
-				adminRows.Close()
-				return nil, err
-			}
-			allAdminIDs = append(allAdminIDs, id)
-		}
-		adminRows.Close()
-		if err := adminRows.Err(); err != nil {
-			return nil, err
-		}
-
-		existingAdminMap := make(map[string]bool)
-		for _, entry := range entries {
-			existingAdminMap[entry.ID] = true
-		}
-
-		changesMade := false
-		for _, adminID := range allAdminIDs {
-			if _, exists := existingAdminMap[adminID]; !exists {
-				entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: true})
-				changesMade = true
-			}
-		}
-
-		if changesMade || isNewSetting {
-			jsonValue, err := json.Marshal(entries)
-			if err != nil {
-				return nil, err
-			}
-
-			upsertQuery := `
-				INSERT INTO settings (key, value)
-				VALUES ($1, $2)
-				ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-			`
-			if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Remove pending assignments owned by admins who are not listed in the
-	// review assignment setting so those applications can be redistributed
-	// to enabled admins. The setting is stored in `settings` with key
-	// 'review_assignment_toggle' as a JSONB array of objects {"id","enabled"}.
-	cleanupQuery := `
-		DELETE FROM application_reviews ar
-		WHERE ar.vote IS NULL
-		AND EXISTS (
-			SELECT 1
-			FROM settings s
-			CROSS JOIN jsonb_array_elements(s.value) AS elem
-			WHERE s.key = 'review_assignment_toggle'
-			AND elem->>'id' = ar.admin_id::text
-			AND (elem->'enabled')::boolean = false
-		);
-		`
-
-	if _, err := tx.ExecContext(ctx, cleanupQuery); err != nil {
-		return nil, err
-	}
-
 	// Get admins sorted by pending workload (fewest pending first)
 	adminsQuery := `
 		SELECT u.id
 		FROM users u
-		LEFT JOIN application_reviews ar 
-			ON u.id = ar.admin_id AND ar.vote IS NULL
-		LEFT JOIN settings s 
-			ON s.key = 'review_assignment_toggle'
+		LEFT JOIN application_reviews ar ON u.id = ar.admin_id AND ar.vote IS NULL
 		WHERE u.role IN ('admin', 'super_admin')
-		AND NOT EXISTS (
-			SELECT 1
-			FROM jsonb_array_elements(s.value) AS elem
-			WHERE elem->>'id' = u.id::text
-				AND (elem->'enabled')::boolean = false
-		)
 		GROUP BY u.id, u.created_at
-		ORDER BY COUNT(ar.id) ASC, u.created_at ASC;
+		ORDER BY COUNT(ar.id) ASC, u.created_at ASC
 	`
 
 	adminRows, err := tx.QueryContext(ctx, adminsQuery)
@@ -481,24 +354,23 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}, nil
 }
 
-// SetAIPercent sets the AI-generated percent on an application, only if the admin is assigned to it and it hasn't been set yet.
-func (s *ApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
+// SetAIPercentage sets the AI-generated percentage on an application, only if the admin is assigned to it and it hasn't been set yet.
+func (s *ApplicationReviewsStore) SetAIPercentage(ctx context.Context, applicationID string, adminID string, percentage int16) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		UPDATE applications
-		SET ai_percent = $3
+		SET ai_percentage = $3
 		WHERE id = $1
-		  AND ai_percent IS NULL
+		  AND ai_percentage IS NULL
 		  AND EXISTS (
 		      SELECT 1 FROM application_reviews
-		      WHERE application_id = $1
-					AND admin_id = $2
+		      WHERE application_id = $1 AND admin_id = $2
 		  )
 	`
 
-	result, err := s.db.ExecContext(ctx, query, applicationID, adminID, percent)
+	result, err := s.db.ExecContext(ctx, query, applicationID, adminID, percentage)
 	if err != nil {
 		return err
 	}

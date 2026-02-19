@@ -45,38 +45,6 @@ func (m *MockUsersStore) UpdateProfilePicture(ctx context.Context, supertokensUs
 	return args.Error(0)
 }
 
-func (m *MockUsersStore) Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error) {
-	args := m.Called(query, limit, offset)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*UserSearchResult), args.Error(1)
-}
-
-func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error) {
-	args := m.Called(userID, role)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*User), args.Error(1)
-}
-
-func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
-	args := m.Called(role)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]User), args.Error(1)
-}
-
-func (m *MockUsersStore) ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error) {
-	args := m.Called(filters, cursor, direction, limit)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*UserListResult), args.Error(1)
-}
-
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
@@ -137,12 +105,12 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 	return args.Get(0).(*Application), args.Error(1)
 }
 
-func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
+func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error) {
 	args := m.Called(status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]UserEmailInfo), args.Error(1)
+	return args.Get(0).([]string), args.Error(1)
 }
 
 // mock implementation of the Settings interface
@@ -171,68 +139,6 @@ func (m *MockSettingsStore) GetReviewsPerApplication(ctx context.Context) (int, 
 func (m *MockSettingsStore) SetReviewsPerApplication(ctx context.Context, value int) error {
 	args := m.Called(value)
 	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]ReviewAssignmentEntry), args.Error(1)
-}
-
-func (m *MockSettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error) {
-	args := m.Called(superAdminID)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error {
-	args := m.Called(superAdminID, enabled)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetAdminScheduleEditEnabled(ctx context.Context) (bool, error) {
-	args := m.Called()
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error {
-	args := m.Called(enabled)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return HackathonDateRange{}, args.Error(1)
-	}
-	return args.Get(0).(HackathonDateRange), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error {
-	args := m.Called(dateRange)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetScanTypes(ctx context.Context) ([]ScanType, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]ScanType), args.Error(1)
-}
-
-func (m *MockSettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error {
-	args := m.Called(scanTypes)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(map[string]int), args.Error(1)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
@@ -288,67 +194,8 @@ func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, ad
 	return args.Get(0).(*ApplicationReview), args.Error(1)
 }
 
-func (m *MockApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
-	args := m.Called(applicationID, adminID, percent)
-	return args.Error(0)
-}
-
-// MockScansStore is a mock implementation of the Scans interface
-type MockScansStore struct {
-	mock.Mock
-}
-
-func (m *MockScansStore) Create(ctx context.Context, scan *Scan) error {
-	args := m.Called(scan)
-	return args.Error(0)
-}
-
-func (m *MockScansStore) GetByUserID(ctx context.Context, userID string) ([]Scan, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]Scan), args.Error(1)
-}
-
-func (m *MockScansStore) GetStats(ctx context.Context) ([]ScanStat, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]ScanStat), args.Error(1)
-}
-
-func (m *MockScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error) {
-	args := m.Called(userID, checkInTypes)
-	return args.Bool(0), args.Error(1)
-}
-
-// MockScheduleStore is a mock implementation of the Schedule interface
-type MockScheduleStore struct {
-	mock.Mock
-}
-
-func (m *MockScheduleStore) List(ctx context.Context) ([]ScheduleItem, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]ScheduleItem), args.Error(1)
-}
-
-func (m *MockScheduleStore) Create(ctx context.Context, item *ScheduleItem) error {
-	args := m.Called(item)
-	return args.Error(0)
-}
-
-func (m *MockScheduleStore) Update(ctx context.Context, item *ScheduleItem) error {
-	args := m.Called(item)
-	return args.Error(0)
-}
-
-func (m *MockScheduleStore) Delete(ctx context.Context, id string) error {
-	args := m.Called(id)
+func (m *MockApplicationReviewsStore) SetAIPercentage(ctx context.Context, applicationID string, adminID string, percentage int16) error {
+	args := m.Called(applicationID, adminID, percentage)
 	return args.Error(0)
 }
 
@@ -359,7 +206,5 @@ func NewMockStore() Storage {
 		Application:        &MockApplicationStore{},
 		Settings:           &MockSettingsStore{},
 		ApplicationReviews: &MockApplicationReviewsStore{},
-		Scans:              &MockScansStore{},
-		Schedule:           &MockScheduleStore{},
 	}
 }

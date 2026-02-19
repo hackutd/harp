@@ -1,15 +1,14 @@
-import { ExternalLink, Loader2 } from "lucide-react";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { useState } from 'react';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { errorAlert } from "@/shared/lib/api";
-import type { Application } from "@/types";
+import { Check, Pencil, X } from 'lucide-react';
 
-import { fetchApplicationResumeURL } from "../../all-applicants/api";
-import type { Review } from "../types";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { Application } from '@/types';
+
+import type { Review } from '../types';
 
 interface ApplicationDetailsPanelProps {
   application: Application;
@@ -22,32 +21,24 @@ export function ApplicationDetailsPanel({
   selectedReview,
   isExpanded,
 }: ApplicationDetailsPanelProps) {
-  const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
-  const [isOpeningResume, setIsOpeningResume] = useState(false);
+  const gridCols = isExpanded ? 'grid-cols-4' : 'grid-cols-2';
 
-  const handleViewResume = useCallback(async () => {
-    if (!application.resume_path || isOpeningResume) {
-      return;
-    }
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState('');
 
-    const resumeTab = window.open("", "_blank");
-    if (!resumeTab) {
-      toast.error("Please allow popups to view resumes.");
-      return;
-    }
+  function startEditing() {
+    setInputValue(application.ai_percentage?.toString() ?? '');
+    setEditing(true);
+  }
 
-    setIsOpeningResume(true);
-    const res = await fetchApplicationResumeURL(application.id);
+  function cancelEditing() {
+    setEditing(false);
+  }
 
-    if (res.status === 200 && res.data?.download_url) {
-      resumeTab.location.href = res.data.download_url;
-    } else {
-      resumeTab.close();
-      errorAlert(res, "Failed to open resume");
-    }
-
-    setIsOpeningResume(false);
-  }, [application.id, application.resume_path, isOpeningResume]);
+  function saveEditing() {
+    // TODO: integrate with API
+    setEditing(false);
+  }
 
   return (
     <div className="space-y-6 pb-2">
@@ -57,19 +48,19 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Phone</Label>
-            <p>{application.phone_e164 || "N/A"}</p>
+            <p>{application.phone_e164 || 'N/A'}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Age</Label>
-            <p>{application.age ?? "N/A"}</p>
+            <p>{application.age ?? 'N/A'}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Country</Label>
-            <p>{application.country_of_residence || "N/A"}</p>
+            <p>{application.country_of_residence || 'N/A'}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Gender</Label>
-            <p>{application.gender || "N/A"}</p>
+            <p>{application.gender || 'N/A'}</p>
           </div>
         </div>
       </div>
@@ -80,11 +71,11 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Race</Label>
-            <p>{application.race || "N/A"}</p>
+            <p>{application.race || 'N/A'}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Ethnicity</Label>
-            <p>{application.ethnicity || "N/A"}</p>
+            <p>{application.ethnicity || 'N/A'}</p>
           </div>
         </div>
       </div>
@@ -93,19 +84,17 @@ export function ApplicationDetailsPanel({
       <div>
         <h4 className="text-sm font-semibold mb-2">Education</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div className={isExpanded ? "" : "col-span-2"}>
+          <div className={isExpanded ? '' : 'col-span-2'}>
             <Label className="text-muted-foreground text-xs">University</Label>
-            <p>{application.university || "N/A"}</p>
+            <p>{application.university || 'N/A'}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Major</Label>
-            <p>{application.major || "N/A"}</p>
+            <p>{application.major || 'N/A'}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">
-              Level of Study
-            </Label>
-            <p>{application.level_of_study || "N/A"}</p>
+            <Label className="text-muted-foreground text-xs">Level of Study</Label>
+            <p>{application.level_of_study || 'N/A'}</p>
           </div>
         </div>
       </div>
@@ -115,22 +104,16 @@ export function ApplicationDetailsPanel({
         <h4 className="text-sm font-semibold mb-2">Experience</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
-            <Label className="text-muted-foreground text-xs">
-              Hackathons Attended
-            </Label>
-            <p>{application.hackathons_attended_count ?? "N/A"}</p>
+            <Label className="text-muted-foreground text-xs">Hackathons Attended</Label>
+            <p>{application.hackathons_attended_count ?? 'N/A'}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">
-              Software Experience
-            </Label>
-            <p>{application.software_experience_level || "N/A"}</p>
+            <Label className="text-muted-foreground text-xs">Software Experience</Label>
+            <p>{application.software_experience_level || 'N/A'}</p>
           </div>
-          <div className={isExpanded ? "" : "col-span-2"}>
-            <Label className="text-muted-foreground text-xs">
-              Heard About Us From
-            </Label>
-            <p>{application.heard_about || "N/A"}</p>
+          <div className={isExpanded ? '' : 'col-span-2'}>
+            <Label className="text-muted-foreground text-xs">Heard About Us From</Label>
+            <p>{application.heard_about || 'N/A'}</p>
           </div>
         </div>
       </div>
@@ -145,10 +128,10 @@ export function ApplicationDetailsPanel({
               .map((q) => (
                 <div key={q.id}>
                   <Label className="text-muted-foreground text-xs">
-                    {q.question} {q.required && "*"}
+                    {q.question} {q.required && '*'}
                   </Label>
                   <p className="whitespace-pre-wrap">
-                    {application.short_answer_responses?.[q.id] || "N/A"}
+                    {application.short_answer_responses?.[q.id] || 'N/A'}
                   </p>
                 </div>
               ))}
@@ -156,7 +139,43 @@ export function ApplicationDetailsPanel({
         </div>
       )}
 
-      {/* AI percent */}
+      {/* AI Percentage */}
+      <div>
+        <h4 className="text-sm font-semibold mb-2">AI Analysis</h4>
+        <div className="text-sm">
+          <Label className="text-muted-foreground text-xs">AI Percentage</Label>
+          {editing ? (
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="h-7 w-24 text-sm"
+                autoFocus
+              />
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEditing}>
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditing}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              {application.ai_percentage != null ? (
+                <p>{application.ai_percentage}%</p>
+              ) : (
+                <p className="text-muted-foreground italic">Not set</p>
+              )}
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={startEditing}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Event Preferences */}
       <div>
@@ -164,20 +183,14 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Shirt Size</Label>
-            <p>{application.shirt_size || "N/A"}</p>
+            <p>{application.shirt_size || 'N/A'}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">
-              Dietary Restrictions
-            </Label>
+            <Label className="text-muted-foreground text-xs">Dietary Restrictions</Label>
             <div className="flex flex-wrap gap-1">
               {application.dietary_restrictions?.length > 0 ? (
                 application.dietary_restrictions.map((restriction) => (
-                  <Badge
-                    key={restriction}
-                    variant="secondary"
-                    className="text-xs"
-                  >
+                  <Badge key={restriction} variant="secondary" className="text-xs">
                     {restriction}
                   </Badge>
                 ))
@@ -187,10 +200,8 @@ export function ApplicationDetailsPanel({
             </div>
           </div>
           {application.accommodations && (
-            <div className={isExpanded ? "" : "col-span-2"}>
-              <Label className="text-muted-foreground text-xs">
-                Accommodations
-              </Label>
+            <div className={isExpanded ? '' : 'col-span-2'}>
+              <Label className="text-muted-foreground text-xs">Accommodations</Label>
               <p>{application.accommodations}</p>
             </div>
           )}
@@ -198,15 +209,10 @@ export function ApplicationDetailsPanel({
       </div>
 
       {/* Links */}
-      {(application.github ||
-        application.linkedin ||
-        application.website ||
-        application.resume_path) && (
+      {(application.github || application.linkedin || application.website) && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Links</h4>
-          <div
-            className={`grid ${isExpanded ? "grid-cols-3" : "grid-cols-1"} gap-2 text-sm`}
-          >
+          <div className={`grid ${isExpanded ? 'grid-cols-3' : 'grid-cols-1'} gap-2 text-sm`}>
             {application.github && (
               <div>
                 <Label className="text-muted-foreground text-xs">GitHub</Label>
@@ -215,7 +221,7 @@ export function ApplicationDetailsPanel({
                     href={application.github}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all cursor-pointer"
+                    className="text-blue-600 hover:underline break-all"
                   >
                     {application.github}
                   </a>
@@ -224,15 +230,13 @@ export function ApplicationDetailsPanel({
             )}
             {application.linkedin && (
               <div>
-                <Label className="text-muted-foreground text-xs">
-                  LinkedIn
-                </Label>
+                <Label className="text-muted-foreground text-xs">LinkedIn</Label>
                 <p>
                   <a
                     href={application.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all cursor-pointer"
+                    className="text-blue-600 hover:underline break-all"
                   >
                     {application.linkedin}
                   </a>
@@ -247,37 +251,11 @@ export function ApplicationDetailsPanel({
                     href={application.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all cursor-pointer"
+                    className="text-blue-600 hover:underline break-all"
                   >
                     {application.website}
                   </a>
                 </p>
-              </div>
-            )}
-            {application.resume_path && (
-              <div>
-                <Label className="text-muted-foreground text-xs">Resume</Label>
-                <div className="pt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleViewResume}
-                    disabled={isOpeningResume}
-                  >
-                    {isOpeningResume ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Opening...
-                      </>
-                    ) : (
-                      <>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Resume
-                      </>
-                    )}
-                  </Button>
-                </div>
               </div>
             )}
           </div>
@@ -293,7 +271,7 @@ export function ApplicationDetailsPanel({
             <p>
               {application.submitted_at
                 ? new Date(application.submitted_at).toLocaleString()
-                : "N/A"}
+                : 'N/A'}
             </p>
           </div>
           <div>
@@ -301,9 +279,7 @@ export function ApplicationDetailsPanel({
             <p>{new Date(application.created_at).toLocaleString()}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">
-              Last Updated
-            </Label>
+            <Label className="text-muted-foreground text-xs">Last Updated</Label>
             <p>{new Date(application.updated_at).toLocaleString()}</p>
           </div>
         </div>
@@ -313,10 +289,8 @@ export function ApplicationDetailsPanel({
       <div>
         <h4 className="text-sm font-semibold mb-2">Review Details</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div className={isExpanded ? "" : "col-span-2"}>
-            <Label className="text-muted-foreground text-xs">
-              Application ID
-            </Label>
+          <div className={isExpanded ? '' : 'col-span-2'}>
+            <Label className="text-muted-foreground text-xs">Application ID</Label>
             <p className="font-mono text-xs">{selectedReview.application_id}</p>
           </div>
           <div>
@@ -325,9 +299,7 @@ export function ApplicationDetailsPanel({
           </div>
           {selectedReview.reviewed_at && (
             <div>
-              <Label className="text-muted-foreground text-xs">
-                Reviewed At
-              </Label>
+              <Label className="text-muted-foreground text-xs">Reviewed At</Label>
               <p>{new Date(selectedReview.reviewed_at).toLocaleString()}</p>
             </div>
           )}

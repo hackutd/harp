@@ -1,4 +1,4 @@
-export type UserRole = "hacker" | "admin" | "super_admin";
+export type UserRole = 'hacker' | 'admin' | 'super_admin';
 
 export interface ShortAnswerQuestion {
   id: string;
@@ -8,13 +8,13 @@ export interface ShortAnswerQuestion {
 }
 
 export type ApplicationStatus =
-  | "draft"
-  | "submitted"
-  | "accepted"
-  | "rejected"
-  | "waitlisted";
+  | 'draft'
+  | 'submitted'
+  | 'accepted'
+  | 'rejected'
+  | 'waitlisted';
 
-export type ReviewVote = "accept" | "waitlist" | "reject";
+export type ReviewVote = 'accept' | 'waitlist' | 'reject';
 
 export interface Review {
   id: string;
@@ -86,7 +86,6 @@ export interface Application {
   github: string | null;
   linkedin: string | null;
   website: string | null;
-  resume_path: string | null;
   ack_application: boolean;
   ack_mlh_coc: boolean;
   ack_mlh_privacy: boolean;
@@ -94,7 +93,7 @@ export interface Application {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
-  ai_percent: number | null;
+  ai_percentage: number | null;
 }
 
 export interface ApiResponse<T = unknown> {

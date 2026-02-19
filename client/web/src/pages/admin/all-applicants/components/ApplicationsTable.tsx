@@ -1,8 +1,7 @@
-import { Maximize2 } from "lucide-react";
-import { memo } from "react";
+import { Maximize2 } from 'lucide-react';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -10,10 +9,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 
-import type { ApplicationListItem } from "../types";
-import { formatName, getStatusColor } from "../utils";
+import type { ApplicationListItem } from '../types';
+import { formatName,getStatusColor } from '../utils';
 
 interface ApplicationsTableProps {
   applications: ApplicationListItem[];
@@ -22,7 +21,7 @@ interface ApplicationsTableProps {
   onSelectApplication: (id: string) => void;
 }
 
-export const ApplicationsTable = memo(function ApplicationsTable({
+export function ApplicationsTable({
   applications,
   loading,
   selectedId,
@@ -31,7 +30,9 @@ export const ApplicationsTable = memo(function ApplicationsTable({
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
       {loading && (
-        <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
+        <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
       )}
       <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
@@ -50,7 +51,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
             <TableHead>Submitted</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
-            <TableHead>AI Percent</TableHead>
+            <TableHead>AI Percentage</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -64,7 +65,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
             applications.map((app) => (
               <TableRow
                 key={app.id}
-                className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
+                className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? 'bg-muted/50' : ''}`}
               >
                 <TableCell>
                   <Badge className={getStatusColor(app.status)}>
@@ -85,18 +86,18 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                   </div>
                 </TableCell>
                 <TableCell>{app.email}</TableCell>
-                <TableCell>{app.phone_e164 ?? "-"}</TableCell>
-                <TableCell>{app.age ?? "-"}</TableCell>
-                <TableCell>{app.country_of_residence ?? "-"}</TableCell>
-                <TableCell>{app.gender ?? "-"}</TableCell>
-                <TableCell>{app.university ?? "-"}</TableCell>
-                <TableCell>{app.major ?? "-"}</TableCell>
-                <TableCell>{app.level_of_study ?? "-"}</TableCell>
-                <TableCell>{app.hackathons_attended_count ?? "-"}</TableCell>
+                <TableCell>{app.phone_e164 ?? '-'}</TableCell>
+                <TableCell>{app.age ?? '-'}</TableCell>
+                <TableCell>{app.country_of_residence ?? '-'}</TableCell>
+                <TableCell>{app.gender ?? '-'}</TableCell>
+                <TableCell>{app.university ?? '-'}</TableCell>
+                <TableCell>{app.major ?? '-'}</TableCell>
+                <TableCell>{app.level_of_study ?? '-'}</TableCell>
+                <TableCell>{app.hackathons_attended_count ?? '-'}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {app.submitted_at
                     ? new Date(app.submitted_at).toLocaleDateString()
-                    : "-"}
+                    : '-'}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   {new Date(app.created_at).toLocaleDateString()}
@@ -104,9 +105,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                 <TableCell className="whitespace-nowrap">
                   {new Date(app.updated_at).toLocaleDateString()}
                 </TableCell>
-                <TableCell>
-                  {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
-                </TableCell>
+                <TableCell>{app.ai_percentage ?? '-'}</TableCell>
               </TableRow>
             ))
           )}
@@ -114,4 +113,4 @@ export const ApplicationsTable = memo(function ApplicationsTable({
       </Table>
     </div>
   );
-});
+}

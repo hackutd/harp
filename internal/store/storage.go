@@ -22,10 +22,6 @@ type Storage struct {
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
-		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
-		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
-		GetByRole(ctx context.Context, role UserRole) ([]User, error)
-		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
@@ -36,29 +32,13 @@ type Storage struct {
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
-		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error)
 	}
 	Settings interface {
 		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
-		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
-		GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error)
-		SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error
-		GetAdminScheduleEditEnabled(ctx context.Context) (bool, error)
-		SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error
-		GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error)
-		SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error
-		GetScanTypes(ctx context.Context) ([]ScanType, error)
-		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
-		GetScanStats(ctx context.Context) (map[string]int, error)
-	}
-	Scans interface {
-		Create(ctx context.Context, scan *Scan) error
-		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
-		GetStats(ctx context.Context) ([]ScanStat, error)
-		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
@@ -67,13 +47,7 @@ type Storage struct {
 		GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error)
 		BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error)
 		AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error)
-		SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error
-	}
-	Schedule interface {
-		List(ctx context.Context) ([]ScheduleItem, error)
-		Create(ctx context.Context, item *ScheduleItem) error
-		Update(ctx context.Context, item *ScheduleItem) error
-		Delete(ctx context.Context, id string) error
+		SetAIPercentage(ctx context.Context, applicationID string, adminID string, percentage int16) error
 	}
 }
 
@@ -83,7 +57,5 @@ func NewStorage(db *sql.DB) Storage {
 		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
-		Scans:              &ScansStore{db: db},
-		Schedule:           &ScheduleStore{db: db},
 	}
 }

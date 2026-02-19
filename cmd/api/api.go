@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"expvar"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,7 +14,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-	"github.com/hackutd/portal/internal/gcs"
 	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/ratelimiter"
 	"github.com/hackutd/portal/internal/store"
@@ -27,23 +27,19 @@ type application struct {
 	store       store.Storage
 	logger      *zap.SugaredLogger
 	mailer      mailer.Client
-	gcsClient   gcs.Client
 	rateLimiter ratelimiter.Limiter
 }
 
 type config struct {
-	addr              string
-	db                dbConfig
-	env               string
-	appURL            string
-	frontendURL       string
-	hackathonTimeZone string
-	mail              mailConfig
-	gcs               gcsConfig
-	auth              authConfig
-	rateLimiter       ratelimiter.Config
-	supertokens       supertokensConfig
-	publicCORSOrigin  string
+	addr        string
+	db          dbConfig
+	env         string
+	appURL      string
+	frontendURL string
+	mail        mailConfig
+	auth        authConfig
+	rateLimiter ratelimiter.Config
+	supertokens supertokensConfig
 }
 
 type supertokensConfig struct {
@@ -55,8 +51,7 @@ type supertokensConfig struct {
 }
 
 type authConfig struct {
-	basic        basicConfig
-	publicAPIKey string
+	basic basicConfig
 }
 
 type basicConfig struct {
@@ -73,37 +68,12 @@ type sendGridConfig struct {
 	apiKey string
 }
 
-type gcsConfig struct {
-	bucketName string
-}
-
 type dbConfig struct {
 	addr         string
 	maxOpenConns int
 	maxIdleConns int
 	maxIdleTime  string // TODO: LOOK INTO NOT USING A STRING FOR TIME
 }
-
-const swaggerTagsSorter = `(a, b) => {
-	const order = [
-		"health",
-		"auth",
-		"public",
-		"hackers",
-		"admin/applications",
-		"admin/reviews",
-		"admin/scans",
-		"admin/schedule",
-		"superadmin/applications",
-		"superadmin/settings",
-		"superadmin/users"
-	];
-	const index = (tag) => {
-		const i = order.indexOf(tag);
-		return i === -1 ? 999 : i;
-	};
-	return index(a) - index(b) || a.localeCompare(b);
-}`
 
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
@@ -113,25 +83,17 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// CORS
-	allowedOrigins := []string{}
+	// CORS only needed in development when frontend runs on a different origin
 	if app.config.frontendURL != app.config.appURL {
-		allowedOrigins = append(allowedOrigins, app.config.frontendURL)
-	}
-	if app.config.publicCORSOrigin != "" {
-		allowedOrigins = append(allowedOrigins, app.config.publicCORSOrigin)
-	}
-	if len(allowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
-			AllowedOrigins:   allowedOrigins,
+			AllowedOrigins:   []string{app.config.frontendURL},
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   append([]string{"Content-Type", "X-API-Key"}, supertokens.GetAllCORSHeaders()...),
+			AllowedHeaders:   append([]string{"Content-Type"}, supertokens.GetAllCORSHeaders()...),
 			AllowCredentials: true,
 		}))
 	}
 
-	// SuperTokens middleware handles /auth/ routes automatically.
-	// Applied at root level so it intercepts /auth/* requests.
+	// SuperTokens middleware handles /auth/ routes automatically
 	r.Use(supertokens.Middleware)
 
 	// Ratelimiter
@@ -140,12 +102,6 @@ func (app *application) mount() http.Handler {
 	}
 
 	r.Route("/v1", func(r chi.Router) {
-		// Public API (key auth)
-		r.Route("/public", func(r chi.Router) {
-			r.Use(app.APIKeyMiddleware)
-			r.Get("/schedule", app.getPublicScheduleHandler)
-		})
-
 		// Auth endpoints not handled by SuperTokens
 		r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
 		r.With(app.AuthRequiredMiddleware).Get("/auth/me", app.getCurrentUserHandler)
@@ -154,12 +110,8 @@ func (app *application) mount() http.Handler {
 		r.With(app.BasicAuthMiddleware).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
 		// Swagger docs
-		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(
-			httpSwagger.URL("doc.json"),
-			httpSwagger.UIConfig(map[string]string{
-				"tagsSorter": swaggerTagsSorter,
-			}),
-		))
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
@@ -169,55 +121,31 @@ func (app *application) mount() http.Handler {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Patch("/me", app.updateApplicationHandler)
 				r.Post("/me/submit", app.submitApplicationHandler)
-				r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
-				r.Delete("/me/resume", app.deleteResumeHandler)
 			})
 
-			r.Group(func(r chi.Router) {
+			r.Group(func(r chi.Router) { // TODO clean up this routing
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
 
-					// Applications
-					r.Route("/applications", func(r chi.Router) {
-						r.Get("/", app.listApplicationsHandler)
-						r.Get("/stats", app.getApplicationStatsHandler)
-						r.Get("/{applicationID}", app.getApplication)
-						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
+					// All Applicants
+					r.Get("/applications", app.listApplicationsHandler)
+					r.Get("/applications/stats", app.getApplicationStatsHandler)
+					r.Get("/applications/{applicationID}", app.getApplication)
 
-						// Assigned Applications
-						r.Get("/{applicationID}/notes", app.getApplicationNotes)
-						r.Put("/{applicationID}/ai-percent", app.setAIPercent)
-					})
-
-					// Reviews
-					r.Route("/reviews", func(r chi.Router) {
-						r.Get("/pending", app.getPendingReviews)
-						r.Get("/next", app.getNextReview)
-						r.Put("/{reviewID}", app.submitVote)
-						r.Get("/completed", app.getCompletedReviews)
-					})
-
+					// Assigned Applications
+					r.Get("/applications/{applicationID}/notes", app.getApplicationNotes)
+					r.Get("/reviews/pending", app.getPendingReviews)
+					r.Get("/reviews/next", app.getNextReview)
+					r.Put("/reviews/{reviewID}", app.submitVote)
+					r.Get("/reviews/completed", app.getCompletedReviews)
+					r.Put("/applications/{applicationID}/aiPercent", app.setAIPercentage)
 					// Scans
-					r.Route("/scans", func(r chi.Router) {
-						r.Post("/", app.createScanHandler)
-						r.Get("/types", app.getScanTypesHandler)
-						r.Get("/user/{userID}", app.getUserScansHandler)
-						r.Get("/stats", app.getScanStatsHandler)
-					})
 
-					// Schedule
-					r.Route("/schedule", func(r chi.Router) {
-						r.Get("/", app.listScheduleHandler)
-						r.Get("/date-range", app.getAdminScheduleDateRange)
+					// Hacker Pack
 
-						r.Group(func(r chi.Router) {
-							r.Use(app.AdminScheduleEditPermissionMiddleware)
-							r.Post("/", app.createScheduleHandler)
-							r.Put("/{scheduleID}", app.updateScheduleHandler)
-							r.Delete("/{scheduleID}", app.deleteScheduleHandler)
-						})
-					})
+					// Groups
+
 				})
 			})
 
@@ -226,32 +154,16 @@ func (app *application) mount() http.Handler {
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
 
-					// Configs
-					r.Route("/settings", func(r chi.Router) {
-						r.Get("/saquestions", app.getShortAnswerQuestions)
-						r.Put("/saquestions", app.updateShortAnswerQuestions)
-						r.Get("/reviews-per-app", app.getReviewsPerApp)
-						r.Post("/reviews-per-app", app.setReviewsPerApp)
-						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
-						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
-						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
-						r.Get("/hackathon-date-range", app.getHackathonDateRange)
-						r.Post("/hackathon-date-range", app.setHackathonDateRange)
-						r.Put("/scan-types", app.updateScanTypesHandler)
-					})
+					// Application Config
+					r.Get("/settings/saquestions", app.getShortAnswerQuestions)
+					r.Put("/settings/saquestions", app.updateShortAnswerQuestions)
 
-					r.Route("/applications", func(r chi.Router) {
-						r.Post("/assign", app.batchAssignReviews)
-						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
-						r.Patch("/{applicationID}/status", app.setApplicationStatus)
-					})
-
-					// User Management
-					r.Route("/users", func(r chi.Router) {
-						r.Get("/", app.searchUsersHandler)
-						r.Patch("/{userID}/role", app.updateUserRoleHandler)
-					})
-
+					// Reviews Config
+					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
+					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
+					r.Post("/applications/assign", app.batchAssignReviews)
+					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
+					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
 				})
 			})
 		})
