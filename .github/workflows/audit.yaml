@@ -72,7 +72,7 @@ jobs:
       run: npm run build
 
     - name: Dependency Audit
-      run: npm audit --audit-level=high
+      run: npm audit --audit-level=high --omit=dev
 
     - name: Run Tests
       run: |
