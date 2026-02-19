@@ -284,7 +284,7 @@ func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) 
 	applicationID := chi.URLParam(r, "applicationID")
 
 	if applicationID == "" {
-		app.badRequestResponse(w, r, errors.New("Application ID is required"))
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
 		return
 	}
 
@@ -313,9 +313,7 @@ func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response := AIPercentageResponse{
-		AIPercentage: req.AIPercentage,
-	}
+	response := AIPercentageResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
