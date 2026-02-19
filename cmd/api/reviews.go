@@ -29,7 +29,15 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
-// getPendingReviews returns all pending reviews assigned to the current admin
+type SetAIPercentagePayload struct {
+	AIPercentage int16 `json:"ai_percentage" validate:"required,min=0,max=100"`
+}
+
+type AIPercentageResponse struct {
+	AIPercentage int16 `json:"ai_percentage"`
+}
+
+// getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
 //
 //	@Summary		Get pending reviews (Admin)
 //	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
@@ -59,7 +67,7 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// getCompletedReviews returns all reviews the current admin has completed
+// getCompletedReviews returns reviews that the current admin has already voted on
 //
 //	@Summary		Get completed reviews (Admin)
 //	@Description	Returns all reviews the current admin has completed (voted on), including application details
@@ -89,7 +97,7 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// getApplicationNotes returns all reviewer notes for a specific application
+// getApplicationNotes returns all notes for a specific application (without votes)
 //
 //	@Summary		Get notes for an application (Admin)
 //	@Description	Returns all reviewer notes for a specific application without exposing votes
@@ -125,7 +133,7 @@ func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// batchAssignReviews assigns submitted applications to admins using workload balancing
+// batchAssignReviews assigns reviews to admins for all submitted applications needing reviews
 //
 //	@Summary		Batch assign reviews (SuperAdmin)
 //	@Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
@@ -155,7 +163,7 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// getNextReview assigns and returns the next application needing review
+// getNextReview assigns and returns the next unreviewed application for the current admin
 //
 //	@Summary		Get next review assignment (Admin)
 //	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
@@ -197,7 +205,7 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// submitVote records the admin's vote on an assigned application review
+// submitVote records an admin's vote on an assigned review
 //
 //	@Summary		Submit vote on a review (Admin)
 //	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
@@ -247,6 +255,49 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 
 	response := ReviewResponse{
 		Review: *review,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) {
+
+	applicationID := chi.URLParam(r, "applicationID")
+
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("Application ID is required"))
+		return
+	}
+
+	user := getUserFromContext(r.Context())
+
+	var req SetAIPercentagePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err := app.store.ApplicationReviews.SetAIPercentage(r.Context(), applicationID, user.ID, req.AIPercentage)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percentage already set"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	response := AIPercentageResponse{
+		AIPercentage: req.AIPercentage,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
