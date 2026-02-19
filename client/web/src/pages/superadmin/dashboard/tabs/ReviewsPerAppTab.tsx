@@ -68,7 +68,10 @@ export function ReviewsPerAppTab({ reviewsPerApp, setReviewsPerApp, loading }: R
     )
     if (res.status === 200 && res.data !== undefined) {
       setReviewAssignmentEnabled(res.data.enabled)
-      toast.success(`Review assignment ${res.data.enabled ? "enabled" : "disabled"}`)
+      toast.warning(
+        `Review assignment ${res.data.enabled ? "enabled. Please run Auto Assign Reviews to give yourself reviews." : "disabled. Please run Auto Assign Reviews to reroute any reviews stuck under you."}`,
+        { duration: 5000 }
+      )
     } else {
       errorAlert(res)
     }
