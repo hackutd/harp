@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 )
@@ -235,17 +236,133 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	defer tx.Rollback()
 
+	// First, ensure all admins/super_admins exist in the review assignment setting.
+	// This acts as a backfill for any admins that were created before this setting existed
+	// or were added to the database manually.
+	backfillAdminsQuery := `
+		SELECT u.id
+		FROM users u
+		WHERE u.role IN ('admin', 'super_admin')
+	`
+	adminRows, err := tx.QueryContext(ctx, backfillAdminsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	var allAdminIDs []string
+	for adminRows.Next() {
+		var id string
+		if err := adminRows.Scan(&id); err != nil {
+			adminRows.Close()
+			return nil, err
+		}
+		allAdminIDs = append(allAdminIDs, id)
+	}
+	adminRows.Close()
+	if err := adminRows.Err(); err != nil {
+		return nil, err
+	}
+
+	type reviewAssignmentEntry struct {
+		ID      string `json:"id"`
+		Enabled bool   `json:"enabled"`
+	}
+	var entries []reviewAssignmentEntry
+
+	selectSettingQuery := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
+	var value []byte
+	err = tx.QueryRowContext(ctx, selectSettingQuery, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+
+	isNewSetting := false
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		isNewSetting = true
+		entries = []reviewAssignmentEntry{}
+	} else {
+		if jerr := json.Unmarshal(value, &entries); jerr != nil {
+			var ids []string
+			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
+				entries = []reviewAssignmentEntry{}
+				for _, id := range ids {
+					entries = append(entries, reviewAssignmentEntry{ID: id, Enabled: true})
+				}
+			} else {
+				entries = []reviewAssignmentEntry{}
+			}
+		}
+	}
+
+	existingAdminMap := make(map[string]bool)
+	for _, entry := range entries {
+		existingAdminMap[entry.ID] = true
+	}
+
+	changesMade := false
+	for _, adminID := range allAdminIDs {
+		if _, exists := existingAdminMap[adminID]; !exists {
+			entries = append(entries, reviewAssignmentEntry{ID: adminID, Enabled: true})
+			changesMade = true
+		}
+	}
+
+	if changesMade || isNewSetting {
+		jsonValue, err := json.Marshal(entries)
+		if err != nil {
+			return nil, err
+		}
+
+		upsertQuery := `
+			INSERT INTO settings (key, value)
+			VALUES ($1, $2)
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+		`
+		if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+			return nil, err
+		}
+	}
+
+	// Remove pending assignments owned by admins who are not listed in the
+	// review assignment setting so those applications can be redistributed
+	// to enabled admins. The setting is stored in `settings` with key
+	// 'review_assignment_enabled' as a JSONB array of objects {"id","enabled"}.
+	cleanupQuery := `
+		DELETE FROM application_reviews ar
+		WHERE EXISTS (
+			SELECT 1
+			FROM settings s
+			CROSS JOIN jsonb_array_elements(s.value) AS elem
+			WHERE s.key = 'review_assignment_enabled'
+			AND elem->>'id' = ar.admin_id::text
+			AND (elem->'enabled')::boolean = false
+		);
+		`
+
+	if _, err := tx.ExecContext(ctx, cleanupQuery); err != nil {
+		return nil, err
+	}
+
 	// Get admins sorted by pending workload (fewest pending first)
 	adminsQuery := `
 		SELECT u.id
 		FROM users u
-		LEFT JOIN application_reviews ar ON u.id = ar.admin_id AND ar.vote IS NULL
+		LEFT JOIN application_reviews ar 
+			ON u.id = ar.admin_id AND ar.vote IS NULL
+		LEFT JOIN settings s 
+			ON s.key = 'review_assignment_enabled'
 		WHERE u.role IN ('admin', 'super_admin')
+		AND NOT EXISTS (
+			SELECT 1
+			FROM jsonb_array_elements(s.value) AS elem
+			WHERE elem->>'id' = u.id::text
+				AND (elem->'enabled')::boolean = false
+		)
 		GROUP BY u.id, u.created_at
-		ORDER BY COUNT(ar.id) ASC, u.created_at ASC
+		ORDER BY COUNT(ar.id) ASC, u.created_at ASC;
 	`
 
-	adminRows, err := tx.QueryContext(ctx, adminsQuery)
+	adminRows, err = tx.QueryContext(ctx, adminsQuery)
 	if err != nil {
 		return nil, err
 	}

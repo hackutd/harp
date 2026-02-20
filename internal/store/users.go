@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -125,6 +126,77 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 			return ErrConflict
 		}
 		return err
+	}
+
+	// If the newly-created user is an admin or super_admin, ensure an entry
+	// exists in the `review_assignment_enabled` settings JSONB array with
+	// enabled=false so they are present but not assigned by default.
+	if user.Role == RoleAdmin || user.Role == RoleSuperAdmin {
+		ctx2, cancel2 := context.WithTimeout(ctx, QueryTimeoutDuration)
+		defer cancel2()
+
+		querySelect := `
+			SELECT value
+			FROM settings
+			WHERE key = $1
+		`
+
+		var value []byte
+		err := s.db.QueryRowContext(ctx2, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+
+		type entry struct {
+			ID      string `json:"id"`
+			Enabled bool   `json:"enabled"`
+		}
+
+		var entries []entry
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			// no settings row yet; create with this admin disabled
+			entries = []entry{{ID: user.ID, Enabled: false}}
+		} else {
+			// Try to parse new format
+			if jerr := json.Unmarshal(value, &entries); jerr != nil {
+				// Fallback: try legacy array of ids
+				var ids []string
+				if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
+					for _, id := range ids {
+						entries = append(entries, entry{ID: id, Enabled: true})
+					}
+				} else {
+					entries = []entry{}
+				}
+			}
+
+			// Ensure entry exists
+			found := false
+			for _, e := range entries {
+				if e.ID == user.ID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				entries = append(entries, entry{ID: user.ID, Enabled: false})
+			}
+		}
+
+		jsonValue, err := json.Marshal(entries)
+		if err != nil {
+			return err
+		}
+
+		queryUpsert := `
+			INSERT INTO settings (key, value)
+			VALUES ($1, $2)
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+		`
+
+		if _, err := s.db.ExecContext(ctx2, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+			return err
+		}
 	}
 
 	return nil
