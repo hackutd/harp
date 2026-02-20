@@ -142,15 +142,37 @@ func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context, superAdm
 		return false, err
 	}
 
-	var ids []string
-	if err := json.Unmarshal(value, &ids); err != nil {
-		return false, err
+	// Treat empty/empty-object/empty-array as disabled
+	sv := string(value)
+	if sv == "" || sv == "null" || sv == "{}" || sv == "[]" {
+		return false, nil
 	}
 
-	for _, id := range ids {
-		if id == superAdminID {
-			return true, nil
+	// New format: array of objects {"id": "...", "enabled": true}
+	type entry struct {
+		ID      string `json:"id"`
+		Enabled bool   `json:"enabled"`
+	}
+
+	var entries []entry
+	if err := json.Unmarshal(value, &entries); err == nil {
+		for _, e := range entries {
+			if e.ID == superAdminID && e.Enabled {
+				return true, nil
+			}
 		}
+		return false, nil
+	}
+
+	// Fallback: legacy format was an array of IDs (strings)
+	var ids []string
+	if err := json.Unmarshal(value, &ids); err == nil {
+		for _, id := range ids {
+			if id == superAdminID {
+				return true, nil
+			}
+		}
+		return false, nil
 	}
 
 	return false, nil
@@ -172,34 +194,53 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 
 	var value []byte
 	err := s.db.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
-	var ids []string
+
+	type entry struct {
+		ID      string `json:"id"`
+		Enabled bool   `json:"enabled"`
+	}
+
+	var entries []entry
+
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		ids = []string{}
+		entries = []entry{}
 	} else {
-		if err := json.Unmarshal(value, &ids); err != nil {
-			return err
+		// Try new format first
+		if jerr := json.Unmarshal(value, &entries); jerr != nil {
+			// Fallback: legacy array of IDs
+			var ids []string
+			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
+				// convert legacy ids to entries with enabled=true
+				for _, id := range ids {
+					entries = append(entries, entry{ID: id, Enabled: true})
+				}
+			} else {
+				// If we can't parse either, start fresh
+				entries = []entry{}
+			}
 		}
 	}
 
 	found := false
-	for i, id := range ids {
-		if id == superAdminID {
+	for i, e := range entries {
+		if e.ID == superAdminID {
 			found = true
-			if !enabled {
-				// remove it
-				ids = append(ids[:i], ids[i+1:]...)
+			if enabled {
+				entries[i].Enabled = true
+			} else {
+				entries[i].Enabled = false
 			}
 			break
 		}
 	}
 	if enabled && !found {
-		ids = append(ids, superAdminID)
+		entries = append(entries, entry{ID: superAdminID, Enabled: true})
 	}
 
-	jsonValue, err := json.Marshal(ids)
+	jsonValue, err := json.Marshal(entries)
 	if err != nil {
 		return err
 	}
