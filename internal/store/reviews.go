@@ -240,7 +240,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	// This acts as a backfill for any admins that were created before this setting existed
 	// or were added to the database manually.
 	backfillAdminsQuery := `
-		SELECT u.id
+		SELECT u.id, u.role
 		FROM users u
 		WHERE u.role IN ('admin', 'super_admin')
 	`
@@ -250,13 +250,16 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 
 	var allAdminIDs []string
+	adminRoles := make(map[string]UserRole)
 	for adminRows.Next() {
 		var id string
-		if err := adminRows.Scan(&id); err != nil {
+		var role UserRole
+		if err := adminRows.Scan(&id, &role); err != nil {
 			adminRows.Close()
 			return nil, err
 		}
 		allAdminIDs = append(allAdminIDs, id)
+		adminRoles[id] = role
 	}
 	adminRows.Close()
 	if err := adminRows.Err(); err != nil {
@@ -302,7 +305,8 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	changesMade := false
 	for _, adminID := range allAdminIDs {
 		if _, exists := existingAdminMap[adminID]; !exists {
-			entries = append(entries, reviewAssignmentEntry{ID: adminID, Enabled: true})
+			defaultEnabled := adminRoles[adminID] == RoleAdmin
+			entries = append(entries, reviewAssignmentEntry{ID: adminID, Enabled: defaultEnabled})
 			changesMade = true
 		}
 	}

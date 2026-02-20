@@ -130,8 +130,9 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 
 	// If the newly-created user is an admin or super_admin, ensure an entry
 	// exists in the `review_assignment_enabled` settings JSONB array with
-	// enabled=false so they are present but not assigned by default.
+	// enabled=true for admins and enabled=false for super_admins.
 	if user.Role == RoleAdmin || user.Role == RoleSuperAdmin {
+		defaultEnabled := user.Role == RoleAdmin
 		ctx2, cancel2 := context.WithTimeout(ctx, QueryTimeoutDuration)
 		defer cancel2()
 
@@ -154,8 +155,8 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}
-			// no settings row yet; create with this admin disabled
-			entries = []entry{{ID: user.ID, Enabled: false}}
+			// no settings row yet; create with this admin/super_admin
+			entries = []entry{{ID: user.ID, Enabled: defaultEnabled}}
 		} else {
 			// Try to parse new format
 			if jerr := json.Unmarshal(value, &entries); jerr != nil {
@@ -179,7 +180,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 				}
 			}
 			if !found {
-				entries = append(entries, entry{ID: user.ID, Enabled: false})
+				entries = append(entries, entry{ID: user.ID, Enabled: defaultEnabled})
 			}
 		}
 
