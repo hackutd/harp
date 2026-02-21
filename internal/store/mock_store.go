@@ -141,6 +141,16 @@ func (m *MockSettingsStore) SetReviewsPerApplication(ctx context.Context, value 
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetReviewAssignmentEnabled(ctx context.Context, superAdminID string) (bool, error) {
+	args := m.Called(superAdminID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdminID string, enabled bool) error {
+	args := m.Called(superAdminID, enabled)
+	return args.Error(0)
+}
+
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
 type MockApplicationReviewsStore struct {
 	mock.Mock

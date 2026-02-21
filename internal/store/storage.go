@@ -39,6 +39,8 @@ type Storage struct {
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
+		GetReviewAssignmentEnabled(ctx context.Context, superAdminID string) (bool, error)
+		SetReviewAssignmentEnabled(ctx context.Context, superAdminID string, enabled bool) error
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
