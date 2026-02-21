@@ -78,5 +78,12 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
+  },
+  "overrides": {
+    "postcss": "^8.4.38",
+    "semver": "^7.5.2",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^10.2.1"
+    }
   }
 }
