@@ -82,8 +82,6 @@
   "overrides": {
     "postcss": "^8.4.38",
     "semver": "^7.5.2",
-    "@typescript-eslint/typescript-estree": {
-      "minimatch": "^10.2.1"
-    }
+    "minimatch": "^10.2.1"
   }
 }
