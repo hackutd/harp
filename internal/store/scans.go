@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -46,13 +48,19 @@ func (s *ScansStore) Create(ctx context.Context, scan *Scan) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO scans (user_id, scan_type, scanned_by)
 		VALUES ($1, $2, $3)
 		RETURNING id, scanned_at, created_at
 	`
 
-	err := s.db.QueryRowContext(ctx, query, scan.UserID, scan.ScanType, scan.ScannedBy).
+	err = tx.QueryRowContext(ctx, query, scan.UserID, scan.ScanType, scan.ScannedBy).
 		Scan(&scan.ID, &scan.ScannedAt, &scan.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -62,7 +70,11 @@ func (s *ScansStore) Create(ctx context.Context, scan *Scan) error {
 		return err
 	}
 
-	return nil
+	if err := incrementScanStat(ctx, tx, scan.ScanType); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *ScansStore) GetByUserID(ctx context.Context, userID string) ([]Scan, error) {
@@ -102,33 +114,32 @@ func (s *ScansStore) GetStats(ctx context.Context) ([]ScanStat, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `
-		SELECT scan_type, COUNT(*) as count
-		FROM scans
-		GROUP BY scan_type
-		ORDER BY scan_type
-	`
+	query := `SELECT value FROM settings WHERE key = $1`
 
-	rows, err := s.db.QueryContext(ctx, query)
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyScanStats).Scan(&value)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []ScanStat{}, nil
+		}
 		return nil, err
 	}
-	defer rows.Close()
 
-	var stats []ScanStat
-	for rows.Next() {
-		var stat ScanStat
-		if err := rows.Scan(&stat.ScanType, &stat.Count); err != nil {
-			return nil, err
-		}
-		stats = append(stats, stat)
+	var statsMap map[string]int
+	if err := json.Unmarshal(value, &statsMap); err != nil {
+		return nil, err
 	}
 
-	if stats == nil {
-		stats = []ScanStat{}
+	stats := make([]ScanStat, 0, len(statsMap))
+	for scanType, count := range statsMap {
+		stats = append(stats, ScanStat{ScanType: scanType, Count: count})
 	}
 
-	return stats, rows.Err()
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].ScanType < stats[j].ScanType
+	})
+
+	return stats, nil
 }
 
 func (s *ScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error) {
