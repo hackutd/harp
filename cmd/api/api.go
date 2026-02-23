@@ -145,7 +145,7 @@ func (app *application) mount() http.Handler {
 					r.Post("/scans", app.createScanHandler)
 					r.Get("/scans/user/{userID}", app.getUserScansHandler)
 					r.Get("/scans/stats", app.getScanStatsHandler)
-					
+
 					// Hacker Pack
 
 					// Groups
