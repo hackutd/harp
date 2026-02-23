@@ -37,7 +37,6 @@ type UpdateApplicationPayload struct {
 	DietaryRestrictions *[]string `json:"dietary_restrictions"`
 	Accommodations      *string   `json:"accommodations"`
 
-	// Social/Professional Links (all optional)
 	Github   *string `json:"github" validate:"omitempty,url"`
 	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
 	Website  *string `json:"website" validate:"omitempty,url"`
@@ -48,14 +47,12 @@ type UpdateApplicationPayload struct {
 	OptInMLHEmails *bool `json:"opt_in_mlh_emails"`
 }
 
-// ApplicationWithQuestions embeds questions in the response for the hacker
+// SAQs embeds questions in the response for the hacker
 type ApplicationWithQuestions struct {
 	*store.Application
 	ShortAnswerQuestions []store.ShortAnswerQuestion `json:"short_answer_questions"`
 }
 
-// getOrCreateApplicationHandler returns the user's application, creating a draft if none exists
-//
 //	@Summary		Get or create application
 //	@Description	Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.
 //	@Tags			applications
@@ -115,8 +112,6 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 	}
 }
 
-// updateApplicationHandler updates the user's draft application
-//
 //	@Summary		Update application
 //	@Description	Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.
 //	@Tags			applications
@@ -250,8 +245,6 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-// submitApplicationHandler submits the user's draft application
-//
 //	@Summary		Submit application
 //	@Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
 //	@Tags			applications
@@ -387,8 +380,6 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-// getApplicationStatsHandler returns aggregated application statistics
-//
 //	@Summary		Get application stats (Admin)
 //	@Description	Returns aggregated statistics for all applications
 //	@Tags			admin
@@ -411,8 +402,6 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 	}
 }
 
-// listApplicationsHandler lists applications with cursor pagination for admins
-//
 //	@Summary		List applications (Admin)
 //	@Description	Lists all applications with cursor-based pagination and optional status filter
 //	@Tags			admin
@@ -503,8 +492,6 @@ type EmailListResponse struct {
 	Count  int      `json:"count"`
 }
 
-// setApplicationStatus sets the final status on an application (superadmin only)
-//
 //	@Summary		Set application status (Super Admin)
 //	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
 //	@Tags			superadmin
@@ -553,8 +540,6 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// getApplication returns a single application by ID for admin review
-//
 //	@Summary		Get application by ID (Admin)
 //	@Description	Returns a single application by its ID with embedded short answer questions
 //	@Tags			admin
@@ -602,8 +587,6 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getApplicantEmailsByStatusHandler returns emails of applicants filtered by status
-//
 //	@Summary		Get applicant emails by status (Super Admin)
 //	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
 //	@Tags			superadmin

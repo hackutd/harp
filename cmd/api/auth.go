@@ -9,7 +9,6 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// JSON response for user data
 type UserResponse struct {
 	ID                string         `json:"id"`
 	Email             string         `json:"email"`
@@ -19,8 +18,6 @@ type UserResponse struct {
 	UpdatedAt         time.Time      `json:"updatedAt"`
 }
 
-// getCurrentUserHandler returns the currently authenticated user
-//
 //	@Summary		Get current user
 //	@Description	Returns the authenticated user's profile
 //	@Tags			auth
