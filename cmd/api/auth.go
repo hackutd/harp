@@ -18,14 +18,14 @@ type UserResponse struct {
 	UpdatedAt         time.Time      `json:"updatedAt"`
 }
 
-//	@Summary		Get current user
-//	@Description	Returns the authenticated user's profile
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	UserResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Router			/auth/me [get]
+// @Summary		Get current user
+// @Description	Returns the authenticated user's profile
+// @Tags			auth
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	UserResponse
+// @Failure		401	{object}	object{error=string}
+// @Router			/auth/me [get]
 func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
