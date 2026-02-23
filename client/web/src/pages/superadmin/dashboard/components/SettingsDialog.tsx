@@ -20,10 +20,10 @@ import { errorAlert,getRequest, postRequest, putRequest } from "@/shared/lib/api
 import { cn } from "@/shared/lib/utils"
 import type { ShortAnswerQuestion } from "@/types"
 
+import ApplicationsTab from "../tabs/ApplicationsTab"
 import { QuestionsTab } from "../tabs/QuestionsTab"
 import { ReviewsPerAppTab } from "../tabs/ReviewsPerAppTab"
 import { SetAdminTab } from "../tabs/SetAdminTab"
-import ApplicationsTab from "../tabs/ApplicationsTab"
 
 type SettingsTab = 'questions' | 'set-admin' | 'reviews-per-app' | 'applications'
 
