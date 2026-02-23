@@ -39,6 +39,14 @@ type Storage struct {
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
+		GetScanTypes(ctx context.Context) ([]ScanType, error)
+		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
+	}
+	Scans interface {
+		Create(ctx context.Context, scan *Scan) error
+		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
+		GetStats(ctx context.Context) ([]ScanStat, error)
+		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
@@ -56,5 +64,6 @@ func NewStorage(db *sql.DB) Storage {
 		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
+		Scans:              &ScansStore{db: db},
 	}
 }
