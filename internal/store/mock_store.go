@@ -154,6 +154,14 @@ func (m *MockSettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []Sca
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
 type MockApplicationReviewsStore struct {
 	mock.Mock

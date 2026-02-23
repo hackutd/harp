@@ -41,6 +41,7 @@ type Storage struct {
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
+		GetScanStats(ctx context.Context) (map[string]int, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
