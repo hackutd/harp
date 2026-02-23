@@ -252,7 +252,7 @@ func (app *application) updateScanTypesHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, ScanTypesResponse{ScanTypes: req.ScanTypes}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, ScanTypesResponse(req)); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
