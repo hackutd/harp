@@ -29,8 +29,6 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
-// getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
-//
 //	@Summary		Get pending reviews (Admin)
 //	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
 //	@Tags			admin
@@ -59,8 +57,6 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// getCompletedReviews returns reviews that the current admin has already voted on
-//
 //	@Summary		Get completed reviews (Admin)
 //	@Description	Returns all reviews the current admin has completed (voted on), including application details
 //	@Tags			admin
@@ -89,8 +85,6 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// getApplicationNotes returns all notes for a specific application (without votes)
-//
 //	@Summary		Get notes for an application (Admin)
 //	@Description	Returns all reviewer notes for a specific application without exposing votes
 //	@Tags			admin
@@ -125,8 +119,6 @@ func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// batchAssignReviews assigns reviews to admins for all submitted applications needing reviews
-//
 //	@Summary		Batch assign reviews (SuperAdmin)
 //	@Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
 //	@Tags			superadmin
@@ -155,8 +147,6 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// getNextReview assigns and returns the next unreviewed application for the current admin
-//
 //	@Summary		Get next review assignment (Admin)
 //	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
 //	@Tags			admin
@@ -197,8 +187,6 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// submitVote records an admin's vote on an assigned review
-//
 //	@Summary		Submit vote on a review (Admin)
 //	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
 //	@Tags			admin

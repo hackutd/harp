@@ -2196,7 +2196,6 @@ const docTemplate = `{
                     "minLength": 1
                 },
                 "github": {
-                    "description": "Social/Professional Links (all optional)",
                     "type": "string"
                 },
                 "hackathons_attended_count": {

@@ -15,8 +15,6 @@ type ShortAnswerQuestionsResponse struct {
 	Questions []store.ShortAnswerQuestion `json:"questions"`
 }
 
-// getShortAnswerQuestions returns all short answer questions
-//
 //	@Summary		Get short answer questions (Super Admin)
 //	@Description	Returns all configurable short answer questions for hacker applications
 //	@Tags			superadmin
@@ -43,8 +41,6 @@ func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.R
 	}
 }
 
-// updateShortAnswerQuestions replaces all short answer questions
-//
 //	@Summary		Update short answer questions (Super Admin)
 //	@Description	Replaces all short answer questions with the provided array
 //	@Tags			superadmin
@@ -92,18 +88,14 @@ func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *htt
 	}
 }
 
-// SetReviewsPerAppPayload for setting the reviews per application count
 type SetReviewsPerAppPayload struct {
 	ReviewsPerApplication int `json:"reviews_per_application" validate:"required,min=1,max=10"`
 }
 
-// ReviewsPerAppResponse wraps the reviews per application value for API response
 type ReviewsPerAppResponse struct {
 	ReviewsPerApplication int `json:"reviews_per_application"`
 }
 
-// getReviewsPerApp returns the current reviews per application setting
-//
 //	@Summary		Get reviews per application (Super Admin)
 //	@Description	Returns the number of reviews required per application
 //	@Tags			superadmin
@@ -130,8 +122,6 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// setReviewsPerApp updates the reviews per application setting
-//
 //	@Summary		Set reviews per application (Super Admin)
 //	@Description	Sets the number of reviews required per application
 //	@Tags			superadmin

@@ -8,8 +8,6 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// Request/Response types
-
 type CreateScanPayload struct {
 	UserID   string `json:"user_id" validate:"required"`
 	ScanType string `json:"scan_type" validate:"required"`
@@ -55,8 +53,6 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// createScanHandler creates a scan record for a user
-//
 //	@Summary		Create a scan (Admin)
 //	@Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.
 //	@Tags			admin
@@ -109,7 +105,6 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// For non-check_in categories, verify user has checked in
 	if found.Category != store.ScanCategoryCheckIn {
 		var checkInTypes []string
 		for _, st := range scanTypes {
@@ -152,8 +147,6 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// getUserScansHandler returns all scans for a user
-//
 //	@Summary		Get scans for a user (Admin)
 //	@Description	Returns all scan records for the specified user, ordered by most recent first
 //	@Tags			admin
@@ -184,8 +177,6 @@ func (app *application) getUserScansHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// getScanStatsHandler returns aggregate scan counts
-//
 //	@Summary		Get scan statistics (Admin)
 //	@Description	Returns aggregate scan counts grouped by scan type
 //	@Tags			admin
@@ -208,8 +199,6 @@ func (app *application) getScanStatsHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// updateScanTypesHandler replaces all scan types (super admin)
-//
 //	@Summary		Update scan types (Super Admin)
 //	@Description	Replaces all scan types with the provided array. Must include at least one check_in category type. Names must be unique.
 //	@Tags			superadmin
