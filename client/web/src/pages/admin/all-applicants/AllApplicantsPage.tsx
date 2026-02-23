@@ -1,15 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
 
-import { ApplicationDetailPanel } from './components/ApplicationDetailPanel';
-import { ApplicationsTable } from './components/ApplicationsTable';
-import { PaginationControls } from './components/PaginationControls';
-import { SectionCards } from './components/SectionCards';
-import { StatusFilterTabs } from './components/StatusFilterTabs';
-import { useApplicationDetail } from './hooks/useApplicationDetail';
-import { useApplicationsStore } from './store';
-import type { ApplicationStatus } from './types';
+import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
+import { ApplicationsTable } from "./components/ApplicationsTable";
+import { PaginationControls } from "./components/PaginationControls";
+import { SectionCards } from "./components/SectionCards";
+import { StatusFilterTabs } from "./components/StatusFilterTabs";
+import { useApplicationDetail } from "./hooks/useApplicationDetail";
+import { useApplicationsStore } from "./store";
+import type { ApplicationStatus } from "./types";
 
 export default function AllApplicantsPage() {
   const {
@@ -24,8 +29,14 @@ export default function AllApplicantsPage() {
     fetchStats,
   } = useApplicationsStore();
 
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const { detail: applicationDetail, loading: detailLoading, clear: clearDetail } = useApplicationDetail(selectedApplicationId);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<
+    string | null
+  >(null);
+  const {
+    detail: applicationDetail,
+    loading: detailLoading,
+    clear: clearDetail,
+  } = useApplicationDetail(selectedApplicationId);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,7 +62,7 @@ export default function AllApplicantsPage() {
 
   const handlePrevPage = () => {
     if (prevCursor) {
-      fetchApplications({ cursor: prevCursor, direction: 'backward' });
+      fetchApplications({ cursor: prevCursor, direction: "backward" });
     }
   };
 
@@ -87,9 +98,11 @@ export default function AllApplicantsPage() {
       </div>
 
       <div className="flex">
-        <Card className={`overflow-hidden flex flex-col max-h-[calc(100vh-180px)] ${selectedApplicationId ? 'w-1/2 rounded-r-none' : 'w-full'}`}>
+        <Card
+          className={`overflow-hidden flex flex-col max-h-[calc(100vh-180px)] ${selectedApplicationId ? "w-1/2 rounded-r-none" : "w-full"}`}
+        >
           <CardHeader className="shrink-0">
-            <CardDescription className='font-light'>
+            <CardDescription className="font-light">
               {applications.length} application(s) on this page
               {currentStatus && ` (filtered by ${currentStatus})`}
             </CardDescription>

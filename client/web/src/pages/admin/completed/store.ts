@@ -1,7 +1,7 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
-import { fetchCompletedReviews } from './api';
-import type { Review } from './types';
+import { fetchCompletedReviews } from "./api";
+import type { Review } from "./types";
 
 export interface CompletedReviewsState {
   reviews: Review[];
@@ -9,21 +9,23 @@ export interface CompletedReviewsState {
   fetchCompletedReviews: (signal?: AbortSignal) => Promise<void>;
 }
 
-export const useCompletedReviewsStore = create<CompletedReviewsState>((set) => ({
-  reviews: [],
-  loading: false,
+export const useCompletedReviewsStore = create<CompletedReviewsState>(
+  (set) => ({
+    reviews: [],
+    loading: false,
 
-  fetchCompletedReviews: async (signal?: AbortSignal) => {
-    set({ loading: true });
+    fetchCompletedReviews: async (signal?: AbortSignal) => {
+      set({ loading: true });
 
-    const res = await fetchCompletedReviews(signal);
+      const res = await fetchCompletedReviews(signal);
 
-    if (signal?.aborted) return;
+      if (signal?.aborted) return;
 
-    if (res.status === 200 && res.data) {
-      set({ reviews: res.data.reviews, loading: false });
-    } else {
-      set({ reviews: [], loading: false });
-    }
-  },
-}));
+      if (res.status === 200 && res.data) {
+        set({ reviews: res.data.reviews, loading: false });
+      } else {
+        set({ reviews: [], loading: false });
+      }
+    },
+  }),
+);

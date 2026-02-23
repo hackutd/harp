@@ -1,6 +1,6 @@
 // Application Review feature types
 
-export type ReviewVote = 'accept' | 'waitlist' | 'reject';
+export type ReviewVote = "accept" | "waitlist" | "reject";
 
 export interface Review {
   id: string;

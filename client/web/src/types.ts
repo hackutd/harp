@@ -1,4 +1,4 @@
-export type UserRole = 'hacker' | 'admin' | 'super_admin';
+export type UserRole = "hacker" | "admin" | "super_admin";
 
 export interface ShortAnswerQuestion {
   id: string;
@@ -8,13 +8,13 @@ export interface ShortAnswerQuestion {
 }
 
 export type ApplicationStatus =
-  | 'draft'
-  | 'submitted'
-  | 'accepted'
-  | 'rejected'
-  | 'waitlisted';
+  | "draft"
+  | "submitted"
+  | "accepted"
+  | "rejected"
+  | "waitlisted";
 
-export type ReviewVote = 'accept' | 'waitlist' | 'reject';
+export type ReviewVote = "accept" | "waitlist" | "reject";
 
 export interface Review {
   id: string;

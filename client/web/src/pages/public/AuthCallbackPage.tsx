@@ -23,10 +23,9 @@ export default function AuthCallback() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-
     const handleCallback = async () => {
       const sessionExists = await Session.doesSessionExist();
-      
+
       if (sessionExists) {
         await fetchUser();
 

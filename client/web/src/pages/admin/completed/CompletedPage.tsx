@@ -1,28 +1,37 @@
-import { X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { errorAlert, getRequest } from '@/shared/lib/api';
-import type { Application } from '@/types';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
+import { errorAlert, getRequest } from "@/shared/lib/api";
+import type { Application } from "@/types";
 
-import { ApplicationDetailsPanel } from '../assigned/components/ApplicationDetailsPanel';
-import { VoteBadge } from '../assigned/components/VoteBadge';
-import { CompletedReviewsTable } from './components/CompletedReviewsTable';
-import { useCompletedReviewsStore } from './store';
-import type { NotesListResponse, ReviewNote } from './types';
+import { ApplicationDetailsPanel } from "../assigned/components/ApplicationDetailsPanel";
+import { VoteBadge } from "../assigned/components/VoteBadge";
+import { CompletedReviewsTable } from "./components/CompletedReviewsTable";
+import { useCompletedReviewsStore } from "./store";
+import type { NotesListResponse, ReviewNote } from "./types";
 
 function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return '-';
-  return `${firstName ?? ''} ${lastName ?? ''}`.trim();
+  if (!firstName && !lastName) return "-";
+  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
 }
 
 export default function CompletedPage() {
-  const { reviews, loading, fetchCompletedReviews } = useCompletedReviewsStore();
+  const { reviews, loading, fetchCompletedReviews } =
+    useCompletedReviewsStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [applicationDetail, setApplicationDetail] = useState<Application | null>(null);
+  const [applicationDetail, setApplicationDetail] =
+    useState<Application | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [otherReviewerNotes, setOtherReviewerNotes] = useState<ReviewNote[]>([]);
+  const [otherReviewerNotes, setOtherReviewerNotes] = useState<ReviewNote[]>(
+    [],
+  );
   const [_notesLoading, setNotesLoading] = useState(false);
 
   const selectReview = useCallback((id: string | null) => {
@@ -55,12 +64,12 @@ export default function CompletedPage() {
       const [appRes, notesRes] = await Promise.all([
         getRequest<Application>(
           `/admin/applications/${selectedReview.application_id}`,
-          'application',
+          "application",
           controller.signal,
         ),
         getRequest<NotesListResponse>(
           `/admin/applications/${selectedReview.application_id}/notes`,
-          'notes',
+          "notes",
           controller.signal,
         ),
       ]);
@@ -91,16 +100,20 @@ export default function CompletedPage() {
   // Keyboard navigation
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
         const currentIndex = reviews.findIndex((r) => r.id === selectedId);
         const nextIndex = currentIndex + 1;
         if (nextIndex < reviews.length) {
           selectReview(reviews[nextIndex].id);
         }
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         e.preventDefault();
         const currentIndex = reviews.findIndex((r) => r.id === selectedId);
         const prevIndex = currentIndex - 1;
@@ -110,8 +123,8 @@ export default function CompletedPage() {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedId, reviews, selectReview]);
 
   if (loading && reviews.length === 0) {
@@ -131,11 +144,13 @@ export default function CompletedPage() {
         {/* Left: Table */}
         <Card
           className={`overflow-hidden flex flex-col h-full ${
-            selectedId ? 'w-1/2 rounded-r-none' : 'w-full'
+            selectedId ? "w-1/2 rounded-r-none" : "w-full"
           }`}
         >
           <CardHeader className="shrink-0">
-            <CardDescription className='font-light'>{reviews.length} completed review(s)</CardDescription>
+            <CardDescription className="font-light">
+              {reviews.length} completed review(s)
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <CompletedReviewsTable
@@ -154,7 +169,10 @@ export default function CompletedPage() {
             <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-sm">
-                  {formatName(selectedReview.first_name, selectedReview.last_name)}
+                  {formatName(
+                    selectedReview.first_name,
+                    selectedReview.last_name,
+                  )}
                 </p>
                 <VoteBadge vote={selectedReview.vote} />
               </div>
@@ -186,7 +204,9 @@ export default function CompletedPage() {
                     {/* Reviewer notes section */}
                     {otherReviewerNotes.length > 0 && (
                       <div className="mt-6 border-t pt-4">
-                        <h4 className="text-sm font-semibold mb-3">Reviewer Notes</h4>
+                        <h4 className="text-sm font-semibold mb-3">
+                          Reviewer Notes
+                        </h4>
                         <div className="space-y-3">
                           {otherReviewerNotes.map((note, i) => (
                             <div key={i} className="bg-gray-50 rounded-lg p-3">
@@ -195,7 +215,9 @@ export default function CompletedPage() {
                                   {note.admin_email}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(note.created_at).toLocaleDateString()}
+                                  {new Date(
+                                    note.created_at,
+                                  ).toLocaleDateString()}
                                 </span>
                               </div>
                               <p className="text-sm">{note.notes}</p>

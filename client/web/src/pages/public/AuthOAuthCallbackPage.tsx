@@ -19,7 +19,7 @@ export default function AuthOAuthCallback() {
           navigate("/auth/callback");
         } else if (response.status === "NO_EMAIL_GIVEN_BY_PROVIDER") {
           setError(
-            "Google did not provide an email address. Please try again or use the magic link option."
+            "Google did not provide an email address. Please try again or use the magic link option.",
           );
         } else {
           setError("Sign in not allowed. Please contact support.");
@@ -35,7 +35,7 @@ export default function AuthOAuthCallback() {
               message.toLowerCase().includes("magic link")
             ) {
               setError(
-                "This email is already registered with magic link sign-in. Please go back and use the email option instead."
+                "This email is already registered with magic link sign-in. Please go back and use the email option instead.",
               );
               return;
             }
@@ -44,7 +44,7 @@ export default function AuthOAuthCallback() {
           }
           if (err.status === 500) {
             setError(
-              "This email may already be registered with a different sign-in method. Please try using the magic link option instead."
+              "This email may already be registered with a different sign-in method. Please try using the magic link option instead.",
             );
             return;
           }
@@ -56,7 +56,7 @@ export default function AuthOAuthCallback() {
           message.toLowerCase().includes("passwordless")
         ) {
           setError(
-            "This email is already registered with magic link sign-in. Please go back and use the email option instead."
+            "This email is already registered with magic link sign-in. Please go back and use the email option instead.",
           );
         } else {
           setError(message || "An error occurred during sign in");

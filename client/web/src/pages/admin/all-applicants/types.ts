@@ -1,4 +1,9 @@
-export type ApplicationStatus = 'draft' | 'submitted' | 'accepted' | 'rejected' | 'waitlisted';
+export type ApplicationStatus =
+  | "draft"
+  | "submitted"
+  | "accepted"
+  | "rejected"
+  | "waitlisted";
 
 export interface ApplicationListItem {
   id: string;
@@ -40,5 +45,5 @@ export interface ApplicationStats {
 export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
-  direction?: 'forward' | 'backward';
+  direction?: "forward" | "backward";
 }
