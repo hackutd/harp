@@ -31,10 +31,7 @@ export function SponsorInfoStep() {
           <FormItem>
             <FormLabel>GitHub</FormLabel>
             <FormControl>
-              <Input
-                placeholder="https://github.com/username"
-                {...field}
-              />
+              <Input placeholder="https://github.com/username" {...field} />
             </FormControl>
             <FormDescription>Optional</FormDescription>
             <FormMessage />
@@ -67,10 +64,7 @@ export function SponsorInfoStep() {
           <FormItem>
             <FormLabel>Personal Website</FormLabel>
             <FormControl>
-              <Input
-                placeholder="https://yourwebsite.com"
-                {...field}
-              />
+              <Input placeholder="https://yourwebsite.com" {...field} />
             </FormControl>
             <FormDescription>Optional</FormDescription>
             <FormMessage />

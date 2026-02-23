@@ -1,5 +1,5 @@
-import { Label } from '@/components/ui/label';
-import type { Application } from '@/types';
+import { Label } from "@/components/ui/label";
+import type { Application } from "@/types";
 
 interface TimelineSectionProps {
   application: Application;
@@ -15,7 +15,7 @@ export function TimelineSection({ application }: TimelineSectionProps) {
           <p>
             {application.submitted_at
               ? new Date(application.submitted_at).toLocaleString()
-              : 'N/A'}
+              : "N/A"}
           </p>
         </div>
         <div>

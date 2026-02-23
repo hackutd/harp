@@ -1,7 +1,7 @@
-import { Maximize2 } from 'lucide-react';
+import { Maximize2 } from "lucide-react";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -9,10 +9,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 
-import type { ApplicationListItem } from '../types';
-import { formatName,getStatusColor } from '../utils';
+import type { ApplicationListItem } from "../types";
+import { formatName, getStatusColor } from "../utils";
 
 interface ApplicationsTableProps {
   applications: ApplicationListItem[];
@@ -64,7 +64,7 @@ export function ApplicationsTable({
             applications.map((app) => (
               <TableRow
                 key={app.id}
-                className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? 'bg-muted/50' : ''}`}
+                className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
               >
                 <TableCell>
                   <Badge className={getStatusColor(app.status)}>
@@ -85,18 +85,18 @@ export function ApplicationsTable({
                   </div>
                 </TableCell>
                 <TableCell>{app.email}</TableCell>
-                <TableCell>{app.phone_e164 ?? '-'}</TableCell>
-                <TableCell>{app.age ?? '-'}</TableCell>
-                <TableCell>{app.country_of_residence ?? '-'}</TableCell>
-                <TableCell>{app.gender ?? '-'}</TableCell>
-                <TableCell>{app.university ?? '-'}</TableCell>
-                <TableCell>{app.major ?? '-'}</TableCell>
-                <TableCell>{app.level_of_study ?? '-'}</TableCell>
-                <TableCell>{app.hackathons_attended_count ?? '-'}</TableCell>
+                <TableCell>{app.phone_e164 ?? "-"}</TableCell>
+                <TableCell>{app.age ?? "-"}</TableCell>
+                <TableCell>{app.country_of_residence ?? "-"}</TableCell>
+                <TableCell>{app.gender ?? "-"}</TableCell>
+                <TableCell>{app.university ?? "-"}</TableCell>
+                <TableCell>{app.major ?? "-"}</TableCell>
+                <TableCell>{app.level_of_study ?? "-"}</TableCell>
+                <TableCell>{app.hackathons_attended_count ?? "-"}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {app.submitted_at
                     ? new Date(app.submitted_at).toLocaleDateString()
-                    : '-'}
+                    : "-"}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   {new Date(app.created_at).toLocaleDateString()}
