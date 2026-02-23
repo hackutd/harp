@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-import { errorAlert,getRequest } from '@/shared/lib/api';
-import type { Application } from '@/types';
+import { errorAlert, getRequest } from "@/shared/lib/api";
+import type { Application } from "@/types";
 
 interface UseApplicationDetailResult {
   detail: Application | null;
@@ -9,7 +9,9 @@ interface UseApplicationDetailResult {
   clear: () => void;
 }
 
-export function useApplicationDetail(applicationId: string | null): UseApplicationDetailResult {
+export function useApplicationDetail(
+  applicationId: string | null,
+): UseApplicationDetailResult {
   const [detail, setDetail] = useState<Application | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,8 +26,8 @@ export function useApplicationDetail(applicationId: string | null): UseApplicati
       setLoading(true);
       const res = await getRequest<Application>(
         `/admin/applications/${applicationId}`,
-        'application',
-        controller.signal
+        "application",
+        controller.signal,
       );
       if (controller.signal.aborted) return;
 

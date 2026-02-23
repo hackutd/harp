@@ -1,11 +1,11 @@
-import { X } from 'lucide-react';
+import { X } from "lucide-react";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import type { Application } from '@/types';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import type { Application } from "@/types";
 
-import { formatName,getStatusColor } from '../utils';
+import { formatName, getStatusColor } from "../utils";
 import {
   DemographicsSection,
   EducationSection,
@@ -15,7 +15,7 @@ import {
   PersonalInfoSection,
   ShortAnswersSection,
   TimelineSection,
-} from './detail-sections';
+} from "./detail-sections";
 
 interface ApplicationDetailPanelProps {
   application: Application | null;
