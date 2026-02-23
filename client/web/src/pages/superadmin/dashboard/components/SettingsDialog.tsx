@@ -1,6 +1,6 @@
 "use client"
 
-import { ClipboardCheck, HelpCircle, Loader2, UserCog } from "lucide-react"
+import { ClipboardCheck, HelpCircle, Loader2, UserCog, UsersRound} from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -20,16 +20,18 @@ import { errorAlert,getRequest, postRequest, putRequest } from "@/shared/lib/api
 import { cn } from "@/shared/lib/utils"
 import type { ShortAnswerQuestion } from "@/types"
 
+import ApplicationsTab from "../tabs/ApplicationsTab"
 import { QuestionsTab } from "../tabs/QuestionsTab"
 import { ReviewsPerAppTab } from "../tabs/ReviewsPerAppTab"
 import { SetAdminTab } from "../tabs/SetAdminTab"
 
-type SettingsTab = 'questions' | 'set-admin' | 'reviews-per-app'
+type SettingsTab = 'questions' | 'set-admin' | 'reviews-per-app' | 'applications'
 
 const settingsTabs = [
   { id: 'questions' as const, label: 'Questions', icon: HelpCircle },
   { id: 'set-admin' as const, label: 'Set Admin', icon: UserCog },
   { id: 'reviews-per-app' as const, label: 'Reviews', icon: ClipboardCheck },
+  { id: 'applications' as const, label: 'Applications', icon:  UsersRound},
 ]
 
 interface SettingsDialogProps {
@@ -181,6 +183,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                     loading={reviewsPerAppLoading}
                   />
                 )}
+                {activeTab === 'applications' && <ApplicationsTab />}
               </div>
             </ScrollArea>
 
