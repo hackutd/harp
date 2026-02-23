@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { errorAlert,getRequest } from "@/shared/lib/api";
+import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
 export default function Status() {
@@ -22,7 +22,7 @@ export default function Status() {
     const loadData = async () => {
       const res = await getRequest<Application>(
         "/applications/me",
-        "application"
+        "application",
       );
       if (res.status === 200 && res.data) {
         setApplication(res.data);
@@ -166,7 +166,9 @@ export default function Status() {
                     <>
                       <p className="text-gray-600">Submitted:</p>
                       <p className="font-medium">
-                        {new Date(application.submitted_at).toLocaleDateString()}
+                        {new Date(
+                          application.submitted_at,
+                        ).toLocaleDateString()}
                       </p>
                     </>
                   )}

@@ -1,5 +1,3 @@
 export default function HackerPackPage() {
-  return (
-    <div>HackerPack</div>
-  )
+  return <div>HackerPack</div>;
 }

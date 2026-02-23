@@ -16,7 +16,7 @@ function buildUrl(endpoint: string): string {
 export async function getRequest<T>(
   endpoint: string,
   errorContext?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${buildUrl(endpoint)}`, {
@@ -55,7 +55,7 @@ export async function postRequest<T>(
   endpoint: string,
   body: unknown,
   errorContext?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${buildUrl(endpoint)}`, {
@@ -95,7 +95,7 @@ export async function putRequest<T>(
   endpoint: string,
   body: unknown,
   errorContext?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${buildUrl(endpoint)}`, {
@@ -135,7 +135,7 @@ export async function patchRequest<T>(
   endpoint: string,
   body: unknown,
   errorContext?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${buildUrl(endpoint)}`, {
@@ -174,7 +174,7 @@ export async function patchRequest<T>(
 export async function deleteRequest<T>(
   endpoint: string,
   errorContext?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${buildUrl(endpoint)}`, {
@@ -226,10 +226,10 @@ export interface CheckEmailResponse {
  * Check if an email exists and get its auth method
  */
 export async function checkEmailAuthMethod(
-  email: string
+  email: string,
 ): Promise<ApiResponse<CheckEmailResponse>> {
   return getRequest<CheckEmailResponse>(
     `/auth/check-email?email=${encodeURIComponent(email)}`,
-    "email check"
+    "email check",
   );
 }

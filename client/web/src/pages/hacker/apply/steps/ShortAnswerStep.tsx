@@ -20,7 +20,7 @@ export function ShortAnswerStep({ questions }: ShortAnswerStepProps) {
   const form = useFormContext<ApplicationFormData>();
 
   const sortedQuestions = [...questions].sort(
-    (a, b) => a.display_order - b.display_order
+    (a, b) => a.display_order - b.display_order,
   );
 
   return (

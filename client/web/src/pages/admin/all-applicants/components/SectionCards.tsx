@@ -1,12 +1,12 @@
-import { Check, Clock, Percent,Users } from "lucide-react"
+import { Check, Clock, Percent, Users } from "lucide-react";
 
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import type { ApplicationStats } from "@/types"
+} from "@/components/ui/card";
+import type { ApplicationStats } from "@/types";
 
 interface SectionCardsProps {
   stats: ApplicationStats | null;

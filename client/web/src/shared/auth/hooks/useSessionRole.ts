@@ -1,6 +1,6 @@
-import { useSessionContext } from 'supertokens-auth-react/recipe/session';
+import { useSessionContext } from "supertokens-auth-react/recipe/session";
 
-import type { UserRole } from '@/types';
+import type { UserRole } from "@/types";
 
 interface UseSessionRoleResult {
   role: UserRole | null;

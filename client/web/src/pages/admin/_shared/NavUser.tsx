@@ -1,18 +1,10 @@
-"use client"
+"use client";
 
-import {
-  ChevronsUpDown,
-  Eye,
-  LogOut,
-} from "lucide-react"
-import { useNavigate } from "react-router-dom"
-import Session from "supertokens-auth-react/recipe/session"
+import { ChevronsUpDown, Eye, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import Session from "supertokens-auth-react/recipe/session";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,45 +12,45 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '@/components/ui/sidebar'
-import { useUserStore } from '@/shared/stores'
+} from "@/components/ui/sidebar";
+import { useUserStore } from "@/shared/stores";
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
+    name: string;
+    email: string;
+    avatar: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
-  const navigate = useNavigate()
-  const { clearUser } = useUserStore()
+  const { isMobile } = useSidebar();
+  const navigate = useNavigate();
+  const { clearUser } = useUserStore();
 
   const getInitials = (name: string) => {
-    const parts = name.split(' ')
+    const parts = name.split(" ");
     if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase()
+      return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return name.slice(0, 2).toUpperCase()
-  }
+    return name.slice(0, 2).toUpperCase();
+  };
 
   const handleLogout = async () => {
-    await Session.signOut()
-    clearUser()
-    navigate('/')
-  }
+    await Session.signOut();
+    clearUser();
+    navigate("/");
+  };
 
   const handleHackerView = () => {
-    navigate('/app')
-  }
+    navigate("/app");
+  };
 
   return (
     <SidebarMenu>
@@ -71,7 +63,9 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                <AvatarFallback className="rounded-full">{getInitials(user.name)}</AvatarFallback>
+                <AvatarFallback className="rounded-full">
+                  {getInitials(user.name)}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -90,7 +84,9 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-full">
                   <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                  <AvatarFallback className="rounded-full">{getInitials(user.name)}</AvatarFallback>
+                  <AvatarFallback className="rounded-full">
+                    {getInitials(user.name)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -99,7 +95,10 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleHackerView} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={handleHackerView}
+              className="cursor-pointer"
+            >
               <Eye />
               Hacker View
             </DropdownMenuItem>
@@ -112,5 +111,5 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

@@ -9,7 +9,7 @@ export const personalInfoSchema = z.object({
     .min(1, "Phone number is required")
     .regex(
       /^\+[1-9]\d{1,14}$/,
-      "Phone must be in E.164 format (e.g., +12025551234)"
+      "Phone must be in E.164 format (e.g., +12025551234)",
     ),
   age: z.coerce
     .number({ error: "Age is required" })
@@ -60,7 +60,7 @@ export const eventInfoSchema = z.object({
         "eggs",
         "no_beef",
         "no_pork",
-      ])
+      ]),
     )
     .optional()
     .default([]),
@@ -69,37 +69,22 @@ export const eventInfoSchema = z.object({
 
 // Step 6: Sponsor Info (all optional)
 export const sponsorInfoSchema = z.object({
-  github: z
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
-  linkedin: z
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
-  website: z
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
+  github: z.url("Must be a valid URL").optional().or(z.literal("")),
+  linkedin: z.url("Must be a valid URL").optional().or(z.literal("")),
+  website: z.url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 // Step 7: Review - Acknowledgments
 export const acknowledgmentsSchema = z.object({
-  ack_application: z
-    .boolean()
-    .refine((val) => val === true, {
-      message: "You must acknowledge this disclaimer",
-    }),
-  ack_mlh_coc: z
-    .boolean()
-    .refine((val) => val === true, {
-      message: "You must agree to the MLH Code of Conduct",
-    }),
-  ack_mlh_privacy: z
-    .boolean()
-    .refine((val) => val === true, {
-      message: "You must authorize data sharing with MLH",
-    }),
+  ack_application: z.boolean().refine((val) => val === true, {
+    message: "You must acknowledge this disclaimer",
+  }),
+  ack_mlh_coc: z.boolean().refine((val) => val === true, {
+    message: "You must agree to the MLH Code of Conduct",
+  }),
+  ack_mlh_privacy: z.boolean().refine((val) => val === true, {
+    message: "You must authorize data sharing with MLH",
+  }),
   opt_in_mlh_emails: z.boolean().optional().default(false),
 });
 
@@ -133,12 +118,7 @@ export const STEP_FIELDS: Record<number, (keyof ApplicationFormData)[]> = {
   3: ["short_answer_responses"],
   4: ["shirt_size", "dietary_restrictions", "accommodations"],
   5: ["github", "linkedin", "website"],
-  6: [
-    "ack_application",
-    "ack_mlh_coc",
-    "ack_mlh_privacy",
-    "opt_in_mlh_emails",
-  ],
+  6: ["ack_application", "ack_mlh_coc", "ack_mlh_privacy", "opt_in_mlh_emails"],
 };
 
 // Step schemas for per-step validation
