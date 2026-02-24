@@ -7,15 +7,9 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { NavLink } from "react-router-dom";
-
-interface TabConfig {
-  label: string;
-  to: string;
-}
+import { Link, useLocation } from "react-router-dom";
 
 interface ReviewsPageLayoutProps {
-  tabs: TabConfig[];
   isExpanded?: boolean;
   headerDescription: ReactNode;
   headerActions?: ReactNode;
@@ -24,13 +18,15 @@ interface ReviewsPageLayoutProps {
 }
 
 export function ReviewsPageLayout({
-  tabs,
   isExpanded = false,
   headerDescription,
   headerActions,
   table,
   detailPanel,
 }: ReviewsPageLayoutProps) {
+  const location = useLocation();
+  const isAssigned = location.pathname === "/admin/assigned";
+
   return (
     <div className="h-[calc(100vh-80px)] overflow-hidden">
       <div className="flex h-full">
@@ -43,15 +39,12 @@ export function ReviewsPageLayout({
             <CardHeader className="shrink-0 flex flex-row items-center justify-between">
               <div className="flex flex-col gap-1">
                 <div className="flex gap-1">
-                  {tabs.map((tab) => (
-                    <NavLink key={tab.to} to={tab.to} end>
-                      {({ isActive }) => (
-                        <Badge variant={isActive ? "default" : "outline"}>
-                          {tab.label}
-                        </Badge>
-                      )}
-                    </NavLink>
-                  ))}
+                  <Badge asChild variant={isAssigned ? "default" : "outline"}>
+                    <Link to="/admin/assigned">Assigned</Link>
+                  </Badge>
+                  <Badge asChild variant={!isAssigned ? "default" : "outline"}>
+                    <Link to="/admin/completed">Completed</Link>
+                  </Badge>
                 </div>
                 <CardDescription className="font-light">
                   {headerDescription}
