@@ -105,13 +105,19 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO users (supertokens_user_id, email, role, auth_method, profile_picture_url)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at
 	`
 
-	err := s.db.QueryRowContext(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		user.SuperTokensUserID,
@@ -133,12 +139,6 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	// enabled=true for admins and enabled=false for super_admins.
 	if user.Role == RoleAdmin || user.Role == RoleSuperAdmin {
 		defaultEnabled := user.Role == RoleAdmin
-
-		tx, err := s.db.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
 
 		querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 
@@ -193,13 +193,9 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
 			return err
 		}
-
-		if err := tx.Commit(); err != nil {
-			return err
-		}
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error) {
