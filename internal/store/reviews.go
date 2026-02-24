@@ -266,11 +266,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		return nil, err
 	}
 
-	type reviewAssignmentEntry struct {
-		ID      string `json:"id"`
-		Enabled bool   `json:"enabled"`
-	}
-	var entries []reviewAssignmentEntry
+	var entries []ReviewAssignmentEntry
 
 	selectSettingQuery := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 	var value []byte
@@ -282,17 +278,17 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 			return nil, err
 		}
 		isNewSetting = true
-		entries = []reviewAssignmentEntry{}
+		entries = []ReviewAssignmentEntry{}
 	} else {
 		if jerr := json.Unmarshal(value, &entries); jerr != nil {
 			var ids []string
 			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-				entries = []reviewAssignmentEntry{}
+				entries = []ReviewAssignmentEntry{}
 				for _, id := range ids {
-					entries = append(entries, reviewAssignmentEntry{ID: id, Enabled: true})
+					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
 				}
 			} else {
-				entries = []reviewAssignmentEntry{}
+				entries = []ReviewAssignmentEntry{}
 			}
 		}
 	}
@@ -306,7 +302,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	for _, adminID := range allAdminIDs {
 		if _, exists := existingAdminMap[adminID]; !exists {
 			defaultEnabled := adminRoles[adminID] == RoleAdmin
-			entries = append(entries, reviewAssignmentEntry{ID: adminID, Enabled: defaultEnabled})
+			entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: defaultEnabled})
 			changesMade = true
 		}
 	}

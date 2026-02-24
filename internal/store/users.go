@@ -145,18 +145,13 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		var value []byte
 		err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
 
-		type entry struct {
-			ID      string `json:"id"`
-			Enabled bool   `json:"enabled"`
-		}
-
-		var entries []entry
+		var entries []ReviewAssignmentEntry
 		if err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}
 			// no settings row yet; create with this admin/super_admin
-			entries = []entry{{ID: user.ID, Enabled: defaultEnabled}}
+			entries = []ReviewAssignmentEntry{{ID: user.ID, Enabled: defaultEnabled}}
 		} else {
 			// Try to parse new format
 			if jerr := json.Unmarshal(value, &entries); jerr != nil {
@@ -164,10 +159,10 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 				var ids []string
 				if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
 					for _, id := range ids {
-						entries = append(entries, entry{ID: id, Enabled: true})
+						entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
 					}
 				} else {
-					entries = []entry{}
+					entries = []ReviewAssignmentEntry{}
 				}
 			}
 
@@ -180,7 +175,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 				}
 			}
 			if !found {
-				entries = append(entries, entry{ID: user.ID, Enabled: defaultEnabled})
+				entries = append(entries, ReviewAssignmentEntry{ID: user.ID, Enabled: defaultEnabled})
 			}
 		}
 
