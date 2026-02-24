@@ -278,7 +278,7 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404				{object}	object{error=string}
 //	@Failure		500				{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/applications/{applicationID}/aiPercent [put]
+//	@Router			/admin/applications/{applicationID}/ai-percent [put]
 func (app *application) setAIpercent(w http.ResponseWriter, r *http.Request) {
 
 	applicationID := chi.URLParam(r, "applicationID")
