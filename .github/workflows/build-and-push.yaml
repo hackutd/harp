@@ -14,7 +14,7 @@ env:
 # There is a single job in this workflow. It's configured to run on the latest available version of Ubuntu.
 jobs:
   audit:
-    uses: ./.github/workflows/audit.yml
+    uses: ./.github/workflows/audit.yaml
 
   build-image:
     needs: [audit]
