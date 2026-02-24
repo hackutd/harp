@@ -15,18 +15,18 @@ type ShortAnswerQuestionsResponse struct {
 	Questions []store.ShortAnswerQuestion `json:"questions"`
 }
 
-// getShortAnswerQuestions returns all short answer questions
+// getShortAnswerQuestions returns all configurable short answer questions
 //
-//	@Summary		Get short answer questions (Super Admin)
-//	@Description	Returns all configurable short answer questions for hacker applications
-//	@Tags			superadmin
-//	@Produce		json
-//	@Success		200	{object}	ShortAnswerQuestionsResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/saquestions [get]
+// @Summary		Get short answer questions (Super Admin)
+// @Description	Returns all configurable short answer questions for hacker applications
+// @Tags			superadmin
+// @Produce		json
+// @Success		200	{object}	ShortAnswerQuestionsResponse
+// @Failure		401	{object}	object{error=string}
+// @Failure		403	{object}	object{error=string}
+// @Failure		500	{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/superadmin/settings/saquestions [get]
 func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.Request) {
 	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
 	if err != nil {
@@ -45,19 +45,19 @@ func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.R
 
 // updateShortAnswerQuestions replaces all short answer questions
 //
-//	@Summary		Update short answer questions (Super Admin)
-//	@Description	Replaces all short answer questions with the provided array
-//	@Tags			superadmin
-//	@Accept			json
-//	@Produce		json
-//	@Param			questions	body		UpdateShortAnswerQuestionsPayload	true	"Questions to set"
-//	@Success		200			{object}	ShortAnswerQuestionsResponse
-//	@Failure		400			{object}	object{error=string}
-//	@Failure		401			{object}	object{error=string}
-//	@Failure		403			{object}	object{error=string}
-//	@Failure		500			{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/saquestions [put]
+// @Summary		Update short answer questions (Super Admin)
+// @Description	Replaces all short answer questions with the provided array
+// @Tags			superadmin
+// @Accept			json
+// @Produce		json
+// @Param			questions	body		UpdateShortAnswerQuestionsPayload	true	"Questions to set"
+// @Success		200			{object}	ShortAnswerQuestionsResponse
+// @Failure		400			{object}	object{error=string}
+// @Failure		401			{object}	object{error=string}
+// @Failure		403			{object}	object{error=string}
+// @Failure		500			{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/superadmin/settings/saquestions [put]
 func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *http.Request) {
 	var req UpdateShortAnswerQuestionsPayload
 	if err := readJSON(w, r, &req); err != nil {
@@ -92,28 +92,26 @@ func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *htt
 	}
 }
 
-// SetReviewsPerAppPayload for setting the reviews per application count
 type SetReviewsPerAppPayload struct {
 	ReviewsPerApplication int `json:"reviews_per_application" validate:"required,min=1,max=10"`
 }
 
-// ReviewsPerAppResponse wraps the reviews per application value for API response
 type ReviewsPerAppResponse struct {
 	ReviewsPerApplication int `json:"reviews_per_application"`
 }
 
-// getReviewsPerApp returns the current reviews per application setting
+// getReviewsPerApp returns the number of reviews required per application
 //
-//	@Summary		Get reviews per application (Super Admin)
-//	@Description	Returns the number of reviews required per application
-//	@Tags			superadmin
-//	@Produce		json
-//	@Success		200	{object}	ReviewsPerAppResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/reviews-per-app [get]
+// @Summary		Get reviews per application (Super Admin)
+// @Description	Returns the number of reviews required per application
+// @Tags			superadmin
+// @Produce		json
+// @Success		200	{object}	ReviewsPerAppResponse
+// @Failure		401	{object}	object{error=string}
+// @Failure		403	{object}	object{error=string}
+// @Failure		500	{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/superadmin/settings/reviews-per-app [get]
 func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request) {
 	count, err := app.store.Settings.GetReviewsPerApplication(r.Context())
 	if err != nil {
@@ -130,21 +128,21 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// setReviewsPerApp updates the reviews per application setting
+// setReviewsPerApp sets the number of reviews required per application
 //
-//	@Summary		Set reviews per application (Super Admin)
-//	@Description	Sets the number of reviews required per application
-//	@Tags			superadmin
-//	@Accept			json
-//	@Produce		json
-//	@Param			reviews_per_application	body		SetReviewsPerAppPayload	true	"Reviews per application value"
-//	@Success		200						{object}	ReviewsPerAppResponse
-//	@Failure		400						{object}	object{error=string}
-//	@Failure		401						{object}	object{error=string}
-//	@Failure		403						{object}	object{error=string}
-//	@Failure		500						{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/reviews-per-app [post]
+// @Summary		Set reviews per application (Super Admin)
+// @Description	Sets the number of reviews required per application
+// @Tags			superadmin
+// @Accept			json
+// @Produce		json
+// @Param			reviews_per_application	body		SetReviewsPerAppPayload	true	"Reviews per application value"
+// @Success		200						{object}	ReviewsPerAppResponse
+// @Failure		400						{object}	object{error=string}
+// @Failure		401						{object}	object{error=string}
+// @Failure		403						{object}	object{error=string}
+// @Failure		500						{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/superadmin/settings/reviews-per-app [post]
 func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request) {
 	var req SetReviewsPerAppPayload
 	if err := readJSON(w, r, &req); err != nil {

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/ratelimiter"
 	"github.com/hackutd/portal/internal/store"
 	"github.com/supertokens/supertokens-golang/recipe/passwordless"
@@ -78,6 +79,7 @@ func newTestApplication(t *testing.T) *application {
 		},
 		store:       mockStore,
 		logger:      logger,
+		mailer:      &mailer.MockClient{},
 		rateLimiter: rateLimiter,
 	}
 }

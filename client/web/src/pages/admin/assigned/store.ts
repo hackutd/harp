@@ -10,7 +10,10 @@ export interface ReviewsState {
   loading: boolean;
   submitting: boolean;
   fetchPendingReviews: (signal?: AbortSignal) => Promise<void>;
-  submitVote: (reviewId: string, payload: SubmitVotePayload) => Promise<{ success: boolean; error?: string }>;
+  submitVote: (
+    reviewId: string,
+    payload: SubmitVotePayload,
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useReviewsStore = create<ReviewsState>((set) => ({

@@ -1,36 +1,53 @@
-import { ClipboardPen, Minimize2, X } from 'lucide-react';
-import { useCallback, useEffect, useRef,useState } from 'react';
+import { ClipboardPen, Minimize2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Tooltip, TooltipContent,TooltipTrigger } from '@/components/ui/tooltip';
-import { errorAlert,getRequest } from '@/shared/lib/api';
-import type { Application } from '@/types';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { errorAlert, getRequest } from "@/shared/lib/api";
+import type { Application } from "@/types";
 
-import { ApplicationDetailsPanel } from './components/ApplicationDetailsPanel';
-import { ReviewsTable } from './components/ReviewsTable';
-import { VoteBadge } from './components/VoteBadge';
-import { VotingPanel } from './components/VotingPanel';
-import { useReviewKeyboardShortcuts } from './hooks/useReviewKeyboardShortcuts';
-import { useReviewsStore } from './store';
-import type { NotesListResponse,ReviewNote, ReviewVote } from './types';
+import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
+import { ReviewsTable } from "./components/ReviewsTable";
+import { VoteBadge } from "./components/VoteBadge";
+import { VotingPanel } from "./components/VotingPanel";
+import { refreshAssignedPage } from "./hooks/updateReviewPage";
+import { useReviewKeyboardShortcuts } from "./hooks/useReviewKeyboardShortcuts";
+import { useReviewsStore } from "./store";
+import type { NotesListResponse, ReviewNote, ReviewVote } from "./types";
 
 function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return '-';
-  return `${firstName ?? ''} ${lastName ?? ''}`.trim();
+  if (!firstName && !lastName) return "-";
+  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
 }
 
 export default function AssignedPage() {
-  const { reviews, loading, submitting, fetchPendingReviews, submitVote } = useReviewsStore();
+  const { reviews, loading, submitting, fetchPendingReviews, submitVote } =
+    useReviewsStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [applicationDetail, setApplicationDetail] = useState<Application | null>(null);
+  const [applicationDetail, setApplicationDetail] =
+    useState<Application | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [otherReviewerNotes, setOtherReviewerNotes] = useState<ReviewNote[]>([]);
+  const [otherReviewerNotes, setOtherReviewerNotes] = useState<ReviewNote[]>(
+    [],
+  );
   const [notesLoading, setNotesLoading] = useState(false);
-  const [localVotes, setLocalVotes] = useState<Record<string, ReviewVote | null>>({});
+  const [localVotes, setLocalVotes] = useState<
+    Record<string, ReviewVote | null>
+  >({});
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const refreshKey = refreshAssignedPage((state) => state.refreshKey);
 
   const selectReview = useCallback((id: string | null) => {
     setSelectedId(id);
@@ -44,7 +61,7 @@ export default function AssignedPage() {
     const controller = new AbortController();
     fetchPendingReviews(controller.signal);
     return () => controller.abort();
-  }, [fetchPendingReviews]);
+  }, [fetchPendingReviews, refreshKey]);
 
   // Fetch full application and other reviewers' notes when a review is selected
   useEffect(() => {
@@ -62,13 +79,13 @@ export default function AssignedPage() {
       const [appRes, notesRes] = await Promise.all([
         getRequest<Application>(
           `/admin/applications/${selectedReview.application_id}`,
-          'application',
-          controller.signal
+          "application",
+          controller.signal,
         ),
         getRequest<NotesListResponse>(
           `/admin/applications/${selectedReview.application_id}/notes`,
-          'notes',
-          controller.signal
+          "notes",
+          controller.signal,
         ),
       ]);
 
@@ -99,14 +116,16 @@ export default function AssignedPage() {
     (reviewId: string, serverVote: ReviewVote | null): ReviewVote | null => {
       return reviewId in localVotes ? localVotes[reviewId] : serverVote;
     },
-    [localVotes]
+    [localVotes],
   );
 
   const getNotes = useCallback(
     (reviewId: string, serverNotes: string | null): string => {
-      return reviewId in localNotes ? localNotes[reviewId] : serverNotes ?? '';
+      return reviewId in localNotes
+        ? localNotes[reviewId]
+        : (serverNotes ?? "");
     },
-    [localNotes]
+    [localNotes],
   );
 
   const handleVote = useCallback(
@@ -117,7 +136,8 @@ export default function AssignedPage() {
       if (review?.vote) return;
 
       const currentIndex = reviews.findIndex((r) => r.id === id);
-      const nextReview = reviews[currentIndex + 1] ?? reviews[currentIndex - 1] ?? null;
+      const nextReview =
+        reviews[currentIndex + 1] ?? reviews[currentIndex - 1] ?? null;
 
       const notes = getNotes(id, review?.notes ?? null);
       const result = await submitVote(id, {
@@ -138,10 +158,10 @@ export default function AssignedPage() {
         });
         selectReview(nextReview?.id ?? null);
       } else {
-        alert(result.error || 'Failed to submit vote');
+        alert(result.error || "Failed to submit vote");
       }
     },
-    [submitting, reviews, getNotes, submitVote, selectReview]
+    [submitting, reviews, getNotes, submitVote, selectReview],
   );
 
   const handleNotesChange = useCallback((id: string, notes: string) => {
@@ -179,8 +199,12 @@ export default function AssignedPage() {
     );
   }
 
-  const vote = selectedReview ? getVote(selectedReview.id, selectedReview.vote) : null;
-  const notes = selectedReview ? getNotes(selectedReview.id, selectedReview.notes) : '';
+  const vote = selectedReview
+    ? getVote(selectedReview.id, selectedReview.vote)
+    : null;
+  const notes = selectedReview
+    ? getNotes(selectedReview.id, selectedReview.notes)
+    : "";
 
   return (
     <div className="h-[calc(100vh-80px)] overflow-hidden">
@@ -189,11 +213,13 @@ export default function AssignedPage() {
         {!isExpanded && (
           <Card
             className={`overflow-hidden flex flex-col h-full ${
-              selectedId ? 'w-1/2 rounded-r-none' : 'w-full'
+              selectedId ? "w-1/2 rounded-r-none" : "w-full"
             }`}
           >
             <CardHeader className="shrink-0 flex flex-row items-center justify-between">
-              <CardDescription className='font-light'>{reviews.length} review(s) assigned to you</CardDescription>
+              <CardDescription className="font-light">
+                {reviews.length} review(s) assigned to you
+              </CardDescription>
               {reviews.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -210,7 +236,10 @@ export default function AssignedPage() {
                       Start Grading
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Grade {formatName(reviews[0].first_name, reviews[0].last_name)}</TooltipContent>
+                  <TooltipContent>
+                    Grade{" "}
+                    {formatName(reviews[0].first_name, reviews[0].last_name)}
+                  </TooltipContent>
                 </Tooltip>
               )}
             </CardHeader>
@@ -230,18 +259,23 @@ export default function AssignedPage() {
         {selectedId && selectedReview && (
           <Card
             className={`shrink-0 flex flex-col h-full py-0! gap-0! ${
-              isExpanded ? 'w-full rounded-xl' : 'w-1/2 rounded-l-none border-l-0'
+              isExpanded
+                ? "w-full rounded-xl"
+                : "w-1/2 rounded-l-none border-l-0"
             }`}
           >
             {/* Header */}
             <div
               className={`flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 ${
-                isExpanded ? 'rounded-t-xl' : 'rounded-tr-xl'
+                isExpanded ? "rounded-t-xl" : "rounded-tr-xl"
               }`}
             >
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-sm">
-                  {formatName(selectedReview.first_name, selectedReview.last_name)}
+                  {formatName(
+                    selectedReview.first_name,
+                    selectedReview.last_name,
+                  )}
                 </p>
                 <VoteBadge vote={vote} />
               </div>
@@ -326,9 +360,13 @@ export default function AssignedPage() {
                   {/* Navigation arrows - fixed at bottom of sidebar */}
                   <div className="shrink-0 border-t bg-gray-50 p-4 pt-2">
                     <p className="text-xs text-muted-foreground text-center mt-2">
-                      Use{' '}
-                      <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">←</kbd>{' '}
-                      <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">→</kbd>{' '}
+                      Use{" "}
+                      <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
+                        ←
+                      </kbd>{" "}
+                      <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
+                        →
+                      </kbd>{" "}
                       arrow keys to navigate
                     </p>
                   </div>

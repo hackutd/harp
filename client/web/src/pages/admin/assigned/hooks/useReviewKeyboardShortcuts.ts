@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
-import type { Review, ReviewVote } from '../types';
+import type { Review, ReviewVote } from "../types";
 
 interface UseReviewKeyboardShortcutsOptions {
   isExpanded: boolean;
@@ -31,14 +31,14 @@ export function useReviewKeyboardShortcuts({
         activeElement instanceof HTMLInputElement;
 
       // Escape: Close expanded view
-      if (e.key === 'Escape' && isExpanded) {
+      if (e.key === "Escape" && isExpanded) {
         e.preventDefault();
         onCloseExpanded();
         return;
       }
 
       // Tab: Focus notes textarea in expanded view
-      if (e.key === 'Tab' && isExpanded && selectedId && !isInputFocused) {
+      if (e.key === "Tab" && isExpanded && selectedId && !isInputFocused) {
         e.preventDefault();
         notesTextareaRef.current?.focus();
         return;
@@ -50,14 +50,14 @@ export function useReviewKeyboardShortcuts({
           ? reviews.findIndex((r) => r.id === selectedId)
           : -1;
 
-        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
           e.preventDefault();
           if (currentIndex > 0) {
             onNavigate(reviews[currentIndex - 1].id);
           } else if (currentIndex === -1) {
             onNavigate(reviews[reviews.length - 1].id);
           }
-        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        } else if (e.key === "ArrowDown" || e.key === "ArrowRight") {
           e.preventDefault();
           if (currentIndex === -1) {
             onNavigate(reviews[0].id);
@@ -73,21 +73,21 @@ export function useReviewKeyboardShortcuts({
         // Don't allow voting if already voted or submitting
         if (selectedReview?.vote || submitting) return;
 
-        if (e.key === 'j') {
+        if (e.key === "j") {
           e.preventDefault();
-          onVote(selectedId, 'reject');
-        } else if (e.key === 'k') {
+          onVote(selectedId, "reject");
+        } else if (e.key === "k") {
           e.preventDefault();
-          onVote(selectedId, 'waitlist');
-        } else if (e.key === 'l') {
+          onVote(selectedId, "waitlist");
+        } else if (e.key === "l") {
           e.preventDefault();
-          onVote(selectedId, 'accept');
+          onVote(selectedId, "accept");
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     isExpanded,
     selectedId,

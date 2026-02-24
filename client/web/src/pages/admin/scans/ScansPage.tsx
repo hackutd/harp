@@ -1,5 +1,3 @@
 export default function ScansPage() {
-  return (
-    <div>Scans</div>
-  )
+  return <div>Scans</div>;
 }

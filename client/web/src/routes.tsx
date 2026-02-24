@@ -9,24 +9,30 @@ import {
   AuthVerifyPage,
   LoginPage,
 } from "@/pages/public";
-import {
-  RequireAdmin,
-  RequireAuth,
-  RequireSuperAdmin,
-} from "@/shared/auth";
+import { RequireAdmin, RequireAuth, RequireSuperAdmin } from "@/shared/auth";
 
 // Lazy-loaded pages
 const AdminLayout = lazy(() => import("@/layouts/AdminLayout"));
-const AllApplicantsPage = lazy(() => import("@/pages/admin/all-applicants/AllApplicantsPage"));
+const AllApplicantsPage = lazy(
+  () => import("@/pages/admin/all-applicants/AllApplicantsPage"),
+);
 const AssignedPage = lazy(() => import("@/pages/admin/assigned/AssignedPage"));
-const CompletedPage = lazy(() => import("@/pages/admin/completed/CompletedPage"));
+const CompletedPage = lazy(
+  () => import("@/pages/admin/completed/CompletedPage"),
+);
 const GroupsPage = lazy(() => import("@/pages/admin/groups/GroupsPage"));
-const HackerPackPage = lazy(() => import("@/pages/admin/hacker-pack/HackerPackPage"));
+const HackerPackPage = lazy(
+  () => import("@/pages/admin/hacker-pack/HackerPackPage"),
+);
 const ScansPage = lazy(() => import("@/pages/admin/scans/ScansPage"));
-const DashboardPage = lazy(() => import("@/pages/hacker/dashboard/DashboardPage"));
+const DashboardPage = lazy(
+  () => import("@/pages/hacker/dashboard/DashboardPage"),
+);
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
 const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
-const SuperAdminDashboardPage = lazy(() => import("@/pages/superadmin/dashboard/DashboardPage"));
+const SuperAdminDashboardPage = lazy(
+  () => import("@/pages/superadmin/dashboard/DashboardPage"),
+);
 
 export const router = createBrowserRouter([
   // Public routes

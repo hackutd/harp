@@ -34,7 +34,9 @@ export const useUserStore = create<UserState>((set) => ({
       set({
         user: null,
         loading: false,
-        authError: res.error ? { status: res.status, message: res.error } : null,
+        authError: res.error
+          ? { status: res.status, message: res.error }
+          : null,
       });
     }
   },

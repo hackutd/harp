@@ -1,25 +1,35 @@
-import { Loader2, Plus, Trash2 } from "lucide-react"
-import * as React from "react"
+import { Loader2, Plus, Trash2 } from "lucide-react";
+import * as React from "react";
 
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import type { ShortAnswerQuestion } from "@/types"
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import type { ShortAnswerQuestion } from "@/types";
 
 interface QuestionsTabProps {
-  questions: ShortAnswerQuestion[]
-  setQuestions: React.Dispatch<React.SetStateAction<ShortAnswerQuestion[]>>
-  loading: boolean
+  questions: ShortAnswerQuestion[];
+  setQuestions: React.Dispatch<React.SetStateAction<ShortAnswerQuestion[]>>;
+  loading: boolean;
 }
 
-export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabProps) {
-  const updateQuestion = (index: number, field: keyof ShortAnswerQuestion, value: string | boolean | number) => {
-    setQuestions(prev => prev.map((q, i) => i === index ? { ...q, [field]: value } : q))
-  }
+export function QuestionsTab({
+  questions,
+  setQuestions,
+  loading,
+}: QuestionsTabProps) {
+  const updateQuestion = (
+    index: number,
+    field: keyof ShortAnswerQuestion,
+    value: string | boolean | number,
+  ) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)),
+    );
+  };
 
   const addQuestion = () => {
-    setQuestions(prev => [
+    setQuestions((prev) => [
       ...prev,
       {
         id: `saq_${Date.now()}`,
@@ -27,12 +37,12 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
         required: false,
         display_order: prev.length + 1,
       },
-    ])
-  }
+    ]);
+  };
 
   const removeQuestion = (index: number) => {
-    setQuestions(prev => prev.filter((_, i) => i !== index))
-  }
+    setQuestions((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="space-y-4">
@@ -48,17 +58,16 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
       ) : (
         <div className="space-y-3 pt-2">
           {questions.map((q, index) => (
-            <div
-              key={q.id}
-              className="bg-zinc-900 rounded-md p-4 space-y-3"
-            >
+            <div key={q.id} className="bg-zinc-900 rounded-md p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <span className="text-xs text-zinc-500 pt-1 shrink-0">
                   Q{index + 1}
                 </span>
                 <Textarea
                   value={q.question}
-                  onChange={(e) => updateQuestion(index, "question", e.target.value)}
+                  onChange={(e) =>
+                    updateQuestion(index, "question", e.target.value)
+                  }
                   placeholder="Enter question text..."
                   className="flex-1 min-h-[30px] bg-zinc-800 border-0 rounded-sm text-zinc-100 placeholder:text-zinc-500 resize-none"
                 />
@@ -68,10 +77,15 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
                   <Checkbox
                     id={`required-${q.id}`}
                     checked={q.required}
-                    onCheckedChange={(checked) => updateQuestion(index, "required", checked === true)}
+                    onCheckedChange={(checked) =>
+                      updateQuestion(index, "required", checked === true)
+                    }
                     className="border-zinc-500 cursor-pointer data-[state=checked]:bg-zinc-100 data-[state=checked]:text-zinc-900 data-[state=checked]:border-zinc-100"
                   />
-                  <Label htmlFor={`required-${q.id}`} className="text-sm text-zinc-300 cursor-pointer">
+                  <Label
+                    htmlFor={`required-${q.id}`}
+                    className="text-sm text-zinc-300 cursor-pointer"
+                  >
                     Required
                   </Label>
                 </div>
@@ -98,5 +112,5 @@ export function QuestionsTab({ questions, setQuestions, loading }: QuestionsTabP
         </div>
       )}
     </div>
-  )
+  );
 }
