@@ -133,17 +133,17 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	// enabled=true for admins and enabled=false for super_admins.
 	if user.Role == RoleAdmin || user.Role == RoleSuperAdmin {
 		defaultEnabled := user.Role == RoleAdmin
-		ctx2, cancel2 := context.WithTimeout(ctx, QueryTimeoutDuration)
-		defer cancel2()
 
-		querySelect := `
-			SELECT value
-			FROM settings
-			WHERE key = $1
-		`
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 
 		var value []byte
-		err := s.db.QueryRowContext(ctx2, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+		err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
 
 		type entry struct {
 			ID      string `json:"id"`
@@ -195,7 +195,11 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 		`
 
-		if _, err := s.db.ExecContext(ctx2, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+		if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}

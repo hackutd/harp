@@ -333,7 +333,8 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	// 'review_assignment_enabled' as a JSONB array of objects {"id","enabled"}.
 	cleanupQuery := `
 		DELETE FROM application_reviews ar
-		WHERE EXISTS (
+		WHERE ar.vote IS NULL
+		AND EXISTS (
 			SELECT 1
 			FROM settings s
 			CROSS JOIN jsonb_array_elements(s.value) AS elem
