@@ -53,6 +53,8 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// createScanHandler records a scan for a user
+//
 // @Summary		Create a scan (Admin)
 // @Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.
 // @Tags			admin
@@ -147,6 +149,8 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// getUserScansHandler returns all scan records for a specified user
+//
 // @Summary		Get scans for a user (Admin)
 // @Description	Returns all scan records for the specified user, ordered by most recent first
 // @Tags			admin
@@ -177,6 +181,8 @@ func (app *application) getUserScansHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// getScanStatsHandler returns aggregate scan counts grouped by scan type
+//
 // @Summary		Get scan statistics (Admin)
 // @Description	Returns aggregate scan counts grouped by scan type
 // @Tags			admin
@@ -199,6 +205,8 @@ func (app *application) getScanStatsHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// updateScanTypesHandler replaces all scan types with the provided array
+//
 // @Summary		Update scan types (Super Admin)
 // @Description	Replaces all scan types with the provided array. Must include at least one check_in category type. Names must be unique.
 // @Tags			superadmin

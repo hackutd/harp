@@ -18,6 +18,8 @@ type UserResponse struct {
 	UpdatedAt         time.Time      `json:"updatedAt"`
 }
 
+// getCurrentUserHandler returns the authenticated user's profile
+//
 // @Summary		Get current user
 // @Description	Returns the authenticated user's profile
 // @Tags			auth
@@ -53,6 +55,8 @@ type CheckEmailResponse struct {
 	AuthMethod *store.AuthMethod `json:"auth_method,omitempty"`
 }
 
+// checkEmailAuthMethodHandler checks if an email is registered and returns the auth method
+//
 // @Summary		Check email auth method
 // @Description	Checks if an email is registered and returns the auth method used
 // @Tags			auth
