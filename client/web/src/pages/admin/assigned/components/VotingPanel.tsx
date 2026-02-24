@@ -1,12 +1,16 @@
-import { MessageSquare,Minus, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { MessageSquare, Minus, ThumbsDown, ThumbsUp } from "lucide-react";
 
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-import type { Review, ReviewNote,ReviewVote } from '../types';
-import { NotesTextarea } from './NotesTextarea';
-import { VoteBadge } from './VoteBadge';
+import type { Review, ReviewNote, ReviewVote } from "../types";
+import { NotesTextarea } from "./NotesTextarea";
+import { VoteBadge } from "./VoteBadge";
 
 interface VotingPanelProps {
   review: Review;
@@ -42,7 +46,9 @@ export function VotingPanel({
               Other Reviewers' Notes ({otherReviewerNotes.length})
             </Label>
           </div>
-          <div className={`space-y-2 overflow-y-auto ${isExpanded ? 'max-h-48' : 'max-h-32'}`}>
+          <div
+            className={`space-y-2 overflow-y-auto ${isExpanded ? "max-h-48" : "max-h-32"}`}
+          >
             {otherReviewerNotes.map((note, idx) => (
               <div
                 key={`${note.admin_id}-${idx}`}
@@ -100,13 +106,13 @@ export function VotingPanel({
       ) : (
         <>
           <p className="text-xs text-muted-foreground">Cast your vote</p>
-          <div className={`flex gap-2 ${isExpanded ? 'flex-col' : ''}`}>
+          <div className={`flex gap-2 ${isExpanded ? "flex-col" : ""}`}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   className="flex-1 cursor-pointer hover:bg-red-50 hover:text-red-700 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => onVote(review.id, 'reject')}
+                  onClick={() => onVote(review.id, "reject")}
                   disabled={submitting}
                 >
                   <ThumbsDown className="h-4 w-4 mr-1.5" />
@@ -125,7 +131,7 @@ export function VotingPanel({
                 <Button
                   variant="outline"
                   className="flex-1 cursor-pointer hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => onVote(review.id, 'waitlist')}
+                  onClick={() => onVote(review.id, "waitlist")}
                   disabled={submitting}
                 >
                   <Minus className="h-4 w-4 mr-1.5" />
@@ -144,7 +150,7 @@ export function VotingPanel({
                 <Button
                   variant="outline"
                   className="flex-1 cursor-pointer hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => onVote(review.id, 'accept')}
+                  onClick={() => onVote(review.id, "accept")}
                   disabled={submitting}
                 >
                   <ThumbsUp className="h-4 w-4 mr-1.5" />
@@ -160,7 +166,9 @@ export function VotingPanel({
             </Tooltip>
           </div>
           {submitting && (
-            <p className="text-xs text-muted-foreground text-center">Submitting vote...</p>
+            <p className="text-xs text-muted-foreground text-center">
+              Submitting vote...
+            </p>
           )}
         </>
       )}

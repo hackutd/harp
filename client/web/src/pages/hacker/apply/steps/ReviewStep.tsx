@@ -34,7 +34,7 @@ interface ReviewStepProps {
 // Helper to get label from options
 function getLabel(
   options: { value: string; label: string }[],
-  value: string | undefined
+  value: string | undefined,
 ): string {
   if (!value) return "Not provided";
   return options.find((o) => o.value === value)?.label || value;
@@ -79,12 +79,16 @@ function ReviewField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps) {
+export function ReviewStep({
+  onEditStep,
+  userEmail,
+  questions,
+}: ReviewStepProps) {
   const form = useFormContext<ApplicationFormData>();
   const values = form.watch();
 
   const sortedQuestions = [...questions].sort(
-    (a, b) => a.display_order - b.display_order
+    (a, b) => a.display_order - b.display_order,
   );
   const responses = values.short_answer_responses || {};
 
@@ -98,7 +102,11 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
       </div>
 
       {/* Personal Info */}
-      <ReviewSection title="Personal Information" stepIndex={0} onEdit={onEditStep}>
+      <ReviewSection
+        title="Personal Information"
+        stepIndex={0}
+        onEdit={onEditStep}
+      >
         <ReviewField label="First Name" value={values.first_name} />
         <ReviewField label="Last Name" value={values.last_name} />
         {userEmail && <ReviewField label="Email" value={userEmail} />}
@@ -108,7 +116,10 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
           label="Country"
           value={getLabel(COUNTRY_OPTIONS, values.country_of_residence)}
         />
-        <ReviewField label="Gender" value={getLabel(GENDER_OPTIONS, values.gender)} />
+        <ReviewField
+          label="Gender"
+          value={getLabel(GENDER_OPTIONS, values.gender)}
+        />
         <ReviewField label="Race" value={getLabel(RACE_OPTIONS, values.race)} />
         <ReviewField
           label="Ethnicity"
@@ -117,7 +128,11 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
       </ReviewSection>
 
       {/* School Info */}
-      <ReviewSection title="School Information" stepIndex={1} onEdit={onEditStep}>
+      <ReviewSection
+        title="School Information"
+        stepIndex={1}
+        onEdit={onEditStep}
+      >
         <ReviewField label="University" value={values.university} />
         <ReviewField label="Major" value={values.major} />
         <ReviewField
@@ -127,14 +142,21 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
       </ReviewSection>
 
       {/* Experience */}
-      <ReviewSection title="Hackathon Experience" stepIndex={2} onEdit={onEditStep}>
+      <ReviewSection
+        title="Hackathon Experience"
+        stepIndex={2}
+        onEdit={onEditStep}
+      >
         <ReviewField
           label="Hackathons Attended"
           value={values.hackathons_attended_count?.toString() || "0"}
         />
         <ReviewField
           label="Experience Level"
-          value={getLabel(EXPERIENCE_LEVEL_OPTIONS, values.software_experience_level)}
+          value={getLabel(
+            EXPERIENCE_LEVEL_OPTIONS,
+            values.software_experience_level,
+          )}
         />
         <ReviewField
           label="Heard About"
@@ -143,7 +165,11 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
       </ReviewSection>
 
       {/* Short Answers */}
-      <ReviewSection title="Short Answer Questions" stepIndex={3} onEdit={onEditStep}>
+      <ReviewSection
+        title="Short Answer Questions"
+        stepIndex={3}
+        onEdit={onEditStep}
+      >
         <div className="space-y-3">
           {sortedQuestions.length === 0 ? (
             <p className="text-muted-foreground">No questions configured.</p>
@@ -163,7 +189,11 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
       </ReviewSection>
 
       {/* Event Info */}
-      <ReviewSection title="Event Information" stepIndex={4} onEdit={onEditStep}>
+      <ReviewSection
+        title="Event Information"
+        stepIndex={4}
+        onEdit={onEditStep}
+      >
         <ReviewField
           label="Shirt Size"
           value={getLabel(SHIRT_SIZE_OPTIONS, values.shirt_size)}
@@ -185,9 +215,16 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
       </ReviewSection>
 
       {/* Sponsor Info */}
-      <ReviewSection title="Sponsor Information" stepIndex={5} onEdit={onEditStep}>
+      <ReviewSection
+        title="Sponsor Information"
+        stepIndex={5}
+        onEdit={onEditStep}
+      >
         <ReviewField label="GitHub" value={values.github || "Not provided"} />
-        <ReviewField label="LinkedIn" value={values.linkedin || "Not provided"} />
+        <ReviewField
+          label="LinkedIn"
+          value={values.linkedin || "Not provided"}
+        />
         <ReviewField label="Website" value={values.website || "Not provided"} />
       </ReviewSection>
 
@@ -209,7 +246,8 @@ export function ReviewStep({ onEditStep, userEmail, questions }: ReviewStepProps
               <div className="space-y-1 leading-none">
                 <FormLabel className="font-normal">
                   <span className="font-medium">Disclaimer:</span> I understand
-                  that this is an application and does not guarantee admission. *
+                  that this is an application and does not guarantee admission.
+                  *
                 </FormLabel>
                 <FormMessage />
               </div>

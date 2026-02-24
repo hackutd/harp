@@ -1,9 +1,15 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { signOut } from 'supertokens-auth-react/recipe/session';
+import { Link, useNavigate } from "react-router-dom";
+import { signOut } from "supertokens-auth-react/recipe/session";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUserStore } from '@/shared/stores';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useUserStore } from "@/shared/stores";
 
 export default function Dashboard() {
   const { user, clearUser } = useUserStore();
@@ -12,7 +18,7 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await signOut();
     clearUser();
-    navigate('/', { replace: true });
+    navigate("/", { replace: true });
   };
 
   return (
@@ -21,8 +27,12 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome{user?.email ? `, ${user.email}` : '!'}</h1>
-              <p className="text-gray-600 mt-2">Manage your hackathon journey from here</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome{user?.email ? `, ${user.email}` : "!"}
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage your hackathon journey from here
+              </p>
             </div>
             <Button variant="outline" onClick={handleLogout}>
               Sign Out
@@ -33,7 +43,9 @@ export default function Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Application</CardTitle>
-                <CardDescription>Submit or update your application</CardDescription>
+                <CardDescription>
+                  Submit or update your application
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-4">
@@ -55,7 +67,9 @@ export default function Dashboard() {
                   View the current status of your application
                 </p>
                 <Link to="/app/status">
-                  <Button variant="outline" className="w-full">View Status</Button>
+                  <Button variant="outline" className="w-full">
+                    View Status
+                  </Button>
                 </Link>
               </CardContent>
             </Card>

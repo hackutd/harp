@@ -1,8 +1,8 @@
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import type { Application } from '@/types';
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import type { Application } from "@/types";
 
-import type { Review } from '../types';
+import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
   application: Application;
@@ -15,7 +15,7 @@ export function ApplicationDetailsPanel({
   selectedReview,
   isExpanded,
 }: ApplicationDetailsPanelProps) {
-  const gridCols = isExpanded ? 'grid-cols-4' : 'grid-cols-2';
+  const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
 
   return (
     <div className="space-y-6 pb-2">
@@ -25,19 +25,19 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Phone</Label>
-            <p>{application.phone_e164 || 'N/A'}</p>
+            <p>{application.phone_e164 || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Age</Label>
-            <p>{application.age ?? 'N/A'}</p>
+            <p>{application.age ?? "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Country</Label>
-            <p>{application.country_of_residence || 'N/A'}</p>
+            <p>{application.country_of_residence || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Gender</Label>
-            <p>{application.gender || 'N/A'}</p>
+            <p>{application.gender || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -48,11 +48,11 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Race</Label>
-            <p>{application.race || 'N/A'}</p>
+            <p>{application.race || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Ethnicity</Label>
-            <p>{application.ethnicity || 'N/A'}</p>
+            <p>{application.ethnicity || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -61,17 +61,19 @@ export function ApplicationDetailsPanel({
       <div>
         <h4 className="text-sm font-semibold mb-2">Education</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div className={isExpanded ? '' : 'col-span-2'}>
+          <div className={isExpanded ? "" : "col-span-2"}>
             <Label className="text-muted-foreground text-xs">University</Label>
-            <p>{application.university || 'N/A'}</p>
+            <p>{application.university || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Major</Label>
-            <p>{application.major || 'N/A'}</p>
+            <p>{application.major || "N/A"}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Level of Study</Label>
-            <p>{application.level_of_study || 'N/A'}</p>
+            <Label className="text-muted-foreground text-xs">
+              Level of Study
+            </Label>
+            <p>{application.level_of_study || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -81,16 +83,22 @@ export function ApplicationDetailsPanel({
         <h4 className="text-sm font-semibold mb-2">Experience</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
-            <Label className="text-muted-foreground text-xs">Hackathons Attended</Label>
-            <p>{application.hackathons_attended_count ?? 'N/A'}</p>
+            <Label className="text-muted-foreground text-xs">
+              Hackathons Attended
+            </Label>
+            <p>{application.hackathons_attended_count ?? "N/A"}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Software Experience</Label>
-            <p>{application.software_experience_level || 'N/A'}</p>
+            <Label className="text-muted-foreground text-xs">
+              Software Experience
+            </Label>
+            <p>{application.software_experience_level || "N/A"}</p>
           </div>
-          <div className={isExpanded ? '' : 'col-span-2'}>
-            <Label className="text-muted-foreground text-xs">Heard About Us From</Label>
-            <p>{application.heard_about || 'N/A'}</p>
+          <div className={isExpanded ? "" : "col-span-2"}>
+            <Label className="text-muted-foreground text-xs">
+              Heard About Us From
+            </Label>
+            <p>{application.heard_about || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -105,10 +113,10 @@ export function ApplicationDetailsPanel({
               .map((q) => (
                 <div key={q.id}>
                   <Label className="text-muted-foreground text-xs">
-                    {q.question} {q.required && '*'}
+                    {q.question} {q.required && "*"}
                   </Label>
                   <p className="whitespace-pre-wrap">
-                    {application.short_answer_responses?.[q.id] || 'N/A'}
+                    {application.short_answer_responses?.[q.id] || "N/A"}
                   </p>
                 </div>
               ))}
@@ -122,14 +130,20 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Shirt Size</Label>
-            <p>{application.shirt_size || 'N/A'}</p>
+            <p>{application.shirt_size || "N/A"}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Dietary Restrictions</Label>
+            <Label className="text-muted-foreground text-xs">
+              Dietary Restrictions
+            </Label>
             <div className="flex flex-wrap gap-1">
               {application.dietary_restrictions?.length > 0 ? (
                 application.dietary_restrictions.map((restriction) => (
-                  <Badge key={restriction} variant="secondary" className="text-xs">
+                  <Badge
+                    key={restriction}
+                    variant="secondary"
+                    className="text-xs"
+                  >
                     {restriction}
                   </Badge>
                 ))
@@ -139,8 +153,10 @@ export function ApplicationDetailsPanel({
             </div>
           </div>
           {application.accommodations && (
-            <div className={isExpanded ? '' : 'col-span-2'}>
-              <Label className="text-muted-foreground text-xs">Accommodations</Label>
+            <div className={isExpanded ? "" : "col-span-2"}>
+              <Label className="text-muted-foreground text-xs">
+                Accommodations
+              </Label>
               <p>{application.accommodations}</p>
             </div>
           )}
@@ -151,7 +167,9 @@ export function ApplicationDetailsPanel({
       {(application.github || application.linkedin || application.website) && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Links</h4>
-          <div className={`grid ${isExpanded ? 'grid-cols-3' : 'grid-cols-1'} gap-2 text-sm`}>
+          <div
+            className={`grid ${isExpanded ? "grid-cols-3" : "grid-cols-1"} gap-2 text-sm`}
+          >
             {application.github && (
               <div>
                 <Label className="text-muted-foreground text-xs">GitHub</Label>
@@ -169,7 +187,9 @@ export function ApplicationDetailsPanel({
             )}
             {application.linkedin && (
               <div>
-                <Label className="text-muted-foreground text-xs">LinkedIn</Label>
+                <Label className="text-muted-foreground text-xs">
+                  LinkedIn
+                </Label>
                 <p>
                   <a
                     href={application.linkedin}
@@ -210,7 +230,7 @@ export function ApplicationDetailsPanel({
             <p>
               {application.submitted_at
                 ? new Date(application.submitted_at).toLocaleString()
-                : 'N/A'}
+                : "N/A"}
             </p>
           </div>
           <div>
@@ -218,7 +238,9 @@ export function ApplicationDetailsPanel({
             <p>{new Date(application.created_at).toLocaleString()}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Last Updated</Label>
+            <Label className="text-muted-foreground text-xs">
+              Last Updated
+            </Label>
             <p>{new Date(application.updated_at).toLocaleString()}</p>
           </div>
         </div>
@@ -228,8 +250,10 @@ export function ApplicationDetailsPanel({
       <div>
         <h4 className="text-sm font-semibold mb-2">Review Details</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div className={isExpanded ? '' : 'col-span-2'}>
-            <Label className="text-muted-foreground text-xs">Application ID</Label>
+          <div className={isExpanded ? "" : "col-span-2"}>
+            <Label className="text-muted-foreground text-xs">
+              Application ID
+            </Label>
             <p className="font-mono text-xs">{selectedReview.application_id}</p>
           </div>
           <div>
@@ -238,7 +262,9 @@ export function ApplicationDetailsPanel({
           </div>
           {selectedReview.reviewed_at && (
             <div>
-              <Label className="text-muted-foreground text-xs">Reviewed At</Label>
+              <Label className="text-muted-foreground text-xs">
+                Reviewed At
+              </Label>
               <p>{new Date(selectedReview.reviewed_at).toLocaleString()}</p>
             </div>
           )}

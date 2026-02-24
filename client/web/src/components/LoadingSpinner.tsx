@@ -3,10 +3,13 @@ interface LoadingSpinnerProps {
   fullScreen?: boolean;
 }
 
-export function LoadingSpinner({ message = 'Loading...', fullScreen = false }: LoadingSpinnerProps) {
+export function LoadingSpinner({
+  message = "Loading...",
+  fullScreen = false,
+}: LoadingSpinnerProps) {
   const containerClass = fullScreen
-    ? 'flex items-center justify-center min-h-screen'
-    : 'flex items-center justify-center flex-1';
+    ? "flex items-center justify-center min-h-screen"
+    : "flex items-center justify-center flex-1";
 
   return (
     <div className={containerClass}>
