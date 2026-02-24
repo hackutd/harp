@@ -171,6 +171,9 @@ func (app *application) mount() http.Handler {
 
 					// Scans Config
 					r.Put("/settings/scan-types", app.updateScanTypesHandler)
+
+					// Emails
+					r.Post("/emails/qr", app.sendQREmailsHandler)
 				})
 			})
 		})
