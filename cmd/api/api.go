@@ -141,6 +141,10 @@ func (app *application) mount() http.Handler {
 					r.Get("/reviews/completed", app.getCompletedReviews)
 
 					// Scans
+					r.Get("/scans/types", app.getScanTypesHandler)
+					r.Post("/scans", app.createScanHandler)
+					r.Get("/scans/user/{userID}", app.getUserScansHandler)
+					r.Get("/scans/stats", app.getScanStatsHandler)
 
 					// Hacker Pack
 
@@ -164,6 +168,12 @@ func (app *application) mount() http.Handler {
 					r.Post("/applications/assign", app.batchAssignReviews)
 					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
 					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
+
+					// Scans Config
+					r.Put("/settings/scan-types", app.updateScanTypesHandler)
+
+					// Emails
+					r.Post("/emails/qr", app.sendQREmailsHandler)
 				})
 			})
 		})

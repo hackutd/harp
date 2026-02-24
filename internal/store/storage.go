@@ -32,13 +32,22 @@ type Storage struct {
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
-		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error)
+		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
 	}
 	Settings interface {
 		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
+		GetScanTypes(ctx context.Context) ([]ScanType, error)
+		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
+		GetScanStats(ctx context.Context) (map[string]int, error)
+	}
+	Scans interface {
+		Create(ctx context.Context, scan *Scan) error
+		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
+		GetStats(ctx context.Context) ([]ScanStat, error)
+		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
@@ -56,5 +65,6 @@ func NewStorage(db *sql.DB) Storage {
 		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
+		Scans:              &ScansStore{db: db},
 	}
 }
