@@ -255,7 +255,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/applications/{applicationID}/aiPercent": {
+        "/admin/applications/{applicationID}/ai-percent": {
             "put": {
                 "security": [
                     {
