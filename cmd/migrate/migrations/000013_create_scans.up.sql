@@ -10,11 +10,6 @@ CREATE TABLE IF NOT EXISTS scans (
     UNIQUE(user_id, scan_type)
 );
 
--- Fast lookup: "all scans for this hacker" (QR code scan screen)
--- The UNIQUE(user_id, scan_type) index already covers single-type lookups
-CREATE INDEX IF NOT EXISTS idx_scans_user_id
-    ON scans(user_id);
-
 -- Fast aggregate: "how many people have claimed this type?"
 CREATE INDEX IF NOT EXISTS idx_scans_scan_type
     ON scans(scan_type);
