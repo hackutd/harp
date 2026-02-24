@@ -9,7 +9,6 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-// JSON response for user data
 type UserResponse struct {
 	ID                string         `json:"id"`
 	Email             string         `json:"email"`
@@ -19,16 +18,16 @@ type UserResponse struct {
 	UpdatedAt         time.Time      `json:"updatedAt"`
 }
 
-// getCurrentUserHandler returns the currently authenticated user
+// getCurrentUserHandler returns the authenticated user's profile
 //
-//	@Summary		Get current user
-//	@Description	Returns the authenticated user's profile
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	UserResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Router			/auth/me [get]
+// @Summary		Get current user
+// @Description	Returns the authenticated user's profile
+// @Tags			auth
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	UserResponse
+// @Failure		401	{object}	object{error=string}
+// @Router			/auth/me [get]
 func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -56,6 +55,8 @@ type CheckEmailResponse struct {
 	AuthMethod *store.AuthMethod `json:"auth_method,omitempty"`
 }
 
+// checkEmailAuthMethodHandler checks if an email is registered and returns the auth method
+//
 // @Summary		Check email auth method
 // @Description	Checks if an email is registered and returns the auth method used
 // @Tags			auth
