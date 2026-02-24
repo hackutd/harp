@@ -53,6 +53,8 @@ type ApplicationWithQuestions struct {
 	ShortAnswerQuestions []store.ShortAnswerQuestion `json:"short_answer_questions"`
 }
 
+// getOrCreateApplicationHandler returns or creates the user's hackathon application
+//
 // @Summary		Get or create application
 // @Description	Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.
 // @Tags			applications
@@ -112,6 +114,8 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 	}
 }
 
+// updateApplicationHandler partially updates the authenticated user's application
+//
 // @Summary		Update application
 // @Description	Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.
 // @Tags			applications
@@ -245,6 +249,8 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// submitApplicationHandler submits the authenticated user's application for review
+//
 // @Summary		Submit application
 // @Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
 // @Tags			applications
@@ -380,6 +386,8 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// getApplicationStatsHandler returns aggregated statistics for all applications
+//
 // @Summary		Get application stats (Admin)
 // @Description	Returns aggregated statistics for all applications
 // @Tags			admin
@@ -402,6 +410,8 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 	}
 }
 
+// listApplicationsHandler lists all applications with cursor-based pagination
+//
 // @Summary		List applications (Admin)
 // @Description	Lists all applications with cursor-based pagination and optional status filter
 // @Tags			admin
@@ -492,6 +502,8 @@ type EmailListResponse struct {
 	Count  int      `json:"count"`
 }
 
+// setApplicationStatus sets the final status on an application
+//
 // @Summary		Set application status (Super Admin)
 // @Description	Sets the final status (accepted, rejected, or waitlisted) on an application
 // @Tags			superadmin
@@ -540,6 +552,8 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// getApplication returns a single application by ID with embedded questions
+//
 // @Summary		Get application by ID (Admin)
 // @Description	Returns a single application by its ID with embedded short answer questions
 // @Tags			admin
@@ -587,6 +601,8 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getApplicantEmailsByStatusHandler returns applicant emails filtered by status
+//
 // @Summary		Get applicant emails by status (Super Admin)
 // @Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
 // @Tags			superadmin
@@ -606,21 +622,23 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	var emails []string
-	var err error
-
-	switch status := store.ApplicationStatus(statusStr); status {
-	case store.StatusAccepted,
-		store.StatusRejected, store.StatusWaitlisted:
-		emails, err = app.store.Application.GetEmailsByStatus(r.Context(), status)
+	status := store.ApplicationStatus(statusStr)
+	switch status {
+	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
 	default:
 		app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
 		return
 	}
 
+	users, err := app.store.Application.GetEmailsByStatus(r.Context(), status)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
+	}
+
+	emails := make([]string, len(users))
+	for i, u := range users {
+		emails[i] = u.Email
 	}
 
 	response := EmailListResponse{
