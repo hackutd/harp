@@ -1,6 +1,6 @@
-import { forwardRef,useEffect, useState } from 'react';
+import { forwardRef, useEffect, useState } from "react";
 
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea";
 
 interface NotesTextareaProps {
   reviewId: string;
@@ -10,11 +10,13 @@ interface NotesTextareaProps {
   onNotesChange: (id: string, notes: string) => void;
 }
 
-export const NotesTextarea = forwardRef<HTMLTextAreaElement, NotesTextareaProps>(
-  function NotesTextarea(
-    { reviewId, initialValue, disabled, rows, onNotesChange },
-    ref
-  ) {
+export const NotesTextarea = forwardRef<
+  HTMLTextAreaElement,
+  NotesTextareaProps
+>(function NotesTextarea(
+  { reviewId, initialValue, disabled, rows, onNotesChange },
+  ref,
+) {
   const [value, setValue] = useState(initialValue);
 
   // Sync when reviewId or initialValue changes (intentional reset on prop change)

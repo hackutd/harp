@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle } from "lucide-react";
-import { useEffect,useState } from "react";
-import { FormProvider,useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,7 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { errorAlert,getRequest, patchRequest, postRequest } from "@/shared/lib/api";
+import {
+  errorAlert,
+  getRequest,
+  patchRequest,
+  postRequest,
+} from "@/shared/lib/api";
 import type { Application, ShortAnswerQuestion } from "@/types";
 
 import { EventInfoStep } from "../steps/EventInfoStep";
@@ -102,7 +107,8 @@ function transformApplicationToFormData(app: Application): ApplicationFormData {
     heard_about: app.heard_about ?? "",
     short_answer_responses: app.short_answer_responses ?? {},
     shirt_size: app.shirt_size ?? "",
-    dietary_restrictions: (app.dietary_restrictions ?? []) as DietaryRestriction[],
+    dietary_restrictions: (app.dietary_restrictions ??
+      []) as DietaryRestriction[],
     accommodations: app.accommodations ?? "",
     github: app.github ?? "",
     linkedin: app.linkedin ?? "",
@@ -117,7 +123,7 @@ function transformApplicationToFormData(app: Application): ApplicationFormData {
 // Transform form data to API payload
 // Using Record<string, unknown> because react-hook-form with zod coerce types as unknown
 function transformFormDataToPayload(
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
 
@@ -196,7 +202,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const loadApplication = async () => {
       const res = await getRequest<Application>(
         "/applications/me",
-        "application"
+        "application",
       );
       if (res.status === 200 && res.data) {
         setApplication(res.data);
@@ -262,7 +268,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const res = await patchRequest<Application>(
       "/applications/me",
       payload,
-      "application"
+      "application",
     );
 
     if (res.status === 200 && res.data) {
@@ -298,7 +304,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
     if (missingQuestions.length > 0) {
       setApiError(
-        `Please answer the following required questions: ${missingQuestions.join(", ")}`
+        `Please answer the following required questions: ${missingQuestions.join(", ")}`,
       );
       setSubmitting(false);
       return;
@@ -311,7 +317,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const saveRes = await patchRequest<Application>(
       "/applications/me",
       payload,
-      "application"
+      "application",
     );
 
     if (saveRes.status !== 200) {
@@ -325,7 +331,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const submitRes = await postRequest<Application>(
       "/applications/me/submit",
       {},
-      "application"
+      "application",
     );
 
     if (submitRes.status === 200 && submitRes.data) {
@@ -400,7 +406,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       case 5:
         return <SponsorInfoStep />;
       case 6:
-        return <ReviewStep onEditStep={goToStep} userEmail={userEmail} questions={questions} />;
+        return (
+          <ReviewStep
+            onEditStep={goToStep}
+            userEmail={userEmail}
+            questions={questions}
+          />
+        );
       default:
         return null;
     }

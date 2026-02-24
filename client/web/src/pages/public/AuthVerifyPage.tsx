@@ -43,7 +43,7 @@ export default function AuthVerify() {
       } catch (err) {
         setStatus("error");
         setError(
-          err instanceof Error ? err.message : "Failed to verify magic link"
+          err instanceof Error ? err.message : "Failed to verify magic link",
         );
       }
     };

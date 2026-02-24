@@ -36,7 +36,10 @@ export function StepIndicator({
           const isClickable = onStepClick && index <= currentStep;
 
           return (
-            <div key={step.id} className="flex items-center flex-1 last:flex-none">
+            <div
+              key={step.id}
+              className="flex items-center flex-1 last:flex-none"
+            >
               <button
                 type="button"
                 onClick={() => isClickable && onStepClick?.(index)}
@@ -45,9 +48,12 @@ export function StepIndicator({
                   "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
                   isCompleted &&
                     "bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90",
-                  isCurrent && "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2",
-                  !isCompleted && !isCurrent && "bg-muted text-muted-foreground",
-                  isClickable && "cursor-pointer"
+                  isCurrent &&
+                    "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2",
+                  !isCompleted &&
+                    !isCurrent &&
+                    "bg-muted text-muted-foreground",
+                  isClickable && "cursor-pointer",
                 )}
               >
                 {isCompleted ? <Check className="w-4 h-4" /> : index + 1}
@@ -58,7 +64,7 @@ export function StepIndicator({
                 <div
                   className={cn(
                     "h-0.5 flex-1 mx-2 transition-colors",
-                    index < currentStep ? "bg-primary" : "bg-muted"
+                    index < currentStep ? "bg-primary" : "bg-muted",
                   )}
                 />
               )}
@@ -76,9 +82,11 @@ export function StepIndicator({
               "text-xs text-center flex-1 last:flex-none",
               index === currentStep
                 ? "text-primary font-medium"
-                : "text-muted-foreground"
+                : "text-muted-foreground",
             )}
-            style={{ maxWidth: index === steps.length - 1 ? "auto" : undefined }}
+            style={{
+              maxWidth: index === steps.length - 1 ? "auto" : undefined,
+            }}
           >
             {step.title}
           </div>

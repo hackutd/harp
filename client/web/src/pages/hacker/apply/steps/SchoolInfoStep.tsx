@@ -38,10 +38,7 @@ export function SchoolInfoStep() {
           <FormItem>
             <FormLabel>Which university do you attend? *</FormLabel>
             <FormControl>
-              <Input
-                placeholder="University of Texas at Dallas"
-                {...field}
-              />
+              <Input placeholder="University of Texas at Dallas" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

@@ -7,5 +7,5 @@ export function SetAdminTab() {
       </p>
       {/* Future implementation area */}
     </div>
-  )
+  );
 }

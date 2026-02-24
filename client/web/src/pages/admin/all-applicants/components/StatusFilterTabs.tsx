@@ -1,7 +1,7 @@
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import type { ApplicationStats, ApplicationStatus } from '../types';
+import type { ApplicationStats, ApplicationStatus } from "../types";
 
 interface StatusFilterTabsProps {
   stats: ApplicationStats | null;
@@ -17,18 +17,22 @@ export function StatusFilterTabs({
   onStatusChange,
 }: StatusFilterTabsProps) {
   const handleValueChange = (value: string) => {
-    const status = value === 'all' ? null : (value as ApplicationStatus);
+    const status = value === "all" ? null : (value as ApplicationStatus);
     onStatusChange(status);
   };
 
   return (
     <Tabs
-      value={currentStatus ?? 'all'}
+      value={currentStatus ?? "all"}
       onValueChange={handleValueChange}
       className="w-auto"
     >
       <TabsList>
-        <TabsTrigger value="all" disabled={loading} className="font-normal cursor-pointer">
+        <TabsTrigger
+          value="all"
+          disabled={loading}
+          className="font-normal cursor-pointer"
+        >
           All
           {stats && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
@@ -36,7 +40,11 @@ export function StatusFilterTabs({
             </Badge>
           )}
         </TabsTrigger>
-        <TabsTrigger value="draft" disabled={loading} className="font-normal cursor-pointer">
+        <TabsTrigger
+          value="draft"
+          disabled={loading}
+          className="font-normal cursor-pointer"
+        >
           Draft
           {stats && stats.draft > 0 && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
@@ -44,7 +52,11 @@ export function StatusFilterTabs({
             </Badge>
           )}
         </TabsTrigger>
-        <TabsTrigger value="submitted" disabled={loading} className="font-normal cursor-pointer">
+        <TabsTrigger
+          value="submitted"
+          disabled={loading}
+          className="font-normal cursor-pointer"
+        >
           Submitted
           {stats && stats.submitted > 0 && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
@@ -52,7 +64,11 @@ export function StatusFilterTabs({
             </Badge>
           )}
         </TabsTrigger>
-        <TabsTrigger value="accepted" disabled={loading} className="font-normal cursor-pointer">
+        <TabsTrigger
+          value="accepted"
+          disabled={loading}
+          className="font-normal cursor-pointer"
+        >
           Accepted
           {stats && stats.accepted > 0 && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
@@ -60,7 +76,11 @@ export function StatusFilterTabs({
             </Badge>
           )}
         </TabsTrigger>
-        <TabsTrigger value="waitlisted" disabled={loading} className="font-normal cursor-pointer">
+        <TabsTrigger
+          value="waitlisted"
+          disabled={loading}
+          className="font-normal cursor-pointer"
+        >
           Waitlisted
           {stats && stats.waitlisted > 0 && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
@@ -68,7 +88,11 @@ export function StatusFilterTabs({
             </Badge>
           )}
         </TabsTrigger>
-        <TabsTrigger value="rejected" disabled={loading} className="font-normal cursor-pointer">
+        <TabsTrigger
+          value="rejected"
+          disabled={loading}
+          className="font-normal cursor-pointer"
+        >
           Rejected
           {stats && stats.rejected > 0 && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">

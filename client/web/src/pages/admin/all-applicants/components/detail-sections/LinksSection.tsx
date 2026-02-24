@@ -1,12 +1,13 @@
-import { Label } from '@/components/ui/label';
-import type { Application } from '@/types';
+import { Label } from "@/components/ui/label";
+import type { Application } from "@/types";
 
 interface LinksSectionProps {
   application: Application;
 }
 
 export function LinksSection({ application }: LinksSectionProps) {
-  const hasLinks = application.github || application.linkedin || application.website;
+  const hasLinks =
+    application.github || application.linkedin || application.website;
 
   if (!hasLinks) {
     return null;

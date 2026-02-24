@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   CircleCheck,
@@ -8,24 +8,24 @@ import {
   UserCheck,
   Users,
   UsersRound,
-} from "lucide-react"
-import * as React from "react"
-import { useLocation } from "react-router-dom"
+} from "lucide-react";
+import * as React from "react";
+import { useLocation } from "react-router-dom";
 
-import { Separator } from '@/components/ui/separator'
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from '@/components/ui/sidebar'
-import { useSidebar } from '@/components/ui/sidebar'
-import { SettingsDialog } from '@/pages/superadmin'
-import { useUserStore } from '@/shared/stores'
+} from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
+import { SettingsDialog } from "@/pages/superadmin";
+import { useUserStore } from "@/shared/stores";
 
-import { NavSection } from '../_shared/NavSection'
-import { NavUser } from '../_shared/NavUser'
+import { NavSection } from "../_shared/NavSection";
+import { NavUser } from "../_shared/NavUser";
 
 const applicantsNav = [
   {
@@ -43,7 +43,7 @@ const applicantsNav = [
     url: "/admin/completed",
     icon: CircleCheck,
   },
-]
+];
 
 const eventNav = [
   {
@@ -61,20 +61,20 @@ const eventNav = [
     url: "/admin/groups",
     icon: UsersRound,
   },
-]
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useUserStore()
-  const location = useLocation()
-  const { state } = useSidebar()
+  const { user } = useUserStore();
+  const location = useLocation();
+  const { state } = useSidebar();
 
   const userData = {
     name: user?.role
-      ? user.role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-      : 'Admin',
-    email: user?.email || '',
-    avatar: user?.profilePictureUrl || '',
-  }
+      ? user.role.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : "Admin",
+    email: user?.email || "",
+    avatar: user?.profilePictureUrl || "",
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -82,11 +82,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser user={userData} />
       </SidebarHeader>
       <SidebarContent>
-        <NavSection label="Applicants" items={applicantsNav} currentPath={location.pathname} />
-        <NavSection label="Event" items={eventNav} currentPath={location.pathname} />
+        <NavSection
+          label="Applicants"
+          items={applicantsNav}
+          currentPath={location.pathname}
+        />
+        <NavSection
+          label="Event"
+          items={eventNav}
+          currentPath={location.pathname}
+        />
       </SidebarContent>
       <SidebarFooter>
-        {user?.role === 'super_admin' && (
+        {user?.role === "super_admin" && (
           <>
             <Separator />
             <SettingsDialog
@@ -95,7 +103,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   {state === "expanded" && (
                     <div className="flex flex-col text-left">
                       <span className="font-semibold text-sm">Settings</span>
-                      <span className="text-xs text-muted-foreground">Super Admins ONLY</span>
+                      <span className="text-xs text-muted-foreground">
+                        Super Admins ONLY
+                      </span>
                     </div>
                   )}
                   <Settings className="size-5" />
@@ -107,5 +117,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

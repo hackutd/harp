@@ -67,9 +67,7 @@ export function EventInfoStep() {
         render={() => (
           <FormItem>
             <FormLabel>Allergies / Dietary Restrictions</FormLabel>
-            <FormDescription>
-              Select all that apply (optional)
-            </FormDescription>
+            <FormDescription>Select all that apply (optional)</FormDescription>
             <div className="grid grid-cols-2 gap-3 mt-2">
               {DIETARY_RESTRICTION_OPTIONS.map((option) => (
                 <FormField
@@ -82,13 +80,15 @@ export function EventInfoStep() {
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl>
                           <Checkbox
-                            checked={value.includes(option.value as typeof value[number])}
+                            checked={value.includes(
+                              option.value as (typeof value)[number],
+                            )}
                             onCheckedChange={(checked) => {
                               if (checked) {
                                 field.onChange([...value, option.value]);
                               } else {
                                 field.onChange(
-                                  value.filter((v) => v !== option.value)
+                                  value.filter((v) => v !== option.value),
                                 );
                               }
                             }}
@@ -114,7 +114,8 @@ export function EventInfoStep() {
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Anything else we can do to better accommodate you at our hackathon?
+              Anything else we can do to better accommodate you at our
+              hackathon?
             </FormLabel>
             <FormControl>
               <Textarea

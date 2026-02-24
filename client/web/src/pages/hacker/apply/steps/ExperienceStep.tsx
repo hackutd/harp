@@ -17,10 +17,7 @@ import {
 } from "@/components/ui/select";
 
 import type { ApplicationFormData } from "../validations";
-import {
-  EXPERIENCE_LEVEL_OPTIONS,
-  HEARD_ABOUT_OPTIONS,
-} from "../validations";
+import { EXPERIENCE_LEVEL_OPTIONS, HEARD_ABOUT_OPTIONS } from "../validations";
 
 export function ExperienceStep() {
   const form = useFormContext<ApplicationFormData>();
@@ -39,7 +36,9 @@ export function ExperienceStep() {
         name="hackathons_attended_count"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>How many hackathons have you attended before? *</FormLabel>
+            <FormLabel>
+              How many hackathons have you attended before? *
+            </FormLabel>
             <FormControl>
               <Input
                 type="number"

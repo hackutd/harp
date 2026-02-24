@@ -1,6 +1,6 @@
-import { Maximize2 } from 'lucide-react';
+import { Maximize2 } from "lucide-react";
 
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -8,22 +8,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 
-import type { Review, ReviewVote } from '../types';
-import { VoteBadge } from './VoteBadge';
+import type { Review, ReviewVote } from "../types";
+import { VoteBadge } from "./VoteBadge";
 
 interface ReviewsTableProps {
   reviews: Review[];
   selectedId: string | null;
   loading: boolean;
   onSelectReview: (id: string) => void;
-  getVote: (reviewId: string, serverVote: ReviewVote | null) => ReviewVote | null;
+  getVote: (
+    reviewId: string,
+    serverVote: ReviewVote | null,
+  ) => ReviewVote | null;
 }
 
 function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return '-';
-  return `${firstName ?? ''} ${lastName ?? ''}`.trim();
+  if (!firstName && !lastName) return "-";
+  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
 }
 
 export function ReviewsTable({
@@ -68,7 +71,7 @@ export function ReviewsTable({
                 <TableRow
                   key={review.id}
                   className={`group hover:bg-muted/50 [&>td]:py-3 cursor-pointer ${
-                    selectedId === review.id ? 'bg-muted/50' : ''
+                    selectedId === review.id ? "bg-muted/50" : ""
                   }`}
                   onClick={() => onSelectReview(review.id)}
                 >
@@ -77,7 +80,9 @@ export function ReviewsTable({
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center justify-between gap-4">
-                      <span>{formatName(review.first_name, review.last_name)}</span>
+                      <span>
+                        {formatName(review.first_name, review.last_name)}
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -92,11 +97,13 @@ export function ReviewsTable({
                     </div>
                   </TableCell>
                   <TableCell>{review.email}</TableCell>
-                  <TableCell>{review.age ?? '-'}</TableCell>
-                  <TableCell>{review.university ?? '-'}</TableCell>
-                  <TableCell>{review.major ?? '-'}</TableCell>
-                  <TableCell>{review.country_of_residence ?? '-'}</TableCell>
-                  <TableCell>{review.hackathons_attended_count ?? '-'}</TableCell>
+                  <TableCell>{review.age ?? "-"}</TableCell>
+                  <TableCell>{review.university ?? "-"}</TableCell>
+                  <TableCell>{review.major ?? "-"}</TableCell>
+                  <TableCell>{review.country_of_residence ?? "-"}</TableCell>
+                  <TableCell>
+                    {review.hackathons_attended_count ?? "-"}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {new Date(review.assigned_at).toLocaleDateString()}
                   </TableCell>
