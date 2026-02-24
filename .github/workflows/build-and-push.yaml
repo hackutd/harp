@@ -13,14 +13,11 @@ env:
 
 # There is a single job in this workflow. It's configured to run on the latest available version of Ubuntu.
 jobs:
-  backend-audit:
-    uses: ./.github/workflows/backend-audit.yml
-
-  frontend-audit:
-    uses: ./.github/workflows/frontend-audit.yml
+  audit:
+    uses: ./.github/workflows/audit.yml
 
   build-image:
-    needs: [backend-audit, frontend-audit]
+    needs: [audit]
     runs-on: ubuntu-latest
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
