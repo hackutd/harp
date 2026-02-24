@@ -152,7 +152,7 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, ai_percentage
+			submitted_at, ai_percent
 		) VALUES (
 			$1,  $2,
 			$3,  $4,  $5,  $6,

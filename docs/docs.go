@@ -262,7 +262,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records the estimated AI-generated content percentage for an application assigned to the current admin",
+                "description": "Records the estimated AI-generated content percent for an application assigned to the current admin",
                 "consumes": [
                     "application/json"
                 ],
@@ -272,7 +272,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Set AI percentage on a review (Admin)",
+                "summary": "Set AI percent on a review (Admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -282,12 +282,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "AI percentage (0–100)",
+                        "description": "AI percent (0–100)",
                         "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.SetAIPercentagePayload"
+                            "$ref": "#/definitions/main.SetAIpercentPayload"
                         }
                     }
                 ],
@@ -295,7 +295,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.AIPercentageResponse"
+                            "$ref": "#/definitions/main.AIpercentResponse"
                         }
                     },
                     "400": {
@@ -1545,10 +1545,10 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.AIPercentageResponse": {
+        "main.AIpercentResponse": {
             "type": "object",
             "properties": {
-                "ai_percentage": {
+                "ai_percent": {
                     "type": "integer"
                 }
             }
@@ -1584,7 +1584,7 @@ const docTemplate = `{
                     "maximum": 150,
                     "minimum": 1
                 },
-                "ai_percentage": {
+                "ai_percent": {
                     "type": "integer"
                 },
                 "country_of_residence": {
@@ -1778,13 +1778,13 @@ const docTemplate = `{
                 }
             }
         },
-        "main.SetAIPercentagePayload": {
+        "main.SetAIpercentPayload": {
             "type": "object",
             "required": [
-                "ai_percentage"
+                "ai_percent"
             ],
             "properties": {
-                "ai_percentage": {
+                "ai_percent": {
                     "type": "integer",
                     "maximum": 100,
                     "minimum": 0
@@ -2021,7 +2021,7 @@ const docTemplate = `{
                     "maximum": 150,
                     "minimum": 1
                 },
-                "ai_percentage": {
+                "ai_percent": {
                     "type": "integer"
                 },
                 "country_of_residence": {
@@ -2144,7 +2144,7 @@ const docTemplate = `{
                 "age": {
                     "type": "integer"
                 },
-                "ai_percentage": {
+                "ai_percent": {
                     "type": "integer"
                 },
                 "country_of_residence": {
