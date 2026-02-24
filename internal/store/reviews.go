@@ -236,36 +236,9 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	defer tx.Rollback()
 
-	// First, ensure all admins/super_admins exist in the review assignment setting.
+	// Ensure all admins/super_admins exist in the review assignment setting.
 	// This acts as a backfill for any admins that were created before this setting existed
 	// or were added to the database manually.
-	backfillAdminsQuery := `
-		SELECT u.id, u.role
-		FROM users u
-		WHERE u.role IN ('admin', 'super_admin')
-	`
-	adminRows, err := tx.QueryContext(ctx, backfillAdminsQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	var allAdminIDs []string
-	adminRoles := make(map[string]UserRole)
-	for adminRows.Next() {
-		var id string
-		var role UserRole
-		if err := adminRows.Scan(&id, &role); err != nil {
-			adminRows.Close()
-			return nil, err
-		}
-		allAdminIDs = append(allAdminIDs, id)
-		adminRoles[id] = role
-	}
-	adminRows.Close()
-	if err := adminRows.Err(); err != nil {
-		return nil, err
-	}
-
 	var entries []ReviewAssignmentEntry
 
 	selectSettingQuery := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
@@ -293,33 +266,73 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		}
 	}
 
-	existingAdminMap := make(map[string]bool)
-	for _, entry := range entries {
-		existingAdminMap[entry.ID] = true
-	}
-
-	changesMade := false
-	for _, adminID := range allAdminIDs {
-		if _, exists := existingAdminMap[adminID]; !exists {
-			defaultEnabled := adminRoles[adminID] == RoleAdmin
-			entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: defaultEnabled})
-			changesMade = true
+	// Only run the full backfill query if entries might be out of sync
+	needsBackfill := isNewSetting
+	if !isNewSetting {
+		var adminCount int
+		countQuery := `SELECT COUNT(*) FROM users WHERE role IN ('admin', 'super_admin')`
+		if err := tx.QueryRowContext(ctx, countQuery).Scan(&adminCount); err != nil {
+			return nil, err
 		}
+		needsBackfill = adminCount != len(entries)
 	}
 
-	if changesMade || isNewSetting {
-		jsonValue, err := json.Marshal(entries)
+	if needsBackfill {
+		backfillAdminsQuery := `
+			SELECT u.id, u.role
+			FROM users u
+			WHERE u.role IN ('admin', 'super_admin')
+		`
+		adminRows, err := tx.QueryContext(ctx, backfillAdminsQuery)
 		if err != nil {
 			return nil, err
 		}
 
-		upsertQuery := `
-			INSERT INTO settings (key, value)
-			VALUES ($1, $2)
-			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-		`
-		if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+		var allAdminIDs []string
+		adminRoles := make(map[string]UserRole)
+		for adminRows.Next() {
+			var id string
+			var role UserRole
+			if err := adminRows.Scan(&id, &role); err != nil {
+				adminRows.Close()
+				return nil, err
+			}
+			allAdminIDs = append(allAdminIDs, id)
+			adminRoles[id] = role
+		}
+		adminRows.Close()
+		if err := adminRows.Err(); err != nil {
 			return nil, err
+		}
+
+		existingAdminMap := make(map[string]bool)
+		for _, entry := range entries {
+			existingAdminMap[entry.ID] = true
+		}
+
+		changesMade := false
+		for _, adminID := range allAdminIDs {
+			if _, exists := existingAdminMap[adminID]; !exists {
+				defaultEnabled := adminRoles[adminID] == RoleAdmin
+				entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: defaultEnabled})
+				changesMade = true
+			}
+		}
+
+		if changesMade || isNewSetting {
+			jsonValue, err := json.Marshal(entries)
+			if err != nil {
+				return nil, err
+			}
+
+			upsertQuery := `
+				INSERT INTO settings (key, value)
+				VALUES ($1, $2)
+				ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+			`
+			if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -363,7 +376,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		ORDER BY COUNT(ar.id) ASC, u.created_at ASC;
 	`
 
-	adminRows, err = tx.QueryContext(ctx, adminsQuery)
+	adminRows, err := tx.QueryContext(ctx, adminsQuery)
 	if err != nil {
 		return nil, err
 	}
