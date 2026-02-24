@@ -26,6 +26,13 @@ const SettingsKeyReviewAssignmentEnabled = "review_assignment_enabled"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 
+// ReviewAssignmentEntry represents a single admin's review assignment toggle state.
+// Used in the review_assignment_enabled settings JSON array.
+type ReviewAssignmentEntry struct {
+	ID      string `json:"id"`
+	Enabled bool   `json:"enabled"`
+}
+
 // GetShortAnswerQuestions returns the parsed questions array
 func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -250,12 +257,7 @@ func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context, superAdm
 	}
 
 	// New format: array of objects {"id": "...", "enabled": true}
-	type entry struct {
-		ID      string `json:"id"`
-		Enabled bool   `json:"enabled"`
-	}
-
-	var entries []entry
+	var entries []ReviewAssignmentEntry
 	if err := json.Unmarshal(value, &entries); err == nil {
 		for _, e := range entries {
 			if e.ID == superAdminID && e.Enabled {
@@ -298,18 +300,13 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 	var value []byte
 	err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
 
-	type entry struct {
-		ID      string `json:"id"`
-		Enabled bool   `json:"enabled"`
-	}
-
-	var entries []entry
+	var entries []ReviewAssignmentEntry
 
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		entries = []entry{}
+		entries = []ReviewAssignmentEntry{}
 	} else {
 		// Try new format first
 		if jerr := json.Unmarshal(value, &entries); jerr != nil {
@@ -318,11 +315,11 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
 				// convert legacy ids to entries with enabled=true
 				for _, id := range ids {
-					entries = append(entries, entry{ID: id, Enabled: true})
+					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
 				}
 			} else {
 				// If we can't parse either, start fresh
-				entries = []entry{}
+				entries = []ReviewAssignmentEntry{}
 			}
 		}
 	}
@@ -336,7 +333,7 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 		}
 	}
 	if enabled && !found {
-		entries = append(entries, entry{ID: superAdminID, Enabled: true})
+		entries = append(entries, ReviewAssignmentEntry{ID: superAdminID, Enabled: true})
 	}
 
 	jsonValue, err := json.Marshal(entries)
