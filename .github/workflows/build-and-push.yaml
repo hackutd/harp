@@ -51,7 +51,7 @@ jobs:
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        wit:
+        with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -66,6 +66,7 @@ jobs:
           push-to-registry: true
   push-image:
     needs: build-image
+    runs-on: ubuntu-latest
     steps:
       - name: SSH into Server and Update
         uses: appleboy/ssh-action@master
