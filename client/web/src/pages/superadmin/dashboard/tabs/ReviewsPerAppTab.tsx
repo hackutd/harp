@@ -1,6 +1,6 @@
-import { Loader2, Minus, Plus, Shuffle } from "lucide-react"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
+import { Loader2, Minus, Plus, Shuffle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -37,26 +37,26 @@ export function ReviewsPerAppTab({
   setReviewsPerApp,
   loading,
 }: ReviewsPerAppTabProps) {
-  const [assigning, setAssigning] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [reviewAssignmentEnabled, setReviewAssignmentEnabled] = useState(true)
-  const [togglingAssignment, setTogglingAssignment] = useState(false)
+  const [assigning, setAssigning] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewAssignmentEnabled, setReviewAssignmentEnabled] = useState(true);
+  const [togglingAssignment, setTogglingAssignment] = useState(false);
   const triggerAssignedPageRefresh = refreshAssignedPage(
     (state: AssignedState) => state.triggerRefresh,
   );
-  
+
   useEffect(() => {
     async function fetchReviewAssignmentEnabled() {
       const res = await getRequest<{ enabled: boolean }>(
         "/superadmin/settings/review-assignment-enabled",
-        "fetch review assignment enabled"
-      )
+        "fetch review assignment enabled",
+      );
       if (res.status === 200 && res.data !== undefined) {
-        setReviewAssignmentEnabled(res.data.enabled)
+        setReviewAssignmentEnabled(res.data.enabled);
       }
     }
-    fetchReviewAssignmentEnabled()
-  }, [])
+    fetchReviewAssignmentEnabled();
+  }, []);
 
   async function handleBatchAssign() {
     setConfirmOpen(false);
@@ -78,22 +78,22 @@ export function ReviewsPerAppTab({
   }
 
   async function handleToggleAssignmentEnabled(enabled: boolean) {
-    setTogglingAssignment(true)
+    setTogglingAssignment(true);
     const res = await postRequest<{ enabled: boolean }>(
       "/superadmin/settings/review-assignment-enabled",
       { enabled },
-      "review assignment toggle"
-    )
+      "review assignment toggle",
+    );
     if (res.status === 200 && res.data !== undefined) {
-      setReviewAssignmentEnabled(res.data.enabled)
+      setReviewAssignmentEnabled(res.data.enabled);
       toast.warning(
         `Review assignment ${res.data.enabled ? "enabled. Please run Auto Assign Reviews to give yourself reviews." : "disabled. Please run Auto Assign Reviews to reroute any reviews stuck under you."}`,
-        { duration: 5000 }
-      )
+        { duration: 5000 },
+      );
     } else {
-      errorAlert(res)
+      errorAlert(res);
     }
-    setTogglingAssignment(false)
+    setTogglingAssignment(false);
   }
 
   if (loading) {
@@ -147,7 +147,9 @@ export function ReviewsPerAppTab({
 
       <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
         <CardHeader>
-          <CardTitle className="font-normal text-zinc-100">Enable Review Assignment</CardTitle>
+          <CardTitle className="font-normal text-zinc-100">
+            Enable Review Assignment
+          </CardTitle>
           <CardDescription className="text-zinc-400">
             Allow super admins to enable/disable themselves from vote reviews.
           </CardDescription>
@@ -170,7 +172,9 @@ export function ReviewsPerAppTab({
       <Separator className="bg-zinc-800" />
       <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
         <CardHeader>
-          <CardTitle className="font-normal text-zinc-100">Auto Assign Reviews</CardTitle>
+          <CardTitle className="font-normal text-zinc-100">
+            Auto Assign Reviews
+          </CardTitle>
           <CardDescription className="text-zinc-400">
             Auto-assigns admins to submitted applications using workload
             balancing. Safe to run multiple times.
@@ -222,5 +226,5 @@ export function ReviewsPerAppTab({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }
