@@ -1,36 +1,36 @@
-import { Check, Pencil, X } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { Check, Pencil, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { Application } from '@/types';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { Application } from "@/types";
 
-import { setAIPercentage } from '../api';
-import type { Review } from '../types';
+import { setAIpercent } from "../api";
+import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
   application: Application;
   selectedReview: Review;
   isExpanded: boolean;
-  onAiPercentageUpdate: (percentage: number) => void;
+  onAipercentUpdate: (percent: number) => void;
 }
 
 export function ApplicationDetailsPanel({
   application,
   selectedReview,
   isExpanded,
-  onAiPercentageUpdate,
+  onAipercentUpdate,
 }: ApplicationDetailsPanelProps) {
-  const gridCols = isExpanded ? 'grid-cols-4' : 'grid-cols-2';
+  const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
 
   const [editing, setEditing] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
 
   function startEditing() {
-    setInputValue(application.ai_percentage?.toString() ?? '');
+    setInputValue(application.ai_percent?.toString() ?? "");
     setEditing(true);
   }
 
@@ -39,13 +39,13 @@ export function ApplicationDetailsPanel({
   }
 
   async function saveEditing() {
-    const percentage = Number(inputValue);
-    const result = await setAIPercentage(application.id, { ai_percentage: percentage });
+    const percent = Number(inputValue);
+    const result = await setAIpercent(application.id, { ai_percent: percent });
     if (result.success) {
-      onAiPercentageUpdate(percentage);
-      toast.success('AI percentage saved');
+      onAipercentUpdate(percent);
+      toast.success("AI percent saved");
     } else {
-      toast.error(result.error ?? 'Failed to set AI percentage');
+      toast.error(result.error ?? "Failed to set AI percent");
     }
     setEditing(false);
   }
@@ -58,19 +58,19 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Phone</Label>
-            <p>{application.phone_e164 || 'N/A'}</p>
+            <p>{application.phone_e164 || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Age</Label>
-            <p>{application.age ?? 'N/A'}</p>
+            <p>{application.age ?? "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Country</Label>
-            <p>{application.country_of_residence || 'N/A'}</p>
+            <p>{application.country_of_residence || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Gender</Label>
-            <p>{application.gender || 'N/A'}</p>
+            <p>{application.gender || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -81,11 +81,11 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Race</Label>
-            <p>{application.race || 'N/A'}</p>
+            <p>{application.race || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Ethnicity</Label>
-            <p>{application.ethnicity || 'N/A'}</p>
+            <p>{application.ethnicity || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -94,17 +94,19 @@ export function ApplicationDetailsPanel({
       <div>
         <h4 className="text-sm font-semibold mb-2">Education</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div className={isExpanded ? '' : 'col-span-2'}>
+          <div className={isExpanded ? "" : "col-span-2"}>
             <Label className="text-muted-foreground text-xs">University</Label>
-            <p>{application.university || 'N/A'}</p>
+            <p>{application.university || "N/A"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground text-xs">Major</Label>
-            <p>{application.major || 'N/A'}</p>
+            <p>{application.major || "N/A"}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Level of Study</Label>
-            <p>{application.level_of_study || 'N/A'}</p>
+            <Label className="text-muted-foreground text-xs">
+              Level of Study
+            </Label>
+            <p>{application.level_of_study || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -114,16 +116,22 @@ export function ApplicationDetailsPanel({
         <h4 className="text-sm font-semibold mb-2">Experience</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
-            <Label className="text-muted-foreground text-xs">Hackathons Attended</Label>
-            <p>{application.hackathons_attended_count ?? 'N/A'}</p>
+            <Label className="text-muted-foreground text-xs">
+              Hackathons Attended
+            </Label>
+            <p>{application.hackathons_attended_count ?? "N/A"}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Software Experience</Label>
-            <p>{application.software_experience_level || 'N/A'}</p>
+            <Label className="text-muted-foreground text-xs">
+              Software Experience
+            </Label>
+            <p>{application.software_experience_level || "N/A"}</p>
           </div>
-          <div className={isExpanded ? '' : 'col-span-2'}>
-            <Label className="text-muted-foreground text-xs">Heard About Us From</Label>
-            <p>{application.heard_about || 'N/A'}</p>
+          <div className={isExpanded ? "" : "col-span-2"}>
+            <Label className="text-muted-foreground text-xs">
+              Heard About Us From
+            </Label>
+            <p>{application.heard_about || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -138,62 +146,78 @@ export function ApplicationDetailsPanel({
               .map((q) => (
                 <div key={q.id}>
                   <Label className="text-muted-foreground text-xs">
-                    {q.question} {q.required && '*'}
+                    {q.question} {q.required && "*"}
                   </Label>
                   <p className="whitespace-pre-wrap">
-                    {application.short_answer_responses?.[q.id] || 'N/A'}
+                    {application.short_answer_responses?.[q.id] || "N/A"}
                   </p>
                 </div>
               ))}
           </div>
-        <div>
-        <div className="text-sm pt-3">
-          <Label className="text-muted-foreground text-xs">AI Percentage</Label>
-          {editing ? (
-            <div className="flex items-center gap-2 mt-1">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="h-7 w-24 text-sm"
-                autoFocus
-              />
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEditing}>
-                <Check className="h-3.5 w-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditing}>
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 mt-1">
-              {application.ai_percentage != null ? (
-                <div
-                  className="flex items-center gap-2 cursor-not-allowed"
-                  title="AI percentage has already been set and cannot be changed"
-                >
-                  <p>{application.ai_percentage}%</p>
-                  <Pencil className="h-3 w-3 text-muted-foreground opacity-40" />
+          <div>
+            <div className="text-sm pt-3">
+              <Label className="text-muted-foreground text-xs">
+                AI percent
+              </Label>
+              {editing ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="h-7 w-24 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={saveEditing}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={cancelEditing}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               ) : (
-                <>
-                  <p className="text-muted-foreground italic">Not set</p>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={startEditing}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </>
+                <div className="flex items-center gap-2 mt-1">
+                  {application.ai_percent != null ? (
+                    <div
+                      className="flex items-center gap-2 cursor-not-allowed"
+                      title="AI percent has already been set and cannot be changed"
+                    >
+                      <p>{application.ai_percent}%</p>
+                      <Pencil className="h-3 w-3 text-muted-foreground opacity-40" />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground italic">Not set</p>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={startEditing}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
         </div>
       )}
 
-      {/* AI Percentage */}
-
+      {/* AI percent */}
 
       {/* Event Preferences */}
       <div>
@@ -201,14 +225,20 @@ export function ApplicationDetailsPanel({
         <div className={`grid ${gridCols} gap-3 text-sm`}>
           <div>
             <Label className="text-muted-foreground text-xs">Shirt Size</Label>
-            <p>{application.shirt_size || 'N/A'}</p>
+            <p>{application.shirt_size || "N/A"}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Dietary Restrictions</Label>
+            <Label className="text-muted-foreground text-xs">
+              Dietary Restrictions
+            </Label>
             <div className="flex flex-wrap gap-1">
               {application.dietary_restrictions?.length > 0 ? (
                 application.dietary_restrictions.map((restriction) => (
-                  <Badge key={restriction} variant="secondary" className="text-xs">
+                  <Badge
+                    key={restriction}
+                    variant="secondary"
+                    className="text-xs"
+                  >
                     {restriction}
                   </Badge>
                 ))
@@ -218,8 +248,10 @@ export function ApplicationDetailsPanel({
             </div>
           </div>
           {application.accommodations && (
-            <div className={isExpanded ? '' : 'col-span-2'}>
-              <Label className="text-muted-foreground text-xs">Accommodations</Label>
+            <div className={isExpanded ? "" : "col-span-2"}>
+              <Label className="text-muted-foreground text-xs">
+                Accommodations
+              </Label>
               <p>{application.accommodations}</p>
             </div>
           )}
@@ -230,7 +262,9 @@ export function ApplicationDetailsPanel({
       {(application.github || application.linkedin || application.website) && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Links</h4>
-          <div className={`grid ${isExpanded ? 'grid-cols-3' : 'grid-cols-1'} gap-2 text-sm`}>
+          <div
+            className={`grid ${isExpanded ? "grid-cols-3" : "grid-cols-1"} gap-2 text-sm`}
+          >
             {application.github && (
               <div>
                 <Label className="text-muted-foreground text-xs">GitHub</Label>
@@ -248,7 +282,9 @@ export function ApplicationDetailsPanel({
             )}
             {application.linkedin && (
               <div>
-                <Label className="text-muted-foreground text-xs">LinkedIn</Label>
+                <Label className="text-muted-foreground text-xs">
+                  LinkedIn
+                </Label>
                 <p>
                   <a
                     href={application.linkedin}
@@ -289,7 +325,7 @@ export function ApplicationDetailsPanel({
             <p>
               {application.submitted_at
                 ? new Date(application.submitted_at).toLocaleString()
-                : 'N/A'}
+                : "N/A"}
             </p>
           </div>
           <div>
@@ -297,7 +333,9 @@ export function ApplicationDetailsPanel({
             <p>{new Date(application.created_at).toLocaleString()}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Last Updated</Label>
+            <Label className="text-muted-foreground text-xs">
+              Last Updated
+            </Label>
             <p>{new Date(application.updated_at).toLocaleString()}</p>
           </div>
         </div>
@@ -307,8 +345,10 @@ export function ApplicationDetailsPanel({
       <div>
         <h4 className="text-sm font-semibold mb-2">Review Details</h4>
         <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div className={isExpanded ? '' : 'col-span-2'}>
-            <Label className="text-muted-foreground text-xs">Application ID</Label>
+          <div className={isExpanded ? "" : "col-span-2"}>
+            <Label className="text-muted-foreground text-xs">
+              Application ID
+            </Label>
             <p className="font-mono text-xs">{selectedReview.application_id}</p>
           </div>
           <div>
@@ -317,7 +357,9 @@ export function ApplicationDetailsPanel({
           </div>
           {selectedReview.reviewed_at && (
             <div>
-              <Label className="text-muted-foreground text-xs">Reviewed At</Label>
+              <Label className="text-muted-foreground text-xs">
+                Reviewed At
+              </Label>
               <p>{new Date(selectedReview.reviewed_at).toLocaleString()}</p>
             </div>
           )}

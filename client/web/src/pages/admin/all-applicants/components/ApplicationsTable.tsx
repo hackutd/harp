@@ -51,7 +51,7 @@ export function ApplicationsTable({
             <TableHead>Submitted</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
-            <TableHead>AI Percentage</TableHead>
+            <TableHead>AI percent</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -105,7 +105,9 @@ export function ApplicationsTable({
                 <TableCell className="whitespace-nowrap">
                   {new Date(app.updated_at).toLocaleDateString()}
                 </TableCell>
-                <TableCell>{app.ai_percentage != null ? `${app.ai_percentage}%` : '-'}</TableCell>
+                <TableCell>
+                  {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
+                </TableCell>
               </TableRow>
             ))
           )}

@@ -2,7 +2,12 @@ import { ClipboardPen, Minimize2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -11,17 +16,10 @@ import {
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
-import { ReviewsPageLayout } from "../_shared";
-
-const REVIEWS_TABS = [
-  { label: "Assigned", to: "/admin/assigned" },
-  { label: "Completed", to: "/admin/completed" },
-];
 import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { VoteBadge } from "./components/VoteBadge";
 import { VotingPanel } from "./components/VotingPanel";
-import { refreshAssignedPage } from "./hooks/updateReviewPage";
 import { useReviewKeyboardShortcuts } from "./hooks/useReviewKeyboardShortcuts";
 import { useReviewsStore } from "./store";
 import type { NotesListResponse, ReviewNote, ReviewVote } from "./types";
@@ -48,7 +46,6 @@ export default function AssignedPage() {
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const refreshKey = refreshAssignedPage((state) => state.refreshKey);
 
   const selectReview = useCallback((id: string | null) => {
     setSelectedId(id);
@@ -62,7 +59,7 @@ export default function AssignedPage() {
     const controller = new AbortController();
     fetchPendingReviews(controller.signal);
     return () => controller.abort();
-  }, [fetchPendingReviews, refreshKey]);
+  }, [fetchPendingReviews]);
 
   // Fetch full application and other reviewers' notes when a review is selected
   useEffect(() => {
@@ -208,44 +205,56 @@ export default function AssignedPage() {
     : "";
 
   return (
-    <ReviewsPageLayout
-      tabs={REVIEWS_TABS}
-      isExpanded={isExpanded}
-      headerDescription={`${reviews.length} review(s) assigned to you`}
-      headerActions={
-        reviews.length > 0 ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer font-light"
-                onClick={() => {
-                  selectReview(reviews[0].id);
-                  setIsExpanded(true);
-                }}
-              >
-                <ClipboardPen className="h-4 w-4 mr-1.5" />
-                Start Grading
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Grade {formatName(reviews[0].first_name, reviews[0].last_name)}
-            </TooltipContent>
-          </Tooltip>
-        ) : undefined
-      }
-      table={
-        <ReviewsTable
-          reviews={reviews}
-          selectedId={selectedId}
-          loading={loading}
-          onSelectReview={selectReview}
-          getVote={getVote}
-        />
-      }
-      detailPanel={
-        selectedId && selectedReview ? (
+    <div className="h-[calc(100vh-80px)] overflow-hidden">
+      <div className="flex h-full">
+        {/* Left: Table */}
+        {!isExpanded && (
+          <Card
+            className={`overflow-hidden flex flex-col h-full ${
+              selectedId ? "w-1/2 rounded-r-none" : "w-full"
+            }`}
+          >
+            <CardHeader className="shrink-0 flex flex-row items-center justify-between">
+              <CardDescription className="font-light">
+                {reviews.length} review(s) assigned to you
+              </CardDescription>
+              {reviews.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer font-light"
+                      onClick={() => {
+                        selectReview(reviews[0].id);
+                        setIsExpanded(true);
+                      }}
+                    >
+                      <ClipboardPen className="h-4 w-4 mr-1.5" />
+                      Start Grading
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Grade{" "}
+                    {formatName(reviews[0].first_name, reviews[0].last_name)}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-hidden">
+              <ReviewsTable
+                reviews={reviews}
+                selectedId={selectedId}
+                loading={loading}
+                onSelectReview={selectReview}
+                getVote={getVote}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Right: Detail Panel */}
+        {selectedId && selectedReview && (
           <Card
             className={`shrink-0 flex flex-col h-full py-0! gap-0! ${
               isExpanded
@@ -326,8 +335,10 @@ export default function AssignedPage() {
                         application={applicationDetail}
                         selectedReview={selectedReview}
                         isExpanded={isExpanded}
-                        onAiPercentageUpdate={(pct) =>
-                          setApplicationDetail((prev) => prev ? { ...prev, ai_percentage: pct } : prev)
+                        onAipercentUpdate={(pct) =>
+                          setApplicationDetail((prev) =>
+                            prev ? { ...prev, ai_percent: pct } : prev,
+                          )
                         }
                       />
                     )
@@ -376,8 +387,10 @@ export default function AssignedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={isExpanded}
-                      onAiPercentageUpdate={(pct) =>
-                        setApplicationDetail((prev) => prev ? { ...prev, ai_percentage: pct } : prev)
+                      onAipercentUpdate={(pct) =>
+                        setApplicationDetail((prev) =>
+                          prev ? { ...prev, ai_percent: pct } : prev,
+                        )
                       }
                     />
                   )
@@ -385,8 +398,8 @@ export default function AssignedPage() {
               </CardContent>
             )}
           </Card>
-        ) : undefined
-      }
-    />
+        )}
+      </div>
+    </div>
   );
 }

@@ -2,16 +2,15 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
-import { ReviewsPageLayout } from "../_shared";
-
-const REVIEWS_TABS = [
-  { label: "Assigned", to: "/admin/assigned" },
-  { label: "Completed", to: "/admin/completed" },
-];
 import { ApplicationDetailsPanel } from "../assigned/components/ApplicationDetailsPanel";
 import { VoteBadge } from "../assigned/components/VoteBadge";
 import { CompletedReviewsTable } from "./components/CompletedReviewsTable";
@@ -140,19 +139,31 @@ export default function CompletedPage() {
   }
 
   return (
-    <ReviewsPageLayout
-      tabs={REVIEWS_TABS}
-      headerDescription={`${reviews.length} completed review(s)`}
-      table={
-        <CompletedReviewsTable
-          reviews={reviews}
-          selectedId={selectedId}
-          loading={loading}
-          onSelectReview={selectReview}
-        />
-      }
-      detailPanel={
-        selectedId && selectedReview ? (
+    <div className="h-[calc(100vh-80px)] overflow-hidden">
+      <div className="flex h-full">
+        {/* Left: Table */}
+        <Card
+          className={`overflow-hidden flex flex-col h-full ${
+            selectedId ? "w-1/2 rounded-r-none" : "w-full"
+          }`}
+        >
+          <CardHeader className="shrink-0">
+            <CardDescription className="font-light">
+              {reviews.length} completed review(s)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <CompletedReviewsTable
+              reviews={reviews}
+              selectedId={selectedId}
+              loading={loading}
+              onSelectReview={selectReview}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Right: Detail Panel */}
+        {selectedId && selectedReview && (
           <Card className="shrink-0 flex flex-col h-full w-1/2 rounded-l-none border-l-0 py-0! gap-0!">
             {/* Header */}
             <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
@@ -188,7 +199,7 @@ export default function CompletedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={false}
-                      onAiPercentageUpdate={() => {}}
+                      onAipercentUpdate={() => {}}
                     />
 
                     {/* Reviewer notes section */}
@@ -221,8 +232,8 @@ export default function CompletedPage() {
               )}
             </CardContent>
           </Card>
-        ) : undefined
-      }
-    />
+        )}
+      </div>
+    </div>
   );
 }
