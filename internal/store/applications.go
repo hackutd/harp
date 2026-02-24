@@ -683,3 +683,20 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 
 	return users, rows.Err()
 }
+
+func (s *ApplicationsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = 'applications_enabled'
+	`
+	var value bool
+	err := s.db.QueryRowContext(ctx, query).Scan(&value)
+	if err != nil {
+		return false, err // We won't handle err here, (because if the setting doesn't exist, we want it to error instead of defaulting to false)
+	}
+	return value, nil
+}

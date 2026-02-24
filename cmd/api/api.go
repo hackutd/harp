@@ -121,6 +121,7 @@ func (app *application) mount() http.Handler {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Patch("/me", app.updateApplicationHandler)
 				r.Post("/me/submit", app.submitApplicationHandler)
+				r.Get("/enabled", app.getApplicationsEnabled)
 			})
 
 			r.Group(func(r chi.Router) { // TODO clean up this routing

@@ -20,14 +20,14 @@ type UserResponse struct {
 
 // getCurrentUserHandler returns the authenticated user's profile
 //
-// @Summary		Get current user
-// @Description	Returns the authenticated user's profile
-// @Tags			auth
-// @Accept			json
-// @Produce		json
-// @Success		200	{object}	UserResponse
-// @Failure		401	{object}	object{error=string}
-// @Router			/auth/me [get]
+//	@Summary		Get current user
+//	@Description	Returns the authenticated user's profile
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	UserResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Router			/auth/me [get]
 func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -57,15 +57,15 @@ type CheckEmailResponse struct {
 
 // checkEmailAuthMethodHandler checks if an email is registered and returns the auth method
 //
-// @Summary		Check email auth method
-// @Description	Checks if an email is registered and returns the auth method used
-// @Tags			auth
-// @Accept			json
-// @Produce		json
-// @Param			email	query		string	true	"Email address to check"
-// @Success		200		{object}	CheckEmailResponse
-// @Failure		400		{object}	object{error=string}
-// @Router			/auth/check-email [get]
+//	@Summary		Check email auth method
+//	@Description	Checks if an email is registered and returns the auth method used
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			email	query		string	true	"Email address to check"
+//	@Success		200		{object}	CheckEmailResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Router			/auth/check-email [get]
 func (app *application) checkEmailAuthMethodHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	if email == "" {
