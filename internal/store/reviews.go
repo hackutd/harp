@@ -354,23 +354,24 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}, nil
 }
 
-// SetAIPercentage sets the AI-generated percentage on an application, only if the admin is assigned to it and it hasn't been set yet.
-func (s *ApplicationReviewsStore) SetAIPercentage(ctx context.Context, applicationID string, adminID string, percentage int16) error {
+// SetAIpercent sets the AI-generated percent on an application, only if the admin is assigned to it and it hasn't been set yet.
+func (s *ApplicationReviewsStore) SetAIpercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		UPDATE applications
-		SET ai_percentage = $3
+		SET ai_percent = $3
 		WHERE id = $1
-		  AND ai_percentage IS NULL
+		  AND ai_percent IS NULL
 		  AND EXISTS (
 		      SELECT 1 FROM application_reviews
-		      WHERE application_id = $1 AND admin_id = $2
+		      WHERE application_id = $1
+					AND admin_id = $2
 		  )
 	`
 
-	result, err := s.db.ExecContext(ctx, query, applicationID, adminID, percentage)
+	result, err := s.db.ExecContext(ctx, query, applicationID, adminID, percent)
 	if err != nil {
 		return err
 	}

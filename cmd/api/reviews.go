@@ -29,12 +29,12 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
-type SetAIPercentagePayload struct {
-	AIPercentage int16 `json:"ai_percentage" validate:"required,min=0,max=100"`
+type SetAIpercentPayload struct {
+	AIpercent int16 `json:"ai_percent" validate:"required,min=0,max=100"`
 }
 
-type AIPercentageResponse struct {
-	AIPercentage int16 `json:"ai_percentage"`
+type AIpercentResponse struct {
+	AIpercent int16 `json:"ai_percent"`
 }
 
 // getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
@@ -262,16 +262,16 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// setAIPercentage records the AI-generated content percentage for an assigned application review
+// setAIpercent records the AI-generated content percent for an assigned application review
 //
-//	@Summary		Set AI percentage on a review (Admin)
-//	@Description	Records the estimated AI-generated content percentage for an application assigned to the current admin
+//	@Summary		Set AI percent on a review (Admin)
+//	@Description	Records the estimated AI-generated content percent for an application assigned to the current admin
 //	@Tags			admin
 //	@Accept			json
 //	@Produce		json
 //	@Param			applicationID	path		string					true	"Application ID"
-//	@Param			payload			body		SetAIPercentagePayload	true	"AI percentage (0–100)"
-//	@Success		200				{object}	AIPercentageResponse
+//	@Param			payload			body		SetAIpercentPayload	true	"AI percent (0–100)"
+//	@Success		200				{object}	AIpercentResponse
 //	@Failure		400				{object}	object{error=string}
 //	@Failure		401				{object}	object{error=string}
 //	@Failure		403				{object}	object{error=string}
@@ -279,7 +279,7 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500				{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/applications/{applicationID}/aiPercent [put]
-func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) {
+func (app *application) setAIpercent(w http.ResponseWriter, r *http.Request) {
 
 	applicationID := chi.URLParam(r, "applicationID")
 
@@ -290,7 +290,7 @@ func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) 
 
 	user := getUserFromContext(r.Context())
 
-	var req SetAIPercentagePayload
+	var req SetAIpercentPayload
 	if err := readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -301,19 +301,19 @@ func (app *application) setAIPercentage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err := app.store.ApplicationReviews.SetAIPercentage(r.Context(), applicationID, user.ID, req.AIPercentage)
+	err := app.store.ApplicationReviews.SetAIpercent(r.Context(), applicationID, user.ID, req.AIpercent)
 
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percentage already set"))
+			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percent already set"))
 		default:
 			app.internalServerError(w, r, err)
 		}
 		return
 	}
 
-	response := AIPercentageResponse(req)
+	response := AIpercentResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

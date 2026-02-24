@@ -128,7 +128,7 @@ type ApplicationListItem struct {
 	WaitlistVotes           int               `json:"waitlist_votes"`
 	ReviewsAssigned         int               `json:"reviews_assigned"`
 	ReviewsCompleted        int               `json:"reviews_completed"`
-	AIPercentage            *int              `json:"ai_percentage"`
+	AIpercent               *int              `json:"ai_percent"`
 }
 
 // ApplicationListResult contains paginated results
@@ -221,19 +221,11 @@ type Application struct {
 	ReviewsAssigned  int `json:"reviews_assigned"`
 	ReviewsCompleted int `json:"reviews_completed"`
 
-	AIPercentage *int16 `json:"ai_percentage"`
+	AIpercent *int16 `json:"ai_percent"`
 }
 
 type ApplicationsStore struct {
 	db *sql.DB
-}
-
-type SetAIPercentagePayload struct {
-	AIPercentage int16 `json:"ai_percentage" validate:"required,min=0, max = 100"`
-}
-
-type AIPercentageResponse struct {
-	AIPercentage int16 `json:"ai_percentage"`
 }
 
 func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Application, error) {
@@ -251,7 +243,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			github, linkedin, website,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percentage
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percent
 		FROM applications
 		WHERE id = $1
 	`
@@ -268,7 +260,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercentage,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIpercent,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -467,7 +459,7 @@ func (s *ApplicationsStore) List(
 			       a.university, a.major, a.level_of_study,
 			       a.hackathons_attended_count,
 			       a.submitted_at, a.created_at, a.updated_at,
-			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percentage
+			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -482,7 +474,7 @@ func (s *ApplicationsStore) List(
 			       a.university, a.major, a.level_of_study,
 			       a.hackathons_attended_count,
 			       a.submitted_at, a.created_at, a.updated_at,
-			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percentage
+			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -515,7 +507,7 @@ func (s *ApplicationsStore) List(
 			&item.University, &item.Major, &item.LevelOfStudy,
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
-			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercentage,
+			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIpercent,
 		); err != nil {
 			return nil, err
 		}
@@ -688,38 +680,4 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 	}
 
 	return emails, nil
-}
-
-func (s *ApplicationsStore) SetAIPercentage(ctx context.Context, applicationID string, adminID string, percentage int16) error {
-
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	query := `
-		UPDATE applications
-		SET ai_percentage = $3, updated_at = NOW()
-		WHERE id = $1
-		AND ai_percentage IS NULL
-		AND EXISTS (
-			SELECT 1 from application_reviews
-			where application_id = $2
-			and admin_id = $3
-		)
-	`
-
-	result, err := s.db.ExecContext(ctx, query, percentage, applicationID, adminID)
-	if err != nil {
-		return err
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rows == 0 {
-		return ErrNotFound
-	}
-
-	return nil
 }
