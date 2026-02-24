@@ -649,32 +649,37 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 	return &stats, nil
 }
 
-func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error) {
+type UserEmailInfo struct {
+	UserID    string  `json:"user_id"`
+	Email     string  `json:"email"`
+	FirstName *string `json:"first_name"`
+}
+
+func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-				SELECT u.email
-				FROM applications a
-				INNER JOIN users u ON a.user_id = u.id
-				WHERE a.status = $1
-				ORDER BY u.email`
+		SELECT a.user_id, u.email, a.first_name
+		FROM applications a
+		INNER JOIN users u ON a.user_id = u.id
+		WHERE a.status = $1
+		ORDER BY u.email`
 
 	rows, err := s.db.QueryContext(ctx, query, status)
-
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var emails []string
+	var users []UserEmailInfo
 	for rows.Next() {
-		var email string
-		if err := rows.Scan(&email); err != nil {
+		var u UserEmailInfo
+		if err := rows.Scan(&u.UserID, &u.Email, &u.FirstName); err != nil {
 			return nil, err
 		}
-		emails = append(emails, email)
+		users = append(users, u)
 	}
 
-	return emails, nil
+	return users, rows.Err()
 }
