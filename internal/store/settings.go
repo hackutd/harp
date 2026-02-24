@@ -332,8 +332,8 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 			break
 		}
 	}
-	if enabled && !found {
-		entries = append(entries, ReviewAssignmentEntry{ID: superAdminID, Enabled: true})
+	if !found {
+		entries = append(entries, ReviewAssignmentEntry{ID: superAdminID, Enabled: enabled})
 	}
 
 	jsonValue, err := json.Marshal(entries)
