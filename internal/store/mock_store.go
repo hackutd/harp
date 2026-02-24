@@ -105,12 +105,12 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 	return args.Get(0).(*Application), args.Error(1)
 }
 
-func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error) {
+func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
 	args := m.Called(status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
 // mock implementation of the Settings interface
@@ -149,6 +149,27 @@ func (m *MockSettingsStore) GetReviewAssignmentEnabled(ctx context.Context, supe
 func (m *MockSettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdminID string, enabled bool) error {
 	args := m.Called(superAdminID, enabled)
 	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetScanTypes(ctx context.Context) ([]ScanType, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScanType), args.Error(1)
+}
+
+func (m *MockSettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error {
+	args := m.Called(scanTypes)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int), args.Error(1)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
@@ -204,6 +225,37 @@ func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, ad
 	return args.Get(0).(*ApplicationReview), args.Error(1)
 }
 
+// MockScansStore is a mock implementation of the Scans interface
+type MockScansStore struct {
+	mock.Mock
+}
+
+func (m *MockScansStore) Create(ctx context.Context, scan *Scan) error {
+	args := m.Called(scan)
+	return args.Error(0)
+}
+
+func (m *MockScansStore) GetByUserID(ctx context.Context, userID string) ([]Scan, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]Scan), args.Error(1)
+}
+
+func (m *MockScansStore) GetStats(ctx context.Context) ([]ScanStat, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScanStat), args.Error(1)
+}
+
+func (m *MockScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error) {
+	args := m.Called(userID, checkInTypes)
+	return args.Bool(0), args.Error(1)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
@@ -211,5 +263,6 @@ func NewMockStore() Storage {
 		Application:        &MockApplicationStore{},
 		Settings:           &MockSettingsStore{},
 		ApplicationReviews: &MockApplicationReviewsStore{},
+		Scans:              &MockScansStore{},
 	}
 }

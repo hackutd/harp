@@ -1,5 +1,5 @@
-import { Label } from '@/components/ui/label';
-import type { Application } from '@/types';
+import { Label } from "@/components/ui/label";
+import type { Application } from "@/types";
 
 interface ShortAnswersSectionProps {
   application: Application;
@@ -19,10 +19,10 @@ export function ShortAnswersSection({ application }: ShortAnswersSectionProps) {
           .map((q) => (
             <div key={q.id}>
               <Label className="text-muted-foreground text-xs">
-                {q.question} {q.required && '*'}
+                {q.question} {q.required && "*"}
               </Label>
               <p className="whitespace-pre-wrap">
-                {application.short_answer_responses?.[q.id] || 'N/A'}
+                {application.short_answer_responses?.[q.id] || "N/A"}
               </p>
             </div>
           ))}

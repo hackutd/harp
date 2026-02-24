@@ -1,7 +1,15 @@
 import { create } from "zustand";
 
-import { fetchApplications as apiFetchApplications, fetchApplicationStats } from "./api";
-import type { ApplicationListItem, ApplicationStats, ApplicationStatus, FetchParams } from "./types";
+import {
+  fetchApplications as apiFetchApplications,
+  fetchApplicationStats,
+} from "./api";
+import type {
+  ApplicationListItem,
+  ApplicationStats,
+  ApplicationStatus,
+  FetchParams,
+} from "./types";
 
 export interface ApplicationsState {
   applications: ApplicationListItem[];
@@ -12,7 +20,10 @@ export interface ApplicationsState {
   currentStatus: ApplicationStatus | null;
   stats: ApplicationStats | null;
   statsLoading: boolean;
-  fetchApplications: (params?: FetchParams, signal?: AbortSignal) => Promise<void>;
+  fetchApplications: (
+    params?: FetchParams,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   fetchStats: (signal?: AbortSignal) => Promise<void>;
   setStatusFilter: (status: ApplicationStatus | null) => void;
   resetPagination: () => void;
@@ -33,16 +44,19 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
 
     // Determine status to use
     let status: ApplicationStatus | null;
-    if (params && 'status' in params) {
+    if (params && "status" in params) {
       status = params.status ?? null;
     } else {
       status = get().currentStatus;
     }
 
-    const res = await apiFetchApplications({
-      ...params,
-      status,
-    }, signal);
+    const res = await apiFetchApplications(
+      {
+        ...params,
+        status,
+      },
+      signal,
+    );
 
     if (signal?.aborted) return;
 
