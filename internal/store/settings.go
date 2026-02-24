@@ -286,15 +286,17 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	// load current array (if any)
-	querySelect := `
-		SELECT value
-		FROM settings
-		WHERE key = $1
-	`
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// load current array (if any) with FOR UPDATE to prevent concurrent overwrites
+	querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 
 	var value []byte
-	err := s.db.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+	err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
 
 	type entry struct {
 		ID      string `json:"id"`
@@ -329,11 +331,7 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 	for i, e := range entries {
 		if e.ID == superAdminID {
 			found = true
-			if enabled {
-				entries[i].Enabled = true
-			} else {
-				entries[i].Enabled = false
-			}
+			entries[i].Enabled = enabled
 			break
 		}
 	}
@@ -352,6 +350,9 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
-	_, err = s.db.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue))
-	return err
+	if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
