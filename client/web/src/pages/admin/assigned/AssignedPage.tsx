@@ -20,6 +20,7 @@ import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { VoteBadge } from "./components/VoteBadge";
 import { VotingPanel } from "./components/VotingPanel";
+import { refreshAssignedPage } from "./hooks/updateReviewPage";
 import { useReviewKeyboardShortcuts } from "./hooks/useReviewKeyboardShortcuts";
 import { useReviewsStore } from "./store";
 import type { NotesListResponse, ReviewNote, ReviewVote } from "./types";
@@ -46,6 +47,7 @@ export default function AssignedPage() {
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const refreshKey = refreshAssignedPage((state) => state.refreshKey);
 
   const selectReview = useCallback((id: string | null) => {
     setSelectedId(id);
@@ -59,7 +61,7 @@ export default function AssignedPage() {
     const controller = new AbortController();
     fetchPendingReviews(controller.signal);
     return () => controller.abort();
-  }, [fetchPendingReviews]);
+  }, [fetchPendingReviews, refreshKey]);
 
   // Fetch full application and other reviewers' notes when a review is selected
   useEffect(() => {

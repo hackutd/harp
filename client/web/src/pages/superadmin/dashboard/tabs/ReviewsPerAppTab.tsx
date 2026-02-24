@@ -21,6 +21,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import type { AssignedState } from "@/pages/admin/assigned/hooks/updateReviewPage";
+import { refreshAssignedPage } from "@/pages/admin/assigned/hooks/updateReviewPage";
 import { errorAlert, postRequest } from "@/shared/lib/api";
 
 interface ReviewsPerAppTabProps {
@@ -36,6 +38,9 @@ export function ReviewsPerAppTab({
 }: ReviewsPerAppTabProps) {
   const [assigning, setAssigning] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const triggerAssignedPageRefresh = refreshAssignedPage(
+    (state: AssignedState) => state.triggerRefresh,
+  );
 
   async function handleBatchAssign() {
     setConfirmOpen(false);
@@ -52,6 +57,7 @@ export function ReviewsPerAppTab({
     } else {
       errorAlert(res);
     }
+    triggerAssignedPageRefresh();
     setAssigning(false);
   }
 
