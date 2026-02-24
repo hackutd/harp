@@ -1,0 +1,17 @@
+# We technically don't need to cleanup our versions because quota is free, but we might as well, it'll make it much easier to manage in the long run
+name: Cleanup Old Images
+on:
+  registry_package:
+    types: [published]
+
+jobs:
+  clean-ghcr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete untagged images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "${{ github.event.registry_package.name }}"
+          package-type: "container"
+          min-versions-to-keep: 2
+          delete-only-untagged-versions: "true"
