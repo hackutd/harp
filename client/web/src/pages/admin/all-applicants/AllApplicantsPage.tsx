@@ -81,7 +81,7 @@ export default function AllApplicantsPage() {
     <div className="space-y-6">
       <SectionCards stats={stats} loading={statsLoading} />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <StatusFilterTabs
           stats={stats}
           loading={loading}
