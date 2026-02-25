@@ -165,6 +165,8 @@ func (app *application) mount() http.Handler {
 					// Reviews Config
 					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
 					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
+					r.Get("/settings/review-assignment-toggle", app.getReviewAssignmentToggle)
+					r.Post("/settings/review-assignment-toggle", app.setReviewAssignmentToggle)
 					r.Post("/applications/assign", app.batchAssignReviews)
 					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
 					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)

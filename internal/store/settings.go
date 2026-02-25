@@ -22,8 +22,16 @@ type SettingsStore struct {
 
 const SettingsKeyShortAnswerQuestions = "short_answer_questions"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
+const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
+
+// ReviewAssignmentEntry represents a single admin's review assignment toggle state.
+// Used in the review_assignment_toggle settings JSON array.
+type ReviewAssignmentEntry struct {
+	ID      string `json:"id"`
+	Enabled bool   `json:"enabled"`
+}
 
 // GetShortAnswerQuestions returns the parsed questions array
 func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error) {
@@ -97,7 +105,7 @@ func (s *SettingsStore) SetReviewsPerApplication(ctx context.Context, value int)
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
-	_, err = s.db.ExecContext(ctx, query, SettingsKeyReviewsPerApplication, jsonValue)
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyReviewsPerApplication, string(jsonValue))
 	return err
 }
 
@@ -216,6 +224,132 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
 	`
 
-	_, err = s.db.ExecContext(ctx, query, SettingsKeyShortAnswerQuestions, value)
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyShortAnswerQuestions, string(value))
 	return err
+}
+
+// GetReviewAssignmentToggle returns whether review assignment is enabled for the given super admin ID.
+// The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
+// If the setting row does not exist, defaults to false.
+func (s *SettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentToggle).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Treat empty/empty-object/empty-array as disabled
+	sv := string(value)
+	if sv == "" || sv == "null" || sv == "{}" || sv == "[]" {
+		return false, nil
+	}
+
+	// New format: array of objects {"id": "...", "enabled": true}
+	var entries []ReviewAssignmentEntry
+	if err := json.Unmarshal(value, &entries); err == nil {
+		for _, e := range entries {
+			if e.ID == superAdminID && e.Enabled {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	// Fallback: legacy format was an array of IDs (strings)
+	var ids []string
+	if err := json.Unmarshal(value, &ids); err == nil {
+		for _, id := range ids {
+			if id == superAdminID {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	return false, nil
+}
+
+// SetReviewAssignmentToggle updates whether review assignment is enabled for the given super admin ID.
+// The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
+// If `enabled` is true the super admin ID will be added to the array if missing. If false it will be removed.
+func (s *SettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// load current array (if any) with FOR UPDATE to prevent concurrent overwrites
+	querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
+
+	var value []byte
+	err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentToggle).Scan(&value)
+
+	var entries []ReviewAssignmentEntry
+
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		entries = []ReviewAssignmentEntry{}
+	} else {
+		// Try new format first
+		if jerr := json.Unmarshal(value, &entries); jerr != nil {
+			// Fallback: legacy array of IDs
+			var ids []string
+			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
+				// convert legacy ids to entries with enabled=true
+				for _, id := range ids {
+					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
+				}
+			} else {
+				// If we can't parse either, start fresh
+				entries = []ReviewAssignmentEntry{}
+			}
+		}
+	}
+
+	found := false
+	for i, e := range entries {
+		if e.ID == superAdminID {
+			found = true
+			entries[i].Enabled = enabled
+			break
+		}
+	}
+	if !found {
+		entries = append(entries, ReviewAssignmentEntry{ID: superAdminID, Enabled: enabled})
+	}
+
+	jsonValue, err := json.Marshal(entries)
+	if err != nil {
+		return err
+	}
+
+	queryUpsert := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
