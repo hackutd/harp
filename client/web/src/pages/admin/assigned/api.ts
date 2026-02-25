@@ -46,15 +46,19 @@ export async function setAIPercent(
 ): Promise<{ success: boolean; error?: string }> {
   const res = await putRequest(`/admin/applications/${applicationId}/ai-percent`, payload);
 
-  if (res.status === 200) {
-    return { success: true };
-  } else {
-    if (res.error === "not found") {
-      return {success: false, error: "You do not have permission to change this review's percent, only the assigned admin can"}
+  if (res.status === 200) return { success: true };
+
+  if (res.status === 404) {
+    return { success: false, error: "Only the assigned admin can change this review's AI percent" };
+  }
+  if (res.status === 400) {
+    if (payload.ai_percent > 100) {
+      return { success: false, error: 'Percent cannot exceed 100%' };
     }
-    else{
-      return { success: false, error: res.error || 'Failed to set AI percent' };
+    if (payload.ai_percent < 0) {
+      return { success: false, error: 'Percent cannot be below 0%' };
     }
   }
+  return { success: false, error: res.error ?? 'Failed to set AI percent' };
 
 }
