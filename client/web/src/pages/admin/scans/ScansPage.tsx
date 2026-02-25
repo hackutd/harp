@@ -20,8 +20,12 @@ export default function ScansPage() {
     const controller = new AbortController();
     fetchTypes(controller.signal);
     fetchStats(controller.signal);
-    return () => controller.abort();
-  }, [fetchTypes, fetchStats]);
+    return () => {
+      controller.abort();
+      // Reset active scan type so dialog doesn't reopen on navigate back
+      setActiveScanType(null);
+    };
+  }, [fetchTypes, fetchStats, setActiveScanType]);
 
   return (
     <div className="space-y-6">
