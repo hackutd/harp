@@ -1,4 +1,4 @@
-import { Gift, ScanLine, UserCheck, Utensils } from "lucide-react";
+import { Gift, MoreHorizontal, ScanLine, UserCheck, Utensils } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
   check_in: UserCheck,
   meal: Utensils,
   swag: Gift,
+  other: MoreHorizontal,
 };
 
 const categoryColors: Record<ScanTypeCategory, string> = {
   check_in: "bg-blue-100 text-blue-800",
   meal: "bg-orange-100 text-orange-800",
   swag: "bg-purple-100 text-purple-800",
+  other: "bg-gray-100 text-gray-800",
 };
 
 interface ScanTypeGridProps {

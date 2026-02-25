@@ -246,16 +246,15 @@ func (app *application) updateScanTypesHandler(w http.ResponseWriter, r *http.Re
 		nameMap[st.Name] = true
 	}
 
-	// Validate at least one check_in category type exists
-	hasCheckIn := false
+	// Validate exactly one check_in category type exists
+	checkInCount := 0
 	for _, st := range req.ScanTypes {
 		if st.Category == store.ScanCategoryCheckIn {
-			hasCheckIn = true
-			break
+			checkInCount++
 		}
 	}
-	if !hasCheckIn {
-		app.badRequestResponse(w, r, errors.New("must have at least one scan type with check_in category"))
+	if checkInCount != 1 {
+		app.badRequestResponse(w, r, errors.New("exactly one scan type must have the check_in category"))
 		return
 	}
 
