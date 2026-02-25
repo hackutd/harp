@@ -4,7 +4,6 @@ import {
   createScan as apiCreateScan,
   fetchScanStats,
   fetchScanTypes,
-  saveScanTypes as apiSaveScanTypes,
 } from "./api";
 import type { Scan, ScanStat, ScanType } from "./types";
 
@@ -20,16 +19,12 @@ export interface ScansState {
   typesLoading: boolean;
   statsLoading: boolean;
   scanning: boolean;
-  saving: boolean;
   activeScanType: ScanType | null;
   lastScanResult: ScanResult | null;
 
   fetchTypes: (signal?: AbortSignal) => Promise<void>;
   fetchStats: (signal?: AbortSignal) => Promise<void>;
   performScan: (userId: string) => Promise<void>;
-  saveScanTypes: (
-    scanTypes: ScanType[],
-  ) => Promise<{ success: boolean; error?: string }>;
   setActiveScanType: (scanType: ScanType | null) => void;
   clearLastResult: () => void;
 }
@@ -40,7 +35,6 @@ export const useScansStore = create<ScansState>((set, get) => ({
   typesLoading: false,
   statsLoading: false,
   scanning: false,
-  saving: false,
   activeScanType: null,
   lastScanResult: null,
 
@@ -106,18 +100,6 @@ export const useScansStore = create<ScansState>((set, get) => ({
         lastScanResult: { success: false, message },
       });
     }
-  },
-
-  saveScanTypes: async (scanTypes: ScanType[]) => {
-    set({ saving: true });
-    const res = await apiSaveScanTypes(scanTypes);
-    if (res.status === 200 && res.data) {
-      set({ scanTypes: res.data.scan_types, saving: false });
-      get().fetchStats();
-      return { success: true };
-    }
-    set({ saving: false });
-    return { success: false, error: res.error || "Failed to save scan types" };
   },
 
   setActiveScanType: (scanType: ScanType | null) => {

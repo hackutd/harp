@@ -1,5 +1,6 @@
+import { Html5Qrcode } from "html5-qrcode";
 import { AlertCircle, CheckCircle2, ScanLine, XCircle } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,40 +13,97 @@ import {
 } from "@/components/ui/dialog";
 
 import { useScansStore } from "../store";
-import { useQrScanner } from "./useQrScanner";
+
+const QR_READER_ID = "qr-reader";
 
 export function ScannerDialog() {
   const {
     activeScanType,
     lastScanResult,
-    scanning,
     setActiveScanType,
     performScan,
     clearLastResult,
   } = useScansStore();
 
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const processedRef = useRef(false);
+
   const handleScan = useCallback(
     (decodedText: string) => {
+      if (processedRef.current) return;
       const userId = decodedText.trim();
       if (!userId) return;
+
+      // Mark as processed and pause the scanner immediately
+      processedRef.current = true;
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.pause(true);
+        } catch {
+          // scanner may not be running
+        }
+      }
+
       performScan(userId);
     },
     [performScan],
   );
 
-  const { videoRef, error } = useQrScanner({
-    enabled: !!activeScanType,
-    paused: !!lastScanResult || scanning,
-    onDetect: handleScan,
-  });
-
   const handleResume = useCallback(() => {
     clearLastResult();
+    processedRef.current = false;
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.resume();
+      } catch {
+        // scanner may not be in paused state
+      }
+    }
   }, [clearLastResult]);
 
-  const handleClose = useCallback(() => {
+  // Start/stop camera when dialog opens/closes
+  useEffect(() => {
+    if (!activeScanType) return;
+
+    processedRef.current = false;
+
+    // Small delay to ensure the DOM element is rendered
+    const startTimeout = setTimeout(() => {
+      setCameraError(null);
+      const element = document.getElementById(QR_READER_ID);
+      if (!element) return;
+
+      const scanner = new Html5Qrcode(QR_READER_ID);
+      scannerRef.current = scanner;
+
+      scanner
+        .start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          handleScan,
+          () => {},
+        )
+        .catch((err: Error) => {
+          setCameraError(
+            "Camera access is required for scanning. Please allow camera access and try again.",
+          );
+          console.error("QR scanner start error:", err);
+        });
+    }, 100);
+
+    return () => {
+      clearTimeout(startTimeout);
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
+    };
+  }, [activeScanType, handleScan]);
+
+  const handleClose = () => {
     setActiveScanType(null);
-  }, [setActiveScanType]);
+  };
 
   return (
     <Dialog
@@ -61,32 +119,18 @@ export function ScannerDialog() {
         </DialogHeader>
 
         <div className="relative">
-          {error ? (
+          {cameraError ? (
             <div className="flex aspect-square items-center justify-center rounded-lg bg-muted p-6 text-center text-sm text-muted-foreground">
               <div className="space-y-2">
                 <AlertCircle className="mx-auto size-8" />
-                <p>{error}</p>
+                <p>{cameraError}</p>
               </div>
             </div>
           ) : (
-            <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-black">
-              <video
-                ref={videoRef}
-                className="h-full w-full object-cover"
-                playsInline
-                muted
-              />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div
-                  className="rounded-lg border-2 border-white/80"
-                  style={{
-                    width: 250,
-                    height: 250,
-                    boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)",
-                  }}
-                />
-              </div>
-            </div>
+            <div
+              id={QR_READER_ID}
+              className="w-full overflow-hidden rounded-lg"
+            />
           )}
 
           {lastScanResult && (
