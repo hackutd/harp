@@ -1,4 +1,4 @@
-import { Gift, UserCheck, Utensils } from "lucide-react";
+import { Gift, MoreHorizontal, UserCheck, Utensils } from "lucide-react";
 
 import {
   Card,
@@ -13,6 +13,7 @@ const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
   check_in: UserCheck,
   meal: Utensils,
   swag: Gift,
+  other: MoreHorizontal,
 };
 
 interface ScanStatsCardsProps {

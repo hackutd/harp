@@ -186,9 +186,11 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
         return;
       }
 
-      const hasCheckIn = scanTypes.some((s) => s.category === "check_in");
-      if (scanTypes.length > 0 && !hasCheckIn) {
-        toast.error("At least one scan type must have the check_in category");
+      const checkInCount = scanTypes.filter(
+        (s) => s.category === "check_in",
+      ).length;
+      if (scanTypes.length > 0 && checkInCount !== 1) {
+        toast.error("Exactly one scan type must have the check_in category");
         return;
       }
 

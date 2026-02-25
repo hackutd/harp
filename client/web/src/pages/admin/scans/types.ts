@@ -1,4 +1,4 @@
-export type ScanTypeCategory = "check_in" | "meal" | "swag";
+export type ScanTypeCategory = "check_in" | "meal" | "swag" | "other";
 
 export interface ScanType {
   name: string;

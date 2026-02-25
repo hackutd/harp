@@ -16,7 +16,7 @@ import {
 export interface ScanType {
   name: string;
   display_name: string;
-  category: "check_in" | "meal" | "swag";
+  category: "check_in" | "meal" | "swag" | "other";
   is_active: boolean;
 }
 
@@ -24,6 +24,7 @@ const categoryOptions = [
   { value: "check_in", label: "Check In" },
   { value: "meal", label: "Meal" },
   { value: "swag", label: "Swag" },
+  { value: "other", label: "Other" },
 ] as const;
 
 interface ScanTypesTabProps {
@@ -67,8 +68,8 @@ export function ScanTypesTab({
     <div className="space-y-4">
       <h3 className="text-lg text-zinc-100">Scan Types</h3>
       <p className="text-sm text-zinc-400">
-        Configure the scan types available for check-ins, meals, and swag
-        distribution.
+        Configure the scan types available for check-ins, meals, swag
+        distribution, and other activities.
       </p>
 
       {loading ? (
