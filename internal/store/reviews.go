@@ -354,8 +354,8 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}, nil
 }
 
-// SetAIpercent sets the AI-generated percent on an application, only if the admin is assigned to it and it hasn't been set yet.
-func (s *ApplicationReviewsStore) SetAIpercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
+// SetAIPercent sets the AI-generated percent on an application, only if the admin is assigned to it and it hasn't been set yet.
+func (s *ApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 

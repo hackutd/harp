@@ -139,7 +139,7 @@ func (app *application) mount() http.Handler {
 					r.Get("/reviews/next", app.getNextReview)
 					r.Put("/reviews/{reviewID}", app.submitVote)
 					r.Get("/reviews/completed", app.getCompletedReviews)
-					r.Put("/applications/{applicationID}/ai-percent", app.setAIpercent)
+					r.Put("/applications/{applicationID}/ai-percent", app.setAIPercent)
 					// Scans
 
 					// Hacker Pack
