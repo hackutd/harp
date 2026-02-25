@@ -140,6 +140,10 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 			app.conflictResponse(w, r, errors.New("user already scanned for: "+req.ScanType))
 			return
 		}
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("user not found"))
+			return
+		}
 		app.internalServerError(w, r, err)
 		return
 	}
