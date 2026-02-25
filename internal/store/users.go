@@ -134,16 +134,16 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		return err
 	}
 
-	// If the newly-created user is an admin or super_admin, ensure an entry
-	// exists in the `review_assignment_enabled` settings JSONB array with
-	// enabled=true for admins and enabled=false for super_admins.
-	if user.Role == RoleAdmin || user.Role == RoleSuperAdmin {
-		defaultEnabled := user.Role == RoleAdmin
+	// If the newly-created user is a super_admin, ensure an entry
+	// exists in the `review_assignment_toggle` settings JSONB array with
+	// enabled=true. Admins are always assigned reviews and don't need a toggle entry.
+	if user.Role == RoleSuperAdmin {
+		defaultEnabled := true
 
 		querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 
 		var value []byte
-		err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+		err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentToggle).Scan(&value)
 
 		var entries []ReviewAssignmentEntry
 		if err != nil {
@@ -190,7 +190,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 		`
 
-		if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+		if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
 			return err
 		}
 	}

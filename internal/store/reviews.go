@@ -236,14 +236,14 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	defer tx.Rollback()
 
-	// Ensure all admins/super_admins exist in the review assignment setting.
-	// This acts as a backfill for any admins that were created before this setting existed
+	// Ensure all super_admins exist in the review assignment setting.
+	// This acts as a backfill for any super_admins that were created before this setting existed
 	// or were added to the database manually.
 	var entries []ReviewAssignmentEntry
 
 	selectSettingQuery := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 	var value []byte
-	err = tx.QueryRowContext(ctx, selectSettingQuery, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+	err = tx.QueryRowContext(ctx, selectSettingQuery, SettingsKeyReviewAssignmentToggle).Scan(&value)
 
 	isNewSetting := false
 	if err != nil {
@@ -270,7 +270,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	needsBackfill := isNewSetting
 	if !isNewSetting {
 		var adminCount int
-		countQuery := `SELECT COUNT(*) FROM users WHERE role IN ('admin', 'super_admin')`
+		countQuery := `SELECT COUNT(*) FROM users WHERE role = 'super_admin'`
 		if err := tx.QueryRowContext(ctx, countQuery).Scan(&adminCount); err != nil {
 			return nil, err
 		}
@@ -279,9 +279,9 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 
 	if needsBackfill {
 		backfillAdminsQuery := `
-			SELECT u.id, u.role
+			SELECT u.id
 			FROM users u
-			WHERE u.role IN ('admin', 'super_admin')
+			WHERE u.role = 'super_admin'
 		`
 		adminRows, err := tx.QueryContext(ctx, backfillAdminsQuery)
 		if err != nil {
@@ -289,16 +289,13 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		}
 
 		var allAdminIDs []string
-		adminRoles := make(map[string]UserRole)
 		for adminRows.Next() {
 			var id string
-			var role UserRole
-			if err := adminRows.Scan(&id, &role); err != nil {
+			if err := adminRows.Scan(&id); err != nil {
 				adminRows.Close()
 				return nil, err
 			}
 			allAdminIDs = append(allAdminIDs, id)
-			adminRoles[id] = role
 		}
 		adminRows.Close()
 		if err := adminRows.Err(); err != nil {
@@ -313,8 +310,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		changesMade := false
 		for _, adminID := range allAdminIDs {
 			if _, exists := existingAdminMap[adminID]; !exists {
-				defaultEnabled := adminRoles[adminID] == RoleAdmin
-				entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: defaultEnabled})
+				entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: true})
 				changesMade = true
 			}
 		}
@@ -330,7 +326,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 				VALUES ($1, $2)
 				ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 			`
-			if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+			if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
 				return nil, err
 			}
 		}
@@ -339,7 +335,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	// Remove pending assignments owned by admins who are not listed in the
 	// review assignment setting so those applications can be redistributed
 	// to enabled admins. The setting is stored in `settings` with key
-	// 'review_assignment_enabled' as a JSONB array of objects {"id","enabled"}.
+	// 'review_assignment_toggle' as a JSONB array of objects {"id","enabled"}.
 	cleanupQuery := `
 		DELETE FROM application_reviews ar
 		WHERE ar.vote IS NULL
@@ -347,7 +343,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 			SELECT 1
 			FROM settings s
 			CROSS JOIN jsonb_array_elements(s.value) AS elem
-			WHERE s.key = 'review_assignment_enabled'
+			WHERE s.key = 'review_assignment_toggle'
 			AND elem->>'id' = ar.admin_id::text
 			AND (elem->'enabled')::boolean = false
 		);
@@ -364,7 +360,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		LEFT JOIN application_reviews ar 
 			ON u.id = ar.admin_id AND ar.vote IS NULL
 		LEFT JOIN settings s 
-			ON s.key = 'review_assignment_enabled'
+			ON s.key = 'review_assignment_toggle'
 		WHERE u.role IN ('admin', 'super_admin')
 		AND NOT EXISTS (
 			SELECT 1
