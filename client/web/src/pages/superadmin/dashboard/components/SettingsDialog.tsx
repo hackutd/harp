@@ -174,9 +174,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
         return;
       }
 
-      const emptyDisplayName = scanTypes.find(
-        (s) => !s.display_name.trim(),
-      );
+      const emptyDisplayName = scanTypes.find((s) => !s.display_name.trim());
       if (emptyDisplayName) {
         toast.error("All scan types must have a display name");
         return;

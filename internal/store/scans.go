@@ -64,8 +64,13 @@ func (s *ScansStore) Create(ctx context.Context, scan *Scan) error {
 		Scan(&scan.ID, &scan.ScannedAt, &scan.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrConflict
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "23505":
+				return ErrConflict
+			case "23503":
+				return ErrNotFound
+			}
 		}
 		return err
 	}

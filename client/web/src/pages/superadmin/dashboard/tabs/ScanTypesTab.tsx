@@ -78,10 +78,7 @@ export function ScanTypesTab({
       ) : (
         <div className="space-y-3 pt-2">
           {scanTypes.map((scanType, index) => (
-            <div
-              key={index}
-              className="bg-zinc-900 rounded-md p-4 space-y-3"
-            >
+            <div key={index} className="bg-zinc-900 rounded-md p-4 space-y-3">
               <div className="flex items-start gap-3">
                 <div className="flex-1 space-y-2">
                   <Label className="text-xs text-zinc-500">Name</Label>
