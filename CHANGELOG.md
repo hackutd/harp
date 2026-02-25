@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.2.0](https://github.com/hackutd/harp/compare/v1.1.1...v1.2.0) (2026-02-25)
+
+
+### Features
+
+* add prettier for consistent frontend code formatting ([59fc483](https://github.com/hackutd/harp/commit/59fc4838cc2b2d2c359280122042d1a46c61aa90))
+* add prettier for consistent frontend code formatting ([31ec718](https://github.com/hackutd/harp/commit/31ec71842c0f25f455ce039f629806643e573212))
+* **api:** add scan handlers, tests, and fix route prefixes ([b221351](https://github.com/hackutd/harp/commit/b2213511e888320040ffcb636f48760fdd825b91))
+* **client:** update review assignment toast with instructions ([00ece7e](https://github.com/hackutd/harp/commit/00ece7ef0a108e5de31abb9e7902035268a3c726))
+* create application toggle button in SuperAdmin settings panel [#10](https://github.com/hackutd/harp/issues/10) ([89f5327](https://github.com/hackutd/harp/commit/89f53279d035067aab4ee7f6595614a37f39f5b3))
+* **db:** add scans table and scan type settings migrations ([77310f1](https://github.com/hackutd/harp/commit/77310f1495944caa127127b2871eeb5c63c289c9))
+* o(1) scan stats, for future FE polling ([7ef5444](https://github.com/hackutd/harp/commit/7ef5444090f41c21d5c3958515928ec1d0b65c66))
+* **settings:** implement review_assignments toggle ([7efc2af](https://github.com/hackutd/harp/commit/7efc2af9731f45979bb64b6a4253aa55e4defd7c))
+* **store:** add scans store, types, and settings methods ([ca65af8](https://github.com/hackutd/harp/commit/ca65af8aec28c16c7a27aaecb581e8e485f989e0))
+
+
+### Bug Fixes
+
+* add updateReviewPage hook to automatically reload page on clicking ([84aaa6e](https://github.com/hackutd/harp/commit/84aaa6e2fa41bdb738da61daf54b7839e5e812ad))
+* add updateReviewPage hook to automatically reload page on clicking ([7bfe827](https://github.com/hackutd/harp/commit/7bfe8274358ede61d879d05b12758fe413c350c3))
+* bug with removing already completed review & some race conditions ([4f404de](https://github.com/hackutd/harp/commit/4f404de589963b8dc3aaf7b091051919bae3baa5))
+* eslint error. closes [#10](https://github.com/hackutd/harp/issues/10) ([5c2896f](https://github.com/hackutd/harp/commit/5c2896f6a02d37103ce853ea2562fec6c6551497))
+* **store:** backfill review assignment settings for admins ([74728a8](https://github.com/hackutd/harp/commit/74728a8499329ca4b68a6a19d07dac706d63aa91))
+* **store:** make user creation and settings update atomic ([a783e67](https://github.com/hackutd/harp/commit/a783e67210b092c3e89062b91b780b8a4b63df03))
+* **store:** persist disabled state for unknown admin IDs ([e58674f](https://github.com/hackutd/harp/commit/e58674fbfa4799b4b0d7454b40ed22b5c5d2db91))
+
 ## [1.1.1](https://github.com/hackutd/harp/compare/v1.1.0...v1.1.1) (2026-02-13)
 
 
