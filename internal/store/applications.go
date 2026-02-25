@@ -128,7 +128,7 @@ type ApplicationListItem struct {
 	WaitlistVotes           int               `json:"waitlist_votes"`
 	ReviewsAssigned         int               `json:"reviews_assigned"`
 	ReviewsCompleted        int               `json:"reviews_completed"`
-	AIpercent               *int              `json:"ai_percent"`
+	AIPercent               *int              `json:"ai_percent"`
 }
 
 // ApplicationListResult contains paginated results
@@ -221,7 +221,7 @@ type Application struct {
 	ReviewsAssigned  int `json:"reviews_assigned"`
 	ReviewsCompleted int `json:"reviews_completed"`
 
-	AIpercent *int16 `json:"ai_percent"`
+	AIPercent *int16 `json:"ai_percent"`
 }
 
 type ApplicationsStore struct {
@@ -260,7 +260,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIpercent,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercent,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -507,7 +507,7 @@ func (s *ApplicationsStore) List(
 			&item.University, &item.Major, &item.LevelOfStudy,
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
-			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIpercent,
+			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
 		); err != nil {
 			return nil, err
 		}

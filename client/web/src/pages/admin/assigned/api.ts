@@ -40,7 +40,7 @@ export async function fetchReviewNotes(
   );
 }
 
-export async function setAIpercent(
+export async function setAIPercent(
   applicationId: string,
   payload: { ai_percent: number }
 ): Promise<{ success: boolean; error?: string }> {

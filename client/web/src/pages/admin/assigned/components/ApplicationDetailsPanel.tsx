@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Application } from "@/types";
 
-import { setAIpercent } from "../api";
+import { setAIPercent } from "../api";
 import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
@@ -40,7 +40,7 @@ export function ApplicationDetailsPanel({
 
   async function saveEditing() {
     const percent = Number(inputValue);
-    const result = await setAIpercent(application.id, { ai_percent: percent });
+    const result = await setAIPercent(application.id, { ai_percent: percent });
     if (result.success) {
       onAipercentUpdate(percent);
       toast.success("AI percent saved");
