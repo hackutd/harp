@@ -249,6 +249,7 @@ export default function Login() {
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs space-y-6">
             <div className="flex flex-col items-center gap-2 text-center">
+              <h1 className="text-2xl font-bold">(DEV)</h1>
               <h1 className="text-2xl font-bold">Login or create an account</h1>
               <p className="text-muted-foreground text-sm text-balance">
                 Enter your email to login or create an account
