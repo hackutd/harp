@@ -153,8 +153,8 @@ export function ReviewsPerAppTab({
           <CardDescription className="text-zinc-400">
             Controls whether you receive review assignments during batch
             assignment. When enabled, you will be assigned applications to
-            review. When disabled, you will be skipped and no new reviews will be
-            assigned to you.
+            review. When disabled, you will be skipped and no new reviews will
+            be assigned to you.
           </CardDescription>
         </CardHeader>
         <CardContent>
