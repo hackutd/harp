@@ -22,12 +22,12 @@ type SettingsStore struct {
 
 const SettingsKeyShortAnswerQuestions = "short_answer_questions"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
-const SettingsKeyReviewAssignmentEnabled = "review_assignment_enabled"
+const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 
 // ReviewAssignmentEntry represents a single admin's review assignment toggle state.
-// Used in the review_assignment_enabled settings JSON array.
+// Used in the review_assignment_toggle settings JSON array.
 type ReviewAssignmentEntry struct {
 	ID      string `json:"id"`
 	Enabled bool   `json:"enabled"`
@@ -228,10 +228,10 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 	return err
 }
 
-// GetReviewAssignmentEnabled returns whether review assignment is enabled for the given super admin ID.
+// GetReviewAssignmentToggle returns whether review assignment is enabled for the given super admin ID.
 // The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
 // If the setting row does not exist, defaults to false.
-func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context, superAdminID string) (bool, error) {
+func (s *SettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
@@ -242,7 +242,7 @@ func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context, superAdm
 	`
 
 	var value []byte
-	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentToggle).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -281,10 +281,10 @@ func (s *SettingsStore) GetReviewAssignmentEnabled(ctx context.Context, superAdm
 	return false, nil
 }
 
-// SetReviewAssignmentEnabled updates whether review assignment is enabled for the given super admin ID.
+// SetReviewAssignmentToggle updates whether review assignment is enabled for the given super admin ID.
 // The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
 // If `enabled` is true the super admin ID will be added to the array if missing. If false it will be removed.
-func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdminID string, enabled bool) error {
+func (s *SettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
@@ -298,7 +298,7 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 	querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
 
 	var value []byte
-	err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentEnabled).Scan(&value)
+	err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentToggle).Scan(&value)
 
 	var entries []ReviewAssignmentEntry
 
@@ -347,7 +347,7 @@ func (s *SettingsStore) SetReviewAssignmentEnabled(ctx context.Context, superAdm
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
-	if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentEnabled, string(jsonValue)); err != nil {
+	if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
 		return err
 	}
 

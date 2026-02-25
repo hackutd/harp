@@ -1452,7 +1452,65 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings/review-assignment-enabled": {
+        "/superadmin/emails/qr": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates and sends personalized QR code emails to all accepted hackers. QR encodes the user UUID for check-in scanning.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Send QR code emails (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.SendQREmailsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/review-assignment-toggle": {
             "get": {
                 "security": [
                     {
@@ -1471,7 +1529,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewAssignmentEnabledResponse"
+                            "$ref": "#/definitions/main.ReviewAssignmentToggleResponse"
                         }
                     },
                     "401": {
@@ -1533,7 +1591,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.SetReviewAssignmentEnabledPayload"
+                            "$ref": "#/definitions/main.SetReviewAssignmentTogglePayload"
                         }
                     }
                 ],
@@ -1541,7 +1599,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewAssignmentEnabledResponse"
+                            "$ref": "#/definitions/main.ReviewAssignmentToggleResponse"
                         }
                     },
                     "400": {
@@ -2175,7 +2233,7 @@ const docTemplate = `{
                 }
             }
         },
-        "main.ReviewAssignmentEnabledResponse": {
+        "main.ReviewAssignmentToggleResponse": {
             "type": "object",
             "properties": {
                 "enabled": {
@@ -2199,11 +2257,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.SetReviewAssignmentEnabledPayload": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
         "main.ScanStatsResponse": {
             "type": "object",
             "properties": {
@@ -2254,6 +2307,14 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "main.SetReviewAssignmentTogglePayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
                 }
             }
         },

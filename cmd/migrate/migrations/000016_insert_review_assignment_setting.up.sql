@@ -1,6 +1,6 @@
 INSERT INTO settings (key, value)
 SELECT
-  'review_assignment_enabled',
+  'review_assignment_toggle',
   COALESCE(
     jsonb_agg(
       jsonb_build_object(

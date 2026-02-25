@@ -39,8 +39,8 @@ type Storage struct {
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
-		GetReviewAssignmentEnabled(ctx context.Context, superAdminID string) (bool, error)
-		SetReviewAssignmentEnabled(ctx context.Context, superAdminID string, enabled bool) error
+		GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error)
+		SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)

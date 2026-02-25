@@ -48,7 +48,7 @@ export function ReviewsPerAppTab({
   useEffect(() => {
     async function fetchReviewAssignmentEnabled() {
       const res = await getRequest<{ enabled: boolean }>(
-        "/superadmin/settings/review-assignment-enabled",
+        "/superadmin/settings/review-assignment-toggle",
         "fetch review assignment enabled",
       );
       if (res.status === 200 && res.data !== undefined) {
@@ -80,7 +80,7 @@ export function ReviewsPerAppTab({
   async function handleToggleAssignmentEnabled(enabled: boolean) {
     setTogglingAssignment(true);
     const res = await postRequest<{ enabled: boolean }>(
-      "/superadmin/settings/review-assignment-enabled",
+      "/superadmin/settings/review-assignment-toggle",
       { enabled },
       "review assignment toggle",
     );
