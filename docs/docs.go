@@ -287,7 +287,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.SetAIpercentPayload"
+                            "$ref": "#/definitions/main.SetAIPercentPayload"
                         }
                     }
                 ],
@@ -295,7 +295,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.AIpercentResponse"
+                            "$ref": "#/definitions/main.AIPercentResponse"
                         }
                     },
                     "400": {
@@ -1545,7 +1545,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.AIpercentResponse": {
+        "main.AIPercentResponse": {
             "type": "object",
             "properties": {
                 "ai_percent": {
@@ -1778,7 +1778,7 @@ const docTemplate = `{
                 }
             }
         },
-        "main.SetAIpercentPayload": {
+        "main.SetAIPercentPayload": {
             "type": "object",
             "required": [
                 "ai_percent"

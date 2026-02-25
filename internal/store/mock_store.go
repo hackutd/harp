@@ -194,7 +194,7 @@ func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, ad
 	return args.Get(0).(*ApplicationReview), args.Error(1)
 }
 
-func (m *MockApplicationReviewsStore) SetAIpercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
+func (m *MockApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
 	args := m.Called(applicationID, adminID, percent)
 	return args.Error(0)
 }
