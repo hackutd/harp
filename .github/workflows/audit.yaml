@@ -1,51 +1,52 @@
 name: CI
 
-on: 
+on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 jobs:
   backend-audit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v6
-      with:
-        go-version: '1.24.x'
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.24.x"
 
-    - name: Check gofmt
-      run: |
-        unformatted=$(gofmt -l .)
-        if [ -n "$unformatted" ]; then
-          echo "The following files are not formatted with gofmt:"
-          echo ""
-          echo "$unformatted"
-          echo ""
-          echo "Run 'gofmt -w .' to fix."
-          exit 1
-        fi
+      - name: Check gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not formatted with gofmt:"
+            echo ""
+            echo "$unformatted"
+            echo ""
+            echo "Run 'gofmt -w .' to fix."
+            exit 1
+          fi
 
-    - name: Verify Dependencies
-      run: go mod verify
+      - name: Verify Dependencies
+        run: go mod verify
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
-    - name: Run go vet
-      run: go vet ./...
+      - name: Run go vet
+        run: go vet ./...
 
-    - name: Install staticcheck
-      run: go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
 
-    - name: Run staticcheck
-      run: staticcheck ./...
+      - name: Run staticcheck
+        run: staticcheck ./...
 
-    - name: Run Tests
-      run: go test -race ./...
+      - name: Run Tests
+        run: go test -race ./...
 
   frontend-audit:
     runs-on: ubuntu-latest
@@ -53,34 +54,34 @@ jobs:
       run:
         working-directory: client/web
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-        cache: 'npm'
-        cache-dependency-path: client/web/package-lock.json
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: client/web/package-lock.json
 
-    - name: Install Dependencies
-      run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-    - name: Format Check
-      run: npm run format:check
+      - name: Format Check
+        run: npm run format:check
 
-    - name: Lint
-      run: npm run lint
+      - name: Lint
+        run: npm run lint
 
-    - name: Type Check & Build
-      run: npm run build
+      - name: Type Check & Build
+        run: npm run build
 
-    - name: Dependency Audit
-      run: npm audit --audit-level=high
+      - name: Dependency Audit
+        run: npm audit --audit-level=high
 
-    - name: Run Tests
-      run: |
-        if [ -d "__tests__" ] || find src -name '*.test.*' -o -name '*.spec.*' 2>/dev/null | grep -q .; then
-          npx vitest run
-        else
-          echo "No test files found, skipping"
-        fi  
+      - name: Run Tests
+        run: |
+          if [ -d "__tests__" ] || find src -name '*.test.*' -o -name '*.spec.*' 2>/dev/null | grep -q .; then
+            npx vitest run
+          else
+            echo "No test files found, skipping"
+          fi
