@@ -16,7 +16,7 @@ interface SectionCardsProps {
 export function SectionCards({ stats, loading }: SectionCardsProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="@container/card animate-pulse">
             <CardHeader>
@@ -57,18 +57,22 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
   ];
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-4 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs">
+    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs lg:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.title} className="@container/card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>{card.title}</CardDescription>
-              <card.icon className="size-5 text-muted-foreground" />
+        <Card key={card.title} className="@container/card min-w-0">
+          <CardHeader className="min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <CardDescription className="truncate">
+                {card.title}
+              </CardDescription>
+              <card.icon className="size-5 shrink-0 text-muted-foreground" />
             </div>
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            <CardTitle className="truncate text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
               {card.value}
             </CardTitle>
-            <p className="text-sm text-muted-foreground">{card.description}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {card.description}
+            </p>
           </CardHeader>
         </Card>
       ))}
