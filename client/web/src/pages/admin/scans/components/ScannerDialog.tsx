@@ -101,9 +101,25 @@ export function ScannerDialog() {
     };
   }, [activeScanType, handleScan]);
 
-  const handleClose = () => {
+  // Explicitly stop the camera and clear state
+  const stopScanner = useCallback(() => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {});
+      scannerRef.current = null;
+    }
+  }, []);
+
+  const handleClose = useCallback(() => {
+    stopScanner();
     setActiveScanType(null);
-  };
+  }, [stopScanner, setActiveScanType]);
+
+  // Stop camera when component unmounts (e.g. navigating away)
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, [stopScanner]);
 
   return (
     <Dialog
