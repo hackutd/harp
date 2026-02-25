@@ -51,7 +51,7 @@ export function ApplicationsTable({
             <TableHead>Submitted</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
-            <TableHead>AI percent</TableHead>
+            <TableHead>AI Percent</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
