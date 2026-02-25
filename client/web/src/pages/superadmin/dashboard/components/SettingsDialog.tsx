@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   HelpCircle,
   Loader2,
+  ScanLine,
   UserCog,
   UsersRound,
 } from "lucide-react";
@@ -34,19 +35,23 @@ import type { ShortAnswerQuestion } from "@/types";
 import ApplicationsTab from "../tabs/ApplicationsTab";
 import { QuestionsTab } from "../tabs/QuestionsTab";
 import { ReviewsPerAppTab } from "../tabs/ReviewsPerAppTab";
+import type { ScanType } from "../tabs/ScanTypesTab";
+import { ScanTypesTab } from "../tabs/ScanTypesTab";
 import { SetAdminTab } from "../tabs/SetAdminTab";
 
 type SettingsTab =
   | "questions"
   | "set-admin"
   | "reviews-per-app"
-  | "applications";
+  | "applications"
+  | "scan-types";
 
 const settingsTabs = [
   { id: "questions" as const, label: "Questions", icon: HelpCircle },
   { id: "set-admin" as const, label: "Set Admin", icon: UserCog },
   { id: "reviews-per-app" as const, label: "Reviews", icon: ClipboardCheck },
   { id: "applications" as const, label: "Applications", icon: UsersRound },
+  { id: "scan-types" as const, label: "Scans", icon: ScanLine },
 ];
 
 interface SettingsDialogProps {
@@ -63,6 +68,9 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
 
   const [reviewsPerApp, setReviewsPerApp] = React.useState(1);
   const [reviewsPerAppLoading, setReviewsPerAppLoading] = React.useState(false);
+
+  const [scanTypes, setScanTypes] = React.useState<ScanType[]>([]);
+  const [scanTypesLoading, setScanTypesLoading] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -92,8 +100,22 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       }
       setReviewsPerAppLoading(false);
     };
+    const fetchScanTypes = async () => {
+      setScanTypesLoading(true);
+      const res = await getRequest<{ scan_types: ScanType[] }>(
+        "/admin/scans/types",
+        "scan types",
+      );
+      if (res.status === 200 && res.data) {
+        setScanTypes(res.data.scan_types ?? []);
+      } else {
+        errorAlert(res);
+      }
+      setScanTypesLoading(false);
+    };
     fetchQuestions();
     fetchReviewsPerApp();
+    fetchScanTypes();
   }, [open]);
 
   const handleCancel = () => {
@@ -141,6 +163,46 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       if (res.status === 200 && res.data) {
         setReviewsPerApp(res.data.reviews_per_application);
         toast.success("Reviews per application saved");
+      } else {
+        errorAlert(res);
+      }
+      setSaving(false);
+    } else if (activeTab === "scan-types") {
+      const emptyName = scanTypes.find((s) => !s.name.trim());
+      if (emptyName) {
+        toast.error("All scan types must have a name");
+        return;
+      }
+
+      const emptyDisplayName = scanTypes.find(
+        (s) => !s.display_name.trim(),
+      );
+      if (emptyDisplayName) {
+        toast.error("All scan types must have a display name");
+        return;
+      }
+
+      const names = scanTypes.map((s) => s.name.trim());
+      if (new Set(names).size !== names.length) {
+        toast.error("Scan type names must be unique");
+        return;
+      }
+
+      const hasCheckIn = scanTypes.some((s) => s.category === "check_in");
+      if (scanTypes.length > 0 && !hasCheckIn) {
+        toast.error("At least one scan type must have the check_in category");
+        return;
+      }
+
+      setSaving(true);
+      const res = await putRequest<{ scan_types: ScanType[] }>(
+        "/superadmin/settings/scan-types",
+        { scan_types: scanTypes },
+        "scan types",
+      );
+      if (res.status === 200 && res.data) {
+        setScanTypes(res.data.scan_types);
+        toast.success("Scan types saved");
       } else {
         errorAlert(res);
       }
@@ -205,6 +267,13 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                   />
                 )}
                 {activeTab === "applications" && <ApplicationsTab />}
+                {activeTab === "scan-types" && (
+                  <ScanTypesTab
+                    scanTypes={scanTypes}
+                    setScanTypes={setScanTypes}
+                    loading={scanTypesLoading}
+                  />
+                )}
               </div>
             </ScrollArea>
 
