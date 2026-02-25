@@ -39,7 +39,13 @@ export function ApplicationDetailsPanel({
   }
 
   async function saveEditing() {
-    const percent = Number(inputValue);
+    const trimmed = inputValue.trim();
+    if (trimmed === '') {
+      toast.error('AI percentage is required');
+      return;
+    }
+    const percent = Number(trimmed);
+
     const result = await setAIPercent(application.id, { ai_percent: percent });
     if (result.success) {
       onAipercentUpdate(percent);
