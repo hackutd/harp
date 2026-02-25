@@ -2990,7 +2990,8 @@ const docTemplate = `{
                     "enum": [
                         "check_in",
                         "meal",
-                        "swag"
+                        "swag",
+                        "other"
                     ],
                     "allOf": [
                         {
@@ -3018,12 +3019,14 @@ const docTemplate = `{
             "enum": [
                 "check_in",
                 "meal",
-                "swag"
+                "swag",
+                "other"
             ],
             "x-enum-varnames": [
                 "ScanCategoryCheckIn",
                 "ScanCategoryMeal",
-                "ScanCategorySwag"
+                "ScanCategorySwag",
+                "ScanCategoryOther"
             ]
         },
         "store.ShortAnswerQuestion": {
