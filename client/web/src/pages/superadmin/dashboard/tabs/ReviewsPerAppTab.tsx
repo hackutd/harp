@@ -1,5 +1,5 @@
 import { Loader2, Minus, Plus, Shuffle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -21,9 +21,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import type { AssignedState } from "@/pages/admin/assigned/hooks/updateReviewPage";
 import { refreshAssignedPage } from "@/pages/admin/assigned/hooks/updateReviewPage";
-import { errorAlert, postRequest } from "@/shared/lib/api";
+import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 
 interface ReviewsPerAppTabProps {
   reviewsPerApp: number;
@@ -38,9 +39,24 @@ export function ReviewsPerAppTab({
 }: ReviewsPerAppTabProps) {
   const [assigning, setAssigning] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewAssignmentEnabled, setReviewAssignmentEnabled] = useState(true);
+  const [togglingAssignment, setTogglingAssignment] = useState(false);
   const triggerAssignedPageRefresh = refreshAssignedPage(
     (state: AssignedState) => state.triggerRefresh,
   );
+
+  useEffect(() => {
+    async function fetchReviewAssignmentEnabled() {
+      const res = await getRequest<{ enabled: boolean }>(
+        "/superadmin/settings/review-assignment-toggle",
+        "fetch review assignment enabled",
+      );
+      if (res.status === 200 && res.data !== undefined) {
+        setReviewAssignmentEnabled(res.data.enabled);
+      }
+    }
+    fetchReviewAssignmentEnabled();
+  }, []);
 
   async function handleBatchAssign() {
     setConfirmOpen(false);
@@ -59,6 +75,25 @@ export function ReviewsPerAppTab({
     }
     triggerAssignedPageRefresh();
     setAssigning(false);
+  }
+
+  async function handleToggleAssignmentEnabled(enabled: boolean) {
+    setTogglingAssignment(true);
+    const res = await postRequest<{ enabled: boolean }>(
+      "/superadmin/settings/review-assignment-toggle",
+      { enabled },
+      "review assignment toggle",
+    );
+    if (res.status === 200 && res.data !== undefined) {
+      setReviewAssignmentEnabled(res.data.enabled);
+      toast.warning(
+        `Review assignment ${res.data.enabled ? "enabled. Please run Auto Assign Reviews to give yourself reviews." : "disabled. Please run Auto Assign Reviews to reroute any reviews stuck under you."}`,
+        { duration: 5000 },
+      );
+    } else {
+      errorAlert(res);
+    }
+    setTogglingAssignment(false);
   }
 
   if (loading) {
@@ -113,7 +148,37 @@ export function ReviewsPerAppTab({
       <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
         <CardHeader>
           <CardTitle className="font-normal text-zinc-100">
-            Batch Assign Reviews
+            Review Assignment Toggle
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Controls whether you receive review assignments during batch
+            assignment. When enabled, you will be assigned applications to
+            review. When disabled, you will be skipped and no new reviews will
+            be assigned to you.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-300">
+              {reviewAssignmentEnabled
+                ? "You are receiving review assignments"
+                : "You are not receiving review assignments"}
+            </span>
+            <Switch
+              checked={reviewAssignmentEnabled}
+              onCheckedChange={handleToggleAssignmentEnabled}
+              disabled={togglingAssignment}
+              className="data-[state=checked]:bg-zinc-100"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator className="bg-zinc-800" />
+      <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
+        <CardHeader>
+          <CardTitle className="font-normal text-zinc-100">
+            Auto Assign Reviews
           </CardTitle>
           <CardDescription className="text-zinc-400">
             Auto-assigns admins to submitted applications using workload

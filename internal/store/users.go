@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -104,13 +105,19 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO users (supertokens_user_id, email, role, auth_method, profile_picture_url)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at
 	`
 
-	err := s.db.QueryRowContext(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		user.SuperTokensUserID,
@@ -127,7 +134,68 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		return err
 	}
 
-	return nil
+	// If the newly-created user is a super_admin, ensure an entry
+	// exists in the `review_assignment_toggle` settings JSONB array with
+	// enabled=true. Admins are always assigned reviews and don't need a toggle entry.
+	if user.Role == RoleSuperAdmin {
+		defaultEnabled := true
+
+		querySelect := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
+
+		var value []byte
+		err = tx.QueryRowContext(ctx, querySelect, SettingsKeyReviewAssignmentToggle).Scan(&value)
+
+		var entries []ReviewAssignmentEntry
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			// no settings row yet; create with this admin/super_admin
+			entries = []ReviewAssignmentEntry{{ID: user.ID, Enabled: defaultEnabled}}
+		} else {
+			// Try to parse new format
+			if jerr := json.Unmarshal(value, &entries); jerr != nil {
+				// Fallback: try legacy array of ids
+				var ids []string
+				if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
+					for _, id := range ids {
+						entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
+					}
+				} else {
+					entries = []ReviewAssignmentEntry{}
+				}
+			}
+
+			// Ensure entry exists
+			found := false
+			for _, e := range entries {
+				if e.ID == user.ID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				entries = append(entries, ReviewAssignmentEntry{ID: user.ID, Enabled: defaultEnabled})
+			}
+		}
+
+		jsonValue, err := json.Marshal(entries)
+		if err != nil {
+			return err
+		}
+
+		queryUpsert := `
+			INSERT INTO settings (key, value)
+			VALUES ($1, $2)
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+		`
+
+		if _, err := tx.ExecContext(ctx, queryUpsert, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error) {
