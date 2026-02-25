@@ -148,16 +148,21 @@ export function ReviewsPerAppTab({
       <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
         <CardHeader>
           <CardTitle className="font-normal text-zinc-100">
-            Enable Review Assignment
+            Review Assignment Toggle
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            Allow super admins to enable/disable themselves from vote reviews.
+            Controls whether you receive review assignments during batch
+            assignment. When enabled, you will be assigned applications to
+            review. When disabled, you will be skipped and no new reviews will be
+            assigned to you.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <span className="text-sm text-zinc-300">
-              {reviewAssignmentEnabled ? "Enabled" : "Disabled"}
+              {reviewAssignmentEnabled
+                ? "You are receiving review assignments"
+                : "You are not receiving review assignments"}
             </span>
             <Switch
               checked={reviewAssignmentEnabled}
