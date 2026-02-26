@@ -17,6 +17,13 @@ type contextKey string
 
 const userContextKey contextKey = "user"
 
+//Defining the struct of the desired input for the super admin route
+type RoleUpdateRequest struct{
+	UserIds []int64 `json:"user_ids"`
+	Role store.UserRole `json:"role"`
+}
+
+
 // Validates HTTP Basic authentication credentials
 func (app *application) BasicAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -159,3 +166,92 @@ func getUserFromContext(ctx context.Context) *store.User {
 	user, _ := ctx.Value(userContextKey).(*store.User)
 	return user
 }
+
+func (app *application) SuperAdminUpdate() func(http.Handler) http.Handler
+{
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+
+			//Check if this specifc user exists from the context we get
+			user := getUserFromContext(r.Context())
+			if user == nil
+			{
+				app.unauthorizedErrorResponse(w,r,fmt.Errorf("This user does not exist"))
+				return
+			}
+
+			//Turning the HTTPs request into the actual struct
+			var req RoleUpdateRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				app.badRequestResponse(w,r,err)
+				return
+			}
+
+			//Checking if the user role is a super admin or not
+			if req.Role == store.RoleSuperAdmin
+			{
+				app.unauthorizedErrorResponse(w,r,fmt.Errorf("User can not give this role"))
+				return
+			}
+
+
+			for _, userID := range req.UserIds
+			{
+				//user is trying to modify their own role
+				if(userID == user.ID)
+				{
+					app.forbiddenResponse(w, r, fmt.Errorf("User cannot update their own roles"))
+					return
+				}
+
+				//user id is not found
+				target,err := app.store.Users.GetById(r.Context(), userID)
+				if err!=nil
+				{
+					//Check what type of error we actuall got
+					if errors.Is(err, store.ErrNotFound)
+					{
+						app.forbiddenResponse(w, r, fmt.Errorf("User ID does not exist"))
+						return
+					}
+
+					//Else we just have some internal server error
+					app.internalServerError(w,r,err)
+					return
+				}
+				
+				//User is trying to modify a super admin
+				if target.Role == store.RoleSuperAdmin {
+					app.unauthorizedErrorResponse(w, r, fmt.Errorf("Cannot modify a super Admin"))
+					return
+				}
+			}
+
+			//Now its actually going to check wiht the database to make sure we're good
+			updatedUsers, rowsChanged, err := app.store.Users.BatchUpdateRole(r.Context(),req.UserIds,req.Role)
+
+			//Check if we actually checked the database properly
+			if err!=nil
+			{
+				app.internalServerError(w,r,err)
+				return
+			}
+
+			//The rows changed is not equal to the amount of rows that were supposed ot be changed so something went wrong
+			if rowsChanged != int64(len(req.UserIds)) {
+				app.badRequestResponse(w, r, fmt.Errorf("Certain User Ids do not exist"))
+				return
+			}
+
+			//Return the updated Users
+			if err := app.writeJSON(w,http.StatusOK, envelope{
+				"updated" : updatedUsers,
+			},nil); err!=nil{
+				app.internalServerError(w,r,err)
+				return
+			}
+		})
+
+	}
+}
+

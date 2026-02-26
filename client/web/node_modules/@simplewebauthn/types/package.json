@@ -1,0 +1,42 @@
+{
+  "name": "@simplewebauthn/types",
+  "version": "12.0.0",
+  "description": "TypeScript types used by the @simplewebauthn series of libraries",
+  "keywords": [
+    "typescript",
+    "webauthn",
+    "passkeys",
+    "fido",
+    "types"
+  ],
+  "author": "Matthew Miller <matthew@millerti.me>",
+  "homepage": "https://github.com/MasterKale/SimpleWebAuthn/tree/master/packages/types#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MasterKale/SimpleWebAuthn.git",
+    "directory": "packages/types"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MasterKale/SimpleWebAuthn/issues"
+  },
+  "main": "./script/index.js",
+  "module": "./esm/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./types/index.d.ts",
+        "default": "./esm/index.js"
+      },
+      "require": {
+        "types": "./types/index.d.ts",
+        "default": "./script/index.js"
+      }
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "_generatedBy": "dnt@dev"
+}
