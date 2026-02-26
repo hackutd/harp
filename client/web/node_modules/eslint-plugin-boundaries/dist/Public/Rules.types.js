@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.isRuleName = exports.isRuleShortName = exports.RULE_NAMES_MAP = exports.RULE_SHORT_NAMES_MAP = exports.isRulePolicy = exports.RULE_POLICIES_MAP = exports.isExternalLibrariesSelector = exports.isExternalLibrarySelector = exports.isElementsSelector = exports.isElementSelector = void 0;
+var elements_1 = require("@boundaries/elements");
+Object.defineProperty(exports, "isElementSelector", { enumerable: true, get: function () { return elements_1.isElementSelector; } });
+Object.defineProperty(exports, "isElementsSelector", { enumerable: true, get: function () { return elements_1.isElementsSelector; } });
+Object.defineProperty(exports, "isExternalLibrarySelector", { enumerable: true, get: function () { return elements_1.isExternalLibrarySelector; } });
+Object.defineProperty(exports, "isExternalLibrariesSelector", { enumerable: true, get: function () { return elements_1.isExternalLibrariesSelector; } });
+var Settings_1 = require("../Settings");
+Object.defineProperty(exports, "RULE_POLICIES_MAP", { enumerable: true, get: function () { return Settings_1.RULE_POLICIES_MAP; } });
+Object.defineProperty(exports, "isRulePolicy", { enumerable: true, get: function () { return Settings_1.isRulePolicy; } });
+Object.defineProperty(exports, "RULE_SHORT_NAMES_MAP", { enumerable: true, get: function () { return Settings_1.RULE_SHORT_NAMES_MAP; } });
+Object.defineProperty(exports, "RULE_NAMES_MAP", { enumerable: true, get: function () { return Settings_1.RULE_NAMES_MAP; } });
+Object.defineProperty(exports, "isRuleShortName", { enumerable: true, get: function () { return Settings_1.isRuleShortName; } });
+Object.defineProperty(exports, "isRuleName", { enumerable: true, get: function () { return Settings_1.isRuleName; } });
