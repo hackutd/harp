@@ -2,6 +2,7 @@
 
 import {
   CircleCheck,
+  LayoutDashboard,
   Package,
   ScanLine,
   Settings,
@@ -63,6 +64,14 @@ const eventNav = [
   },
 ];
 
+const superAdminNav = [
+  {
+    name: "Dashboard",
+    url: "/superadmin",
+    icon: LayoutDashboard,
+  },
+];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useUserStore();
   const location = useLocation();
@@ -92,6 +101,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items={eventNav}
           currentPath={location.pathname}
         />
+
+        {user?.role === "super_admin" && (
+          <NavSection
+            label="Super Admin"
+            items={superAdminNav}
+            currentPath={location.pathname}
+          />
+        )}
       </SidebarContent>
       <SidebarFooter>
         {user?.role === "super_admin" && (
