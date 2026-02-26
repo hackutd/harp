@@ -1,13 +1,14 @@
 "use client";
 
 import {
-  Calendar,
-  ClipboardList,
+  CircleCheck,
+  LayoutDashboard,
+  Package,
   ScanLine,
   Settings,
-  Star,
   UserCheck,
   Users,
+  UsersRound,
 } from "lucide-react";
 import * as React from "react";
 import { useLocation } from "react-router-dom";
@@ -34,9 +35,14 @@ const applicantsNav = [
     icon: Users,
   },
   {
-    name: "Reviews",
-    url: "/admin/reviews",
+    name: "Assigned",
+    url: "/admin/assigned",
     icon: UserCheck,
+  },
+  {
+    name: "Completed",
+    url: "/admin/completed",
+    icon: CircleCheck,
   },
 ];
 
@@ -47,27 +53,22 @@ const eventNav = [
     icon: ScanLine,
   },
   {
-    name: "Schedule",
-    url: "/admin/schedule",
-    icon: Calendar,
+    name: "Hacker Pack",
+    url: "/admin/hacker-pack",
+    icon: Package,
+  },
+  {
+    name: "Groups",
+    url: "/admin/groups",
+    icon: UsersRound,
   },
 ];
 
 const superAdminNav = [
   {
-    name: "Reviews",
-    url: "/admin/sa/reviews",
-    icon: Star,
-  },
-  {
-    name: "User Management",
-    url: "/admin/sa/user-management",
-    icon: Users,
-  },
-  {
-    name: "Application",
-    url: "/admin/sa/application",
-    icon: ClipboardList,
+    name: "Dashboard",
+    url: "/superadmin",
+    icon: LayoutDashboard,
   },
 ];
 
