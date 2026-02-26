@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  CircleCheck,
+  LayoutDashboard,
   Package,
   ScanLine,
   Settings,
@@ -37,6 +39,11 @@ const applicantsNav = [
     url: "/admin/assigned",
     icon: UserCheck,
   },
+  {
+    name: "Completed",
+    url: "/admin/completed",
+    icon: CircleCheck,
+  },
 ];
 
 const eventNav = [
@@ -54,6 +61,14 @@ const eventNav = [
     name: "Groups",
     url: "/admin/groups",
     icon: UsersRound,
+  },
+];
+
+const superAdminNav = [
+  {
+    name: "Dashboard",
+    url: "/superadmin",
+    icon: LayoutDashboard,
   },
 ];
 
@@ -86,6 +101,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items={eventNav}
           currentPath={location.pathname}
         />
+
+        {user?.role === "super_admin" && (
+          <NavSection
+            label="Super Admin"
+            items={superAdminNav}
+            currentPath={location.pathname}
+          />
+        )}
       </SidebarContent>
       <SidebarFooter>
         {user?.role === "super_admin" && (
