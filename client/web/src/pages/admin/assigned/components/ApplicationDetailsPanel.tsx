@@ -54,7 +54,7 @@ export function ApplicationDetailsPanel({
 
     const result = await setAIPercent(application.id, { ai_percent: percent });
     if (result.success) {
-      onAipercentUpdate(percent);
+      onAipercentUpdate?.(percent);
       toast.success("AI percent saved");
     } else {
       toast.error(result.error ?? "Failed to set AI percent");
