@@ -29,18 +29,26 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
-// getPendingReviews returns all pending reviews assigned to the current admin
+type SetAIPercentPayload struct {
+	AIPercent int16 `json:"ai_percent" validate:"required,min=0,max=100"`
+}
+
+type AIPercentResponse struct {
+	AIPercent int16 `json:"ai_percent"`
+}
+
+// getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
 //
-// @Summary		Get pending reviews (Admin)
-// @Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
-// @Tags			admin
-// @Produce		json
-// @Success		200	{object}	PendingReviewsListResponse
-// @Failure		401	{object}	object{error=string}
-// @Failure		403	{object}	object{error=string}
-// @Failure		500	{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/reviews/pending [get]
+//	@Summary		Get pending reviews (Admin)
+//	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
+//	@Tags			admin
+//	@Produce		json
+//	@Success		200	{object}	PendingReviewsListResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/pending [get]
 func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 
@@ -61,16 +69,16 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 
 // getCompletedReviews returns all reviews the current admin has completed
 //
-// @Summary		Get completed reviews (Admin)
-// @Description	Returns all reviews the current admin has completed (voted on), including application details
-// @Tags			admin
-// @Produce		json
-// @Success		200	{object}	CompletedReviewsListResponse
-// @Failure		401	{object}	object{error=string}
-// @Failure		403	{object}	object{error=string}
-// @Failure		500	{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/reviews/completed [get]
+//	@Summary		Get completed reviews (Admin)
+//	@Description	Returns all reviews the current admin has completed (voted on), including application details
+//	@Tags			admin
+//	@Produce		json
+//	@Success		200	{object}	CompletedReviewsListResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/completed [get]
 func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 
@@ -91,18 +99,18 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 
 // getApplicationNotes returns all reviewer notes for a specific application
 //
-// @Summary		Get notes for an application (Admin)
-// @Description	Returns all reviewer notes for a specific application without exposing votes
-// @Tags			admin
-// @Produce		json
-// @Param			applicationID	path		string	true	"Application ID"
-// @Success		200				{object}	NotesListResponse
-// @Failure		400				{object}	object{error=string}
-// @Failure		401				{object}	object{error=string}
-// @Failure		403				{object}	object{error=string}
-// @Failure		500				{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/applications/{applicationID}/notes [get]
+//	@Summary		Get notes for an application (Admin)
+//	@Description	Returns all reviewer notes for a specific application without exposing votes
+//	@Tags			admin
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	NotesListResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/notes [get]
 func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Request) {
 	applicationID := chi.URLParam(r, "applicationID")
 	if applicationID == "" {
@@ -127,16 +135,16 @@ func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Reque
 
 // batchAssignReviews assigns submitted applications to admins using workload balancing
 //
-// @Summary		Batch assign reviews (SuperAdmin)
-// @Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
-// @Tags			superadmin
-// @Produce		json
-// @Success		200	{object}	store.BatchAssignmentResult
-// @Failure		401	{object}	object{error=string}
-// @Failure		403	{object}	object{error=string}
-// @Failure		500	{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/superadmin/applications/assign [post]
+//	@Summary		Batch assign reviews (SuperAdmin)
+//	@Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
+//	@Tags			superadmin
+//	@Produce		json
+//	@Success		200	{object}	store.BatchAssignmentResult
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/assign [post]
 func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Request) {
 	reviewsPerApp, err := app.store.Settings.GetReviewsPerApplication(r.Context())
 	if err != nil {
@@ -157,17 +165,17 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 
 // getNextReview assigns and returns the next application needing review
 //
-// @Summary		Get next review assignment (Admin)
-// @Description	Automatically assigns the next submitted application needing review to the current admin and returns it
-// @Tags			admin
-// @Produce		json
-// @Success		200	{object}	ReviewResponse
-// @Failure		401	{object}	object{error=string}
-// @Failure		403	{object}	object{error=string}
-// @Failure		404	{object}	object{error=string}	"No applications need review"
-// @Failure		500	{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/reviews/next [get]
+//	@Summary		Get next review assignment (Admin)
+//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
+//	@Tags			admin
+//	@Produce		json
+//	@Success		200	{object}	ReviewResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}	"No applications need review"
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/next [get]
 func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 
@@ -199,21 +207,21 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 
 // submitVote records the admin's vote on an assigned application review
 //
-// @Summary		Submit vote on a review (Admin)
-// @Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
-// @Tags			admin
-// @Accept			json
-// @Produce		json
-// @Param			reviewID	path		string				true	"Review ID"
-// @Param			vote		body		SubmitVotePayload	true	"Vote and optional notes"
-// @Success		200			{object}	ReviewResponse
-// @Failure		400			{object}	object{error=string}
-// @Failure		401			{object}	object{error=string}
-// @Failure		403			{object}	object{error=string}
-// @Failure		404			{object}	object{error=string}
-// @Failure		500			{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/reviews/{reviewID} [put]
+//	@Summary		Submit vote on a review (Admin)
+//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
+//	@Tags			admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			reviewID	path		string				true	"Review ID"
+//	@Param			vote		body		SubmitVotePayload	true	"Vote and optional notes"
+//	@Success		200			{object}	ReviewResponse
+//	@Failure		400			{object}	object{error=string}
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		403			{object}	object{error=string}
+//	@Failure		404			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/{reviewID} [put]
 func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	reviewID := chi.URLParam(r, "reviewID")
 	if reviewID == "" {
@@ -248,6 +256,64 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	response := ReviewResponse{
 		Review: *review,
 	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAIPercent records the AI-generated content percent for an assigned application review
+//
+//	@Summary		Set AI percent on a review (Admin)
+//	@Description	Records the estimated AI-generated content percent for an application assigned to the current admin
+//	@Tags			admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			applicationID	path		string				true	"Application ID"
+//	@Param			payload			body		SetAIPercentPayload	true	"AI percent (0–100)"
+//	@Success		200				{object}	AIPercentResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/ai-percent [put]
+func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
+
+	applicationID := chi.URLParam(r, "applicationID")
+
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	user := getUserFromContext(r.Context())
+
+	var req SetAIPercentPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err := app.store.ApplicationReviews.SetAIPercent(r.Context(), applicationID, user.ID, req.AIPercent)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percent already set"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	response := AIPercentResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

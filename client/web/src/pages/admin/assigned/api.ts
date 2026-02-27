@@ -45,7 +45,30 @@ export async function fetchReviewNotes(
   applicationId: string,
 ): Promise<ApiResponse<NotesListResponse>> {
   return getRequest<NotesListResponse>(
-    `/admin/reviews/applications/${applicationId}/notes`,
+    `/admin/applications/${applicationId}/notes`,
     "review notes",
   );
+}
+
+export async function setAIPercent(
+  applicationId: string,
+  payload: { ai_percent: number }
+): Promise<{ success: boolean; error?: string }> {
+  const res = await putRequest(`/admin/applications/${applicationId}/ai-percent`, payload);
+
+  if (res.status === 200) return { success: true };
+
+  if (res.status === 404) {
+    return { success: false, error: "Only the assigned admin can change this review's AI percent" };
+  }
+  if (res.status === 400) {
+    if (payload.ai_percent > 100) {
+      return { success: false, error: 'Percent cannot exceed 100%' };
+    }
+    if (payload.ai_percent < 0) {
+      return { success: false, error: 'Percent cannot be below 0%' };
+    }
+  }
+  return { success: false, error: res.error ?? 'Failed to set AI percent' };
+
 }

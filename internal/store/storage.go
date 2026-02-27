@@ -58,6 +58,7 @@ type Storage struct {
 		GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error)
 		BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error)
 		AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error)
+		SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error
 	}
 }
 
