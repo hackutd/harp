@@ -15,7 +15,8 @@ interface ApplicationDetailsPanelProps {
   application: Application;
   selectedReview: Review;
   isExpanded: boolean;
-  onAipercentUpdate: (percent: number) => void;
+  onAipercentUpdate?: (percent: number) => void;
+  readOnly?: boolean;
 }
 
 export function ApplicationDetailsPanel({
@@ -23,6 +24,7 @@ export function ApplicationDetailsPanel({
   selectedReview,
   isExpanded,
   onAipercentUpdate,
+  readOnly = false,
 }: ApplicationDetailsPanelProps) {
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
 
@@ -40,11 +42,15 @@ export function ApplicationDetailsPanel({
 
   async function saveEditing() {
     const trimmed = inputValue.trim();
-    if (trimmed === '') {
-      toast.error('AI percentage is required');
+    if (trimmed === "") {
+      toast.error("AI percentage is required");
       return;
     }
     const percent = Number(trimmed);
+    if (!Number.isInteger(percent) || percent < 0 || percent > 100) {
+      toast.error("AI percent must be a whole number between 0 and 100");
+      return;
+    }
 
     const result = await setAIPercent(application.id, { ai_percent: percent });
     if (result.success) {
@@ -165,7 +171,13 @@ export function ApplicationDetailsPanel({
               <Label className="text-muted-foreground text-xs">
                 AI percent
               </Label>
-              {editing ? (
+              {readOnly ? (
+                <p className="mt-1">
+                  {application.ai_percent != null
+                    ? `${application.ai_percent}%`
+                    : "Not set"}
+                </p>
+              ) : editing ? (
                 <div className="flex items-center gap-2 mt-1">
                   <Input
                     type="number"
