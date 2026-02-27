@@ -1,2 +1,0 @@
-ALTER TABLE applications
-ADD COLUMN ai_percent SMALLINT DEFAULT NULL;
