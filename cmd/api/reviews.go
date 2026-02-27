@@ -30,7 +30,7 @@ type NotesListResponse struct {
 }
 
 type SetAIPercentPayload struct {
-	AIPercent int16 `json:"ai_percent" validate:"required,min=0,max=100"`
+	AIPercent int16 `json:"ai_percent" validate:"min=0,max=100"`
 }
 
 type AIPercentResponse struct {

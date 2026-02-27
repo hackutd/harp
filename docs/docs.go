@@ -1780,9 +1780,6 @@ const docTemplate = `{
         },
         "main.SetAIPercentPayload": {
             "type": "object",
-            "required": [
-                "ai_percent"
-            ],
             "properties": {
                 "ai_percent": {
                     "type": "integer",
