@@ -176,6 +176,9 @@ func (app *application) mount() http.Handler {
 
 					// Emails
 					r.Post("/emails/qr", app.sendQREmailsHandler)
+
+					//Search Users
+					r.Post("/users/search", app.batchSearchUsersHandler)
 				})
 			})
 		})

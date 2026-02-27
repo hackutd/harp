@@ -255,3 +255,44 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 
 	return nil
 }
+
+func (s *UsersStore) GetByEmails(ctx context.Context, emails []string) ([]User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	if len(emails) == 0 {
+		return []User{}, nil
+	}
+
+	query := `
+		SELECT id, email, role, created_at
+		FROM users
+		WHERE email = ANY($1)
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, emails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]User, 0, len(emails))
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Role,
+			&user.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
