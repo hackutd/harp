@@ -1,21 +1,66 @@
+import { Check, Pencil, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Application } from "@/types";
 
+import { setAIPercent } from "../api";
 import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
   application: Application;
   selectedReview: Review;
   isExpanded: boolean;
+  onAipercentUpdate?: (percent: number) => void;
+  readOnly?: boolean;
 }
 
 export function ApplicationDetailsPanel({
   application,
   selectedReview,
   isExpanded,
+  onAipercentUpdate,
+  readOnly = false,
 }: ApplicationDetailsPanelProps) {
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
+
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+
+  function startEditing() {
+    setInputValue(application.ai_percent?.toString() ?? "");
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+  }
+
+  async function saveEditing() {
+    const trimmed = inputValue.trim();
+    if (trimmed === "") {
+      toast.error("AI percentage is required");
+      return;
+    }
+    const percent = Number(trimmed);
+    if (!Number.isInteger(percent) || percent < 0 || percent > 100) {
+      toast.error("AI percent must be a whole number between 0 and 100");
+      return;
+    }
+
+    const result = await setAIPercent(application.id, { ai_percent: percent });
+    if (result.success) {
+      onAipercentUpdate?.(percent);
+      toast.success("AI percent saved");
+    } else {
+      toast.error(result.error ?? "Failed to set AI percent");
+    }
+    setEditing(false);
+  }
 
   return (
     <div className="space-y-6 pb-2">
@@ -121,8 +166,76 @@ export function ApplicationDetailsPanel({
                 </div>
               ))}
           </div>
+          <div>
+            <div className="text-sm pt-3">
+              <Label className="text-muted-foreground text-xs">
+                AI percent
+              </Label>
+              {readOnly ? (
+                <p className="mt-1">
+                  {application.ai_percent != null
+                    ? `${application.ai_percent}%`
+                    : "Not set"}
+                </p>
+              ) : editing ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="h-7 w-24 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={saveEditing}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={cancelEditing}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-1">
+                  {application.ai_percent != null ? (
+                    <div
+                      className="flex items-center gap-2 cursor-not-allowed"
+                      title="AI percent has already been set and cannot be changed"
+                    >
+                      <p>{application.ai_percent}%</p>
+                      <Pencil className="h-3 w-3 text-muted-foreground opacity-40" />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground italic">Not set</p>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={startEditing}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* AI percent */}
 
       {/* Event Preferences */}
       <div>

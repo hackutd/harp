@@ -337,6 +337,11 @@ export default function AssignedPage() {
                         application={applicationDetail}
                         selectedReview={selectedReview}
                         isExpanded={isExpanded}
+                        onAipercentUpdate={(pct) =>
+                          setApplicationDetail((prev) =>
+                            prev ? { ...prev, ai_percent: pct } : prev,
+                          )
+                        }
                       />
                     )
                   )}
@@ -384,6 +389,11 @@ export default function AssignedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={isExpanded}
+                      onAipercentUpdate={(pct) =>
+                        setApplicationDetail((prev) =>
+                          prev ? { ...prev, ai_percent: pct } : prev,
+                        )
+                      }
                     />
                   )
                 )}

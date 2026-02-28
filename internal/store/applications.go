@@ -128,6 +128,7 @@ type ApplicationListItem struct {
 	WaitlistVotes           int               `json:"waitlist_votes"`
 	ReviewsAssigned         int               `json:"reviews_assigned"`
 	ReviewsCompleted        int               `json:"reviews_completed"`
+	AIPercent               *int              `json:"ai_percent"`
 }
 
 // ApplicationListResult contains paginated results
@@ -219,6 +220,8 @@ type Application struct {
 	WaitlistVotes    int `json:"waitlist_votes"`
 	ReviewsAssigned  int `json:"reviews_assigned"`
 	ReviewsCompleted int `json:"reviews_completed"`
+
+	AIPercent *int16 `json:"ai_percent"`
 }
 
 type ApplicationsStore struct {
@@ -240,7 +243,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			github, linkedin, website,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percent
 		FROM applications
 		WHERE id = $1
 	`
@@ -257,7 +260,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.Github, &app.LinkedIn, &app.Website,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercent,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -456,7 +459,7 @@ func (s *ApplicationsStore) List(
 			       a.university, a.major, a.level_of_study,
 			       a.hackathons_attended_count,
 			       a.submitted_at, a.created_at, a.updated_at,
-			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed
+			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -471,7 +474,7 @@ func (s *ApplicationsStore) List(
 			       a.university, a.major, a.level_of_study,
 			       a.hackathons_attended_count,
 			       a.submitted_at, a.created_at, a.updated_at,
-			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed
+			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
 			FROM applications a
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
@@ -504,7 +507,7 @@ func (s *ApplicationsStore) List(
 			&item.University, &item.Major, &item.LevelOfStudy,
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
-			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted,
+			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
 		); err != nil {
 			return nil, err
 		}

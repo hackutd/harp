@@ -199,6 +199,7 @@ export default function CompletedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={false}
+                      readOnly
                     />
 
                     {/* Reviewer notes section */}

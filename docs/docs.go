@@ -255,6 +255,107 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/{applicationID}/ai-percent": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Records the estimated AI-generated content percent for an application assigned to the current admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Set AI percent on a review (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "AI percent (0–100)",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetAIPercentPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.AIPercentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/applications/{applicationID}/notes": {
             "get": {
                 "security": [
@@ -2012,6 +2113,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.AIPercentResponse": {
+            "type": "object",
+            "properties": {
+                "ai_percent": {
+                    "type": "integer"
+                }
+            }
+        },
         "main.ApplicationResponse": {
             "type": "object",
             "properties": {
@@ -2042,6 +2151,9 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 150,
                     "minimum": 1
+                },
+                "ai_percent": {
+                    "type": "integer"
                 },
                 "country_of_residence": {
                     "type": "string",
@@ -2310,6 +2422,16 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SetAIPercentPayload": {
+            "type": "object",
+            "properties": {
+                "ai_percent": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 0
+                }
+            }
+        },
         "main.SetReviewAssignmentTogglePayload": {
             "type": "object",
             "properties": {
@@ -2561,6 +2683,9 @@ const docTemplate = `{
                     "maximum": 150,
                     "minimum": 1
                 },
+                "ai_percent": {
+                    "type": "integer"
+                },
                 "country_of_residence": {
                     "type": "string",
                     "minLength": 1
@@ -2679,6 +2804,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "age": {
+                    "type": "integer"
+                },
+                "ai_percent": {
                     "type": "integer"
                 },
                 "country_of_residence": {

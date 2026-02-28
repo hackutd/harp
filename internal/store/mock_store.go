@@ -225,6 +225,11 @@ func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, ad
 	return args.Get(0).(*ApplicationReview), args.Error(1)
 }
 
+func (m *MockApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
+	args := m.Called(applicationID, adminID, percent)
+	return args.Error(0)
+}
+
 // MockScansStore is a mock implementation of the Scans interface
 type MockScansStore struct {
 	mock.Mock
