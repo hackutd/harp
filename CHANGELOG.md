@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0](https://github.com/hackutd/harp/compare/v1.2.0...v1.3.0) (2026-02-28)
+
+
+### Features
+
+* add "other" scan category and enforce single check_in type ([5e6e26a](https://github.com/hackutd/harp/commit/5e6e26a927f434ee29cce861fe174560489008a9))
+* merge ai percent on apps ([b58408b](https://github.com/hackutd/harp/commit/b58408b03103ccac8416ede342357ebfebded4b4))
+* **sidebar:** add super admin section to admin sidebar ([55267bf](https://github.com/hackutd/harp/commit/55267bf468a29169d056e0ec3ad4fa2826eed426))
+* **web:** add admin scans page with QR code scanning ([cd24bb6](https://github.com/hackutd/harp/commit/cd24bb6dc84d61ceb55810d94372faca08f868e0))
+* **web:** crud scan types for super admin ([3613084](https://github.com/hackutd/harp/commit/36130843a4ce9004eca0527cb9897aa7f39de41c))
+* **web:** explicity turn off camera when not on scanning ([ff7664b](https://github.com/hackutd/harp/commit/ff7664b37da8dd467d4e9e860679609063b1c385))
+* **web:** mobile friendly ([f98845b](https://github.com/hackutd/harp/commit/f98845bb71d2861cbbfcf1d5ff6348c6a6872580))
+
+
+### Bug Fixes
+
+* resolve minimatch high severity vulnerability ([927964c](https://github.com/hackutd/harp/commit/927964c76c97087d437faf5a52f926f17ec66e3c))
+* update percentage -&gt; percent migration ([133d9e2](https://github.com/hackutd/harp/commit/133d9e2b753b8ada486b248b3bcdd384dc688f03))
+
 ## [1.2.0](https://github.com/hackutd/harp/compare/v1.1.1...v1.2.0) (2026-02-25)
 
 
