@@ -27,11 +27,11 @@ export function StatusFilterTabs({
       onValueChange={handleValueChange}
       className="min-w-0"
     >
-      <TabsList className="h-auto flex-wrap justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5">
+      <TabsList className="h-auto w-full flex-wrap rounded-md border justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5">
         <TabsTrigger
           value="all"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-normal cursor-pointer rounded-sm"
         >
           All
           {stats && (

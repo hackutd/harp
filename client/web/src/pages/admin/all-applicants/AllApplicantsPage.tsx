@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -17,6 +18,7 @@ import { StatusFilterTabs } from "./components/StatusFilterTabs";
 import { useApplicationDetail } from "./hooks/useApplicationDetail";
 import { useApplicationsStore } from "./store";
 import type { ApplicationStatus } from "./types";
+import { getStatusColor } from "./utils";
 
 export default function AllApplicantsPage() {
   const {
@@ -49,15 +51,16 @@ export default function AllApplicantsPage() {
     return () => controller.abort();
   }, [fetchApplications, fetchStats]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchApplications({ search: searchInput, status: currentStatus });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput, fetchApplications, currentStatus]);
+
   const handleClosePanel = () => {
     setSelectedApplicationId(null);
     clearDetail();
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      fetchApplications({ search: searchInput, status: currentStatus });
-    }
   };
 
   const handleStatusFilter = (status: ApplicationStatus | null) => {
@@ -88,21 +91,13 @@ export default function AllApplicantsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <SectionCards stats={stats} loading={statsLoading} />
+    <div className="flex flex-col gap-3 h-full min-h-0">
+      <div className="shrink-0">
+        <SectionCards stats={stats} loading={statsLoading} />
+      </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or email..."
-              className="h-9 w-[250px] pl-8"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-            />
-          </div>
+      <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
+        <div className="col-span-2">
           <StatusFilterTabs
             stats={stats}
             loading={loading}
@@ -110,27 +105,45 @@ export default function AllApplicantsPage() {
             onStatusChange={handleStatusFilter}
           />
         </div>
-        <PaginationControls
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          loading={loading}
-          onPrevPage={handlePrevPage}
-          onNextPage={handleNextPage}
-        />
+        <div className="relative bg-muted rounded-md border p-[3px]">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground" />
+          <Input
+            placeholder="Search by name or email..."
+            className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end">
+          <PaginationControls
+            prevCursor={prevCursor}
+            nextCursor={nextCursor}
+            loading={loading}
+            onPrevPage={handlePrevPage}
+            onNextPage={handleNextPage}
+          />
+        </div>
       </div>
 
-      <div className="flex">
+      <div className="flex flex-1 min-h-0">
         <Card
-          className={`overflow-hidden flex flex-col max-h-[calc(100vh-180px)] ${selectedApplicationId ? "w-1/2 rounded-r-none" : "w-full"}`}
+          className={`overflow-hidden flex flex-col ${selectedApplicationId ? "w-1/2 rounded-r-none" : "w-full"}`}
         >
           <CardHeader className="shrink-0">
-            <CardDescription className="font-light">
-              {applications.length} application(s) on this page
-              {currentStatus && ` (filtered by ${currentStatus})`}
-              {currentSearch && ` matching "${currentSearch}"`}
+            <CardDescription className="font-light flex items-center gap-1.5">
+              <span>{applications.length} application(s) on this page</span>
+              {currentStatus && (
+                <>
+                  <span>filtered by</span>
+                  <Badge className={getStatusColor(currentStatus)}>
+                    {currentStatus}
+                  </Badge>
+                </>
+              )}
+              {currentSearch && <span>matching "{currentSearch}"</span>}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-hidden">
+          <CardContent className="p-0 flex-1 overflow-auto">
             <ApplicationsTable
               applications={applications}
               loading={loading}

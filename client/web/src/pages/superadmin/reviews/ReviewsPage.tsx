@@ -141,13 +141,6 @@ export default function ReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Reviews</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Configure review settings and manage review assignments.
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {/* Reviews Per Application */}
         <Card className="@container/card">

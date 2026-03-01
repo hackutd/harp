@@ -67,7 +67,7 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
               </CardDescription>
               <card.icon className="size-5 shrink-0 text-muted-foreground" />
             </div>
-            <CardTitle className="truncate text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            <CardTitle className="truncate text-xl font-semibold tabular-nums @[250px]/card:text-2xl">
               {card.value}
             </CardTitle>
             <p className="truncate text-sm text-muted-foreground">
