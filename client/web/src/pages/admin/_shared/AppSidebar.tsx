@@ -22,7 +22,6 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { SettingsDialog } from "@/pages/superadmin";
@@ -106,14 +105,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-1">
-          <div className="flex-1 min-w-0">
-            <NavUser user={userData} />
-          </div>
-          {state === "expanded" && (
-            <SidebarTrigger className="cursor-pointer shrink-0" />
-          )}
-        </div>
+        <NavUser user={userData} />
       </SidebarHeader>
       <SidebarContent>
         <NavSection

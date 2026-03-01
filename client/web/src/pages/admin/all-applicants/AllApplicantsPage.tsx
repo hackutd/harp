@@ -105,8 +105,8 @@ export default function AllApplicantsPage() {
             onStatusChange={handleStatusFilter}
           />
         </div>
-        <div className="relative bg-muted rounded-md border p-[3px]">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground" />
+        <div className="relative bg-muted rounded-md border p-[2px]">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
           <Input
             placeholder="Search by name or email..."
             className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
