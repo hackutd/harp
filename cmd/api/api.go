@@ -123,7 +123,7 @@ func (app *application) mount() http.Handler {
 				r.Post("/me/submit", app.submitApplicationHandler)
 			})
 
-			r.Group(func(r chi.Router) { // TODO clean up this routing
+			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
@@ -141,6 +141,10 @@ func (app *application) mount() http.Handler {
 					r.Get("/reviews/completed", app.getCompletedReviews)
 					r.Put("/applications/{applicationID}/ai-percent", app.setAIPercent)
 					// Scans
+					r.Get("/scans/types", app.getScanTypesHandler)
+					r.Post("/scans", app.createScanHandler)
+					r.Get("/scans/user/{userID}", app.getUserScansHandler)
+					r.Get("/scans/stats", app.getScanStatsHandler)
 
 					// Hacker Pack
 
@@ -161,9 +165,21 @@ func (app *application) mount() http.Handler {
 					// Reviews Config
 					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
 					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
+					r.Get("/settings/review-assignment-toggle", app.getReviewAssignmentToggle)
+					r.Post("/settings/review-assignment-toggle", app.setReviewAssignmentToggle)
 					r.Post("/applications/assign", app.batchAssignReviews)
 					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
 					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
+
+					// User Management
+					r.Get("/users", app.searchUsersHandler)
+					r.Patch("/users/{userID}/role", app.updateUserRoleHandler)
+
+					// Scans Config
+					r.Put("/settings/scan-types", app.updateScanTypesHandler)
+
+					// Emails
+					r.Post("/emails/qr", app.sendQREmailsHandler)
 				})
 			})
 		})

@@ -102,6 +102,7 @@ type ApplicationCursor struct {
 // ApplicationListFilters for query filtering
 type ApplicationListFilters struct {
 	Status *ApplicationStatus
+	Search *string
 }
 
 // ApplicationListItem is a lightweight view for admin listing
@@ -450,6 +451,11 @@ func (s *ApplicationsStore) List(
 
 	// Forward query (default): ORDER BY created_at DESC, id DESC
 	// Backward query: ORDER BY created_at ASC, id ASC (then reverse results)
+	var searchParam *string
+	if filters.Search != nil {
+		searchParam = filters.Search
+	}
+
 	var query string
 	if direction == DirectionBackward && cursor != nil {
 		query = `
@@ -464,6 +470,11 @@ func (s *ApplicationsStore) List(
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
 			  AND (a.created_at, a.id) > ($2, $3::uuid)
+			  AND ($5::text IS NULL OR (
+			      u.email ILIKE '%' || $5 || '%'
+			      OR a.first_name ILIKE '%' || $5 || '%'
+			      OR a.last_name ILIKE '%' || $5 || '%'
+			  ))
 			ORDER BY a.created_at ASC, a.id ASC
 			LIMIT $4`
 	} else {
@@ -479,6 +490,11 @@ func (s *ApplicationsStore) List(
 			INNER JOIN users u ON a.user_id = u.id
 			WHERE ($1::application_status IS NULL OR a.status = $1)
 			  AND ($2::timestamptz IS NULL OR (a.created_at, a.id) < ($2, $3::uuid))
+			  AND ($5::text IS NULL OR (
+			      u.email ILIKE '%' || $5 || '%'
+			      OR a.first_name ILIKE '%' || $5 || '%'
+			      OR a.last_name ILIKE '%' || $5 || '%'
+			  ))
 			ORDER BY a.created_at DESC, a.id DESC
 			LIMIT $4`
 	}
@@ -491,7 +507,7 @@ func (s *ApplicationsStore) List(
 		statusParam = *filters.Status
 	}
 
-	rows, err := s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit)
+	rows, err := s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam)
 	if err != nil {
 		return nil, err
 	}
