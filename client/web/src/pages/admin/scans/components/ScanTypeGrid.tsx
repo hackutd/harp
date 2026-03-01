@@ -48,35 +48,37 @@ export function ScanTypeGrid({ scanTypes, onSelect }: ScanTypeGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
       {activeTypes.map((scanType) => {
         const Icon = categoryIcons[scanType.category] ?? UserCheck;
 
         return (
-          <Card key={scanType.name} className="flex flex-col justify-between">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon className="size-5 text-muted-foreground" />
-                  <CardTitle className="text-lg">
-                    {scanType.display_name}
-                  </CardTitle>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className={categoryColors[scanType.category]}
-                >
-                  {scanType.category.replace("_", " ")}
-                </Badge>
+          <Card key={scanType.name}>
+            <CardHeader className="p-3 pb-2">
+              <div className="flex items-center gap-1">
+                <Icon className="size-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium truncate">
+                  {scanType.display_name}
+                </CardTitle>
               </div>
+              <Badge
+                variant="secondary"
+                className={`w-fit text-xs px-1.5 py-0 ${categoryColors[scanType.category]}`}
+              >
+                {scanType.category.replace("_", " ")}
+              </Badge>
               <CardDescription className="sr-only">
                 {scanType.name}
               </CardDescription>
             </CardHeader>
-            <div className="p-6 pt-0">
-              <Button className="w-full" onClick={() => onSelect(scanType)}>
-                <ScanLine className="mr-2 size-4" />
-                Start Scanning
+            <div className="px-4">
+              <Button
+                className="w-full bg-slate-700 cursor-pointer"
+                size="sm"
+                onClick={() => onSelect(scanType)}
+              >
+                <ScanLine className="mr-1 size-3" />
+                Scan
               </Button>
             </div>
           </Card>

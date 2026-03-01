@@ -29,12 +29,12 @@ export function ScanStatsCards({
 }: ScanStatsCardsProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
         {[...Array(3)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-4 w-24 rounded bg-gray-200" />
-              <div className="mt-2 h-8 w-16 rounded bg-gray-200" />
+            <CardHeader className="p-4">
+              <div className="h-3 w-20 rounded bg-muted" />
+              <div className="mt-1 h-6 w-12 rounded bg-muted" />
             </CardHeader>
           </Card>
         ))}
@@ -49,22 +49,22 @@ export function ScanStatsCards({
   const statsMap = new Map(stats.map((s) => [s.scan_type, s.count]));
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
       {scanTypes.map((scanType) => {
         const Icon = categoryIcons[scanType.category] ?? UserCheck;
         const count = statsMap.get(scanType.name) ?? 0;
 
         return (
-          <Card key={scanType.name} className="@container/card">
-            <CardHeader>
+          <Card key={scanType.name}>
+            <CardHeader className="p-4">
               <div className="flex items-center justify-between">
                 <CardDescription>{scanType.display_name}</CardDescription>
-                <Icon className="size-5 text-muted-foreground" />
+                <Icon className="size-4 text-muted-foreground" />
               </div>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              <CardTitle className="text-xl font-semibold tabular-nums">
                 {count}
               </CardTitle>
-              <p className="text-sm capitalize text-muted-foreground">
+              <p className="text-xs capitalize text-muted-foreground">
                 {scanType.category.replace("_", " ")}
               </p>
             </CardHeader>
