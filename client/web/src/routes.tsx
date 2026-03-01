@@ -20,18 +20,25 @@ const AssignedPage = lazy(() => import("@/pages/admin/assigned/AssignedPage"));
 const CompletedPage = lazy(
   () => import("@/pages/admin/completed/CompletedPage"),
 );
-const GroupsPage = lazy(() => import("@/pages/admin/groups/GroupsPage"));
-const HackerPackPage = lazy(
-  () => import("@/pages/admin/hacker-pack/HackerPackPage"),
-);
+const FAQsPage = lazy(() => import("@/pages/admin/faqs/FAQsPage"));
+const SchedulePage = lazy(() => import("@/pages/admin/schedule/SchedulePage"));
 const ScansPage = lazy(() => import("@/pages/admin/scans/ScansPage"));
 const DashboardPage = lazy(
   () => import("@/pages/hacker/dashboard/DashboardPage"),
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
 const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
-const SuperAdminDashboardPage = lazy(
-  () => import("@/pages/superadmin/dashboard/DashboardPage"),
+const SuperAdminApplicationsPage = lazy(
+  () => import("@/pages/superadmin/applications/ApplicationsPage"),
+);
+const SuperAdminReviewsPage = lazy(
+  () => import("@/pages/superadmin/reviews/ReviewsPage"),
+);
+const SuperAdminScansPage = lazy(
+  () => import("@/pages/superadmin/scans/ScansPage"),
+);
+const SuperAdminEmailsPage = lazy(
+  () => import("@/pages/superadmin/emails/EmailsPage"),
 );
 
 export const router = createBrowserRouter([
@@ -133,33 +140,62 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "groups",
+        path: "faqs",
         element: (
           <Suspense fallback={<PageLoader />}>
-            <GroupsPage />
+            <FAQsPage />
           </Suspense>
         ),
       },
       {
-        path: "hacker-pack",
+        path: "schedule",
         element: (
           <Suspense fallback={<PageLoader />}>
-            <HackerPackPage />
+            <SchedulePage />
           </Suspense>
         ),
       },
+      // Super Admin routes (nested under admin layout, guarded individually)
+      {
+        path: "sa/applications",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminApplicationsPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/reviews",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminReviewsPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/scans",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminScansPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/emails",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminEmailsPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
     ],
-  },
-
-  // Super Admin routes
-  {
-    path: "/superadmin",
-    element: (
-      <RequireSuperAdmin>
-        <Suspense fallback={<PageLoader />}>
-          <SuperAdminDashboardPage />
-        </Suspense>
-      </RequireSuperAdmin>
-    ),
   },
 ]);

@@ -3,10 +3,8 @@ import { Outlet, useLocation } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -26,42 +24,17 @@ const routeNames: Record<string, string> = {
   "/admin/assigned": "Assigned",
   "/admin/completed": "Completed",
   "/admin/scans": "Scans",
-  "/admin/hacker-pack": "Hacker Pack",
-  "/admin/groups": "Groups",
+  "/admin/schedule": "Schedule",
+  "/admin/faqs": "FAQs",
+  "/admin/sa/applications": "Applications",
+  "/admin/sa/reviews": "Reviews",
+  "/admin/sa/scans": "Scans",
+  "/admin/sa/emails": "Emails",
 };
 
 export default function AdminLayout() {
   const location = useLocation();
-
-  // Check if we're on an application detail page
-  const isApplicationDetail = location.pathname.match(
-    /^\/admin\/applications\/[^/]+$/,
-  );
-
-  const getBreadcrumbs = () => {
-    if (isApplicationDetail) {
-      return (
-        <>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/admin/all-applicants">
-              All Applicants
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Application Details</BreadcrumbPage>
-          </BreadcrumbItem>
-        </>
-      );
-    }
-
-    const pageName = routeNames[location.pathname] || "Admin";
-    return (
-      <BreadcrumbItem>
-        <BreadcrumbPage>{pageName}</BreadcrumbPage>
-      </BreadcrumbItem>
-    );
-  };
+  const pageName = routeNames[location.pathname] || "Admin";
 
   return (
     <SidebarProvider>
@@ -80,7 +53,11 @@ export default function AdminLayout() {
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             <Breadcrumb>
-              <BreadcrumbList>{getBreadcrumbs()}</BreadcrumbList>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{pageName}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
