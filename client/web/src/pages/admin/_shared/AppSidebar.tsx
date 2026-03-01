@@ -5,12 +5,12 @@ import {
   CircleCheck,
   CircleHelp,
   ClipboardList,
+  Mail,
   ScanLine,
   Settings,
   Star,
   UserCheck,
   Users,
-  Mail,
 } from "lucide-react";
 import * as React from "react";
 import { useLocation } from "react-router-dom";
