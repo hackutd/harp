@@ -1,6 +1,17 @@
-import { MessageSquare, Minus, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  Check,
+  MessageSquare,
+  Minus,
+  Pencil,
+  ThumbsDown,
+  ThumbsUp,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Tooltip,
@@ -8,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { setAIPercent } from "../api";
 import type { Review, ReviewNote, ReviewVote } from "../types";
 import { NotesTextarea } from "./NotesTextarea";
 import { VoteBadge } from "./VoteBadge";
@@ -20,6 +32,9 @@ interface VotingPanelProps {
   isExpanded: boolean;
   submitting: boolean;
   notesTextareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  applicationId: string;
+  aiPercent: number | null;
+  onAiPercentUpdate: (percent: number) => void;
   onNotesChange: (id: string, notes: string) => void;
   onVote: (id: string, vote: ReviewVote) => void;
 }
@@ -32,9 +47,45 @@ export function VotingPanel({
   isExpanded,
   submitting,
   notesTextareaRef,
+  applicationId,
+  aiPercent,
+  onAiPercentUpdate,
   onNotesChange,
   onVote,
 }: VotingPanelProps) {
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+
+  function startEditing() {
+    setInputValue(aiPercent?.toString() ?? "");
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+  }
+
+  async function saveEditing() {
+    const trimmed = inputValue.trim();
+    if (trimmed === "") {
+      toast.error("AI percentage is required");
+      return;
+    }
+    const percent = Number(trimmed);
+    if (!Number.isInteger(percent) || percent < 0 || percent > 100) {
+      toast.error("AI percent must be a whole number between 0 and 100");
+      return;
+    }
+
+    const result = await setAIPercent(applicationId, { ai_percent: percent });
+    if (result.success) {
+      onAiPercentUpdate(percent);
+      toast.success("AI percent saved");
+    } else {
+      toast.error(result.error ?? "Failed to set AI percent");
+    }
+    setEditing(false);
+  }
   return (
     <div className="space-y-3">
       {/* Other Reviewers' Notes */}
@@ -46,9 +97,7 @@ export function VotingPanel({
               Other Reviewers' Notes ({otherReviewerNotes.length})
             </Label>
           </div>
-          <div
-            className={`space-y-2 overflow-y-auto ${isExpanded ? "max-h-48" : "max-h-32"}`}
-          >
+          <div className="space-y-2">
             {otherReviewerNotes.map((note, idx) => (
               <div
                 key={`${note.admin_id}-${idx}`}
@@ -90,6 +139,54 @@ export function VotingPanel({
           rows={isExpanded ? 4 : 3}
           onNotesChange={onNotesChange}
         />
+      </div>
+
+      {/* AI Percent */}
+      <div>
+        <Label className="text-xs text-muted-foreground">AI Percent</Label>
+        {editing ? (
+          <div className="flex items-center gap-2 mt-1">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              className="h-7 w-24 text-sm"
+              autoFocus
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={saveEditing}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={cancelEditing}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : aiPercent != null ? (
+          <p className="text-sm mt-1">{aiPercent}%</p>
+        ) : (
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground italic">Not set</p>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={startEditing}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {review.vote ? (

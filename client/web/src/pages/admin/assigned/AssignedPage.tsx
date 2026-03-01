@@ -207,8 +207,7 @@ export default function AssignedPage() {
     : "";
 
   return (
-    <div className="h-[calc(100vh-80px)] overflow-hidden">
-      <div className="flex h-full">
+    <div className="flex flex-1 min-h-0">
         {/* Left: Table */}
         {!isExpanded && (
           <Card
@@ -337,11 +336,6 @@ export default function AssignedPage() {
                         application={applicationDetail}
                         selectedReview={selectedReview}
                         isExpanded={isExpanded}
-                        onAipercentUpdate={(pct) =>
-                          setApplicationDetail((prev) =>
-                            prev ? { ...prev, ai_percent: pct } : prev,
-                          )
-                        }
                       />
                     )
                   )}
@@ -358,6 +352,13 @@ export default function AssignedPage() {
                       isExpanded={isExpanded}
                       submitting={submitting}
                       notesTextareaRef={notesTextareaRef}
+                      applicationId={selectedReview.application_id}
+                      aiPercent={applicationDetail?.ai_percent ?? null}
+                      onAiPercentUpdate={(pct) =>
+                        setApplicationDetail((prev) =>
+                          prev ? { ...prev, ai_percent: pct } : prev,
+                        )
+                      }
                       onNotesChange={handleNotesChange}
                       onVote={handleVote}
                     />
@@ -389,11 +390,6 @@ export default function AssignedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={isExpanded}
-                      onAipercentUpdate={(pct) =>
-                        setApplicationDetail((prev) =>
-                          prev ? { ...prev, ai_percent: pct } : prev,
-                        )
-                      }
                     />
                   )
                 )}
@@ -401,7 +397,6 @@ export default function AssignedPage() {
             )}
           </Card>
         )}
-      </div>
     </div>
   );
 }

@@ -139,8 +139,7 @@ export default function CompletedPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-80px)] overflow-hidden">
-      <div className="flex h-full">
+    <div className="flex flex-1 min-h-0">
         {/* Left: Table */}
         <Card
           className={`overflow-hidden flex flex-col h-full ${
@@ -199,7 +198,6 @@ export default function CompletedPage() {
                       application={applicationDetail}
                       selectedReview={selectedReview}
                       isExpanded={false}
-                      readOnly
                     />
 
                     {/* Reviewer notes section */}
@@ -233,7 +231,6 @@ export default function CompletedPage() {
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
   );
 }
