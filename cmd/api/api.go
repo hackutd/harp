@@ -123,7 +123,7 @@ func (app *application) mount() http.Handler {
 				r.Post("/me/submit", app.submitApplicationHandler)
 			})
 
-			r.Group(func(r chi.Router) { // TODO clean up this routing
+			r.Group(func(r chi.Router) {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
@@ -170,6 +170,10 @@ func (app *application) mount() http.Handler {
 					r.Post("/applications/assign", app.batchAssignReviews)
 					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
 					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
+
+					// User Management
+					r.Get("/users", app.searchUsersHandler)
+					r.Patch("/users/{userID}/role", app.updateUserRoleHandler)
 
 					// Scans Config
 					r.Put("/settings/scan-types", app.updateScanTypesHandler)

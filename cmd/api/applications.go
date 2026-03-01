@@ -455,6 +455,19 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Parse search
+	if searchStr := query.Get("search"); searchStr != "" {
+		if len(searchStr) < 2 {
+			app.badRequestResponse(w, r, errors.New("search must be at least 2 characters"))
+			return
+		}
+		if len(searchStr) > 100 {
+			app.badRequestResponse(w, r, errors.New("search must be at most 100 characters"))
+			return
+		}
+		filters.Search = &searchStr
+	}
+
 	// Parse limit
 	limit := 50
 	if limitStr := query.Get("limit"); limitStr != "" {

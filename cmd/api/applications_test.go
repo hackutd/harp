@@ -409,6 +409,39 @@ func TestListApplications(t *testing.T) {
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 
+	t.Run("should return 400 for search too short", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/?search=a", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should accept valid search param", func(t *testing.T) {
+		search := "john"
+		result := &store.ApplicationListResult{
+			Applications: []store.ApplicationListItem{},
+			HasMore:      false,
+		}
+
+		mockApps.On("List",
+			store.ApplicationListFilters{Search: &search},
+			(*store.ApplicationCursor)(nil),
+			store.DirectionForward,
+			50,
+		).Return(result, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/?search=john", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
 	t.Run("should accept valid status filter", func(t *testing.T) {
 		status := store.StatusSubmitted
 		result := &store.ApplicationListResult{

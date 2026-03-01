@@ -229,6 +229,115 @@ func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error
 	return &user, nil
 }
 
+// UserListItem is a lightweight user view for search results
+type UserListItem struct {
+	ID                string    `json:"id"`
+	Email             string    `json:"email"`
+	Role              UserRole  `json:"role"`
+	FirstName         *string   `json:"first_name"`
+	LastName          *string   `json:"last_name"`
+	ProfilePictureURL *string   `json:"profile_picture_url,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
+// UserSearchResult contains paginated user search results
+type UserSearchResult struct {
+	Users      []UserListItem `json:"users"`
+	TotalCount int            `json:"total_count"`
+}
+
+func (s *UsersStore) Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM users u
+		LEFT JOIN applications a ON a.user_id = u.id
+		WHERE u.email ILIKE '%' || $1 || '%'
+		   OR a.first_name ILIKE '%' || $1 || '%'
+		   OR a.last_name ILIKE '%' || $1 || '%'
+	`
+
+	var totalCount int
+	if err := s.db.QueryRowContext(ctx, countQuery, query).Scan(&totalCount); err != nil {
+		return nil, err
+	}
+
+	searchQuery := `
+		SELECT u.id, u.email, u.role, a.first_name, a.last_name, u.profile_picture_url, u.created_at
+		FROM users u
+		LEFT JOIN applications a ON a.user_id = u.id
+		WHERE u.email ILIKE '%' || $1 || '%'
+		   OR a.first_name ILIKE '%' || $1 || '%'
+		   OR a.last_name ILIKE '%' || $1 || '%'
+		ORDER BY u.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := s.db.QueryContext(ctx, searchQuery, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]UserListItem, 0, limit)
+	for rows.Next() {
+		var u UserListItem
+		if err := rows.Scan(&u.ID, &u.Email, &u.Role, &u.FirstName, &u.LastName, &u.ProfilePictureURL, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &UserSearchResult{Users: users, TotalCount: totalCount}, nil
+}
+
+func (s *UsersStore) UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET role = $2, updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
+	`
+
+	var user User
+	err := s.db.QueryRowContext(ctx, query, userID, role).Scan(
+		&user.ID,
+		&user.SuperTokensUserID,
+		&user.Email,
+		&user.Role,
+		&user.AuthMethod,
+		&user.ProfilePictureURL,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

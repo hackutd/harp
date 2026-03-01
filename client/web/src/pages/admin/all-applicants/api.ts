@@ -29,6 +29,10 @@ export async function fetchApplications(
     queryParams.set("direction", params.direction);
   }
 
+  if (params?.search) {
+    queryParams.set("search", params.search);
+  }
+
   const queryString = queryParams.toString();
   const endpoint = `/admin/applications${queryString ? `?${queryString}` : ""}`;
 

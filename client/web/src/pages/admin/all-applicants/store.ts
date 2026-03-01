@@ -18,6 +18,7 @@ export interface ApplicationsState {
   prevCursor: string | null;
   hasMore: boolean;
   currentStatus: ApplicationStatus | null;
+  currentSearch: string;
   stats: ApplicationStats | null;
   statsLoading: boolean;
   fetchApplications: (
@@ -36,6 +37,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   prevCursor: null,
   hasMore: false,
   currentStatus: null,
+  currentSearch: "",
   stats: null,
   statsLoading: false,
 
@@ -50,10 +52,19 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
       status = get().currentStatus;
     }
 
+    // Determine search to use
+    let search: string;
+    if (params && "search" in params) {
+      search = params.search ?? "";
+    } else {
+      search = get().currentSearch;
+    }
+
     const res = await apiFetchApplications(
       {
         ...params,
         status,
+        search: search || undefined,
       },
       signal,
     );
@@ -68,6 +79,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
         hasMore: res.data.has_more,
         loading: false,
         currentStatus: status,
+        currentSearch: search,
       });
     } else {
       set({
@@ -105,6 +117,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
       prevCursor: null,
       hasMore: false,
       currentStatus: null,
+      currentSearch: "",
     });
   },
 }));

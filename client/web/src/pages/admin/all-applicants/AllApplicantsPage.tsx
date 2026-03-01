@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -6,6 +7,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
 import { ApplicationsTable } from "./components/ApplicationsTable";
@@ -23,12 +25,14 @@ export default function AllApplicantsPage() {
     nextCursor,
     prevCursor,
     currentStatus,
+    currentSearch,
     stats,
     statsLoading,
     fetchApplications,
     fetchStats,
   } = useApplicationsStore();
 
+  const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
     string | null
   >(null);
@@ -48,6 +52,12 @@ export default function AllApplicantsPage() {
   const handleClosePanel = () => {
     setSelectedApplicationId(null);
     clearDetail();
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      fetchApplications({ search: searchInput, status: currentStatus });
+    }
   };
 
   const handleStatusFilter = (status: ApplicationStatus | null) => {
@@ -82,12 +92,24 @@ export default function AllApplicantsPage() {
       <SectionCards stats={stats} loading={statsLoading} />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <StatusFilterTabs
-          stats={stats}
-          loading={loading}
-          currentStatus={currentStatus}
-          onStatusChange={handleStatusFilter}
-        />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email..."
+              className="h-9 w-[250px] pl-8"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+            />
+          </div>
+          <StatusFilterTabs
+            stats={stats}
+            loading={loading}
+            currentStatus={currentStatus}
+            onStatusChange={handleStatusFilter}
+          />
+        </div>
         <PaginationControls
           prevCursor={prevCursor}
           nextCursor={nextCursor}
@@ -105,6 +127,7 @@ export default function AllApplicantsPage() {
             <CardDescription className="font-light">
               {applications.length} application(s) on this page
               {currentStatus && ` (filtered by ${currentStatus})`}
+              {currentSearch && ` matching "${currentSearch}"`}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">

@@ -47,4 +47,5 @@ export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
   direction?: "forward" | "backward";
+  search?: string;
 }
