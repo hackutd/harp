@@ -57,7 +57,7 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
   ];
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.title} className="@container/card min-w-0">
           <CardHeader className="min-w-0">

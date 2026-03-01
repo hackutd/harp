@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ClipboardCheck,
   HelpCircle,
   Loader2,
   ScanLine,
@@ -26,7 +25,6 @@ import { Separator } from "@/components/ui/separator";
 import {
   errorAlert,
   getRequest,
-  postRequest,
   putRequest,
 } from "@/shared/lib/api";
 import { cn } from "@/shared/lib/utils";
@@ -34,22 +32,15 @@ import type { ShortAnswerQuestion } from "@/types";
 
 import ApplicationsTab from "../tabs/ApplicationsTab";
 import { QuestionsTab } from "../tabs/QuestionsTab";
-import { ReviewsPerAppTab } from "../tabs/ReviewsPerAppTab";
 import type { ScanType } from "../tabs/ScanTypesTab";
 import { ScanTypesTab } from "../tabs/ScanTypesTab";
 import { SetAdminTab } from "../tabs/SetAdminTab";
 
-type SettingsTab =
-  | "questions"
-  | "set-admin"
-  | "reviews-per-app"
-  | "applications"
-  | "scan-types";
+type SettingsTab = "questions" | "set-admin" | "applications" | "scan-types";
 
 const settingsTabs = [
   { id: "questions" as const, label: "Questions", icon: HelpCircle },
   { id: "set-admin" as const, label: "Set Admin", icon: UserCog },
-  { id: "reviews-per-app" as const, label: "Reviews", icon: ClipboardCheck },
   { id: "applications" as const, label: "Applications", icon: UsersRound },
   { id: "scan-types" as const, label: "Scans", icon: ScanLine },
 ];
@@ -65,9 +56,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [questions, setQuestions] = React.useState<ShortAnswerQuestion[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-
-  const [reviewsPerApp, setReviewsPerApp] = React.useState(1);
-  const [reviewsPerAppLoading, setReviewsPerAppLoading] = React.useState(false);
 
   const [scanTypes, setScanTypes] = React.useState<ScanType[]>([]);
   const [scanTypesLoading, setScanTypesLoading] = React.useState(false);
@@ -87,19 +75,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       }
       setLoading(false);
     };
-    const fetchReviewsPerApp = async () => {
-      setReviewsPerAppLoading(true);
-      const res = await getRequest<{ reviews_per_application: number }>(
-        "/superadmin/settings/reviews-per-app",
-        "reviews per application",
-      );
-      if (res.status === 200 && res.data) {
-        setReviewsPerApp(res.data.reviews_per_application);
-      } else {
-        errorAlert(res);
-      }
-      setReviewsPerAppLoading(false);
-    };
     const fetchScanTypes = async () => {
       setScanTypesLoading(true);
       const res = await getRequest<{ scan_types: ScanType[] }>(
@@ -114,7 +89,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       setScanTypesLoading(false);
     };
     fetchQuestions();
-    fetchReviewsPerApp();
     fetchScanTypes();
   }, [open]);
 
@@ -144,25 +118,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       if (res.status === 200 && res.data) {
         setQuestions(res.data.questions);
         toast.success("Questions saved");
-      } else {
-        errorAlert(res);
-      }
-      setSaving(false);
-    } else if (activeTab === "reviews-per-app") {
-      if (reviewsPerApp < 1 || reviewsPerApp > 10) {
-        toast.error("Reviews per application must be between 1 and 10");
-        return;
-      }
-
-      setSaving(true);
-      const res = await postRequest<{ reviews_per_application: number }>(
-        "/superadmin/settings/reviews-per-app",
-        { reviews_per_application: reviewsPerApp },
-        "reviews per application",
-      );
-      if (res.status === 200 && res.data) {
-        setReviewsPerApp(res.data.reviews_per_application);
-        toast.success("Reviews per application saved");
       } else {
         errorAlert(res);
       }
@@ -259,13 +214,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                   />
                 )}
                 {activeTab === "set-admin" && <SetAdminTab />}
-                {activeTab === "reviews-per-app" && (
-                  <ReviewsPerAppTab
-                    reviewsPerApp={reviewsPerApp}
-                    setReviewsPerApp={setReviewsPerApp}
-                    loading={reviewsPerAppLoading}
-                  />
-                )}
                 {activeTab === "applications" && <ApplicationsTab />}
                 {activeTab === "scan-types" && (
                   <ScanTypesTab
