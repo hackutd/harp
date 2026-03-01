@@ -259,7 +259,7 @@ export default function ReviewsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchAssign}
-              className="cursor-pointer"
+              className="cursor-pointer bg-slate-700"
             >
               Yes, Assign Reviews
             </AlertDialogAction>

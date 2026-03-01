@@ -22,11 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  errorAlert,
-  getRequest,
-  putRequest,
-} from "@/shared/lib/api";
+import { errorAlert, getRequest, putRequest } from "@/shared/lib/api";
 import { cn } from "@/shared/lib/utils";
 import type { ShortAnswerQuestion } from "@/types";
 
