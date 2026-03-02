@@ -37,10 +37,9 @@ type UpdateApplicationPayload struct {
 	DietaryRestrictions *[]string `json:"dietary_restrictions"`
 	Accommodations      *string   `json:"accommodations"`
 
-	Github     *string `json:"github" validate:"omitempty,url"`
-	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
-	Website    *string `json:"website" validate:"omitempty,url"`
-	ResumePath *string `json:"resume_path"`
+	Github   *string `json:"github" validate:"omitempty,url"`
+	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
+	Website  *string `json:"website" validate:"omitempty,url"`
 
 	AckApplication *bool `json:"ack_application"`
 	AckMLHCOC      *bool `json:"ack_mlh_coc"`
@@ -58,7 +57,7 @@ type ApplicationWithQuestions struct {
 //
 //	@Summary		Get or create application
 //	@Description	Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.
-//	@Tags			hackers
+//	@Tags			applications
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	store.Application
@@ -119,7 +118,7 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 //
 //	@Summary		Update application
 //	@Description	Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.
-//	@Tags			hackers
+//	@Tags			applications
 //	@Accept			json
 //	@Produce		json
 //	@Param			application	body		UpdateApplicationPayload	true	"Fields to update"
@@ -227,9 +226,6 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	if req.Website != nil {
 		application.Website = req.Website
 	}
-	if req.ResumePath != nil {
-		application.ResumePath = req.ResumePath
-	}
 	if req.AckApplication != nil {
 		application.AckApplication = *req.AckApplication
 	}
@@ -257,7 +253,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 //
 //	@Summary		Submit application
 //	@Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
-//	@Tags			hackers
+//	@Tags			applications
 //	@Produce		json
 //	@Success		200	{object}	store.Application
 //	@Failure		400	{object}	object{error=string}	"Missing required fields"
@@ -394,7 +390,7 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 //
 //	@Summary		Get application stats (Admin)
 //	@Description	Returns aggregated statistics for all applications
-//	@Tags			admin/applications
+//	@Tags			admin
 //	@Produce		json
 //	@Success		200	{object}	store.ApplicationStats
 //	@Failure		401	{object}	object{error=string}
@@ -418,13 +414,12 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 //
 //	@Summary		List applications (Admin)
 //	@Description	Lists all applications with cursor-based pagination and optional status filter
-//	@Tags			admin/applications
+//	@Tags			admin
 //	@Produce		json
 //	@Param			cursor		query		string	false	"Pagination cursor"
 //	@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
 //	@Param			limit		query		int		false	"Page size (default 50, max 100)"
 //	@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
-//	@Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
 //	@Success		200			{object}	store.ApplicationListResult
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
@@ -496,18 +491,6 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	// Parse sort_by
-	if sortStr := query.Get("sort_by"); sortStr != "" {
-		switch store.ApplicationSortBy(sortStr) {
-		case store.SortByCreatedAt, store.SortByAcceptVotes,
-			store.SortByRejectVotes, store.SortByWaitlistVotes:
-			filters.SortBy = store.ApplicationSortBy(sortStr)
-		default:
-			app.badRequestResponse(w, r, errors.New("invalid sort_by value"))
-			return
-		}
-	}
-
 	result, err := app.store.Application.List(r.Context(), filters, cursor, direction, limit)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -527,22 +510,16 @@ type ApplicationResponse struct {
 	Application *store.Application `json:"application"`
 }
 
-type ApplicantInfo struct {
-	Email     string  `json:"email"`
-	FirstName *string `json:"first_name"`
-	LastName  *string `json:"last_name"`
-}
-
 type EmailListResponse struct {
-	Applicants []ApplicantInfo `json:"applicants"`
-	Count      int             `json:"count"`
+	Emails []string `json:"emails"`
+	Count  int      `json:"count"`
 }
 
 // setApplicationStatus sets the final status on an application
 //
 //	@Summary		Set application status (Super Admin)
 //	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
-//	@Tags			superadmin/applications
+//	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
 //	@Param			applicationID	path		string				true	"Application ID"
@@ -592,7 +569,7 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 //
 //	@Summary		Get application by ID (Admin)
 //	@Description	Returns a single application by its ID with embedded short answer questions
-//	@Tags			admin/applications
+//	@Tags			admin
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
 //	@Success		200				{object}	ApplicationWithQuestions
@@ -641,7 +618,7 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Get applicant emails by status (Super Admin)
 //	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
-//	@Tags			superadmin/applications
+//	@Tags			superadmin
 //	@Produce		json
 //	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
 //	@Success		200		{object}	EmailListResponse
@@ -672,18 +649,14 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	applicants := make([]ApplicantInfo, len(users))
+	emails := make([]string, len(users))
 	for i, u := range users {
-		applicants[i] = ApplicantInfo{
-			Email:     u.Email,
-			FirstName: u.FirstName,
-			LastName:  u.LastName,
-		}
+		emails[i] = u.Email
 	}
 
 	response := EmailListResponse{
-		Applicants: applicants,
-		Count:      len(applicants),
+		Emails: emails,
+		Count:  len(emails),
 	}
 
 	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
