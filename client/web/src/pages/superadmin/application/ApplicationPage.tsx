@@ -22,7 +22,9 @@ export default function ApplicationPage() {
   const [loading, setLoading] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const questionsRef = useRef(questions);
-  questionsRef.current = questions;
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
 
   useEffect(() => {
     const fetchQuestions = async () => {

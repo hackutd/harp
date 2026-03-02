@@ -8,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
@@ -129,108 +130,118 @@ export default function CompletedPage() {
 
   if (loading && reviews.length === 0) {
     return (
-      <div className="flex items-center justify-center flex-1">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="flex flex-1 min-h-0">
+        <Card className="overflow-hidden flex flex-col h-full w-full">
+          <CardHeader className="shrink-0">
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent className="p-0 flex-1 space-y-3 px-6 pb-6">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="flex flex-1 min-h-0">
-        {/* Left: Table */}
-        <Card
-          className={`overflow-hidden flex flex-col h-full ${
-            selectedId ? "w-1/2 rounded-r-none" : "w-full"
-          }`}
-        >
-          <CardHeader className="shrink-0">
-            <CardDescription className="font-light">
-              {reviews.length} completed review(s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-hidden">
-            <CompletedReviewsTable
-              reviews={reviews}
-              selectedId={selectedId}
-              loading={loading}
-              onSelectReview={selectReview}
-            />
+      {/* Left: Table */}
+      <Card
+        className={`overflow-hidden flex flex-col h-full ${
+          selectedId ? "w-1/2 rounded-r-none" : "w-full"
+        }`}
+      >
+        <CardHeader className="shrink-0">
+          <CardDescription className="font-light">
+            {reviews.length} completed review(s)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 flex-1 overflow-hidden">
+          <CompletedReviewsTable
+            reviews={reviews}
+            selectedId={selectedId}
+            loading={loading}
+            onSelectReview={selectReview}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Right: Detail Panel */}
+      {selectedId && selectedReview && (
+        <Card className="shrink-0 flex flex-col h-full w-1/2 rounded-l-none border-l-0 py-0! gap-0!">
+          {/* Header */}
+          <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm">
+                {formatName(
+                  selectedReview.first_name,
+                  selectedReview.last_name,
+                )}
+              </p>
+              <VoteBadge vote={selectedReview.vote} />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="cursor-pointer"
+              onClick={() => selectReview(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Application details */}
+          <CardContent className="flex-1 overflow-auto py-4">
+            {detailLoading ? (
+              <div className="space-y-6 py-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-full" />
+                    <Skeleton className="h-5 w-3/4" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              applicationDetail && (
+                <>
+                  <ApplicationDetailsPanel
+                    application={applicationDetail}
+                    selectedReview={selectedReview}
+                    isExpanded={false}
+                  />
+
+                  {/* Reviewer notes section */}
+                  {otherReviewerNotes.length > 0 && (
+                    <div className="mt-6 border-t pt-4">
+                      <h4 className="text-sm font-semibold mb-3">
+                        Reviewer Notes
+                      </h4>
+                      <div className="space-y-3">
+                        {otherReviewerNotes.map((note, i) => (
+                          <div key={i} className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {note.admin_email}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(note.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm">{note.notes}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            )}
           </CardContent>
         </Card>
-
-        {/* Right: Detail Panel */}
-        {selectedId && selectedReview && (
-          <Card className="shrink-0 flex flex-col h-full w-1/2 rounded-l-none border-l-0 py-0! gap-0!">
-            {/* Header */}
-            <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-sm">
-                  {formatName(
-                    selectedReview.first_name,
-                    selectedReview.last_name,
-                  )}
-                </p>
-                <VoteBadge vote={selectedReview.vote} />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="cursor-pointer"
-                onClick={() => selectReview(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Application details */}
-            <CardContent className="flex-1 overflow-auto py-4">
-              {detailLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                </div>
-              ) : (
-                applicationDetail && (
-                  <>
-                    <ApplicationDetailsPanel
-                      application={applicationDetail}
-                      selectedReview={selectedReview}
-                      isExpanded={false}
-                    />
-
-                    {/* Reviewer notes section */}
-                    {otherReviewerNotes.length > 0 && (
-                      <div className="mt-6 border-t pt-4">
-                        <h4 className="text-sm font-semibold mb-3">
-                          Reviewer Notes
-                        </h4>
-                        <div className="space-y-3">
-                          {otherReviewerNotes.map((note, i) => (
-                            <div key={i} className="bg-gray-50 rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-medium text-muted-foreground">
-                                  {note.admin_email}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(
-                                    note.created_at,
-                                  ).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <p className="text-sm">{note.notes}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )
-              )}
-            </CardContent>
-          </Card>
-        )}
+      )}
     </div>
   );
 }
