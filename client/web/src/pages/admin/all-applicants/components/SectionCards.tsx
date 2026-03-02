@@ -1,4 +1,5 @@
 import { Check, Clock, Percent, Users } from "lucide-react";
+import { memo } from "react";
 
 import {
   Card,
@@ -13,7 +14,10 @@ interface SectionCardsProps {
   loading?: boolean;
 }
 
-export function SectionCards({ stats, loading }: SectionCardsProps) {
+export const SectionCards = memo(function SectionCards({
+  stats,
+  loading,
+}: SectionCardsProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -78,4 +82,4 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
       ))}
     </div>
   );
-}
+});
