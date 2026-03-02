@@ -6,6 +6,7 @@ import {
 } from "@/pages/admin/all-applicants/api";
 import type {
   ApplicationListItem,
+  ApplicationSortBy,
   ApplicationStats,
   ApplicationStatus,
   FetchParams,
@@ -19,6 +20,7 @@ export interface ReviewApplicationsState {
   hasMore: boolean;
   currentStatus: ApplicationStatus;
   currentSearch: string;
+  currentSortBy: ApplicationSortBy;
   stats: ApplicationStats | null;
   statsLoading: boolean;
   fetchApplications: (
@@ -37,6 +39,7 @@ export const useReviewApplicationsStore = create<ReviewApplicationsState>(
     hasMore: false,
     currentStatus: "submitted",
     currentSearch: "",
+    currentSortBy: "created_at",
     stats: null,
     statsLoading: false,
 
@@ -57,11 +60,19 @@ export const useReviewApplicationsStore = create<ReviewApplicationsState>(
         search = get().currentSearch;
       }
 
+      let sortBy: ApplicationSortBy;
+      if (params && "sort_by" in params && params.sort_by) {
+        sortBy = params.sort_by;
+      } else {
+        sortBy = get().currentSortBy;
+      }
+
       const res = await apiFetchApplications(
         {
           ...params,
           status,
           search: search || undefined,
+          sort_by: sortBy !== "created_at" ? sortBy : undefined,
         },
         signal,
       );
@@ -77,6 +88,7 @@ export const useReviewApplicationsStore = create<ReviewApplicationsState>(
           loading: false,
           currentStatus: status,
           currentSearch: search,
+          currentSortBy: sortBy,
         });
       } else {
         set({

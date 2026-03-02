@@ -63,6 +63,12 @@ const docTemplate = `{
                         "description": "Pagination direction: forward (default) or backward",
                         "name": "direction",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes",
+                        "name": "sort_by",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2312,6 +2318,20 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ApplicantInfo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                }
+            }
+        },
         "main.ApplicationResponse": {
             "type": "object",
             "properties": {
@@ -2503,14 +2523,14 @@ const docTemplate = `{
         "main.EmailListResponse": {
             "type": "object",
             "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "emails": {
+                "applicants": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/main.ApplicantInfo"
                     }
+                },
+                "count": {
+                    "type": "integer"
                 }
             }
         },
