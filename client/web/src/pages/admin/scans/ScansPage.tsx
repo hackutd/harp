@@ -1,20 +1,27 @@
 import { useEffect } from "react";
 
+import { useUserStore } from "@/shared/stores/user";
+
 import { ScannerDialog } from "./components/ScannerDialog";
 import { ScanStatsCards } from "./components/ScanStatsCards";
-import { ScanTypeGrid } from "./components/ScanTypeGrid";
+import { ScanTypesTable } from "./components/ScanTypesTable";
 import { useScansStore } from "./store";
 
 export default function ScansPage() {
+  const { user } = useUserStore();
   const {
     scanTypes,
     stats,
     typesLoading,
     statsLoading,
+    saving,
     fetchTypes,
     fetchStats,
+    saveScanTypes,
     setActiveScanType,
   } = useScansStore();
+
+  const isSuperAdmin = user?.role === "super_admin";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,7 +41,14 @@ export default function ScansPage() {
         stats={stats}
         loading={typesLoading || statsLoading}
       />
-      <ScanTypeGrid scanTypes={scanTypes} onSelect={setActiveScanType} />
+      <ScanTypesTable
+        scanTypes={scanTypes}
+        stats={stats}
+        isSuperAdmin={isSuperAdmin}
+        saving={saving}
+        onSelect={setActiveScanType}
+        onSave={saveScanTypes}
+      />
       <ScannerDialog />
     </div>
   );
