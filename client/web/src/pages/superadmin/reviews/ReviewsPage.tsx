@@ -3,10 +3,11 @@ import {
   Loader2,
   Minus,
   Plus,
+  Search,
   Shuffle,
   ToggleRight,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -19,17 +20,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
+import { ApplicationsTable } from "@/pages/admin/all-applicants/components/ApplicationsTable";
+import { PaginationControls } from "@/pages/admin/all-applicants/components/PaginationControls";
+import { useApplicationDetail } from "@/pages/admin/all-applicants/hooks/useApplicationDetail";
+import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
+import { getStatusColor } from "@/pages/admin/all-applicants/utils";
 import type { AssignedState } from "@/pages/admin/assigned/hooks/updateReviewPage";
 import { refreshAssignedPage } from "@/pages/admin/assigned/hooks/updateReviewPage";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
+
+import { ReviewStatusTabs } from "./components/ReviewStatusTabs";
+import { useReviewApplicationsStore } from "./store";
 
 export default function ReviewsPage() {
   const [reviewsPerApp, setReviewsPerApp] = useState(1);
@@ -44,6 +57,29 @@ export default function ReviewsPage() {
   const triggerAssignedPageRefresh = refreshAssignedPage(
     (state: AssignedState) => state.triggerRefresh,
   );
+
+  // Applications table state
+  const applications = useReviewApplicationsStore((s) => s.applications);
+  const tableLoading = useReviewApplicationsStore((s) => s.loading);
+  const nextCursor = useReviewApplicationsStore((s) => s.nextCursor);
+  const prevCursor = useReviewApplicationsStore((s) => s.prevCursor);
+  const currentStatus = useReviewApplicationsStore((s) => s.currentStatus);
+  const currentSearch = useReviewApplicationsStore((s) => s.currentSearch);
+  const stats = useReviewApplicationsStore((s) => s.stats);
+  const fetchApplications = useReviewApplicationsStore(
+    (s) => s.fetchApplications,
+  );
+  const fetchStats = useReviewApplicationsStore((s) => s.fetchStats);
+
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<
+    string | null
+  >(null);
+  const {
+    detail: applicationDetail,
+    loading: detailLoading,
+    clear: clearDetail,
+  } = useApplicationDetail(selectedApplicationId);
 
   useEffect(() => {
     async function fetchData() {
@@ -68,6 +104,54 @@ export default function ReviewsPage() {
     }
     fetchData();
   }, []);
+
+  // Fetch applications and stats on mount
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchApplications(undefined, controller.signal);
+    fetchStats(controller.signal);
+    return () => controller.abort();
+  }, [fetchApplications, fetchStats]);
+
+  // Debounced search
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchApplications({
+        search: searchInput.length >= 2 ? searchInput : "",
+        status: currentStatus,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput, fetchApplications, currentStatus]);
+
+  const handleClosePanel = useCallback(() => {
+    setSelectedApplicationId(null);
+    clearDetail();
+  }, [clearDetail]);
+
+  const handleStatusFilter = useCallback(
+    (status: ApplicationStatus) => {
+      fetchApplications({ status });
+    },
+    [fetchApplications],
+  );
+
+  const handleNextPage = useCallback(() => {
+    if (nextCursor) {
+      fetchApplications({ cursor: nextCursor });
+    }
+  }, [nextCursor, fetchApplications]);
+
+  const handlePrevPage = useCallback(() => {
+    if (prevCursor) {
+      fetchApplications({ cursor: prevCursor, direction: "backward" });
+    }
+  }, [prevCursor, fetchApplications]);
 
   async function updateReviewsPerApp(newValue: number) {
     const clamped = Math.max(1, Math.min(10, newValue));
@@ -140,8 +224,8 @@ export default function ReviewsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="flex flex-col gap-3 h-full min-h-0">
+      <div className="shrink-0 grid grid-cols-1 gap-4 md:grid-cols-3">
         {/* Reviews Per Application */}
         <Card className="@container/card">
           <CardHeader>
@@ -218,7 +302,7 @@ export default function ReviewsPage() {
             <Button
               onClick={() => setConfirmOpen(true)}
               disabled={assigning}
-              className="w-full cursor-pointer bg-slate-700"
+              className="w-full cursor-pointer bg-indigo-400"
               size="sm"
             >
               {assigning ? (
@@ -237,6 +321,69 @@ export default function ReviewsPage() {
         </Card>
       </div>
 
+      {/* Applications Table Section */}
+      <div className="shrink-0 flex flex-wrap items-center gap-3">
+        <div>
+          <ReviewStatusTabs
+            stats={stats}
+            loading={tableLoading}
+            currentStatus={currentStatus}
+            onStatusChange={handleStatusFilter}
+          />
+        </div>
+        <div className="relative bg-muted rounded-md border p-[2px] w-80">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+          <Input
+            placeholder="Search by name or email..."
+            className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        <div className="ml-auto flex">
+          <PaginationControls
+            prevCursor={prevCursor}
+            nextCursor={nextCursor}
+            loading={tableLoading}
+            onPrevPage={handlePrevPage}
+            onNextPage={handleNextPage}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
+        <Card
+          className={`overflow-hidden flex flex-col ${selectedApplicationId ? "w-1/2 rounded-r-none" : "w-full"}`}
+        >
+          <CardHeader className="shrink-0">
+            <CardDescription className="font-light flex items-center gap-1.5">
+              <span>{applications.length} application(s) on this page</span>
+              <span>filtered by</span>
+              <Badge className={getStatusColor(currentStatus)}>
+                {currentStatus}
+              </Badge>
+              {currentSearch && <span>matching "{currentSearch}"</span>}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 flex-1 overflow-auto">
+            <ApplicationsTable
+              applications={applications}
+              loading={tableLoading}
+              selectedId={selectedApplicationId}
+              onSelectApplication={setSelectedApplicationId}
+            />
+          </CardContent>
+        </Card>
+
+        {selectedApplicationId && (
+          <ApplicationDetailPanel
+            application={applicationDetail}
+            loading={detailLoading}
+            onClose={handleClosePanel}
+          />
+        )}
+      </div>
+
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -252,7 +399,7 @@ export default function ReviewsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchAssign}
-              className="cursor-pointer bg-slate-700"
+              className="cursor-pointer bg-indigo-400"
             >
               Yes, Assign Reviews
             </AlertDialogAction>
