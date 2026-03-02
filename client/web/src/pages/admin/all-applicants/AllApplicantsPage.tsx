@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,18 +22,16 @@ import type { ApplicationStatus } from "./types";
 import { getStatusColor } from "./utils";
 
 export default function AllApplicantsPage() {
-  const {
-    applications,
-    loading,
-    nextCursor,
-    prevCursor,
-    currentStatus,
-    currentSearch,
-    stats,
-    statsLoading,
-    fetchApplications,
-    fetchStats,
-  } = useApplicationsStore();
+  const applications = useApplicationsStore((s) => s.applications);
+  const loading = useApplicationsStore((s) => s.loading);
+  const nextCursor = useApplicationsStore((s) => s.nextCursor);
+  const prevCursor = useApplicationsStore((s) => s.prevCursor);
+  const currentStatus = useApplicationsStore((s) => s.currentStatus);
+  const currentSearch = useApplicationsStore((s) => s.currentSearch);
+  const stats = useApplicationsStore((s) => s.stats);
+  const statsLoading = useApplicationsStore((s) => s.statsLoading);
+  const fetchApplications = useApplicationsStore((s) => s.fetchApplications);
+  const fetchStats = useApplicationsStore((s) => s.fetchStats);
 
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
@@ -54,86 +52,62 @@ export default function AllApplicantsPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchApplications({ search: searchInput, status: currentStatus });
+      fetchApplications({
+        search: searchInput.length >= 2 ? searchInput : "",
+        status: currentStatus,
+      });
     }, 500);
     return () => clearTimeout(timer);
   }, [searchInput, fetchApplications, currentStatus]);
 
-  const handleClosePanel = () => {
+  const handleClosePanel = useCallback(() => {
     setSelectedApplicationId(null);
     clearDetail();
-  };
+  }, [clearDetail]);
 
-  const handleStatusFilter = (status: ApplicationStatus | null) => {
-    fetchApplications({ status });
-  };
+  const handleStatusFilter = useCallback(
+    (status: ApplicationStatus | null) => {
+      fetchApplications({ status });
+    },
+    [fetchApplications],
+  );
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (nextCursor) {
       fetchApplications({ cursor: nextCursor });
     }
-  };
+  }, [nextCursor, fetchApplications]);
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback(() => {
     if (prevCursor) {
       fetchApplications({ cursor: prevCursor, direction: "backward" });
     }
-  };
+  }, [prevCursor, fetchApplications]);
 
-  if (loading && applications.length === 0) {
-    return (
-      <div className="flex flex-col gap-3 h-full min-h-0">
-        {/* Stat cards */}
-        <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-16 mt-2" />
-                <Skeleton className="h-3 w-32 mt-1" />
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-        {/* Filter tabs + search row */}
-        <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
-          <div className="col-span-2 flex gap-2">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-8 w-20 rounded-md" />
-            ))}
-          </div>
-          <Skeleton className="h-8 w-full rounded-md" />
-          <Skeleton className="h-8 w-24 ml-auto rounded-md" />
-        </div>
-        {/* Table */}
-        <Card className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <CardHeader className="shrink-0">
-            <Skeleton className="h-4 w-48" />
-          </CardHeader>
-          <CardContent className="p-0 flex-1 space-y-3 px-6 pb-6">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isInitialLoad = loading && applications.length === 0 && !searchInput;
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
       <div className="shrink-0">
-        <SectionCards stats={stats} loading={statsLoading} />
+        <SectionCards stats={stats} loading={statsLoading || isInitialLoad} />
       </div>
 
       <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
         <div className="col-span-2">
-          <StatusFilterTabs
-            stats={stats}
-            loading={loading}
-            currentStatus={currentStatus}
-            onStatusChange={handleStatusFilter}
-          />
+          {isInitialLoad ? (
+            <div className="flex gap-2">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-8 w-20 rounded-md" />
+              ))}
+            </div>
+          ) : (
+            <StatusFilterTabs
+              stats={stats}
+              loading={loading}
+              currentStatus={currentStatus}
+              onStatusChange={handleStatusFilter}
+            />
+          )}
         </div>
         <div className="relative bg-muted rounded-md border p-[2px]">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />

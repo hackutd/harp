@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -10,7 +12,7 @@ interface StatusFilterTabsProps {
   onStatusChange: (status: ApplicationStatus | null) => void;
 }
 
-export function StatusFilterTabs({
+export const StatusFilterTabs = memo(function StatusFilterTabs({
   stats,
   loading,
   currentStatus,
@@ -103,4 +105,4 @@ export function StatusFilterTabs({
       </TabsList>
     </Tabs>
   );
-}
+});

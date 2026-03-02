@@ -1,4 +1,5 @@
 import { Maximize2 } from "lucide-react";
+import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ interface ApplicationsTableProps {
   onSelectApplication: (id: string) => void;
 }
 
-export function ApplicationsTable({
+export const ApplicationsTable = memo(function ApplicationsTable({
   applications,
   loading,
   selectedId,
@@ -113,4 +114,4 @@ export function ApplicationsTable({
       </Table>
     </div>
   );
-}
+});

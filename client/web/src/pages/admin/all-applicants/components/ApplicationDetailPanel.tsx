@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ interface ApplicationDetailPanelProps {
   onClose: () => void;
 }
 
-export function ApplicationDetailPanel({
+export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
   application,
   loading,
   onClose,
@@ -81,4 +82,4 @@ export function ApplicationDetailPanel({
       </CardContent>
     </Card>
   );
-}
+});
