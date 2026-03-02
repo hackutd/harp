@@ -8,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -190,11 +191,18 @@ export default function AssignedPage() {
 
   if (loading && reviews.length === 0) {
     return (
-      <div className="flex items-center justify-center flex-1">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="flex flex-1 min-h-0">
+        <Card className="overflow-hidden flex flex-col h-full w-full">
+          <CardHeader className="shrink-0 flex flex-row items-center justify-between">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+          </CardHeader>
+          <CardContent className="p-0 flex-1 space-y-3 px-6 pb-6">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -208,181 +216,131 @@ export default function AssignedPage() {
 
   return (
     <div className="flex flex-1 min-h-0">
-        {/* Left: Table */}
-        {!isExpanded && (
-          <Card
-            className={`overflow-hidden flex flex-col h-full ${
-              selectedId ? "w-1/2 rounded-r-none" : "w-full"
+      {/* Left: Table */}
+      {!isExpanded && (
+        <Card
+          className={`overflow-hidden flex flex-col h-full ${
+            selectedId ? "w-1/2 rounded-r-none" : "w-full"
+          }`}
+        >
+          <CardHeader className="shrink-0 flex flex-row items-center justify-between">
+            <CardDescription className="font-light">
+              {reviews.length} review(s) assigned to you
+            </CardDescription>
+            {reviews.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer font-light"
+                    onClick={() => {
+                      selectReview(reviews[0].id);
+                      setIsExpanded(true);
+                    }}
+                  >
+                    <ClipboardPen className="h-4 w-4 mr-1.5" />
+                    Start Grading
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Grade{" "}
+                  {formatName(reviews[0].first_name, reviews[0].last_name)}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </CardHeader>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <ReviewsTable
+              reviews={reviews}
+              selectedId={selectedId}
+              loading={loading}
+              onSelectReview={selectReview}
+              getVote={getVote}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Right: Detail Panel */}
+      {selectedId && selectedReview && (
+        <Card
+          className={`shrink-0 flex flex-col h-full py-0! gap-0! ${
+            isExpanded ? "w-full rounded-xl" : "w-1/2 rounded-l-none border-l-0"
+          }`}
+        >
+          {/* Header */}
+          <div
+            className={`flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 ${
+              isExpanded ? "rounded-t-xl" : "rounded-tr-xl"
             }`}
           >
-            <CardHeader className="shrink-0 flex flex-row items-center justify-between">
-              <CardDescription className="font-light">
-                {reviews.length} review(s) assigned to you
-              </CardDescription>
-              {reviews.length > 0 && (
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm">
+                {formatName(
+                  selectedReview.first_name,
+                  selectedReview.last_name,
+                )}
+              </p>
+              <VoteBadge vote={vote} />
+            </div>
+            <div className="flex items-center gap-1">
+              {isExpanded ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer font-light"
-                      onClick={() => {
-                        selectReview(reviews[0].id);
-                        setIsExpanded(true);
-                      }}
+                      variant="ghost"
+                      size="icon-sm"
+                      className="cursor-pointer"
+                      onClick={() => setIsExpanded(false)}
                     >
-                      <ClipboardPen className="h-4 w-4 mr-1.5" />
-                      Start Grading
+                      <Minimize2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    Grade{" "}
-                    {formatName(reviews[0].first_name, reviews[0].last_name)}
-                  </TooltipContent>
+                  <TooltipContent>Close (Esc)</TooltipContent>
                 </Tooltip>
-              )}
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-hidden">
-              <ReviewsTable
-                reviews={reviews}
-                selectedId={selectedId}
-                loading={loading}
-                onSelectReview={selectReview}
-                getVote={getVote}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Right: Detail Panel */}
-        {selectedId && selectedReview && (
-          <Card
-            className={`shrink-0 flex flex-col h-full py-0! gap-0! ${
-              isExpanded
-                ? "w-full rounded-xl"
-                : "w-1/2 rounded-l-none border-l-0"
-            }`}
-          >
-            {/* Header */}
-            <div
-              className={`flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 ${
-                isExpanded ? "rounded-t-xl" : "rounded-tr-xl"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-sm">
-                  {formatName(
-                    selectedReview.first_name,
-                    selectedReview.last_name,
-                  )}
-                </p>
-                <VoteBadge vote={vote} />
-              </div>
-              <div className="flex items-center gap-1">
-                {isExpanded ? (
+              ) : (
+                <>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon-sm"
                         className="cursor-pointer"
-                        onClick={() => setIsExpanded(false)}
+                        onClick={() => setIsExpanded(true)}
                       >
-                        <Minimize2 className="h-4 w-4" />
+                        <ClipboardPen className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Close (Esc)</TooltipContent>
+                    <TooltipContent>Grade applicant</TooltipContent>
                   </Tooltip>
-                ) : (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="cursor-pointer"
-                          onClick={() => setIsExpanded(true)}
-                        >
-                          <ClipboardPen className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Grade applicant</TooltipContent>
-                    </Tooltip>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="cursor-pointer"
-                      onClick={handleClosePanel}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="cursor-pointer"
+                    onClick={handleClosePanel}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
+          </div>
 
-            {/* Content area - different layout based on mode */}
-            {isExpanded ? (
-              <div className="flex flex-1 overflow-hidden">
-                {/* Left: Application details (3/4) */}
-                <div className="w-3/4 overflow-auto p-6 border-r">
-                  {detailLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
-                  ) : (
-                    applicationDetail && (
-                      <ApplicationDetailsPanel
-                        application={applicationDetail}
-                        selectedReview={selectedReview}
-                        isExpanded={isExpanded}
-                      />
-                    )
-                  )}
-                </div>
-
-                {/* Right: Comments & Vote column (1/4) */}
-                <div className="w-1/4 flex flex-col bg-gray-50">
-                  <div className="flex-1 overflow-auto p-4">
-                    <VotingPanel
-                      review={selectedReview}
-                      notes={notes}
-                      otherReviewerNotes={otherReviewerNotes}
-                      notesLoading={notesLoading}
-                      isExpanded={isExpanded}
-                      submitting={submitting}
-                      notesTextareaRef={notesTextareaRef}
-                      applicationId={selectedReview.application_id}
-                      aiPercent={applicationDetail?.ai_percent ?? null}
-                      onAiPercentUpdate={(pct) =>
-                        setApplicationDetail((prev) =>
-                          prev ? { ...prev, ai_percent: pct } : prev,
-                        )
-                      }
-                      onNotesChange={handleNotesChange}
-                      onVote={handleVote}
-                    />
-                  </div>
-                  {/* Navigation arrows - fixed at bottom of sidebar */}
-                  <div className="shrink-0 border-t bg-gray-50 p-4 pt-2">
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      Use{" "}
-                      <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
-                        ←
-                      </kbd>{" "}
-                      <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
-                        →
-                      </kbd>{" "}
-                      arrow keys to navigate
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <CardContent className="flex-1 overflow-auto py-4">
+          {/* Content area - different layout based on mode */}
+          {isExpanded ? (
+            <div className="flex flex-1 overflow-hidden">
+              {/* Left: Application details (3/4) */}
+              <div className="w-3/4 overflow-auto p-6 border-r">
                 {detailLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  <div className="space-y-6 py-2">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-5 w-full" />
+                        <Skeleton className="h-5 w-3/4" />
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   applicationDetail && (
@@ -393,10 +351,70 @@ export default function AssignedPage() {
                     />
                   )
                 )}
-              </CardContent>
-            )}
-          </Card>
-        )}
+              </div>
+
+              {/* Right: Comments & Vote column (1/4) */}
+              <div className="w-1/4 flex flex-col bg-gray-50">
+                <div className="flex-1 overflow-auto p-4">
+                  <VotingPanel
+                    review={selectedReview}
+                    notes={notes}
+                    otherReviewerNotes={otherReviewerNotes}
+                    notesLoading={notesLoading}
+                    isExpanded={isExpanded}
+                    submitting={submitting}
+                    notesTextareaRef={notesTextareaRef}
+                    applicationId={selectedReview.application_id}
+                    aiPercent={applicationDetail?.ai_percent ?? null}
+                    onAiPercentUpdate={(pct) =>
+                      setApplicationDetail((prev) =>
+                        prev ? { ...prev, ai_percent: pct } : prev,
+                      )
+                    }
+                    onNotesChange={handleNotesChange}
+                    onVote={handleVote}
+                  />
+                </div>
+                {/* Navigation arrows - fixed at bottom of sidebar */}
+                <div className="shrink-0 border-t bg-gray-50 p-4 pt-2">
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Use{" "}
+                    <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
+                      ←
+                    </kbd>{" "}
+                    <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
+                      →
+                    </kbd>{" "}
+                    arrow keys to navigate
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <CardContent className="flex-1 overflow-auto py-4">
+              {detailLoading ? (
+                <div className="space-y-6 py-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-5 w-full" />
+                      <Skeleton className="h-5 w-3/4" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                applicationDetail && (
+                  <ApplicationDetailsPanel
+                    application={applicationDetail}
+                    selectedReview={selectedReview}
+                    isExpanded={isExpanded}
+                  />
+                )
+              )}
+            </CardContent>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

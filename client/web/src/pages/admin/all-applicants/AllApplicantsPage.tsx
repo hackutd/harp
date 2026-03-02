@@ -9,6 +9,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
 import { ApplicationsTable } from "./components/ApplicationsTable";
@@ -81,11 +82,40 @@ export default function AllApplicantsPage() {
 
   if (loading && applications.length === 0) {
     return (
-      <div className="flex items-center justify-center flex-1">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="flex flex-col gap-3 h-full min-h-0">
+        {/* Stat cards */}
+        <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16 mt-2" />
+                <Skeleton className="h-3 w-32 mt-1" />
+              </CardHeader>
+            </Card>
+          ))}
         </div>
+        {/* Filter tabs + search row */}
+        <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
+          <div className="col-span-2 flex gap-2">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded-md" />
+            ))}
+          </div>
+          <Skeleton className="h-8 w-full rounded-md" />
+          <Skeleton className="h-8 w-24 ml-auto rounded-md" />
+        </div>
+        {/* Table */}
+        <Card className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <CardHeader className="shrink-0">
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent className="p-0 flex-1 space-y-3 px-6 pb-6">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }

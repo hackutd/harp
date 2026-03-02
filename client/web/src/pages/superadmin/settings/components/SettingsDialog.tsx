@@ -32,8 +32,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] =
-    React.useState<SettingsTab>("set-admin");
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>("set-admin");
 
   const handleClose = () => {
     setOpen(false);

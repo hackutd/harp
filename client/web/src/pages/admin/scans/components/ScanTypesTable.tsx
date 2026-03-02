@@ -120,12 +120,12 @@ export function ScanTypesTable({
 
   const statsMap = new Map(stats.map((s) => [s.scan_type, s.count]));
 
-  // Sync local input when editingIndex changes
-  useEffect(() => {
-    if (editingIndex !== null && scanTypes[editingIndex]) {
-      setEditDisplayName(scanTypes[editingIndex].display_name);
+  const startEditing = (index: number) => {
+    setEditingIndex(index);
+    if (scanTypes[index]) {
+      setEditDisplayName(scanTypes[index].display_name);
     }
-  }, [editingIndex, scanTypes]);
+  };
 
   const saveDisplayName = useCallback(() => {
     if (editingIndex === null) return;
@@ -177,7 +177,9 @@ export function ScanTypesTable({
 
   // Ref to avoid stale closures in event listeners
   const saveDisplayNameRef = useRef(saveDisplayName);
-  saveDisplayNameRef.current = saveDisplayName;
+  useEffect(() => {
+    saveDisplayNameRef.current = saveDisplayName;
+  }, [saveDisplayName]);
 
   const closeEditing = useCallback(() => {
     saveDisplayNameRef.current();
@@ -231,7 +233,7 @@ export function ScanTypesTable({
       is_active: true,
     };
     setPendingNew(newType);
-    setEditingIndex(scanTypes.length); // index of the appended row
+    setEditingIndex(scanTypes.length);
     setEditDisplayName("");
   };
 
@@ -439,7 +441,7 @@ export function ScanTypesTable({
                       isSuperAdmin ? "cursor-pointer hover:bg-muted/50" : ""
                     } ${!scanType.is_active ? "opacity-50" : ""}`}
                     onClick={
-                      isSuperAdmin ? () => setEditingIndex(index) : undefined
+                      isSuperAdmin ? () => startEditing(index) : undefined
                     }
                   >
                     <TableCell>

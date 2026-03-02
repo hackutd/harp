@@ -27,7 +27,9 @@ export interface ScansState {
   fetchTypes: (signal?: AbortSignal) => Promise<void>;
   fetchStats: (signal?: AbortSignal) => Promise<void>;
   performScan: (userId: string) => Promise<void>;
-  saveScanTypes: (scanTypes: ScanType[]) => Promise<{ success: boolean; error?: string }>;
+  saveScanTypes: (
+    scanTypes: ScanType[],
+  ) => Promise<{ success: boolean; error?: string }>;
   setActiveScanType: (scanType: ScanType | null) => void;
   clearLastResult: () => void;
 }
