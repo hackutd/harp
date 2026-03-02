@@ -56,7 +56,7 @@ export function ScanStatsCards({
 
         return (
           <Card key={scanType.name}>
-            <CardHeader className="p-4">
+            <CardHeader className="px-4 py-0">
               <div className="flex items-center justify-between">
                 <CardDescription>{scanType.display_name}</CardDescription>
                 <Icon className="size-4 text-muted-foreground" />

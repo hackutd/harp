@@ -45,7 +45,7 @@ export function ApplicationDetailPanel({
             </>
           ) : null}
         </div>
-        <Button variant="ghost" size="icon-sm" onClick={onClose}>
+        <Button variant="ghost" size="icon-sm" className="cursor-pointer" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>

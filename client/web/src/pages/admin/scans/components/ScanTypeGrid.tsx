@@ -73,7 +73,7 @@ export function ScanTypeGrid({ scanTypes, onSelect }: ScanTypeGridProps) {
             </CardHeader>
             <div className="px-4">
               <Button
-                className="w-full bg-slate-700 cursor-pointer"
+                className="w-full bg-slate-500 cursor-pointer"
                 size="sm"
                 onClick={() => onSelect(scanType)}
               >

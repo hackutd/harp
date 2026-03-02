@@ -158,7 +158,7 @@ export function VotingPanel({
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7"
+              className="h-7 w-7 cursor-pointer"
               onClick={saveEditing}
             >
               <Check className="h-3.5 w-3.5" />
@@ -166,7 +166,7 @@ export function VotingPanel({
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7"
+              className="h-7 w-7 cursor-pointer"
               onClick={cancelEditing}
             >
               <X className="h-3.5 w-3.5" />
@@ -180,7 +180,7 @@ export function VotingPanel({
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6"
+              className="h-6 w-6 cursor-pointer"
               onClick={startEditing}
             >
               <Pencil className="h-3 w-3" />

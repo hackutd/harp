@@ -25,7 +25,7 @@ export function LinksSection({ application }: LinksSectionProps) {
                 href={application.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline break-all"
+                className="text-blue-600 hover:underline break-all cursor-pointer"
               >
                 {application.github}
               </a>
@@ -40,7 +40,7 @@ export function LinksSection({ application }: LinksSectionProps) {
                 href={application.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline break-all"
+                className="text-blue-600 hover:underline break-all cursor-pointer"
               >
                 {application.linkedin}
               </a>
@@ -55,7 +55,7 @@ export function LinksSection({ application }: LinksSectionProps) {
                 href={application.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline break-all"
+                className="text-blue-600 hover:underline break-all cursor-pointer"
               >
                 {application.website}
               </a>

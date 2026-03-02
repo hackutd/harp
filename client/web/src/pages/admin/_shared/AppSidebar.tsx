@@ -68,19 +68,19 @@ const eventNav = [
 
 const superAdminNav = [
   {
-    name: "Applications",
-    url: "/admin/sa/applications",
+    name: "User Management",
+    url: "/admin/sa/user-management",
+    icon: Users,
+  },
+  {
+    name: "Application",
+    url: "/admin/sa/application",
     icon: ClipboardList,
   },
   {
     name: "Reviews",
     url: "/admin/sa/reviews",
     icon: Star,
-  },
-  {
-    name: "Scans",
-    url: "/admin/sa/scans",
-    icon: ScanLine,
   },
   {
     name: "Emails",

@@ -28,8 +28,11 @@ const DashboardPage = lazy(
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
 const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
-const SuperAdminApplicationsPage = lazy(
-  () => import("@/pages/superadmin/applications/ApplicationsPage"),
+const SuperAdminUserManagementPage = lazy(
+  () => import("@/pages/superadmin/user-management/UserManagementPage"),
+);
+const SuperAdminApplicationPage = lazy(
+  () => import("@/pages/superadmin/application/ApplicationPage"),
 );
 const SuperAdminReviewsPage = lazy(
   () => import("@/pages/superadmin/reviews/ReviewsPage"),
@@ -157,11 +160,21 @@ export const router = createBrowserRouter([
       },
       // Super Admin routes (nested under admin layout, guarded individually)
       {
-        path: "sa/applications",
+        path: "sa/user-management",
         element: (
           <RequireSuperAdmin>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminApplicationsPage />
+              <SuperAdminUserManagementPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/application",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminApplicationPage />
             </Suspense>
           </RequireSuperAdmin>
         ),

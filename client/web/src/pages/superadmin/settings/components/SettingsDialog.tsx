@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  HelpCircle,
-  Loader2,
-  ScanLine,
-  UserCog,
-  UsersRound,
-} from "lucide-react";
+import { Loader2, ScanLine, UserCog, UsersRound } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -24,18 +18,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { errorAlert, getRequest, putRequest } from "@/shared/lib/api";
 import { cn } from "@/shared/lib/utils";
-import type { ShortAnswerQuestion } from "@/types";
 
 import ApplicationsTab from "../tabs/ApplicationsTab";
-import { QuestionsTab } from "../tabs/QuestionsTab";
 import type { ScanType } from "../tabs/ScanTypesTab";
 import { ScanTypesTab } from "../tabs/ScanTypesTab";
 import { SetAdminTab } from "../tabs/SetAdminTab";
 
-type SettingsTab = "questions" | "set-admin" | "applications" | "scan-types";
+type SettingsTab = "set-admin" | "applications" | "scan-types";
 
 const settingsTabs = [
-  { id: "questions" as const, label: "Questions", icon: HelpCircle },
   { id: "set-admin" as const, label: "Set Admin", icon: UserCog },
   { id: "applications" as const, label: "Applications", icon: UsersRound },
   { id: "scan-types" as const, label: "Scans", icon: ScanLine },
@@ -47,10 +38,9 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>("questions");
+  const [activeTab, setActiveTab] =
+    React.useState<SettingsTab>("set-admin");
 
-  const [questions, setQuestions] = React.useState<ShortAnswerQuestion[]>([]);
-  const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
   const [scanTypes, setScanTypes] = React.useState<ScanType[]>([]);
@@ -58,19 +48,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
 
   React.useEffect(() => {
     if (!open) return;
-    const fetchQuestions = async () => {
-      setLoading(true);
-      const res = await getRequest<{ questions: ShortAnswerQuestion[] }>(
-        "/superadmin/settings/saquestions",
-        "short answer questions",
-      );
-      if (res.status === 200 && res.data) {
-        setQuestions(res.data.questions ?? []);
-      } else {
-        errorAlert(res);
-      }
-      setLoading(false);
-    };
     const fetchScanTypes = async () => {
       setScanTypesLoading(true);
       const res = await getRequest<{ scan_types: ScanType[] }>(
@@ -84,7 +61,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       }
       setScanTypesLoading(false);
     };
-    fetchQuestions();
     fetchScanTypes();
   }, [open]);
 
@@ -93,32 +69,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   };
 
   const handleSave = async () => {
-    if (activeTab === "questions") {
-      // Validate that all questions have text
-      const emptyQuestion = questions.find((q) => !q.question.trim());
-      if (emptyQuestion) {
-        toast.error("All questions must have text");
-        return;
-      }
-
-      setSaving(true);
-      const payload = questions.map((q, i) => ({
-        ...q,
-        display_order: i + 1,
-      }));
-      const res = await putRequest<{ questions: ShortAnswerQuestion[] }>(
-        "/superadmin/settings/saquestions",
-        { questions: payload },
-        "short answer questions",
-      );
-      if (res.status === 200 && res.data) {
-        setQuestions(res.data.questions);
-        toast.success("Questions saved");
-      } else {
-        errorAlert(res);
-      }
-      setSaving(false);
-    } else if (activeTab === "scan-types") {
+    if (activeTab === "scan-types") {
       const emptyName = scanTypes.find((s) => !s.name.trim());
       if (emptyName) {
         toast.error("All scan types must have a name");
@@ -202,13 +153,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
             <ScrollArea className="flex-1 min-h-0">
               <div className="p-8">
-                {activeTab === "questions" && (
-                  <QuestionsTab
-                    questions={questions}
-                    setQuestions={setQuestions}
-                    loading={loading}
-                  />
-                )}
                 {activeTab === "set-admin" && <SetAdminTab />}
                 {activeTab === "applications" && <ApplicationsTab />}
                 {activeTab === "scan-types" && (
