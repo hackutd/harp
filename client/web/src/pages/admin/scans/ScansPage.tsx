@@ -38,7 +38,7 @@ export default function ScansPage() {
 
   if (typesLoading && scanTypes.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-auto">
         {/* Stat cards */}
         <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
           {[...Array(3)].map((_, i) => (
@@ -66,7 +66,7 @@ export default function ScansPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-auto">
       <ScanStatsCards
         scanTypes={scanTypes}
         stats={stats}
