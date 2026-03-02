@@ -1,3 +1,4 @@
+import jsQR from "jsqr";
 import { useEffect, useRef, useState } from "react";
 
 interface UseQrScannerOptions {
@@ -9,7 +10,6 @@ interface UseQrScannerOptions {
 interface UseQrScannerReturn {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   error: string | null;
-  supported: boolean;
 }
 
 const DETECTION_INTERVAL_MS = 100; // ~10 FPS
@@ -21,10 +21,9 @@ export function useQrScanner({
 }: UseQrScannerOptions): UseQrScannerReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const onDetectRef = useRef(onDetect);
   const [error, setError] = useState<string | null>(null);
-
-  const supported = "BarcodeDetector" in window;
 
   // Keep callback ref current without restarting effects
   useEffect(() => {
@@ -33,7 +32,7 @@ export function useQrScanner({
 
   // Camera lifecycle
   useEffect(() => {
-    if (!enabled || !supported) return;
+    if (!enabled) return;
 
     let cancelled = false;
 
@@ -71,13 +70,17 @@ export function useQrScanner({
         video.srcObject = null;
       }
     };
-  }, [enabled, supported]);
+  }, [enabled]);
 
   // Detection loop
   useEffect(() => {
-    if (!enabled || paused || !supported) return;
+    if (!enabled || paused) return;
 
-    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+    }
+    const canvas = canvasRef.current;
+
     let rafId: number;
     let lastTime = 0;
     let detected = false;
@@ -93,16 +96,23 @@ export function useQrScanner({
       if (!video || video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA)
         return;
 
-      detector
-        .detect(video)
-        .then((barcodes) => {
-          if (detected || barcodes.length === 0) return;
-          detected = true;
-          onDetectRef.current(barcodes[0].rawValue);
-        })
-        .catch(() => {
-          // Detection errors are non-fatal, continue loop
-        });
+      const { videoWidth, videoHeight } = video;
+      if (videoWidth === 0 || videoHeight === 0) return;
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+
+      const imageData = ctx.getImageData(0, 0, videoWidth, videoHeight);
+      const result = jsQR(imageData.data, videoWidth, videoHeight);
+
+      if (result) {
+        detected = true;
+        onDetectRef.current(result.data);
+      }
     }
 
     rafId = requestAnimationFrame(tick);
@@ -110,7 +120,7 @@ export function useQrScanner({
     return () => {
       cancelAnimationFrame(rafId);
     };
-  }, [enabled, paused, supported]);
+  }, [enabled, paused]);
 
-  return { videoRef, error, supported };
+  return { videoRef, error };
 }

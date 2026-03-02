@@ -33,7 +33,7 @@ export function ScannerDialog() {
     [performScan],
   );
 
-  const { videoRef, error, supported } = useQrScanner({
+  const { videoRef, error } = useQrScanner({
     enabled: !!activeScanType,
     paused: !!lastScanResult || scanning,
     onDetect: handleScan,
@@ -61,17 +61,7 @@ export function ScannerDialog() {
         </DialogHeader>
 
         <div className="relative">
-          {!supported ? (
-            <div className="flex aspect-square items-center justify-center rounded-lg bg-muted p-6 text-center text-sm text-muted-foreground">
-              <div className="space-y-2">
-                <AlertCircle className="mx-auto size-8" />
-                <p>
-                  QR scanning is not supported in this browser. Please use
-                  Chrome or Safari.
-                </p>
-              </div>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="flex aspect-square items-center justify-center rounded-lg bg-muted p-6 text-center text-sm text-muted-foreground">
               <div className="space-y-2">
                 <AlertCircle className="mx-auto size-8" />
