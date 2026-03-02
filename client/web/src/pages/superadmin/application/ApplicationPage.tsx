@@ -194,10 +194,7 @@ export default function ApplicationPage() {
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button
-                      disabled={saving}
-                      className="w-full cursor-pointer"
-                    >
+                    <Button disabled={saving} className="w-full cursor-pointer">
                       {saving ? (
                         <Loader2 className="size-4 mr-2 animate-spin" />
                       ) : (

@@ -5,7 +5,6 @@ import {
   CircleCheck,
   CircleHelp,
   ClipboardList,
-  Mail,
   ScanLine,
   Settings,
   Star,
@@ -68,6 +67,11 @@ const eventNav = [
 
 const superAdminNav = [
   {
+    name: "Reviews",
+    url: "/admin/sa/reviews",
+    icon: Star,
+  },
+  {
     name: "User Management",
     url: "/admin/sa/user-management",
     icon: Users,
@@ -76,16 +80,6 @@ const superAdminNav = [
     name: "Application",
     url: "/admin/sa/application",
     icon: ClipboardList,
-  },
-  {
-    name: "Reviews",
-    url: "/admin/sa/reviews",
-    icon: Star,
-  },
-  {
-    name: "Emails",
-    url: "/admin/sa/emails",
-    icon: Mail,
   },
 ];
 

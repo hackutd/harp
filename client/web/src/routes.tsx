@@ -40,9 +40,6 @@ const SuperAdminReviewsPage = lazy(
 const SuperAdminScansPage = lazy(
   () => import("@/pages/superadmin/scans/ScansPage"),
 );
-const SuperAdminEmailsPage = lazy(
-  () => import("@/pages/superadmin/emails/EmailsPage"),
-);
 
 export const router = createBrowserRouter([
   // Public routes
@@ -195,16 +192,6 @@ export const router = createBrowserRouter([
           <RequireSuperAdmin>
             <Suspense fallback={<PageLoader />}>
               <SuperAdminScansPage />
-            </Suspense>
-          </RequireSuperAdmin>
-        ),
-      },
-      {
-        path: "sa/emails",
-        element: (
-          <RequireSuperAdmin>
-            <Suspense fallback={<PageLoader />}>
-              <SuperAdminEmailsPage />
             </Suspense>
           </RequireSuperAdmin>
         ),
