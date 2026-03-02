@@ -228,6 +228,42 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 	return err
 }
 
+// GetAllReviewAssignmentToggles returns all review assignment toggle entries.
+func (s *SettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentToggle).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []ReviewAssignmentEntry{}, nil
+		}
+		return nil, err
+	}
+
+	var entries []ReviewAssignmentEntry
+	if err := json.Unmarshal(value, &entries); err != nil {
+		// Fallback: legacy format was an array of IDs (strings)
+		var ids []string
+		if err2 := json.Unmarshal(value, &ids); err2 == nil {
+			for _, id := range ids {
+				entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
+			}
+			return entries, nil
+		}
+		return nil, err
+	}
+
+	return entries, nil
+}
+
 // GetReviewAssignmentToggle returns whether review assignment is enabled for the given super admin ID.
 // The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
 // If the setting row does not exist, defaults to false.

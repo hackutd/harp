@@ -169,7 +169,8 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 // SetReviewAssignmentTogglePayload for setting whether review assignment is enabled
 type SetReviewAssignmentTogglePayload struct {
-	Enabled bool `json:"enabled"`
+	UserID  string `json:"user_id" validate:"required"`
+	Enabled bool   `json:"enabled"`
 }
 
 // ReviewAssignmentToggleResponse wraps the review assignment enabled value for API response
@@ -177,44 +178,68 @@ type ReviewAssignmentToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type ReviewAssignmentAdmin struct {
+	ID      string `json:"id"`
+	Email   string `json:"email"`
+	Enabled bool   `json:"enabled"`
+}
+
+type ReviewAssignmentListResponse struct {
+	Admins []ReviewAssignmentAdmin `json:"admins"`
+}
+
 // getReviewAssignmentToggle returns the current review assignment enabled setting
 //
-//	@Summary		Get review assignment enabled state (Super Admin)
-//	@Description	Returns whether automatic review assignment is enabled
+//	@Summary		Get review assignment settings (Super Admin)
+//	@Description	Returns list of super admins and their review assignment toggle status
 //	@Tags			superadmin
 //	@Produce		json
-//	@Success		200	{object}	ReviewAssignmentToggleResponse
+//	@Success		200	{object}	ReviewAssignmentListResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/superadmin/settings/review-assignment-toggle [get]
 func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
-	user := getUserFromContext(r.Context())
-	if user == nil {
-		app.internalServerError(w, r, errors.New("user not in context"))
-		return
-	}
-
-	enabled, err := app.store.Settings.GetReviewAssignmentToggle(r.Context(), user.ID)
+	admins, err := app.store.Users.GetByRole(r.Context(), store.RoleSuperAdmin)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ReviewAssignmentToggleResponse{
-		Enabled: enabled,
+	toggles, err := app.store.Settings.GetAllReviewAssignmentToggles(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+	toggleMap := make(map[string]bool)
+	for _, t := range toggles {
+		toggleMap[t.ID] = t.Enabled
+	}
+
+	result := make([]ReviewAssignmentAdmin, 0, len(admins))
+	for _, admin := range admins {
+		enabled, exists := toggleMap[admin.ID]
+		if !exists {
+			enabled = true // Default to true
+		}
+		result = append(result, ReviewAssignmentAdmin{
+			ID:      admin.ID,
+			Email:   admin.Email,
+			Enabled: enabled,
+		})
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, ReviewAssignmentListResponse{Admins: result}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
 
 // setReviewAssignmentToggle updates the review assignment enabled setting
 //
-//	@Summary		Set review assignment enabled state (Super Admin)
-//	@Description	Updates whether automatic review assignment is enabled
+//	@Summary		Set review assignment enabled state for a user (Super Admin)
+//	@Description	Updates whether automatic review assignment is enabled for a specific super admin
 //	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
@@ -233,18 +258,17 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 		return
 	}
 
-	user := getUserFromContext(r.Context())
-	if user == nil {
-		app.internalServerError(w, r, errors.New("user not in context"))
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if err := app.store.Settings.SetReviewAssignmentToggle(r.Context(), user.ID, req.Enabled); err != nil {
+	if err := app.store.Settings.SetReviewAssignmentToggle(r.Context(), req.UserID, req.Enabled); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ReviewAssignmentToggleResponse(req)
+	response := ReviewAssignmentToggleResponse{Enabled: req.Enabled}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

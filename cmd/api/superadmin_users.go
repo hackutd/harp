@@ -24,20 +24,20 @@ type UpdateRoleResponse struct {
 
 // searchUsersHandler searches users by email or name
 //
-// @Summary		Search users (Super Admin)
-// @Description	Searches users by email, first name, or last name using trigram matching
-// @Tags			superadmin
-// @Produce		json
-// @Param			search	query		string	true	"Search query (min 2 chars)"
-// @Param			limit	query		int		false	"Page size (default 20, max 100)"
-// @Param			offset	query		int		false	"Offset (default 0)"
-// @Success		200		{object}	UserSearchResponse
-// @Failure		400		{object}	object{error=string}
-// @Failure		401		{object}	object{error=string}
-// @Failure		403		{object}	object{error=string}
-// @Failure		500		{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/superadmin/users [get]
+//	@Summary		Search users (Super Admin)
+//	@Description	Searches users by email, first name, or last name using trigram matching
+//	@Tags			superadmin
+//	@Produce		json
+//	@Param			search	query		string	true	"Search query (min 2 chars)"
+//	@Param			limit	query		int		false	"Page size (default 20, max 100)"
+//	@Param			offset	query		int		false	"Offset (default 0)"
+//	@Success		200		{object}	UserSearchResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/users [get]
 func (app *application) searchUsersHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
@@ -88,21 +88,21 @@ func (app *application) searchUsersHandler(w http.ResponseWriter, r *http.Reques
 
 // updateUserRoleHandler updates a user's role
 //
-// @Summary		Update user role (Super Admin)
-// @Description	Updates the role of a user by their ID
-// @Tags			superadmin
-// @Accept			json
-// @Produce		json
-// @Param			userID	path		string				true	"User ID"
-// @Param			role	body		UpdateRolePayload	true	"New role"
-// @Success		200		{object}	UserResponse
-// @Failure		400		{object}	object{error=string}
-// @Failure		401		{object}	object{error=string}
-// @Failure		403		{object}	object{error=string}
-// @Failure		404		{object}	object{error=string}
-// @Failure		500		{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/superadmin/users/{userID}/role [patch]
+//	@Summary		Update user role (Super Admin)
+//	@Description	Updates the role of a user by their ID
+//	@Tags			superadmin
+//	@Accept			json
+//	@Produce		json
+//	@Param			userID	path		string				true	"User ID"
+//	@Param			role	body		UpdateRolePayload	true	"New role"
+//	@Success		200		{object}	UserResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		404		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/users/{userID}/role [patch]
 func (app *application) updateUserRoleHandler(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 	if userID == "" {
