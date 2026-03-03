@@ -178,7 +178,6 @@ export const GradingPanel = memo(function GradingPanel({
           </Tooltip>
         </div>
       </div>
-
     </div>
   );
 });

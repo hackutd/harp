@@ -47,11 +47,7 @@ export function useGradingKeyboardShortcuts({
       }
 
       // Cmd/Ctrl + J/K/L: Grade shortcuts
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        currentApplicationId &&
-        !grading
-      ) {
+      if ((e.metaKey || e.ctrlKey) && currentApplicationId && !grading) {
         if (e.key === "j") {
           e.preventDefault();
           onGrade("rejected");

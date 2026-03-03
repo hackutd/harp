@@ -1559,64 +1559,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/emails/qr": {
-            "post": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Generates and sends personalized QR code emails to all accepted hackers. QR encodes the user UUID for check-in scanning.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin"
-                ],
-                "summary": "Send QR code emails (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.SendQREmailsResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/superadmin/settings/review-assignment-toggle": {
             "get": {
                 "security": [
@@ -2635,26 +2577,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/store.Scan"
                     }
-                }
-            }
-        },
-        "main.SendQREmailsResponse": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "failed": {
-                    "type": "integer"
-                },
-                "sent": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
                 }
             }
         },
