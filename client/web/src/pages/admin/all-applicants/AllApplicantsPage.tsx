@@ -59,11 +59,10 @@ export default function AllApplicantsPage() {
     const timer = setTimeout(() => {
       fetchApplications({
         search: searchInput.length >= 2 ? searchInput : "",
-        status: currentStatus,
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchInput, fetchApplications, currentStatus]);
+  }, [searchInput, fetchApplications]);
 
   const handleClosePanel = useCallback(() => {
     setSelectedApplicationId(null);
@@ -152,6 +151,7 @@ export default function AllApplicantsPage() {
               {currentSearch && <span>matching "{currentSearch}"</span>}
             </CardDescription>
           </CardHeader>
+          <hr className="border-border -mb-2" />
           <CardContent className="p-0 flex-1 overflow-auto">
             <ApplicationsTable
               applications={applications}
