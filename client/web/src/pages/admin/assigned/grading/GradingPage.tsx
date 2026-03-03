@@ -1,21 +1,19 @@
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  GradingDetailsPanel,
+  GradingPageLayout,
+  useGradingKeyboardShortcuts,
+} from "@/pages/admin/_shared/grading";
+import { formatName } from "@/pages/admin/all-applicants/utils";
 
 import { VoteBadge } from "../components/VoteBadge";
 import type { ReviewVote } from "../types";
-import { GradingDetailsPanel } from "./components/GradingDetailsPanel";
 import { GradingVotingPanel } from "./components/GradingVotingPanel";
-import { useGradingKeyboardShortcuts } from "./hooks/useGradingKeyboardShortcuts";
 import { useAdminGradingStore } from "./store";
-
-function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
-}
 
 export default function GradingPage() {
   const navigate = useNavigate();
@@ -76,125 +74,85 @@ export default function GradingPage() {
   );
 
   useGradingKeyboardShortcuts({
-    submitting,
-    currentReviewId: currentReview?.id ?? null,
-    hasVoted: !!currentReview?.vote,
+    disabled: submitting,
+    canAct: !!currentReview?.id && !currentReview?.vote,
+    escapeUrl: "/admin/assigned",
     onNavigateNext: navigateNext,
     onNavigatePrev: navigatePrev,
-    onVote: handleVote,
+    onActionJ: () => handleVote("reject"),
+    onActionK: () => handleVote("waitlist"),
+    onActionL: () => handleVote("accept"),
   });
 
-  // Empty state
-  if (!loading && reviews.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <p className="text-muted-foreground">No pending reviews to grade.</p>
-        <Button
-          variant="outline"
-          className="cursor-pointer"
-          onClick={() => navigate("/admin/assigned")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to Assigned
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="-m-4 flex flex-col h-[calc(100%+2rem)] min-h-0">
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-3 bg-gray-50 border-b px-4 py-3">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="cursor-pointer"
-          onClick={() => navigate("/admin/assigned")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-
-        {loading ? (
-          <Skeleton className="h-5 w-40" />
-        ) : currentReview ? (
+    <GradingPageLayout
+      backUrl="/admin/assigned"
+      loading={loading}
+      headerContent={
+        currentReview ? (
           <>
             <p className="font-semibold">
               {formatName(currentReview.first_name, currentReview.last_name)}
             </p>
             <VoteBadge vote={currentReview.vote} />
           </>
-        ) : null}
-
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="cursor-pointer"
-            onClick={navigatePrev}
-            disabled={loading || currentIndex <= 0}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {reviews.length > 0
-              ? `${currentIndex + 1} of ${reviews.length}`
-              : "-"}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="cursor-pointer"
-            onClick={navigateNext}
-            disabled={loading || currentIndex >= reviews.length - 1}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left panel - Application details (75%) */}
-        <div className="w-3/4 overflow-auto border-r">
-          <GradingDetailsPanel
-            application={detail}
+        ) : null
+      }
+      currentIndex={currentIndex}
+      totalCount={reviews.length}
+      onNavigateNext={navigateNext}
+      onNavigatePrev={navigatePrev}
+      canNavigatePrev={!loading && currentIndex > 0}
+      canNavigateNext={!loading && currentIndex < reviews.length - 1}
+      detailsPanel={
+        <GradingDetailsPanel application={detail} loading={detailLoading}>
+          {currentReview && (
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                Review Details
+              </h3>
+              <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <span className="text-muted-foreground">Application ID</span>
+                <span className="font-mono text-xs">
+                  {currentReview.application_id}
+                </span>
+                <span className="text-muted-foreground">Assigned at</span>
+                <span>
+                  {new Date(currentReview.assigned_at).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+        </GradingDetailsPanel>
+      }
+      actionPanel={
+        currentReview ? (
+          <GradingVotingPanel
             review={currentReview}
-            loading={detailLoading}
+            notes={localNotes}
+            otherReviewerNotes={otherNotes}
+            notesLoading={notesLoading}
+            submitting={submitting}
+            aiPercent={aiPercent}
+            onAiPercentUpdate={setAiPercent}
+            onNotesChange={setLocalNotes}
+            onVote={handleVote}
           />
+        ) : null
+      }
+      emptyState={
+        <div className="flex flex-col items-center justify-center h-full gap-4">
+          <p className="text-muted-foreground">No pending reviews to grade.</p>
+          <Button
+            variant="outline"
+            className="cursor-pointer"
+            onClick={() => navigate("/admin/assigned")}
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Back to Assigned
+          </Button>
         </div>
-
-        {/* Right panel - Voting (25%) */}
-        <div className="w-1/4 flex flex-col bg-gray-50/50">
-          <div className="flex-1 overflow-auto">
-            {currentReview && (
-              <GradingVotingPanel
-                review={currentReview}
-                notes={localNotes}
-                otherReviewerNotes={otherNotes}
-                notesLoading={notesLoading}
-                submitting={submitting}
-                aiPercent={aiPercent}
-                onAiPercentUpdate={setAiPercent}
-                onNotesChange={setLocalNotes}
-                onVote={handleVote}
-              />
-            )}
-          </div>
-          {/* Navigation hint */}
-          <div className="shrink-0 border-t bg-gray-50 p-4 pt-2">
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Use{" "}
-              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
-                ←
-              </kbd>{" "}
-              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
-                →
-              </kbd>{" "}
-              arrow keys to navigate &middot; Esc to go back
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      }
+    />
   );
 }

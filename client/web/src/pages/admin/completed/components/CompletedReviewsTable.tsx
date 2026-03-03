@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatName } from "@/pages/admin/all-applicants/utils";
 
 import { VoteBadge } from "../../assigned/components/VoteBadge";
 import type { Review } from "../types";
@@ -18,11 +19,6 @@ interface CompletedReviewsTableProps {
   selectedId: string | null;
   loading: boolean;
   onSelectReview: (id: string) => void;
-}
-
-function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
 }
 
 export function CompletedReviewsTable({

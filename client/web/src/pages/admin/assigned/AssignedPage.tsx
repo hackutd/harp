@@ -17,15 +17,11 @@ import {
 } from "@/components/ui/tooltip";
 import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
 import { useApplicationDetail } from "@/pages/admin/all-applicants/hooks/useApplicationDetail";
+import { formatName } from "@/pages/admin/all-applicants/utils";
 
 import { ReviewsTable } from "./components/ReviewsTable";
 import { refreshAssignedPage } from "./hooks/updateReviewPage";
 import { useReviewsStore } from "./store";
-
-function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
-}
 
 export default function AssignedPage() {
   const navigate = useNavigate();

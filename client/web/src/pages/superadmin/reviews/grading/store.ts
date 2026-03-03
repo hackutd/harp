@@ -35,7 +35,6 @@ interface GradingState {
   nextCursor: string | null;
   prevCursor: string | null;
   filterParams: FilterParams;
-
   fetchApplications: (params?: FetchParams) => Promise<void>;
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
@@ -60,6 +59,8 @@ const initialState = {
   prevCursor: null as string | null,
   filterParams: {} as FilterParams,
 };
+
+let loadDetailSeq = 0;
 
 export const useGradingStore = create<GradingState>((set, get) => ({
   ...initialState,
@@ -100,12 +101,21 @@ export const useGradingStore = create<GradingState>((set, get) => ({
   },
 
   loadDetail: async (applicationId: string) => {
-    set({ detailLoading: true, notesLoading: true, detail: null, notes: [] });
+    const requestId = ++loadDetailSeq;
+    set({
+      detailLoading: true,
+      notesLoading: true,
+      detail: null,
+      notes: [],
+    });
 
     const [detailRes, notesRes] = await Promise.all([
       fetchApplicationById(applicationId),
       fetchReviewNotes(applicationId),
     ]);
+
+    // Guard against stale responses from rapid navigation
+    if (loadDetailSeq !== requestId) return;
 
     if (detailRes.status === 200 && detailRes.data) {
       set({ detail: detailRes.data, detailLoading: false });
@@ -193,6 +203,7 @@ export const useGradingStore = create<GradingState>((set, get) => ({
   },
 
   reset: () => {
+    loadDetailSeq = 0;
     set(initialState);
   },
 }));

@@ -1,4 +1,5 @@
 import { Maximize2 } from "lucide-react";
+import { memo } from "react";
 
 import {
   Table,
@@ -8,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatName } from "@/pages/admin/all-applicants/utils";
 
 import type { Review } from "../types";
 import { VoteBadge } from "./VoteBadge";
@@ -19,12 +21,7 @@ interface ReviewsTableProps {
   onSelectReview: (id: string) => void;
 }
 
-function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
-}
-
-export function ReviewsTable({
+export const ReviewsTable = memo(function ReviewsTable({
   reviews,
   loading,
   selectedId,
@@ -90,4 +87,4 @@ export function ReviewsTable({
       </Table>
     </div>
   );
-}
+});

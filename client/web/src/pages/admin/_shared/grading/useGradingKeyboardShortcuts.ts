@@ -2,19 +2,25 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface UseGradingKeyboardShortcutsOptions {
-  grading: boolean;
-  currentApplicationId: string | null;
+  disabled: boolean;
+  canAct: boolean;
+  escapeUrl: string;
   onNavigateNext: () => void;
   onNavigatePrev: () => void;
-  onGrade: (status: "accepted" | "rejected" | "waitlisted") => void;
+  onActionJ: () => void;
+  onActionK: () => void;
+  onActionL: () => void;
 }
 
 export function useGradingKeyboardShortcuts({
-  grading,
-  currentApplicationId,
+  disabled,
+  canAct,
+  escapeUrl,
   onNavigateNext,
   onNavigatePrev,
-  onGrade,
+  onActionJ,
+  onActionK,
+  onActionL,
 }: UseGradingKeyboardShortcutsOptions) {
   const navigate = useNavigate();
 
@@ -25,38 +31,44 @@ export function useGradingKeyboardShortcuts({
         activeElement instanceof HTMLTextAreaElement ||
         activeElement instanceof HTMLInputElement;
 
-      // Escape: Go back to reviews page
-      if (e.key === "Escape") {
-        e.preventDefault();
-        navigate("/admin/sa/reviews");
+      // Skip all shortcuts when typing in an input
+      if (isInputFocused) {
+        if (e.key === "Escape") {
+          (activeElement as HTMLElement).blur();
+        }
         return;
       }
 
-      // Arrow keys: Navigate between applications (only when not typing)
-      if (!isInputFocused) {
-        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-          e.preventDefault();
-          onNavigatePrev();
-          return;
-        }
-        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-          e.preventDefault();
-          onNavigateNext();
-          return;
-        }
+      // Escape: Go back
+      if (e.key === "Escape") {
+        e.preventDefault();
+        navigate(escapeUrl);
+        return;
       }
 
-      // Cmd/Ctrl + J/K/L: Grade shortcuts
-      if ((e.metaKey || e.ctrlKey) && currentApplicationId && !grading) {
+      // Arrow keys: Navigate between items
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        onNavigatePrev();
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        onNavigateNext();
+        return;
+      }
+
+      // Cmd/Ctrl + J/K/L: Action shortcuts
+      if ((e.metaKey || e.ctrlKey) && canAct && !disabled) {
         if (e.key === "j") {
           e.preventDefault();
-          onGrade("rejected");
+          onActionJ();
         } else if (e.key === "k") {
           e.preventDefault();
-          onGrade("waitlisted");
+          onActionK();
         } else if (e.key === "l") {
           e.preventDefault();
-          onGrade("accepted");
+          onActionL();
         }
       }
     };
@@ -64,11 +76,14 @@ export function useGradingKeyboardShortcuts({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
-    grading,
-    currentApplicationId,
+    disabled,
+    canAct,
+    escapeUrl,
     onNavigateNext,
     onNavigatePrev,
-    onGrade,
+    onActionJ,
+    onActionK,
+    onActionL,
     navigate,
   ]);
 }

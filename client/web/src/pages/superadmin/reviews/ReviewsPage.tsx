@@ -89,7 +89,9 @@ export default function ReviewsPage() {
   );
   const fetchStats = useReviewApplicationsStore((s) => s.fetchStats);
 
-  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<ApplicationStatus | null>(
+    null,
+  );
   const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
@@ -388,7 +390,7 @@ export default function ReviewsPage() {
           <ReviewStatusTabs
             stats={stats}
             loading={tableLoading}
-            currentStatus={currentStatus}
+            currentStatus={currentStatus ?? "submitted"}
             onStatusChange={handleStatusFilter}
           />
         </div>
@@ -421,8 +423,8 @@ export default function ReviewsPage() {
               <CardDescription className="font-light flex items-center gap-1.5">
                 <span>{applications.length} application(s) on this page</span>
                 <span>filtered by</span>
-                <Badge className={getStatusColor(currentStatus)}>
-                  {currentStatus}
+                <Badge className={getStatusColor(currentStatus ?? "submitted")}>
+                  {currentStatus ?? "submitted"}
                 </Badge>
                 {currentSearch && <span>matching "{currentSearch}"</span>}
                 <span className="text-muted-foreground flex items-center gap-0.5">
@@ -430,7 +432,7 @@ export default function ReviewsPage() {
                   {currentSortBy === "accept_votes"
                     ? "accept votes"
                     : currentSortBy === "reject_votes"
-                      ? "reject votess"
+                      ? "reject votes"
                       : currentSortBy === "waitlist_votes"
                         ? "waitlist votes"
                         : "date created"}
@@ -473,7 +475,9 @@ export default function ReviewsPage() {
                     </p>
                     <RadioGroup
                       value={emailStatus ?? ""}
-                      onValueChange={(value) => setEmailStatus(value)}
+                      onValueChange={(value) =>
+                        setEmailStatus(value as ApplicationStatus)
+                      }
                       className="gap-2"
                     >
                       {(
@@ -538,7 +542,7 @@ export default function ReviewsPage() {
               loading={tableLoading}
               selectedId={selectedApplicationId}
               onSelectApplication={setSelectedApplicationId}
-              sortBy={currentSortBy}
+              sortBy={currentSortBy ?? "accept_votes"}
               onSortChange={handleSortChange}
             />
           </CardContent>
