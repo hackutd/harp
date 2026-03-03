@@ -1,10 +1,15 @@
-import { X } from "lucide-react";
+import { ClipboardPen, X } from "lucide-react";
 import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Application } from "@/types";
 
 import { formatName, getStatusColor } from "../utils";
@@ -23,15 +28,17 @@ interface ApplicationDetailPanelProps {
   application: Application | null;
   loading: boolean;
   onClose: () => void;
+  onGrade?: () => void;
 }
 
 export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
   application,
   loading,
   onClose,
+  onGrade,
 }: ApplicationDetailPanelProps) {
   return (
-    <Card className="w-1/2 shrink-0 rounded-l-none border-l-0 flex flex-col max-h-[calc(100vh-180px)] py-0! gap-0!">
+    <Card className="w-1/2 shrink-0 rounded-l-none border-l-0 flex flex-col h-full py-0! gap-0!">
       <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
         <div className="flex items-center gap-2">
           {loading ? (
@@ -47,14 +54,31 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
             </>
           ) : null}
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="cursor-pointer"
-          onClick={onClose}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onGrade && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="cursor-pointer"
+                  onClick={onGrade}
+                >
+                  <ClipboardPen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Grade applicant</TooltipContent>
+            </Tooltip>
+          )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="cursor-pointer"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <CardContent className="flex-1 overflow-auto py-4">
         {loading ? (

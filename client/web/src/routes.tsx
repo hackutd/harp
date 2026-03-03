@@ -37,11 +37,14 @@ const SuperAdminApplicationPage = lazy(
 const SuperAdminReviewsPage = lazy(
   () => import("@/pages/superadmin/reviews/ReviewsPage"),
 );
+const SuperAdminGradingPage = lazy(
+  () => import("@/pages/superadmin/reviews/grading/GradingPage"),
+);
 const SuperAdminScansPage = lazy(
   () => import("@/pages/superadmin/scans/ScansPage"),
 );
-const SuperAdminEmailsPage = lazy(
-  () => import("@/pages/superadmin/emails/EmailsPage"),
+const AssignedGradingPage = lazy(
+  () => import("@/pages/admin/assigned/grading/GradingPage"),
 );
 
 export const router = createBrowserRouter([
@@ -135,6 +138,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "assigned/grade",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AssignedGradingPage />
+          </Suspense>
+        ),
+      },
+      {
         path: "completed",
         element: (
           <Suspense fallback={<PageLoader />}>
@@ -190,21 +201,21 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "sa/scans",
+        path: "sa/reviews/grade",
         element: (
           <RequireSuperAdmin>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminScansPage />
+              <SuperAdminGradingPage />
             </Suspense>
           </RequireSuperAdmin>
         ),
       },
       {
-        path: "sa/emails",
+        path: "sa/scans",
         element: (
           <RequireSuperAdmin>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminEmailsPage />
+              <SuperAdminScansPage />
             </Suspense>
           </RequireSuperAdmin>
         ),

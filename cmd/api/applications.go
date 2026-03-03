@@ -420,6 +420,7 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 // @Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
 // @Param			limit		query		int		false	"Page size (default 50, max 100)"
 // @Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
+// @Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
 // @Success		200			{object}	store.ApplicationListResult
 // @Failure		400			{object}	object{error=string}
 // @Failure		401			{object}	object{error=string}
@@ -491,6 +492,18 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Parse sort_by
+	if sortStr := query.Get("sort_by"); sortStr != "" {
+		switch store.ApplicationSortBy(sortStr) {
+		case store.SortByCreatedAt, store.SortByAcceptVotes,
+			store.SortByRejectVotes, store.SortByWaitlistVotes:
+			filters.SortBy = store.ApplicationSortBy(sortStr)
+		default:
+			app.badRequestResponse(w, r, errors.New("invalid sort_by value"))
+			return
+		}
+	}
+
 	result, err := app.store.Application.List(r.Context(), filters, cursor, direction, limit)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -510,9 +523,15 @@ type ApplicationResponse struct {
 	Application *store.Application `json:"application"`
 }
 
+type ApplicantInfo struct {
+	Email     string  `json:"email"`
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
+}
+
 type EmailListResponse struct {
-	Emails []string `json:"emails"`
-	Count  int      `json:"count"`
+	Applicants []ApplicantInfo `json:"applicants"`
+	Count      int             `json:"count"`
 }
 
 // setApplicationStatus sets the final status on an application
@@ -649,14 +668,18 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	emails := make([]string, len(users))
+	applicants := make([]ApplicantInfo, len(users))
 	for i, u := range users {
-		emails[i] = u.Email
+		applicants[i] = ApplicantInfo{
+			Email:     u.Email,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+		}
 	}
 
 	response := EmailListResponse{
-		Emails: emails,
-		Count:  len(emails),
+		Applicants: applicants,
+		Count:      len(applicants),
 	}
 
 	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {

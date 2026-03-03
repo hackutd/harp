@@ -24,6 +24,11 @@ export interface ApplicationListItem {
   created_at: string;
   updated_at: string;
   ai_percent: number | null;
+  accept_votes: number;
+  reject_votes: number;
+  waitlist_votes: number;
+  reviews_assigned: number;
+  reviews_completed: number;
 }
 
 export interface ApplicationListResult {
@@ -43,9 +48,16 @@ export interface ApplicationStats {
   acceptance_rate: number;
 }
 
+export type ApplicationSortBy =
+  | "created_at"
+  | "accept_votes"
+  | "reject_votes"
+  | "waitlist_votes";
+
 export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
   direction?: "forward" | "backward";
   search?: string;
+  sort_by?: ApplicationSortBy;
 }

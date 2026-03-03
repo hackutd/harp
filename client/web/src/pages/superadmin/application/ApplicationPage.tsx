@@ -1,7 +1,18 @@
-import { Loader2, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,11 +31,7 @@ import { ApplicationPreview } from "./components/ApplicationPreview";
 export default function ApplicationPage() {
   const [questions, setQuestions] = useState<ShortAnswerQuestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const questionsRef = useRef(questions);
-  useEffect(() => {
-    questionsRef.current = questions;
-  }, [questions]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -43,11 +50,15 @@ export default function ApplicationPage() {
     fetchQuestions();
   }, []);
 
-  const saveQuestions = useCallback(async (qs: ShortAnswerQuestion[]) => {
-    const emptyQuestion = qs.find((q) => !q.question.trim());
-    if (emptyQuestion) return;
+  const saveQuestions = useCallback(async () => {
+    const emptyQuestion = questions.find((q) => !q.question.trim());
+    if (emptyQuestion) {
+      toast.error("All questions must have text before saving");
+      return;
+    }
 
-    const payload = qs.map((q, i) => ({ ...q, display_order: i + 1 }));
+    setSaving(true);
+    const payload = questions.map((q, i) => ({ ...q, display_order: i + 1 }));
     const res = await putRequest<{ questions: ShortAnswerQuestion[] }>(
       "/superadmin/settings/saquestions",
       { questions: payload },
@@ -58,32 +69,14 @@ export default function ApplicationPage() {
     } else {
       errorAlert(res);
     }
-  }, []);
-
-  const debouncedSave = useCallback(
-    (qs: ShortAnswerQuestion[]) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => saveQuestions(qs), 1000);
-    },
-    [saveQuestions],
-  );
-
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, []);
+    setSaving(false);
+  }, [questions]);
 
   const updateQuestions = useCallback(
     (updater: (prev: ShortAnswerQuestion[]) => ShortAnswerQuestion[]) => {
-      setQuestions((prev) => {
-        const next = updater(prev);
-        debouncedSave(next);
-        return next;
-      });
+      setQuestions((prev) => updater(prev));
     },
-    [debouncedSave],
+    [],
   );
 
   const updateQuestion = (
@@ -198,6 +191,40 @@ export default function ApplicationPage() {
                   <Plus className="size-4 mr-2" />
                   Add Question
                 </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button disabled={saving} className="w-full cursor-pointer">
+                      {saving ? (
+                        <Loader2 className="size-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="size-4 mr-2" />
+                      )}
+                      Save Questions
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Save questions?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will affect <strong>all</strong> hacker
+                        applications. Are you sure you want to save these
+                        changes?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="cursor-pointer">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={saveQuestions}
+                        className="cursor-pointer bg-red-600 hover:bg-red-700"
+                      >
+                        Save
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
           </div>

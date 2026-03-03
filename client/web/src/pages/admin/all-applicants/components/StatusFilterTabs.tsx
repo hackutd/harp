@@ -33,7 +33,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
         <TabsTrigger
           value="all"
           disabled={loading}
-          className="font-normal cursor-pointer rounded-sm"
+          className="font-light cursor-pointer rounded-sm"
         >
           All
           {stats && (
@@ -45,7 +45,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
         <TabsTrigger
           value="draft"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Draft
           {stats && stats.draft > 0 && (
@@ -57,7 +57,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
         <TabsTrigger
           value="submitted"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Submitted
           {stats && stats.submitted > 0 && (
@@ -69,7 +69,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
         <TabsTrigger
           value="accepted"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Accepted
           {stats && stats.accepted > 0 && (
@@ -81,7 +81,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
         <TabsTrigger
           value="waitlisted"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Waitlisted
           {stats && stats.waitlisted > 0 && (
@@ -93,7 +93,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
         <TabsTrigger
           value="rejected"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Rejected
           {stats && stats.rejected > 0 && (

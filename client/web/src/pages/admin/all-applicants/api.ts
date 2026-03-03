@@ -33,6 +33,10 @@ export async function fetchApplications(
     queryParams.set("search", params.search);
   }
 
+  if (params?.sort_by) {
+    queryParams.set("sort_by", params.sort_by);
+  }
+
   const queryString = queryParams.toString();
   const endpoint = `/admin/applications${queryString ? `?${queryString}` : ""}`;
 

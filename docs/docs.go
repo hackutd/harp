@@ -63,6 +63,12 @@ const docTemplate = `{
                         "description": "Pagination direction: forward (default) or backward",
                         "name": "direction",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes",
+                        "name": "sort_by",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1553,64 +1559,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/emails/qr": {
-            "post": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Generates and sends personalized QR code emails to all accepted hackers. QR encodes the user UUID for check-in scanning.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin"
-                ],
-                "summary": "Send QR code emails (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.SendQREmailsResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/superadmin/settings/review-assignment-toggle": {
             "get": {
                 "security": [
@@ -2312,6 +2260,20 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ApplicantInfo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                }
+            }
+        },
         "main.ApplicationResponse": {
             "type": "object",
             "properties": {
@@ -2503,14 +2465,14 @@ const docTemplate = `{
         "main.EmailListResponse": {
             "type": "object",
             "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "emails": {
+                "applicants": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/main.ApplicantInfo"
                     }
+                },
+                "count": {
+                    "type": "integer"
                 }
             }
         },
@@ -2590,26 +2552,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/store.Scan"
                     }
-                }
-            }
-        },
-        "main.SendQREmailsResponse": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "failed": {
-                    "type": "integer"
-                },
-                "sent": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
                 }
             }
         },
