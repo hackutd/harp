@@ -1,4 +1,5 @@
 import {
+  ArrowDown,
   ClipboardCheck,
   ClipboardList,
   Download,
@@ -12,6 +13,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import {
@@ -59,6 +61,7 @@ import { ReviewStatusTabs } from "./components/ReviewStatusTabs";
 import { useReviewApplicationsStore } from "./store";
 
 export default function ReviewsPage() {
+  const navigate = useNavigate();
   const [reviewsPerApp, setReviewsPerApp] = useState(1);
   const [loading, setLoading] = useState(true);
   const [savingCount, setSavingCount] = useState(false);
@@ -140,11 +143,10 @@ export default function ReviewsPage() {
     const timer = setTimeout(() => {
       fetchApplications({
         search: searchInput.length >= 2 ? searchInput : "",
-        status: currentStatus,
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchInput, fetchApplications, currentStatus]);
+  }, [searchInput, fetchApplications]);
 
   const handleClosePanel = useCallback(() => {
     setSelectedApplicationId(null);
@@ -423,12 +425,29 @@ export default function ReviewsPage() {
                   {currentStatus}
                 </Badge>
                 {currentSearch && <span>matching "{currentSearch}"</span>}
+                <span className="text-muted-foreground flex items-center gap-0.5">
+                  <ArrowDown className="size-4" />
+                  {currentSortBy === "accept_votes"
+                    ? "accept votes"
+                    : currentSortBy === "reject_votes"
+                      ? "reject votess"
+                      : currentSortBy === "waitlist_votes"
+                        ? "waitlist votes"
+                        : "date created"}
+                </span>
               </CardDescription>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   className="cursor-pointer font-light"
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (currentStatus) params.set("status", currentStatus);
+                    if (currentSortBy) params.set("sort_by", currentSortBy);
+                    if (currentSearch) params.set("search", currentSearch);
+                    navigate(`/admin/sa/reviews/grade?${params.toString()}`);
+                  }}
                 >
                   <ClipboardCheck className="size-3.5" />
                   Start Grading
@@ -530,6 +549,14 @@ export default function ReviewsPage() {
             application={applicationDetail}
             loading={detailLoading}
             onClose={handleClosePanel}
+            onGrade={() => {
+              const params = new URLSearchParams();
+              if (currentStatus) params.set("status", currentStatus);
+              if (currentSortBy) params.set("sort_by", currentSortBy);
+              if (currentSearch) params.set("search", currentSearch);
+              params.set("app", selectedApplicationId);
+              navigate(`/admin/sa/reviews/grade?${params.toString()}`);
+            }}
           />
         )}
       </div>

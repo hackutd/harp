@@ -94,7 +94,8 @@ export const ReviewsTable = memo(function ReviewsTable({
             applications.map((app) => (
               <TableRow
                 key={app.id}
-                className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
+                className={`group cursor-pointer hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
+                onClick={() => onSelectApplication(app.id)}
               >
                 <TableCell>
                   <Badge className={getStatusColor(app.status)}>
@@ -104,14 +105,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                 <TableCell className="whitespace-nowrap">
                   <div className="flex items-center justify-between gap-4">
                     <span>{formatName(app.first_name, app.last_name)}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="opacity-0 cursor-pointer group-hover:opacity-100 transition-opacity h-6 w-6"
-                      onClick={() => onSelectApplication(app.id)}
-                    >
-                      <Maximize2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    <Maximize2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </TableCell>
                 <TableCell>{app.email}</TableCell>

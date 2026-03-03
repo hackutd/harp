@@ -39,7 +39,7 @@ export const useReviewApplicationsStore = create<ReviewApplicationsState>(
     hasMore: false,
     currentStatus: "submitted",
     currentSearch: "",
-    currentSortBy: "created_at",
+    currentSortBy: "accept_votes",
     stats: null,
     statsLoading: false,
 
@@ -72,7 +72,7 @@ export const useReviewApplicationsStore = create<ReviewApplicationsState>(
           ...params,
           status,
           search: search || undefined,
-          sort_by: sortBy !== "created_at" ? sortBy : undefined,
+          sort_by: sortBy,
         },
         signal,
       );
