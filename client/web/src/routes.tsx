@@ -16,7 +16,11 @@ const AdminLayout = lazy(() => import("@/layouts/AdminLayout"));
 const AllApplicantsPage = lazy(
   () => import("@/pages/admin/all-applicants/AllApplicantsPage"),
 );
-const ReviewsPage = lazy(() => import("@/pages/admin/reviews/ReviewsPage"));
+const AssignedPage = lazy(() => import("@/pages/admin/assigned/AssignedPage"));
+const CompletedPage = lazy(
+  () => import("@/pages/admin/completed/CompletedPage"),
+);
+const FAQsPage = lazy(() => import("@/pages/admin/faqs/FAQsPage"));
 const SchedulePage = lazy(() => import("@/pages/admin/schedule/SchedulePage"));
 const ScansPage = lazy(() => import("@/pages/admin/scans/ScansPage"));
 const DashboardPage = lazy(
@@ -39,8 +43,8 @@ const SuperAdminGradingPage = lazy(
 const SuperAdminScansPage = lazy(
   () => import("@/pages/superadmin/scans/ScansPage"),
 );
-const AdminGradingPage = lazy(
-  () => import("@/pages/admin/reviews/grading/GradingPage"),
+const AssignedGradingPage = lazy(
+  () => import("@/pages/admin/assigned/grading/GradingPage"),
 );
 
 export const router = createBrowserRouter([
@@ -126,18 +130,34 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "reviews",
+        path: "assigned",
         element: (
           <Suspense fallback={<PageLoader />}>
-            <ReviewsPage />
+            <AssignedPage />
           </Suspense>
         ),
       },
       {
-        path: "reviews/grade",
+        path: "assigned/grade",
         element: (
           <Suspense fallback={<PageLoader />}>
-            <AdminGradingPage />
+            <AssignedGradingPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "completed",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <CompletedPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "faqs",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <FAQsPage />
           </Suspense>
         ),
       },

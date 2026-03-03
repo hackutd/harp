@@ -51,15 +51,9 @@ import type {
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
-import type { AssignedState } from "@/pages/admin/reviews/hooks/updateReviewPage";
-import { refreshAssignedPage } from "@/pages/admin/reviews/hooks/updateReviewPage";
-import {
-  errorAlert,
-  getRequest,
-  postRequest,
-  putRequest,
-} from "@/shared/lib/api";
-import { useUserStore } from "@/shared/stores/user";
+import type { AssignedState } from "@/pages/admin/assigned/hooks/updateReviewPage";
+import { refreshAssignedPage } from "@/pages/admin/assigned/hooks/updateReviewPage";
+import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 
 import { fetchApplicantEmails } from "./api";
 import { ReviewsTable } from "./components/ReviewsTable";
@@ -68,7 +62,6 @@ import { useReviewApplicationsStore } from "./store";
 
 export default function ReviewsPage() {
   const navigate = useNavigate();
-  const currentUser = useUserStore((s) => s.user);
   const [reviewsPerApp, setReviewsPerApp] = useState(1);
   const [loading, setLoading] = useState(true);
   const [savingCount, setSavingCount] = useState(false);
@@ -96,9 +89,7 @@ export default function ReviewsPage() {
   );
   const fetchStats = useReviewApplicationsStore((s) => s.fetchStats);
 
-  const [emailStatus, setEmailStatus] = useState<ApplicationStatus | null>(
-    null,
-  );
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
@@ -112,18 +103,13 @@ export default function ReviewsPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const [reviewsRes, usersRes] = await Promise.all([
+      const [reviewsRes, toggleRes] = await Promise.all([
         getRequest<{ reviews_per_application: number }>(
           "/superadmin/settings/reviews-per-app",
           "reviews per application",
         ),
-        getRequest<{
-          users: {
-            id: string;
-            review_assignment_enabled: boolean | null;
-          }[];
-        }>(
-          "/superadmin/users?role=super_admin",
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/review-assignment-toggle",
           "fetch review assignment enabled",
         ),
       ]);
@@ -131,16 +117,13 @@ export default function ReviewsPage() {
       if (reviewsRes.status === 200 && reviewsRes.data) {
         setReviewsPerApp(reviewsRes.data.reviews_per_application);
       }
-      if (usersRes.status === 200 && usersRes.data) {
-        const me = (usersRes.data.users ?? []).find(
-          (u) => u.id === currentUser?.id,
-        );
-        setReviewAssignmentEnabled(me?.review_assignment_enabled ?? true);
+      if (toggleRes.status === 200 && toggleRes.data !== undefined) {
+        setReviewAssignmentEnabled(toggleRes.data.enabled);
       }
       setLoading(false);
     }
     fetchData();
-  }, [currentUser?.id]);
+  }, []);
 
   // Fetch applications and stats on mount
   useEffect(() => {
@@ -233,14 +216,13 @@ export default function ReviewsPage() {
   }
 
   async function handleToggleAssignmentEnabled(enabled: boolean) {
-    if (!currentUser) return;
     setTogglingAssignment(true);
-    const res = await putRequest<{ user_id: string; enabled: boolean }>(
+    const res = await postRequest<{ enabled: boolean }>(
       "/superadmin/settings/review-assignment-toggle",
-      { user_id: currentUser.id, enabled },
+      { enabled },
       "review assignment toggle",
     );
-    if (res.status === 200 && res.data) {
+    if (res.status === 200 && res.data !== undefined) {
       setReviewAssignmentEnabled(res.data.enabled);
       toast.warning(
         `Review assignment ${res.data.enabled ? "enabled. Please run Auto Assign Reviews to give yourself reviews." : "disabled. Please run Auto Assign Reviews to reroute any reviews stuck under you."}`,
@@ -406,7 +388,7 @@ export default function ReviewsPage() {
           <ReviewStatusTabs
             stats={stats}
             loading={tableLoading}
-            currentStatus={currentStatus ?? "submitted"}
+            currentStatus={currentStatus}
             onStatusChange={handleStatusFilter}
           />
         </div>
@@ -439,8 +421,8 @@ export default function ReviewsPage() {
               <CardDescription className="font-light flex items-center gap-1.5">
                 <span>{applications.length} application(s) on this page</span>
                 <span>filtered by</span>
-                <Badge className={getStatusColor(currentStatus ?? "submitted")}>
-                  {currentStatus ?? "submitted"}
+                <Badge className={getStatusColor(currentStatus)}>
+                  {currentStatus}
                 </Badge>
                 {currentSearch && <span>matching "{currentSearch}"</span>}
                 <span className="text-muted-foreground flex items-center gap-0.5">
@@ -448,7 +430,7 @@ export default function ReviewsPage() {
                   {currentSortBy === "accept_votes"
                     ? "accept votes"
                     : currentSortBy === "reject_votes"
-                      ? "reject votes"
+                      ? "reject votess"
                       : currentSortBy === "waitlist_votes"
                         ? "waitlist votes"
                         : "date created"}
@@ -491,9 +473,7 @@ export default function ReviewsPage() {
                     </p>
                     <RadioGroup
                       value={emailStatus ?? ""}
-                      onValueChange={(value) =>
-                        setEmailStatus(value as ApplicationStatus)
-                      }
+                      onValueChange={(value) => setEmailStatus(value)}
                       className="gap-2"
                     >
                       {(
@@ -558,7 +538,7 @@ export default function ReviewsPage() {
               loading={tableLoading}
               selectedId={selectedApplicationId}
               onSelectApplication={setSelectedApplicationId}
-              sortBy={currentSortBy ?? "accept_votes"}
+              sortBy={currentSortBy}
               onSortChange={handleSortChange}
             />
           </CardContent>
