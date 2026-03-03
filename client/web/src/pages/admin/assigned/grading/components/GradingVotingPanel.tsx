@@ -1,13 +1,4 @@
-import {
-  Check,
-  Loader2,
-  MessageSquare,
-  Minus,
-  Pencil,
-  ThumbsDown,
-  ThumbsUp,
-  X,
-} from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { memo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  GradingActionButtons,
+  ReviewerNotesList,
+} from "@/pages/admin/_shared/grading";
 
 import { setAIPercent } from "../../api";
 import { NotesTextarea } from "../../components/NotesTextarea";
@@ -88,42 +78,7 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
   return (
     <div className="space-y-4 p-4">
       {/* Other Reviewers' Notes */}
-      <div>
-        <div className="flex items-center gap-1.5 mb-2.5">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <Label className="text-sm text-muted-foreground">
-            Reviewer Notes ({otherReviewerNotes.length})
-          </Label>
-        </div>
-        {notesLoading ? (
-          <div className="text-xs text-muted-foreground">Loading notes...</div>
-        ) : otherReviewerNotes.length > 0 ? (
-          <div className="space-y-2.5">
-            {otherReviewerNotes.map((note, idx) => (
-              <div
-                key={`${note.admin_id}-${idx}`}
-                className="bg-white border rounded-md p-3 text-sm"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {note.admin_email}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(note.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {note.notes}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground italic">
-            No reviewer notes
-          </p>
-        )}
-      </div>
+      <ReviewerNotesList notes={otherReviewerNotes} loading={notesLoading} />
 
       {/* Your Notes */}
       <div>
@@ -216,81 +171,19 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
           )}
         </div>
       ) : (
-        <div>
-          <Label className="text-xs text-muted-foreground">
-            Cast your vote
-          </Label>
-          <div className="flex flex-col gap-2 mt-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full cursor-pointer hover:bg-red-50 hover:text-red-700 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => onVote("reject")}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                  ) : (
-                    <ThumbsDown className="h-4 w-4 mr-1.5" />
-                  )}
-                  Reject
-                  <kbd className="ml-auto px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-muted-foreground">
-                    ⌘J
-                  </kbd>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Reject (⌘J)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full cursor-pointer hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => onVote("waitlist")}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                  ) : (
-                    <Minus className="h-4 w-4 mr-1.5" />
-                  )}
-                  Waitlist
-                  <kbd className="ml-auto px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-muted-foreground">
-                    ⌘K
-                  </kbd>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Waitlist (⌘K)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full cursor-pointer hover:bg-green-50 hover:text-green-700 hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => onVote("accept")}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                  ) : (
-                    <ThumbsUp className="h-4 w-4 mr-1.5" />
-                  )}
-                  Accept
-                  <kbd className="ml-auto px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-muted-foreground">
-                    ⌘L
-                  </kbd>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Accept (⌘L)</TooltipContent>
-            </Tooltip>
-          </div>
+        <>
+          <GradingActionButtons
+            disabled={submitting}
+            onReject={() => onVote("reject")}
+            onWaitlist={() => onVote("waitlist")}
+            onAccept={() => onVote("accept")}
+          />
           {submitting && (
             <p className="text-xs text-muted-foreground text-center mt-2">
               Submitting vote...
             </p>
           )}
-        </div>
+        </>
       )}
     </div>
   );

@@ -21,7 +21,6 @@ interface GradingState {
   notesLoading: boolean;
   submitting: boolean;
   localNotes: string;
-
   fetchReviews: () => Promise<void>;
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
@@ -43,6 +42,8 @@ const initialState = {
   localNotes: "",
 };
 
+let loadDetailSeq = 0;
+
 export const useAdminGradingStore = create<GradingState>((set, get) => ({
   ...initialState,
 
@@ -58,6 +59,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   loadDetail: async (applicationId: string) => {
+    const requestId = ++loadDetailSeq;
     set({
       detailLoading: true,
       notesLoading: true,
@@ -70,6 +72,9 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
       fetchApplicationById(applicationId),
       fetchReviewNotes(applicationId),
     ]);
+
+    // Guard against stale responses from rapid navigation
+    if (loadDetailSeq !== requestId) return;
 
     if (detailRes.status === 200 && detailRes.data) {
       set({ detail: detailRes.data, detailLoading: false });
@@ -141,6 +146,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   reset: () => {
+    loadDetailSeq = 0;
     set(initialState);
   },
 }));

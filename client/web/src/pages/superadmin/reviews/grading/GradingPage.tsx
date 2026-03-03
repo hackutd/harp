@@ -1,19 +1,21 @@
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  GradingDetailsPanel,
+  GradingPageLayout,
+  useGradingKeyboardShortcuts,
+} from "@/pages/admin/_shared/grading";
 import type {
   ApplicationSortBy,
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
 
-import { GradingDetailsPanel } from "./components/GradingDetailsPanel";
 import { GradingPanel } from "./components/GradingPanel";
-import { useGradingKeyboardShortcuts } from "./hooks/useGradingKeyboardShortcuts";
 import { useGradingStore } from "./store";
 
 export default function GradingPage() {
@@ -28,6 +30,8 @@ export default function GradingPage() {
   const notes = useGradingStore((s) => s.notes);
   const notesLoading = useGradingStore((s) => s.notesLoading);
   const grading = useGradingStore((s) => s.grading);
+  const nextCursor = useGradingStore((s) => s.nextCursor);
+  const prevCursor = useGradingStore((s) => s.prevCursor);
   const fetchApplications = useGradingStore((s) => s.fetchApplications);
   const loadDetail = useGradingStore((s) => s.loadDetail);
   const navigateNext = useGradingStore((s) => s.navigateNext);
@@ -79,48 +83,22 @@ export default function GradingPage() {
   );
 
   useGradingKeyboardShortcuts({
-    grading,
-    currentApplicationId: currentApp?.id ?? null,
+    disabled: grading,
+    canAct: !!currentApp?.id,
+    escapeUrl: "/admin/sa/reviews",
     onNavigateNext: navigateNext,
     onNavigatePrev: navigatePrev,
-    onGrade: handleGrade,
+    onActionJ: () => handleGrade("rejected"),
+    onActionK: () => handleGrade("waitlisted"),
+    onActionL: () => handleGrade("accepted"),
   });
 
-  // Empty state
-  if (!loading && applications.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <p className="text-muted-foreground">
-          No applications match the current filters.
-        </p>
-        <Button
-          variant="outline"
-          className="cursor-pointer"
-          onClick={() => navigate("/admin/sa/reviews")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to Reviews
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="-m-4 flex flex-col h-[calc(100%+2rem)] min-h-0">
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-3 bg-gray-50 border-b px-4 py-3">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="cursor-pointer"
-          onClick={() => navigate("/admin/sa/reviews")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-
-        {loading ? (
-          <Skeleton className="h-5 w-40" />
-        ) : currentApp ? (
+    <GradingPageLayout
+      backUrl="/admin/sa/reviews"
+      loading={loading}
+      headerContent={
+        currentApp ? (
           <>
             <p className="font-semibold">
               {formatName(currentApp.first_name, currentApp.last_name)}
@@ -129,72 +107,73 @@ export default function GradingPage() {
               {currentApp.status}
             </Badge>
           </>
-        ) : null}
-
-        <div className="ml-auto flex items-center gap-2">
+        ) : null
+      }
+      currentIndex={currentIndex}
+      totalCount={applications.length}
+      onNavigateNext={navigateNext}
+      onNavigatePrev={navigatePrev}
+      canNavigatePrev={!loading && (currentIndex > 0 || !!prevCursor)}
+      canNavigateNext={
+        !loading && (currentIndex < applications.length - 1 || !!nextCursor)
+      }
+      detailsPanel={
+        <GradingDetailsPanel application={detail} loading={detailLoading}>
+          {currentApp && (
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                Review Stats
+              </h3>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  {currentApp.reviews_completed} / {currentApp.reviews_assigned}{" "}
+                  reviews completed
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="bg-green-100 text-green-800">
+                    {currentApp.accept_votes} accept
+                  </Badge>
+                  <Badge className="bg-red-100 text-red-800">
+                    {currentApp.reject_votes} reject
+                  </Badge>
+                  <Badge className="bg-yellow-100 text-yellow-800">
+                    {currentApp.waitlist_votes} waitlist
+                  </Badge>
+                  {currentApp.ai_percent != null && (
+                    <Badge variant="secondary">
+                      AI: {currentApp.ai_percent}%
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </GradingDetailsPanel>
+      }
+      actionPanel={
+        <GradingPanel
+          listItem={currentApp}
+          notes={notes}
+          notesLoading={notesLoading}
+          grading={grading}
+          onGrade={handleGrade}
+        />
+      }
+      emptyState={
+        <div className="flex flex-col items-center justify-center h-full gap-4">
+          <p className="text-muted-foreground">
+            No applications match the current filters.
+          </p>
           <Button
-            variant="ghost"
-            size="icon-sm"
+            variant="outline"
             className="cursor-pointer"
-            onClick={navigatePrev}
-            disabled={loading}
+            onClick={() => navigate("/admin/sa/reviews")}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {applications.length > 0
-              ? `${currentIndex + 1} of ${applications.length}`
-              : "-"}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="cursor-pointer"
-            onClick={navigateNext}
-            disabled={loading}
-          >
-            <ChevronRight className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Back to Reviews
           </Button>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left panel - Application details (75%) */}
-        <div className="w-3/4 overflow-auto border-r">
-          <GradingDetailsPanel
-            application={detail}
-            listItem={currentApp}
-            loading={detailLoading}
-          />
-        </div>
-
-        {/* Right panel - Grading (25%) */}
-        <div className="w-1/4 flex flex-col bg-gray-50/50">
-          <div className="flex-1 overflow-auto">
-            <GradingPanel
-              listItem={currentApp}
-              notes={notes}
-              notesLoading={notesLoading}
-              grading={grading}
-              onGrade={handleGrade}
-            />
-          </div>
-          {/* Navigation hint - pinned at bottom */}
-          <div className="shrink-0 border-t bg-gray-50 p-4 pt-2">
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Use{" "}
-              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
-                ←
-              </kbd>{" "}
-              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">
-                →
-              </kbd>{" "}
-              arrow keys to navigate &middot; Esc to go back
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      }
+    />
   );
 }

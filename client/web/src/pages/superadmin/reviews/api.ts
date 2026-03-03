@@ -1,3 +1,4 @@
+import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
 import { getRequest } from "@/shared/lib/api";
 
 interface ApplicantEmail {
@@ -11,7 +12,7 @@ interface EmailListResponse {
   count: number;
 }
 
-export async function fetchApplicantEmails(status: string) {
+export async function fetchApplicantEmails(status: ApplicationStatus) {
   return getRequest<EmailListResponse>(
     `/superadmin/applications/emails?status=${status}`,
     "applicant emails",

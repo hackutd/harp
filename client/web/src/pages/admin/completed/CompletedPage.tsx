@@ -9,6 +9,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatName } from "@/pages/admin/all-applicants/utils";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
@@ -17,11 +18,6 @@ import { VoteBadge } from "../assigned/components/VoteBadge";
 import { CompletedReviewsTable } from "./components/CompletedReviewsTable";
 import { useCompletedReviewsStore } from "./store";
 import type { NotesListResponse, ReviewNote } from "./types";
-
-function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
-}
 
 export default function CompletedPage() {
   const { reviews, loading, fetchCompletedReviews } =

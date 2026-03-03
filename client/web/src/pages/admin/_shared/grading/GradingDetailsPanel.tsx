@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { memo } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,18 +14,16 @@ import {
 } from "@/pages/admin/all-applicants/components/detail-sections";
 import type { Application } from "@/types";
 
-import type { Review } from "../../types";
-
 interface GradingDetailsPanelProps {
   application: Application | null;
-  review: Review | null;
   loading: boolean;
+  children?: ReactNode;
 }
 
 export const GradingDetailsPanel = memo(function GradingDetailsPanel({
   application,
-  review,
   loading,
+  children,
 }: GradingDetailsPanelProps) {
   if (loading) {
     return (
@@ -52,20 +51,7 @@ export const GradingDetailsPanel = memo(function GradingDetailsPanel({
       <EventPreferencesSection application={application} />
       <LinksSection application={application} />
       <TimelineSection application={application} />
-
-      {review && (
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">
-            Review Details
-          </h3>
-          <div className="grid grid-cols-2 gap-y-2 text-sm">
-            <span className="text-muted-foreground">Application ID</span>
-            <span className="font-mono text-xs">{review.application_id}</span>
-            <span className="text-muted-foreground">Assigned at</span>
-            <span>{new Date(review.assigned_at).toLocaleString()}</span>
-          </div>
-        </div>
-      )}
+      {children}
     </div>
   );
 });
