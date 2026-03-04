@@ -56,7 +56,7 @@ func main() {
 		env: env.GetString("ENV", "development"),
 		mail: mailConfig{
 			sendGrid: sendGridConfig{
-				apiKey: env.GetString("SENDGRID_API_KEY", ""),
+				apiKey: env.GetString("SENDGRID_API_KEY",""),
 			},
 			fromEmail: env.GetString("MAIL_FROM", "noreply@hackportal.com"),
 		},
@@ -65,6 +65,7 @@ func main() {
 				user: env.GetRequiredString("AUTH_BASIC_USER"),
 				pass: env.GetRequiredString("AUTH_BASIC_PASS"),
 			},
+			publicAPIKey: env.GetString("PUBLIC_API_KEY", ""),
 		},
 		rateLimiter: ratelimiter.Config{
 			// Limit 20 requests every 5 seconds per IP
@@ -72,7 +73,8 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL: env.GetString("FRONTEND_URL", appURL),
+		frontendURL:      env.GetString("FRONTEND_URL", appURL),
+		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),

@@ -31,15 +31,16 @@ type application struct {
 }
 
 type config struct {
-	addr        string
-	db          dbConfig
-	env         string
-	appURL      string
-	frontendURL string
-	mail        mailConfig
-	auth        authConfig
-	rateLimiter ratelimiter.Config
-	supertokens supertokensConfig
+	addr             string
+	db               dbConfig
+	env              string
+	appURL           string
+	frontendURL      string
+	mail             mailConfig
+	auth             authConfig
+	rateLimiter      ratelimiter.Config
+	supertokens      supertokensConfig
+	publicCORSOrigin string
 }
 
 type supertokensConfig struct {
@@ -51,7 +52,8 @@ type supertokensConfig struct {
 }
 
 type authConfig struct {
-	basic basicConfig
+	basic        basicConfig
+	publicAPIKey string
 }
 
 type basicConfig struct {
@@ -83,17 +85,25 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// CORS only needed in development when frontend runs on a different origin
+	// CORS
+	allowedOrigins := []string{}
 	if app.config.frontendURL != app.config.appURL {
+		allowedOrigins = append(allowedOrigins, app.config.frontendURL)
+	}
+	if app.config.publicCORSOrigin != "" {
+		allowedOrigins = append(allowedOrigins, app.config.publicCORSOrigin)
+	}
+	if len(allowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
-			AllowedOrigins:   []string{app.config.frontendURL},
+			AllowedOrigins:   allowedOrigins,
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   append([]string{"Content-Type"}, supertokens.GetAllCORSHeaders()...),
+			AllowedHeaders:   append([]string{"Content-Type", "X-API-Key"}, supertokens.GetAllCORSHeaders()...),
 			AllowCredentials: true,
 		}))
 	}
 
-	// SuperTokens middleware handles /auth/ routes automatically
+	// SuperTokens middleware handles /auth/ routes automatically.
+	// Applied at root level so it intercepts /auth/* requests.
 	r.Use(supertokens.Middleware)
 
 	// Ratelimiter
@@ -102,6 +112,12 @@ func (app *application) mount() http.Handler {
 	}
 
 	r.Route("/v1", func(r chi.Router) {
+		// Public API (API key auth, no SuperTokens session needed)
+		r.Route("/public", func(r chi.Router) {
+			r.Use(app.APIKeyMiddleware)
+			r.Get("/schedule", app.getPublicScheduleHandler)
+		})
+
 		// Auth endpoints not handled by SuperTokens
 		r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
 		r.With(app.AuthRequiredMiddleware).Get("/auth/me", app.getCurrentUserHandler)
@@ -128,28 +144,32 @@ func (app *application) mount() http.Handler {
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
 
-					// All Applicants
-					r.Get("/applications", app.listApplicationsHandler)
-					r.Get("/applications/stats", app.getApplicationStatsHandler)
-					r.Get("/applications/{applicationID}", app.getApplication)
+					// Applications
+					r.Route("/applications", func(r chi.Router) {
+						r.Get("/", app.listApplicationsHandler)
+						r.Get("/stats", app.getApplicationStatsHandler)
+						r.Get("/{applicationID}", app.getApplication)
+	
+						// Assigned Applications
+						r.Get("/{applicationID}/notes", app.getApplicationNotes)
+						r.Put("/{applicationID}/ai-percent", app.setAIPercent)
+					})
 
-					// Assigned Applications
-					r.Get("/applications/{applicationID}/notes", app.getApplicationNotes)
-					r.Get("/reviews/pending", app.getPendingReviews)
-					r.Get("/reviews/next", app.getNextReview)
-					r.Put("/reviews/{reviewID}", app.submitVote)
-					r.Get("/reviews/completed", app.getCompletedReviews)
-					r.Put("/applications/{applicationID}/ai-percent", app.setAIPercent)
+					// Reviews
+					r.Route("/reviews", func(r chi.Router) {
+						r.Get("/pending", app.getPendingReviews)
+						r.Get("/next", app.getNextReview)
+						r.Put("/{reviewID}", app.submitVote)
+						r.Get("/completed", app.getCompletedReviews)
+					})
+
 					// Scans
-					r.Get("/scans/types", app.getScanTypesHandler)
-					r.Post("/scans", app.createScanHandler)
-					r.Get("/scans/user/{userID}", app.getUserScansHandler)
-					r.Get("/scans/stats", app.getScanStatsHandler)
-
-					// Hacker Pack
-
-					// Groups
-
+					r.Route("/scans", func(r chi.Router) {
+						r.Post("/", app.createScanHandler)
+						r.Get("/types", app.getScanTypesHandler)
+						r.Get("/user/{userID}", app.getUserScansHandler)
+						r.Get("/stats", app.getScanStatsHandler)
+					})
 				})
 			})
 
@@ -157,27 +177,37 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
+					
+					// Configs
+					r.Route("/settings", func(r chi.Router) {
+						r.Get("/saquestions", app.getShortAnswerQuestions)
+						r.Put("/saquestions", app.updateShortAnswerQuestions)
+						r.Get("/reviews-per-app", app.getReviewsPerApp)
+						r.Post("/reviews-per-app", app.setReviewsPerApp)
+						r.Get("/review-assignment-toggle", app.getReviewAssignmentToggle)
+						r.Post("/review-assignment-toggle", app.setReviewAssignmentToggle)
+						r.Put("/scan-types", app.updateScanTypesHandler)
+					})
 
-					// Application Config
-					r.Get("/settings/saquestions", app.getShortAnswerQuestions)
-					r.Put("/settings/saquestions", app.updateShortAnswerQuestions)
-
-					// Reviews Config
-					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)
-					r.Post("/settings/reviews-per-app", app.setReviewsPerApp)
-					r.Get("/settings/review-assignment-toggle", app.getReviewAssignmentToggle)
-					r.Post("/settings/review-assignment-toggle", app.setReviewAssignmentToggle)
-					r.Post("/applications/assign", app.batchAssignReviews)
-					r.Get("/applications/emails", app.getApplicantEmailsByStatusHandler)
-					r.Patch("/applications/{applicationID}/status", app.setApplicationStatus)
+					r.Route("/applciations", func(r chi.Router) {
+						r.Post("/assign", app.batchAssignReviews)
+						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
+						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+					})
 
 					// User Management
-					r.Get("/users", app.searchUsersHandler)
-					r.Patch("/users/{userID}/role", app.updateUserRoleHandler)
+					r.Route("/users", func(r chi.Router) {
+						r.Get("/", app.searchUsersHandler)
+						r.Patch("/{userID}/role", app.updateUserRoleHandler)
+					})
 
-					// Scans Config
-					r.Put("/settings/scan-types", app.updateScanTypesHandler)
-
+					// Schedule
+					r.Route("/schedule", func(r chi.Router) {
+						r.Get("/", app.listScheduleHandler)
+						r.Post("/", app.createScheduleHandler)
+						r.Put("/{scheduleID}", app.updateScheduleHandler)
+						r.Delete("/{scheduleID}", app.deleteScheduleHandler)
+					})
 				})
 			})
 		})

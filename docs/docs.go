@@ -1322,6 +1322,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/public/schedule": {
+            "get": {
+                "description": "Returns the full event schedule, ordered by start time ascending",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get schedule (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API Key",
+                        "name": "X-API-Key",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduleListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/applications/assign": {
             "post": {
                 "security": [
@@ -1511,6 +1562,316 @@ const docTemplate = `{
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/schedule": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the full event schedule, ordered by start time ascending",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "List schedule (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduleListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Creates a new event in the schedule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Create schedule item (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Schedule item to create",
+                        "name": "schedule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateSchedulePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduleItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/schedule/{scheduleID}": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates an existing event in the schedule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Update schedule item (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule item ID",
+                        "name": "scheduleID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule item to update",
+                        "name": "schedule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateSchedulePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduleItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Deletes an event from the schedule",
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Delete schedule item (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule item ID",
+                        "name": "scheduleID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -2462,6 +2823,39 @@ const docTemplate = `{
                 }
             }
         },
+        "main.CreateSchedulePayload": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "event_name",
+                "start_time"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "event_name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                },
+                "location": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "main.EmailListResponse": {
             "type": "object",
             "properties": {
@@ -2576,6 +2970,25 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/store.Scan"
+                    }
+                }
+            }
+        },
+        "main.ScheduleItemResponse": {
+            "type": "object",
+            "properties": {
+                "schedule": {
+                    "$ref": "#/definitions/store.ScheduleItem"
+                }
+            }
+        },
+        "main.ScheduleListResponse": {
+            "type": "object",
+            "properties": {
+                "schedule": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ScheduleItem"
                     }
                 }
             }
@@ -2803,6 +3216,39 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/store.ScanType"
+                    }
+                }
+            }
+        },
+        "main.UpdateSchedulePayload": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "event_name",
+                "start_time"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "event_name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                },
+                "location": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }
@@ -3354,6 +3800,41 @@ const docTemplate = `{
                 "ScanCategorySwag",
                 "ScanCategoryOther"
             ]
+        },
+        "store.ScheduleItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "event_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
         },
         "store.ShortAnswerQuestion": {
             "type": "object",

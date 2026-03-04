@@ -70,6 +70,7 @@ func newTestApplication(t *testing.T) *application {
 					user: "testuser",
 					pass: "testpass",
 				},
+				publicAPIKey: "test-api-key",
 			},
 			rateLimiter: ratelimiter.Config{
 				RequestPerTimeFrame: 20,
