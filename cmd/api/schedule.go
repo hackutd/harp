@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -31,48 +30,18 @@ type ScheduleItemResponse struct {
 	Schedule store.ScheduleItem `json:"schedule"`
 }
 
-// getAdminScheduleDateRange returns configured hackathon start/end dates (Admin)
+// listScheduleHandler returns all schedule items (Super Admin)
 //
-//	@Summary		Get hackathon date range (Admin)
-//	@Description	Returns configured hackathon start and end dates for schedule rendering
-//	@Tags			admin/schedule
-//	@Produce		json
-//	@Success		200	{object}	HackathonDateRangeResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/admin/schedule/date-range [get]
-func (app *application) getAdminScheduleDateRange(w http.ResponseWriter, r *http.Request) {
-	dateRange, err := app.store.Settings.GetHackathonDateRange(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	response := HackathonDateRangeResponse{
-		StartDate:  dateRange.StartDate,
-		EndDate:    dateRange.EndDate,
-		Configured: dateRange.StartDate != nil && dateRange.EndDate != nil,
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
-// listScheduleHandler returns all schedule items (Admin)
-//
-//	@Summary		List schedule (Admin)
+//	@Summary		List schedule (Super Admin)
 //	@Description	Returns the full event schedule, ordered by start time ascending
-//	@Tags			admin/schedule
+//	@Tags			superadmin
 //	@Produce		json
 //	@Success		200	{object}	ScheduleListResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/schedule [get]
+//	@Router			/superadmin/schedule [get]
 func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	items, err := app.store.Schedule.List(r.Context())
 	if err != nil {
@@ -85,11 +54,11 @@ func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// createScheduleHandler creates a new schedule item (Admin)
+// createScheduleHandler creates a new schedule item (Super Admin)
 //
-//	@Summary		Create schedule item (Admin)
+//	@Summary		Create schedule item (Super Admin)
 //	@Description	Creates a new event in the schedule
-//	@Tags			admin/schedule
+//	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
 //	@Param			schedule	body		CreateSchedulePayload	true	"Schedule item to create"
@@ -99,7 +68,7 @@ func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Reque
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/schedule [post]
+//	@Router			/superadmin/schedule [post]
 func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreateSchedulePayload
 	if err := readJSON(w, r, &payload); err != nil {
@@ -108,11 +77,6 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	if err := app.validateSchedulePayloadAgainstConfiguredRange(r.Context(), payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -141,11 +105,11 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// updateScheduleHandler updates an existing schedule item (Admin)
+// updateScheduleHandler updates an existing schedule item (Super Admin)
 //
-//	@Summary		Update schedule item (Admin)
+//	@Summary		Update schedule item (Super Admin)
 //	@Description	Updates an existing event in the schedule
-//	@Tags			admin/schedule
+//	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
 //	@Param			scheduleID	path		string					true	"Schedule item ID"
@@ -157,7 +121,7 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 //	@Failure		404			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/schedule/{scheduleID} [put]
+//	@Router			/superadmin/schedule/{scheduleID} [put]
 func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	scheduleID := chi.URLParam(r, "scheduleID")
 
@@ -168,11 +132,6 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	if err := app.validateSchedulePayloadAgainstConfiguredRange(r.Context(), payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -206,11 +165,11 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// deleteScheduleHandler deletes a schedule item (Admin)
+// deleteScheduleHandler deletes a schedule item (Super Admin)
 //
-//	@Summary		Delete schedule item (Admin)
+//	@Summary		Delete schedule item (Super Admin)
 //	@Description	Deletes an event from the schedule
-//	@Tags			admin/schedule
+//	@Tags			superadmin
 //	@Param			scheduleID	path	string	true	"Schedule item ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
@@ -218,7 +177,7 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 //	@Failure		404	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/schedule/{scheduleID} [delete]
+//	@Router			/superadmin/schedule/{scheduleID} [delete]
 func (app *application) deleteScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	scheduleID := chi.URLParam(r, "scheduleID")
 
@@ -232,69 +191,4 @@ func (app *application) deleteScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (app *application) validateSchedulePayloadAgainstConfiguredRange(ctx context.Context, payload SchedulePayload) error {
-	timeZone := app.config.hackathonTimeZone
-	if timeZone == "" {
-		timeZone = "America/Chicago"
-	}
-
-	location, err := time.LoadLocation(timeZone)
-	if err != nil {
-		return err
-	}
-
-	dateRange, err := app.store.Settings.GetHackathonDateRange(ctx)
-	if err != nil {
-		return err
-	}
-
-	if dateRange.StartDate == nil || dateRange.EndDate == nil {
-		return errors.New("hackathon date range is not configured")
-	}
-
-	startDate, err := time.ParseInLocation("2006-01-02", *dateRange.StartDate, location)
-	if err != nil {
-		return errors.New("invalid configured start_date")
-	}
-
-	endDate, err := time.ParseInLocation("2006-01-02", *dateRange.EndDate, location)
-	if err != nil {
-		return errors.New("invalid configured end_date")
-	}
-
-	eventStart := payload.StartTime.In(location)
-	eventEnd := payload.EndTime.In(location)
-
-	if !eventEnd.After(eventStart) {
-		return errors.New("end_time must be after start_time")
-	}
-
-	if eventStart.Year() != eventEnd.Year() ||
-		eventStart.Month() != eventEnd.Month() ||
-		eventStart.Day() != eventEnd.Day() {
-		return errors.New("schedule events cannot span multiple days")
-	}
-
-	rangeStart := time.Date(
-		startDate.Year(),
-		startDate.Month(),
-		startDate.Day(),
-		0, 0, 0, 0,
-		location,
-	)
-	rangeEnd := time.Date(
-		endDate.Year(),
-		endDate.Month(),
-		endDate.Day(),
-		23, 59, 59, int(time.Second-time.Nanosecond),
-		location,
-	)
-
-	if eventStart.Before(rangeStart) || eventEnd.After(rangeEnd) {
-		return errors.New("event must be within configured hackathon date range")
-	}
-
-	return nil
 }
