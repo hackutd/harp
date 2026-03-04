@@ -36,7 +36,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "List applications (Admin)",
                 "parameters": [
@@ -137,7 +137,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Get application stats (Admin)",
                 "responses": {
@@ -195,7 +195,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Get application by ID (Admin)",
                 "parameters": [
@@ -276,7 +276,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Set AI percent on a review (Admin)",
                 "parameters": [
@@ -374,7 +374,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Get notes for an application (Admin)",
                 "parameters": [
@@ -452,7 +452,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/reviews"
                 ],
                 "summary": "Get completed reviews (Admin)",
                 "responses": {
@@ -510,7 +510,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/reviews"
                 ],
                 "summary": "Get next review assignment (Admin)",
                 "responses": {
@@ -579,7 +579,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/reviews"
                 ],
                 "summary": "Get pending reviews (Admin)",
                 "responses": {
@@ -640,7 +640,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/reviews"
                 ],
                 "summary": "Submit vote on a review (Admin)",
                 "parameters": [
@@ -741,7 +741,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Create a scan (Admin)",
                 "parameters": [
@@ -832,7 +832,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Get scan statistics (Admin)",
                 "responses": {
@@ -890,7 +890,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Get scan types (Admin)",
                 "responses": {
@@ -948,7 +948,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Get scans for a user (Admin)",
                 "parameters": [
@@ -1029,7 +1029,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "hackers"
                 ],
                 "summary": "Get or create application",
                 "responses": {
@@ -1077,7 +1077,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "hackers"
                 ],
                 "summary": "Update application",
                 "parameters": [
@@ -1157,7 +1157,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "hackers"
                 ],
                 "summary": "Submit application",
                 "responses": {
@@ -1385,7 +1385,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Batch assign reviews (SuperAdmin)",
                 "responses": {
@@ -1443,7 +1443,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Get applicant emails by status (Super Admin)",
                 "parameters": [
@@ -1524,7 +1524,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Set application status (Super Admin)",
                 "parameters": [
@@ -1622,7 +1622,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/schedule"
                 ],
                 "summary": "List schedule (Super Admin)",
                 "responses": {
@@ -1681,7 +1681,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/schedule"
                 ],
                 "summary": "Create schedule item (Super Admin)",
                 "parameters": [
@@ -1764,7 +1764,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/schedule"
                 ],
                 "summary": "Update schedule item (Super Admin)",
                 "parameters": [
@@ -1857,7 +1857,7 @@ const docTemplate = `{
                 ],
                 "description": "Deletes an event from the schedule",
                 "tags": [
-                    "superadmin"
+                    "superadmin/schedule"
                 ],
                 "summary": "Delete schedule item (Super Admin)",
                 "parameters": [
@@ -1932,7 +1932,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Get review assignment enabled state (Super Admin)",
                 "responses": {
@@ -1991,7 +1991,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Set review assignment enabled state (Super Admin)",
                 "parameters": [
@@ -2071,7 +2071,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Get reviews per application (Super Admin)",
                 "responses": {
@@ -2130,7 +2130,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Set reviews per application (Super Admin)",
                 "parameters": [
@@ -2210,7 +2210,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Get short answer questions (Super Admin)",
                 "responses": {
@@ -2269,7 +2269,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Update short answer questions (Super Admin)",
                 "parameters": [
@@ -2352,7 +2352,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Update scan types (Super Admin)",
                 "parameters": [
@@ -2432,7 +2432,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/users"
                 ],
                 "summary": "Search users (Super Admin)",
                 "parameters": [
@@ -2525,7 +2525,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/users"
                 ],
                 "summary": "Update user role (Super Admin)",
                 "parameters": [

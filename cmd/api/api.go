@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"expvar"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -77,6 +76,27 @@ type dbConfig struct {
 	maxIdleTime  string // TODO: LOOK INTO NOT USING A STRING FOR TIME
 }
 
+const swaggerTagsSorter = `(a, b) => {
+	const order = [
+		"health",
+		"auth",
+		"public",
+		"hackers",
+		"admin/applications",
+		"admin/reviews",
+		"admin/scans",
+		"superadmin/applications",
+		"superadmin/settings",
+		"superadmin/users",
+		"superadmin/schedule"
+	];
+	const index = (tag) => {
+		const i = order.indexOf(tag);
+		return i === -1 ? 999 : i;
+	};
+	return index(a) - index(b) || a.localeCompare(b);
+}`
+
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
@@ -126,8 +146,12 @@ func (app *application) mount() http.Handler {
 		r.With(app.BasicAuthMiddleware).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
 		// Swagger docs
-		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
-		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
+		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("doc.json"),
+			httpSwagger.UIConfig(map[string]string{
+				"tagsSorter": swaggerTagsSorter,
+			}),
+		))
 
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
@@ -149,7 +173,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.listApplicationsHandler)
 						r.Get("/stats", app.getApplicationStatsHandler)
 						r.Get("/{applicationID}", app.getApplication)
-	
+
 						// Assigned Applications
 						r.Get("/{applicationID}/notes", app.getApplicationNotes)
 						r.Put("/{applicationID}/ai-percent", app.setAIPercent)
@@ -177,7 +201,7 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
-					
+
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
 						r.Get("/saquestions", app.getShortAnswerQuestions)

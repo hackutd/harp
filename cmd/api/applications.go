@@ -55,16 +55,16 @@ type ApplicationWithQuestions struct {
 
 // getOrCreateApplicationHandler returns or creates the user's hackathon application
 //
-//	@Summary		Get or create application
-//	@Description	Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.
-//	@Tags			applications
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	store.Application
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/applications/me [get]
+// @Summary		Get or create application
+// @Description	Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.
+// @Tags			hackers
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	store.Application
+// @Failure		401	{object}	object{error=string}
+// @Failure		500	{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/applications/me [get]
 func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -116,19 +116,19 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 
 // updateApplicationHandler partially updates the authenticated user's application
 //
-//	@Summary		Update application
-//	@Description	Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.
-//	@Tags			applications
-//	@Accept			json
-//	@Produce		json
-//	@Param			application	body		UpdateApplicationPayload	true	"Fields to update"
-//	@Success		200			{object}	store.Application
-//	@Failure		400			{object}	object{error=string}
-//	@Failure		401			{object}	object{error=string}
-//	@Failure		404			{object}	object{error=string}
-//	@Failure		409			{object}	object{error=string}	"Application not in draft status"
-//	@Security		CookieAuth
-//	@Router			/applications/me [patch]
+// @Summary		Update application
+// @Description	Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.
+// @Tags			hackers
+// @Accept			json
+// @Produce		json
+// @Param			application	body		UpdateApplicationPayload	true	"Fields to update"
+// @Success		200			{object}	store.Application
+// @Failure		400			{object}	object{error=string}
+// @Failure		401			{object}	object{error=string}
+// @Failure		404			{object}	object{error=string}
+// @Failure		409			{object}	object{error=string}	"Application not in draft status"
+// @Security		CookieAuth
+// @Router			/applications/me [patch]
 func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -251,17 +251,17 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 
 // submitApplicationHandler submits the authenticated user's application for review
 //
-//	@Summary		Submit application
-//	@Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
-//	@Tags			applications
-//	@Produce		json
-//	@Success		200	{object}	store.Application
-//	@Failure		400	{object}	object{error=string}	"Missing required fields"
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		404	{object}	object{error=string}
-//	@Failure		409	{object}	object{error=string}	"Application not in draft status"
-//	@Security		CookieAuth
-//	@Router			/applications/me/submit [post]
+// @Summary		Submit application
+// @Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
+// @Tags			hackers
+// @Produce		json
+// @Success		200	{object}	store.Application
+// @Failure		400	{object}	object{error=string}	"Missing required fields"
+// @Failure		401	{object}	object{error=string}
+// @Failure		404	{object}	object{error=string}
+// @Failure		409	{object}	object{error=string}	"Application not in draft status"
+// @Security		CookieAuth
+// @Router			/applications/me/submit [post]
 func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -388,16 +388,16 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 
 // getApplicationStatsHandler returns aggregated statistics for all applications
 //
-//	@Summary		Get application stats (Admin)
-//	@Description	Returns aggregated statistics for all applications
-//	@Tags			admin
-//	@Produce		json
-//	@Success		200	{object}	store.ApplicationStats
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/admin/applications/stats [get]
+// @Summary		Get application stats (Admin)
+// @Description	Returns aggregated statistics for all applications
+// @Tags			admin/applications
+// @Produce		json
+// @Success		200	{object}	store.ApplicationStats
+// @Failure		401	{object}	object{error=string}
+// @Failure		403	{object}	object{error=string}
+// @Failure		500	{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/admin/applications/stats [get]
 func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *http.Request) {
 	stats, err := app.store.Application.GetStats(r.Context())
 	if err != nil {
@@ -412,21 +412,22 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 
 // listApplicationsHandler lists all applications with cursor-based pagination
 //
-//	@Summary		List applications (Admin)
-//	@Description	Lists all applications with cursor-based pagination and optional status filter
-//	@Tags			admin
-//	@Produce		json
-//	@Param			cursor		query		string	false	"Pagination cursor"
-//	@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
-//	@Param			limit		query		int		false	"Page size (default 50, max 100)"
-//	@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
-//	@Success		200			{object}	store.ApplicationListResult
-//	@Failure		400			{object}	object{error=string}
-//	@Failure		401			{object}	object{error=string}
-//	@Failure		403			{object}	object{error=string}
-//	@Failure		500			{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/admin/applications [get]
+// @Summary		List applications (Admin)
+// @Description	Lists all applications with cursor-based pagination and optional status filter
+// @Tags			admin/applications
+// @Produce		json
+// @Param			cursor		query		string	false	"Pagination cursor"
+// @Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
+// @Param			limit		query		int		false	"Page size (default 50, max 100)"
+// @Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
+// @Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
+// @Success		200			{object}	store.ApplicationListResult
+// @Failure		400			{object}	object{error=string}
+// @Failure		401			{object}	object{error=string}
+// @Failure		403			{object}	object{error=string}
+// @Failure		500			{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/admin/applications [get]
 func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
@@ -491,6 +492,18 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Parse sort_by
+	if sortStr := query.Get("sort_by"); sortStr != "" {
+		switch store.ApplicationSortBy(sortStr) {
+		case store.SortByCreatedAt, store.SortByAcceptVotes,
+			store.SortByRejectVotes, store.SortByWaitlistVotes:
+			filters.SortBy = store.ApplicationSortBy(sortStr)
+		default:
+			app.badRequestResponse(w, r, errors.New("invalid sort_by value"))
+			return
+		}
+	}
+
 	result, err := app.store.Application.List(r.Context(), filters, cursor, direction, limit)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -510,28 +523,34 @@ type ApplicationResponse struct {
 	Application *store.Application `json:"application"`
 }
 
+type ApplicantInfo struct {
+	Email     string  `json:"email"`
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
+}
+
 type EmailListResponse struct {
-	Emails []string `json:"emails"`
-	Count  int      `json:"count"`
+	Applicants []ApplicantInfo `json:"applicants"`
+	Count      int             `json:"count"`
 }
 
 // setApplicationStatus sets the final status on an application
 //
-//	@Summary		Set application status (Super Admin)
-//	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
-//	@Tags			superadmin
-//	@Accept			json
-//	@Produce		json
-//	@Param			applicationID	path		string				true	"Application ID"
-//	@Param			status			body		SetStatusPayload	true	"New status"
-//	@Success		200				{object}	ApplicationResponse
-//	@Failure		400				{object}	object{error=string}
-//	@Failure		401				{object}	object{error=string}
-//	@Failure		403				{object}	object{error=string}
-//	@Failure		404				{object}	object{error=string}
-//	@Failure		500				{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/applications/{applicationID}/status [patch]
+// @Summary		Set application status (Super Admin)
+// @Description	Sets the final status (accepted, rejected, or waitlisted) on an application
+// @Tags			superadmin/applications
+// @Accept			json
+// @Produce		json
+// @Param			applicationID	path		string				true	"Application ID"
+// @Param			status			body		SetStatusPayload	true	"New status"
+// @Success		200				{object}	ApplicationResponse
+// @Failure		400				{object}	object{error=string}
+// @Failure		401				{object}	object{error=string}
+// @Failure		403				{object}	object{error=string}
+// @Failure		404				{object}	object{error=string}
+// @Failure		500				{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/superadmin/applications/{applicationID}/status [patch]
 func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Request) {
 	applicationID := chi.URLParam(r, "applicationID")
 	if applicationID == "" {
@@ -567,18 +586,18 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 
 // getApplication returns a single application by ID with embedded questions
 //
-//	@Summary		Get application by ID (Admin)
-//	@Description	Returns a single application by its ID with embedded short answer questions
-//	@Tags			admin
-//	@Produce		json
-//	@Param			applicationID	path		string	true	"Application ID"
-//	@Success		200				{object}	ApplicationWithQuestions
-//	@Failure		400				{object}	object{error=string}
-//	@Failure		401				{object}	object{error=string}
-//	@Failure		403				{object}	object{error=string}
-//	@Failure		404				{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/admin/applications/{applicationID} [get]
+// @Summary		Get application by ID (Admin)
+// @Description	Returns a single application by its ID with embedded short answer questions
+// @Tags			admin/applications
+// @Produce		json
+// @Param			applicationID	path		string	true	"Application ID"
+// @Success		200				{object}	ApplicationWithQuestions
+// @Failure		400				{object}	object{error=string}
+// @Failure		401				{object}	object{error=string}
+// @Failure		403				{object}	object{error=string}
+// @Failure		404				{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/admin/applications/{applicationID} [get]
 func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	applicationID := chi.URLParam(r, "applicationID")
 	if applicationID == "" {
@@ -616,18 +635,18 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 
 // getApplicantEmailsByStatusHandler returns applicant emails filtered by status
 //
-//	@Summary		Get applicant emails by status (Super Admin)
-//	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
-//	@Tags			superadmin
-//	@Produce		json
-//	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
-//	@Success		200		{object}	EmailListResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/applications/emails [get]
+// @Summary		Get applicant emails by status (Super Admin)
+// @Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
+// @Tags			superadmin/applications
+// @Produce		json
+// @Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
+// @Success		200		{object}	EmailListResponse
+// @Failure		400		{object}	object{error=string}
+// @Failure		401		{object}	object{error=string}
+// @Failure		403		{object}	object{error=string}
+// @Failure		500		{object}	object{error=string}
+// @Security		CookieAuth
+// @Router			/superadmin/applications/emails [get]
 func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
 	statusStr := r.URL.Query().Get("status")
 	if statusStr == "" {
@@ -649,14 +668,18 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	emails := make([]string, len(users))
+	applicants := make([]ApplicantInfo, len(users))
 	for i, u := range users {
-		emails[i] = u.Email
+		applicants[i] = ApplicantInfo{
+			Email:     u.Email,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+		}
 	}
 
 	response := EmailListResponse{
-		Emails: emails,
-		Count:  len(emails),
+		Applicants: applicants,
+		Count:      len(applicants),
 	}
 
 	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
