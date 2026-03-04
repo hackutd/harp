@@ -56,7 +56,7 @@ func main() {
 		env: env.GetString("ENV", "development"),
 		mail: mailConfig{
 			sendGrid: sendGridConfig{
-				apiKey: env.GetRequiredString("SENDGRID_API_KEY"),
+				apiKey: env.GetString("SENDGRID_API_KEY",""),
 			},
 			fromEmail: env.GetString("MAIL_FROM", "noreply@hackportal.com"),
 		},
