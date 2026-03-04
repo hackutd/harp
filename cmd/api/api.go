@@ -112,7 +112,7 @@ func (app *application) mount() http.Handler {
 	}
 	if app.config.publicCORSOrigin != "" {
 		allowedOrigins = append(allowedOrigins, app.config.publicCORSOrigin)
-	}
+}
 	if len(allowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   allowedOrigins,
@@ -132,7 +132,7 @@ func (app *application) mount() http.Handler {
 	}
 
 	r.Route("/v1", func(r chi.Router) {
-		// Public API (API key auth, no SuperTokens session needed)
+		// Public API (key auth)
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)
 			r.Get("/schedule", app.getPublicScheduleHandler)
