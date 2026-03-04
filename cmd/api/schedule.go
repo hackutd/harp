@@ -34,7 +34,7 @@ type ScheduleItemResponse struct {
 //
 //	@Summary		List schedule (Super Admin)
 //	@Description	Returns the full event schedule, ordered by start time ascending
-//	@Tags			superadmin
+//	@Tags			superadmin/schedule
 //	@Produce		json
 //	@Success		200	{object}	ScheduleListResponse
 //	@Failure		401	{object}	object{error=string}
@@ -58,7 +58,7 @@ func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Reque
 //
 //	@Summary		Create schedule item (Super Admin)
 //	@Description	Creates a new event in the schedule
-//	@Tags			superadmin
+//	@Tags			superadmin/schedule
 //	@Accept			json
 //	@Produce		json
 //	@Param			schedule	body		CreateSchedulePayload	true	"Schedule item to create"
@@ -109,7 +109,7 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 //
 //	@Summary		Update schedule item (Super Admin)
 //	@Description	Updates an existing event in the schedule
-//	@Tags			superadmin
+//	@Tags			superadmin/schedule
 //	@Accept			json
 //	@Produce		json
 //	@Param			scheduleID	path		string					true	"Schedule item ID"
@@ -169,7 +169,7 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 //
 //	@Summary		Delete schedule item (Super Admin)
 //	@Description	Deletes an event from the schedule
-//	@Tags			superadmin
+//	@Tags			superadmin/schedule
 //	@Param			scheduleID	path	string	true	"Schedule item ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
