@@ -62,11 +62,11 @@ export function ScheduleGrid({
             gridTemplateColumns: `72px repeat(${scheduleDays.length}, minmax(160px, 1fr))`,
           }}
         >
-          <div className="bg-muted/30 sticky left-0 z-20 border-r border-b p-3" />
+          <div className="bg-muted/30 sticky top-0 left-0 z-40 border-r border-b p-3" />
           {scheduleDays.map((day) => (
             <div
               key={day.toISOString()}
-              className="bg-muted/30 border-b p-3 text-center text-sm font-medium"
+              className="bg-muted/30 sticky top-0 z-30 border-b p-3 text-center text-sm font-medium"
             >
               {formatDayHeader(day)}
             </div>

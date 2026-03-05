@@ -75,7 +75,7 @@ export const ScheduleGridRow = memo(
     eightAmRowRef,
   }: ScheduleGridRowProps) {
     const isHourBoundary = quarter % 4 === 0;
-    const isThirtyMinuteBoundary = quarter % 2 === 0;
+    const isThirtyMinuteBoundary = quarter % 2 === 0 && quarter !== 0;
     const showTime = isHourBoundary && quarter !== 0;
 
     return (
