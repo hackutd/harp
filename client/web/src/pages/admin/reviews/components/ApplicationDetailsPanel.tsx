@@ -1,54 +1,53 @@
-import { Check, Pencil, X } from "lucide-react";
-import { useState } from "react";
+import { ExternalLink, Loader2 } from "lucide-react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { errorAlert } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
-import { setAIPercent } from "../api";
+import { fetchApplicationResumeURL } from "../../all-applicants/api";
 import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
   application: Application;
   selectedReview: Review;
   isExpanded: boolean;
-  onAipercentUpdate: (percent: number) => void;
 }
 
 export function ApplicationDetailsPanel({
   application,
   selectedReview,
   isExpanded,
-  onAipercentUpdate,
 }: ApplicationDetailsPanelProps) {
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
+  const [isOpeningResume, setIsOpeningResume] = useState(false);
 
-  const [editing, setEditing] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-
-  function startEditing() {
-    setInputValue(application.ai_percent?.toString() ?? "");
-    setEditing(true);
-  }
-
-  function cancelEditing() {
-    setEditing(false);
-  }
-
-  async function saveEditing() {
-    const percent = Number(inputValue);
-    const result = await setAIPercent(application.id, { ai_percent: percent });
-    if (result.success) {
-      onAipercentUpdate(percent);
-      toast.success("AI percent saved");
-    } else {
-      toast.error(result.error ?? "Failed to set AI percent");
+  const handleViewResume = useCallback(async () => {
+    if (!application.resume_path || isOpeningResume) {
+      return;
     }
-    setEditing(false);
-  }
+
+    const resumeTab = window.open("", "_blank");
+    if (!resumeTab) {
+      toast.error("Please allow popups to view resumes.");
+      return;
+    }
+
+    setIsOpeningResume(true);
+    const res = await fetchApplicationResumeURL(application.id);
+
+    if (res.status === 200 && res.data?.download_url) {
+      resumeTab.location.href = res.data.download_url;
+    } else {
+      resumeTab.close();
+      errorAlert(res, "Failed to open resume");
+    }
+
+    setIsOpeningResume(false);
+  }, [application.id, application.resume_path, isOpeningResume]);
 
   return (
     <div className="space-y-6 pb-2">
@@ -154,66 +153,6 @@ export function ApplicationDetailsPanel({
                 </div>
               ))}
           </div>
-          <div>
-            <div className="text-sm pt-3">
-              <Label className="text-muted-foreground text-xs">
-                AI percent
-              </Label>
-              {editing ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    className="h-7 w-24 text-sm"
-                    autoFocus
-                  />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={saveEditing}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={cancelEditing}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 mt-1">
-                  {application.ai_percent != null ? (
-                    <div
-                      className="flex items-center gap-2 cursor-not-allowed"
-                      title="AI percent has already been set and cannot be changed"
-                    >
-                      <p>{application.ai_percent}%</p>
-                      <Pencil className="h-3 w-3 text-muted-foreground opacity-40" />
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-muted-foreground italic">Not set</p>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6"
-                        onClick={startEditing}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -259,7 +198,10 @@ export function ApplicationDetailsPanel({
       </div>
 
       {/* Links */}
-      {(application.github || application.linkedin || application.website) && (
+      {(application.github ||
+        application.linkedin ||
+        application.website ||
+        application.resume_path) && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Links</h4>
           <div
@@ -273,7 +215,7 @@ export function ApplicationDetailsPanel({
                     href={application.github}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all"
+                    className="text-blue-600 hover:underline break-all cursor-pointer"
                   >
                     {application.github}
                   </a>
@@ -290,7 +232,7 @@ export function ApplicationDetailsPanel({
                     href={application.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all"
+                    className="text-blue-600 hover:underline break-all cursor-pointer"
                   >
                     {application.linkedin}
                   </a>
@@ -305,11 +247,37 @@ export function ApplicationDetailsPanel({
                     href={application.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all"
+                    className="text-blue-600 hover:underline break-all cursor-pointer"
                   >
                     {application.website}
                   </a>
                 </p>
+              </div>
+            )}
+            {application.resume_path && (
+              <div>
+                <Label className="text-muted-foreground text-xs">Resume</Label>
+                <div className="pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewResume}
+                    disabled={isOpeningResume}
+                  >
+                    {isOpeningResume ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Opening...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Resume
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
