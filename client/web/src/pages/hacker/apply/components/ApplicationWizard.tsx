@@ -12,11 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  errorAlert,
-  getRequest,
-  postRequest,
-} from "@/shared/lib/api";
+import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import type { Application, ShortAnswerQuestion } from "@/types";
 
 import {
