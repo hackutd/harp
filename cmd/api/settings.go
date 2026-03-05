@@ -19,7 +19,7 @@ type ShortAnswerQuestionsResponse struct {
 //
 // @Summary		Get short answer questions (Super Admin)
 // @Description	Returns all configurable short answer questions for hacker applications
-// @Tags			superadmin
+// @Tags			superadmin/settings
 // @Produce		json
 // @Success		200	{object}	ShortAnswerQuestionsResponse
 // @Failure		401	{object}	object{error=string}
@@ -47,7 +47,7 @@ func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.R
 //
 // @Summary		Update short answer questions (Super Admin)
 // @Description	Replaces all short answer questions with the provided array
-// @Tags			superadmin
+// @Tags			superadmin/settings
 // @Accept			json
 // @Produce		json
 // @Param			questions	body		UpdateShortAnswerQuestionsPayload	true	"Questions to set"
@@ -104,7 +104,7 @@ type ReviewsPerAppResponse struct {
 //
 // @Summary		Get reviews per application (Super Admin)
 // @Description	Returns the number of reviews required per application
-// @Tags			superadmin
+// @Tags			superadmin/settings
 // @Produce		json
 // @Success		200	{object}	ReviewsPerAppResponse
 // @Failure		401	{object}	object{error=string}
@@ -132,7 +132,7 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 //
 // @Summary		Set reviews per application (Super Admin)
 // @Description	Sets the number of reviews required per application
-// @Tags			superadmin
+// @Tags			superadmin/settings
 // @Accept			json
 // @Produce		json
 // @Param			reviews_per_application	body		SetReviewsPerAppPayload	true	"Reviews per application value"
@@ -181,7 +181,7 @@ type ReviewAssignmentToggleResponse struct {
 //
 //	@Summary		Get review assignment enabled state (Super Admin)
 //	@Description	Returns whether automatic review assignment is enabled
-//	@Tags			superadmin
+//	@Tags			superadmin/settings
 //	@Produce		json
 //	@Success		200	{object}	ReviewAssignmentToggleResponse
 //	@Failure		401	{object}	object{error=string}
@@ -215,7 +215,7 @@ func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http
 //
 //	@Summary		Set review assignment enabled state (Super Admin)
 //	@Description	Updates whether automatic review assignment is enabled
-//	@Tags			superadmin
+//	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			enabled	body		SetReviewAssignmentTogglePayload	true	"Review assignment enabled state"

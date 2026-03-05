@@ -62,6 +62,12 @@ type Storage struct {
 		AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error)
 		SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error
 	}
+	Schedule interface {
+		List(ctx context.Context) ([]ScheduleItem, error)
+		Create(ctx context.Context, item *ScheduleItem) error
+		Update(ctx context.Context, item *ScheduleItem) error
+		Delete(ctx context.Context, id string) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -71,5 +77,6 @@ func NewStorage(db *sql.DB) Storage {
 		Settings:           &SettingsStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
+		Schedule:           &ScheduleStore{db: db},
 	}
 }

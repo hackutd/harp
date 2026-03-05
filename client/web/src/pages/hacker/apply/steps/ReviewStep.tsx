@@ -29,6 +29,7 @@ interface ReviewStepProps {
   onEditStep: (stepIndex: number) => void;
   userEmail?: string;
   questions: ShortAnswerQuestion[];
+  hasResume: boolean;
 }
 
 // Helper to get label from options
@@ -83,6 +84,7 @@ export function ReviewStep({
   onEditStep,
   userEmail,
   questions,
+  hasResume,
 }: ReviewStepProps) {
   const form = useFormContext<ApplicationFormData>();
   const values = form.watch();
@@ -226,6 +228,10 @@ export function ReviewStep({
           value={values.linkedin || "Not provided"}
         />
         <ReviewField label="Website" value={values.website || "Not provided"} />
+        <ReviewField
+          label="Resume"
+          value={hasResume ? "Uploaded" : "Not provided"}
+        />
       </ReviewSection>
 
       {/* Acknowledgments */}

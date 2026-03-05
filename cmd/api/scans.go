@@ -33,7 +33,7 @@ type UpdateScanTypesPayload struct {
 //
 //	@Summary		Get scan types (Admin)
 //	@Description	Returns all configured scan types for the hackathon
-//	@Tags			admin
+//	@Tags			admin/scans
 //	@Produce		json
 //	@Success		200	{object}	ScanTypesResponse
 //	@Failure		401	{object}	object{error=string}
@@ -57,7 +57,7 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 //
 // @Summary		Create a scan (Admin)
 // @Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.
-// @Tags			admin
+// @Tags			admin/scans
 // @Accept			json
 // @Produce		json
 // @Param			scan	body		CreateScanPayload	true	"Scan to create"
@@ -157,7 +157,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 //
 // @Summary		Get scans for a user (Admin)
 // @Description	Returns all scan records for the specified user, ordered by most recent first
-// @Tags			admin
+// @Tags			admin/scans
 // @Produce		json
 // @Param			userID	path		string	true	"User ID"
 // @Success		200		{object}	ScansResponse
@@ -189,7 +189,7 @@ func (app *application) getUserScansHandler(w http.ResponseWriter, r *http.Reque
 //
 // @Summary		Get scan statistics (Admin)
 // @Description	Returns aggregate scan counts grouped by scan type
-// @Tags			admin
+// @Tags			admin/scans
 // @Produce		json
 // @Success		200	{object}	ScanStatsResponse
 // @Failure		401	{object}	object{error=string}
@@ -213,7 +213,7 @@ func (app *application) getScanStatsHandler(w http.ResponseWriter, r *http.Reque
 //
 // @Summary		Update scan types (Super Admin)
 // @Description	Replaces all scan types with the provided array. Must include at least one check_in category type. Names must be unique.
-// @Tags			superadmin
+// @Tags			superadmin/settings
 // @Accept			json
 // @Produce		json
 // @Param			scan_types	body		UpdateScanTypesPayload	true	"Scan types to set"

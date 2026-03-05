@@ -41,7 +41,7 @@ type AIPercentResponse struct {
 //
 //	@Summary		Get pending reviews (Admin)
 //	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	PendingReviewsListResponse
 //	@Failure		401	{object}	object{error=string}
@@ -71,7 +71,7 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 //
 //	@Summary		Get completed reviews (Admin)
 //	@Description	Returns all reviews the current admin has completed (voted on), including application details
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	CompletedReviewsListResponse
 //	@Failure		401	{object}	object{error=string}
@@ -101,7 +101,7 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 //
 //	@Summary		Get notes for an application (Admin)
 //	@Description	Returns all reviewer notes for a specific application without exposing votes
-//	@Tags			admin
+//	@Tags			admin/applications
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
 //	@Success		200				{object}	NotesListResponse
@@ -137,7 +137,7 @@ func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Reque
 //
 //	@Summary		Batch assign reviews (SuperAdmin)
 //	@Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
-//	@Tags			superadmin
+//	@Tags			superadmin/applications
 //	@Produce		json
 //	@Success		200	{object}	store.BatchAssignmentResult
 //	@Failure		401	{object}	object{error=string}
@@ -167,7 +167,7 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 //
 //	@Summary		Get next review assignment (Admin)
 //	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	ReviewResponse
 //	@Failure		401	{object}	object{error=string}
@@ -209,7 +209,7 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Submit vote on a review (Admin)
 //	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Accept			json
 //	@Produce		json
 //	@Param			reviewID	path		string				true	"Review ID"
@@ -266,7 +266,7 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Set AI percent on a review (Admin)
 //	@Description	Records the estimated AI-generated content percent for an application assigned to the current admin
-//	@Tags			admin
+//	@Tags			admin/applications
 //	@Accept			json
 //	@Produce		json
 //	@Param			applicationID	path		string				true	"Application ID"

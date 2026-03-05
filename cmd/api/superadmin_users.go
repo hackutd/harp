@@ -26,7 +26,7 @@ type UpdateRoleResponse struct {
 //
 // @Summary		Search users (Super Admin)
 // @Description	Searches users by email, first name, or last name using trigram matching
-// @Tags			superadmin
+// @Tags			superadmin/users
 // @Produce		json
 // @Param			search	query		string	true	"Search query (min 2 chars)"
 // @Param			limit	query		int		false	"Page size (default 20, max 100)"
@@ -90,7 +90,7 @@ func (app *application) searchUsersHandler(w http.ResponseWriter, r *http.Reques
 //
 // @Summary		Update user role (Super Admin)
 // @Description	Updates the role of a user by their ID
-// @Tags			superadmin
+// @Tags			superadmin/users
 // @Accept			json
 // @Produce		json
 // @Param			userID	path		string				true	"User ID"

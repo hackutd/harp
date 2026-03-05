@@ -277,6 +277,34 @@ func (m *MockScansStore) HasCheckIn(ctx context.Context, userID string, checkInT
 	return args.Bool(0), args.Error(1)
 }
 
+// MockScheduleStore is a mock implementation of the Schedule interface
+type MockScheduleStore struct {
+	mock.Mock
+}
+
+func (m *MockScheduleStore) List(ctx context.Context) ([]ScheduleItem, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScheduleItem), args.Error(1)
+}
+
+func (m *MockScheduleStore) Create(ctx context.Context, item *ScheduleItem) error {
+	args := m.Called(item)
+	return args.Error(0)
+}
+
+func (m *MockScheduleStore) Update(ctx context.Context, item *ScheduleItem) error {
+	args := m.Called(item)
+	return args.Error(0)
+}
+
+func (m *MockScheduleStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
@@ -285,5 +313,6 @@ func NewMockStore() Storage {
 		Settings:           &MockSettingsStore{},
 		ApplicationReviews: &MockApplicationReviewsStore{},
 		Scans:              &MockScansStore{},
+		Schedule:           &MockScheduleStore{},
 	}
 }
