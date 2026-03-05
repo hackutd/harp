@@ -87,6 +87,18 @@ export async function fetchApplicationResumeURL(
 }
 
 /**
+ * Fetch a signed resume URL for admin viewing
+ */
+export async function fetchApplicationResumeURL(
+  id: string,
+): Promise<ApiResponse<ResumeDownloadURLResponse>> {
+  return getRequest<ResumeDownloadURLResponse>(
+    `/admin/applications/${id}/resume-url`,
+    "resume",
+  );
+}
+
+/**
  * Update application status
  */
 export async function updateApplicationStatus(
