@@ -166,3 +166,87 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 		app.internalServerError(w, r, err)
 	}
 }
+
+// SetReviewAssignmentTogglePayload for setting whether review assignment is enabled
+type SetReviewAssignmentTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+// ReviewAssignmentToggleResponse wraps the review assignment enabled value for API response
+type ReviewAssignmentToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getReviewAssignmentToggle returns the current review assignment enabled setting
+//
+//	@Summary		Get review assignment enabled state (Super Admin)
+//	@Description	Returns whether automatic review assignment is enabled
+//	@Tags			superadmin
+//	@Produce		json
+//	@Success		200	{object}	ReviewAssignmentToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/review-assignment-toggle [get]
+func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.internalServerError(w, r, errors.New("user not in context"))
+		return
+	}
+
+	enabled, err := app.store.Settings.GetReviewAssignmentToggle(r.Context(), user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ReviewAssignmentToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setReviewAssignmentToggle updates the review assignment enabled setting
+//
+//	@Summary		Set review assignment enabled state (Super Admin)
+//	@Description	Updates whether automatic review assignment is enabled
+//	@Tags			superadmin
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetReviewAssignmentTogglePayload	true	"Review assignment enabled state"
+//	@Success		200		{object}	ReviewAssignmentToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/review-assignment-toggle [post]
+func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetReviewAssignmentTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.internalServerError(w, r, errors.New("user not in context"))
+		return
+	}
+
+	if err := app.store.Settings.SetReviewAssignmentToggle(r.Context(), user.ID, req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ReviewAssignmentToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}

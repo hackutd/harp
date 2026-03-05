@@ -25,9 +25,9 @@ export function StatusFilterTabs({
     <Tabs
       value={currentStatus ?? "all"}
       onValueChange={handleValueChange}
-      className="w-auto"
+      className="min-w-0"
     >
-      <TabsList>
+      <TabsList className="h-auto flex-wrap justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5">
         <TabsTrigger
           value="all"
           disabled={loading}
