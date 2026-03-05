@@ -93,16 +93,28 @@ const (
 	DirectionBackward PaginationDirection = "backward"
 )
 
+// ApplicationSortBy defines the column to sort the application list by
+type ApplicationSortBy string
+
+const (
+	SortByCreatedAt     ApplicationSortBy = "created_at"
+	SortByAcceptVotes   ApplicationSortBy = "accept_votes"
+	SortByRejectVotes   ApplicationSortBy = "reject_votes"
+	SortByWaitlistVotes ApplicationSortBy = "waitlist_votes"
+)
+
 // ApplicationCursor represents pagination cursor
 type ApplicationCursor struct {
 	CreatedAt time.Time `json:"c"`
 	ID        string    `json:"i"`
+	SortVal   *int      `json:"v,omitempty"` // used for vote-column sorting
 }
 
 // ApplicationListFilters for query filtering
 type ApplicationListFilters struct {
 	Status *ApplicationStatus
 	Search *string
+	SortBy ApplicationSortBy
 }
 
 // ApplicationListItem is a lightweight view for admin listing
@@ -130,6 +142,7 @@ type ApplicationListItem struct {
 	ReviewsAssigned         int               `json:"reviews_assigned"`
 	ReviewsCompleted        int               `json:"reviews_completed"`
 	AIPercent               *int              `json:"ai_percent"`
+	HasResume               bool              `json:"has_resume"`
 }
 
 // ApplicationListResult contains paginated results
@@ -151,9 +164,16 @@ type ApplicationStats struct {
 	AcceptanceRate    float64 `json:"acceptance_rate"`
 }
 
-// EncodeCursor creates a base64-encoded cursor string
+// EncodeCursor creates a base64-encoded cursor string for created_at sorting
 func EncodeCursor(createdAt time.Time, id string) string {
 	cursor := ApplicationCursor{CreatedAt: createdAt, ID: id}
+	data, _ := json.Marshal(cursor)
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+// EncodeSortCursor creates a base64-encoded cursor string for vote-column sorting
+func EncodeSortCursor(sortVal int, id string) string {
+	cursor := ApplicationCursor{ID: id, SortVal: &sortVal}
 	data, _ := json.Marshal(cursor)
 	return base64.URLEncoding.EncodeToString(data)
 }
@@ -168,8 +188,12 @@ func DecodeCursor(encoded string) (*ApplicationCursor, error) {
 	if err := json.Unmarshal(data, &cursor); err != nil {
 		return nil, fmt.Errorf("invalid cursor format")
 	}
-	if cursor.ID == "" || cursor.CreatedAt.IsZero() {
-		return nil, fmt.Errorf("invalid cursor: missing fields")
+	// Valid if either (CreatedAt + ID) or (SortVal + ID)
+	if cursor.ID == "" {
+		return nil, fmt.Errorf("invalid cursor: missing id")
+	}
+	if cursor.CreatedAt.IsZero() && cursor.SortVal == nil {
+		return nil, fmt.Errorf("invalid cursor: missing sort value")
 	}
 	return &cursor, nil
 }
@@ -203,9 +227,10 @@ type Application struct {
 	DietaryRestrictions []string `json:"dietary_restrictions"`
 	Accommodations      *string  `json:"accommodations"`
 
-	Github   *string `json:"github" validate:"omitempty,url"`
-	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
-	Website  *string `json:"website" validate:"omitempty,url"`
+	Github     *string `json:"github" validate:"omitempty,url"`
+	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
+	Website    *string `json:"website" validate:"omitempty,url"`
+	ResumePath *string `json:"resume_path"`
 
 	AckApplication bool `json:"ack_application"`
 	AckMLHCOC      bool `json:"ack_mlh_coc"`
@@ -241,7 +266,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website,
+			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
 			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percent
@@ -258,7 +283,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website,
+		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercent,
@@ -285,7 +310,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website,
+			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
 			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
@@ -302,7 +327,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website,
+		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
@@ -371,6 +396,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 			github = $20,
 			linkedin = $21,
 			website = $22,
+			resume_path = $27,
 			ack_application = $23,
 			ack_mlh_coc = $24,
 			ack_mlh_privacy = $25,
@@ -389,6 +415,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 		app.ShirtSize, StringArray(app.DietaryRestrictions), app.Accommodations,
 		app.Github, app.LinkedIn, app.Website,
 		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
+		app.ResumePath,
 	).Scan(&app.UpdatedAt)
 
 	if err != nil {
@@ -423,7 +450,46 @@ func (s *ApplicationsStore) Submit(ctx context.Context, app *Application) error 
 	return nil
 }
 
-// Cursor pagination for applciations
+// sortColumnName returns the SQL column name for a given sort key.
+// Only whitelisted values are accepted to prevent SQL injection.
+func sortColumnName(sortBy ApplicationSortBy) string {
+	switch sortBy {
+	case SortByAcceptVotes:
+		return "a.accept_votes"
+	case SortByRejectVotes:
+		return "a.reject_votes"
+	case SortByWaitlistVotes:
+		return "a.waitlist_votes"
+	default:
+		return "a.created_at"
+	}
+}
+
+// isVoteSort returns true if sorting by a vote column instead of created_at
+func isVoteSort(sortBy ApplicationSortBy) bool {
+	switch sortBy {
+	case SortByAcceptVotes, SortByRejectVotes, SortByWaitlistVotes:
+		return true
+	default:
+		return false
+	}
+}
+
+// getVoteVal extracts the vote count from an ApplicationListItem based on the sort column
+func getVoteVal(item ApplicationListItem, sortBy ApplicationSortBy) int {
+	switch sortBy {
+	case SortByAcceptVotes:
+		return item.AcceptVotes
+	case SortByRejectVotes:
+		return item.RejectVotes
+	case SortByWaitlistVotes:
+		return item.WaitlistVotes
+	default:
+		return 0
+	}
+}
+
+// Cursor pagination for applications
 func (s *ApplicationsStore) List(
 	ctx context.Context,
 	filters ApplicationListFilters,
@@ -442,72 +508,105 @@ func (s *ApplicationsStore) List(
 		limit = 100
 	}
 
-	var cursorTime *time.Time
-	var cursorID *string
-	if cursor != nil {
-		cursorTime = &cursor.CreatedAt
-		cursorID = &cursor.ID
+	sortBy := filters.SortBy
+	if sortBy == "" {
+		sortBy = SortByCreatedAt
 	}
+	voteSort := isVoteSort(sortBy)
+	col := sortColumnName(sortBy)
 
-	// Forward query (default): ORDER BY created_at DESC, id DESC
-	// Backward query: ORDER BY created_at ASC, id ASC (then reverse results)
 	var searchParam *string
 	if filters.Search != nil {
 		searchParam = filters.Search
 	}
 
-	var query string
-	if direction == DirectionBackward && cursor != nil {
-		query = `
-			SELECT a.id, a.user_id, u.email, a.status,
-			       a.first_name, a.last_name, a.phone_e164, a.age,
-			       a.country_of_residence, a.gender,
-			       a.university, a.major, a.level_of_study,
-			       a.hackathons_attended_count,
-			       a.submitted_at, a.created_at, a.updated_at,
-			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
-			FROM applications a
-			INNER JOIN users u ON a.user_id = u.id
-			WHERE ($1::application_status IS NULL OR a.status = $1)
-			  AND (a.created_at, a.id) > ($2, $3::uuid)
-			  AND ($5::text IS NULL OR (
-			      u.email ILIKE '%' || $5 || '%'
-			      OR a.first_name ILIKE '%' || $5 || '%'
-			      OR a.last_name ILIKE '%' || $5 || '%'
-			  ))
-			ORDER BY a.created_at ASC, a.id ASC
-			LIMIT $4`
-	} else {
-		query = `
-			SELECT a.id, a.user_id, u.email, a.status,
-			       a.first_name, a.last_name, a.phone_e164, a.age,
-			       a.country_of_residence, a.gender,
-			       a.university, a.major, a.level_of_study,
-			       a.hackathons_attended_count,
-			       a.submitted_at, a.created_at, a.updated_at,
-			       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
-			FROM applications a
-			INNER JOIN users u ON a.user_id = u.id
-			WHERE ($1::application_status IS NULL OR a.status = $1)
-			  AND ($2::timestamptz IS NULL OR (a.created_at, a.id) < ($2, $3::uuid))
-			  AND ($5::text IS NULL OR (
-			      u.email ILIKE '%' || $5 || '%'
-			      OR a.first_name ILIKE '%' || $5 || '%'
-			      OR a.last_name ILIKE '%' || $5 || '%'
-			  ))
-			ORDER BY a.created_at DESC, a.id DESC
-			LIMIT $4`
-	}
+	selectCols := `
+		SELECT a.id, a.user_id, u.email, a.status,
+		       a.first_name, a.last_name, a.phone_e164, a.age,
+		       a.country_of_residence, a.gender,
+		       a.university, a.major, a.level_of_study,
+		       a.hackathons_attended_count,
+		       a.submitted_at, a.created_at, a.updated_at,
+		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
+		       a.resume_path IS NOT NULL AS has_resume
+		FROM applications a
+		INNER JOIN users u ON a.user_id = u.id`
+
+	searchClause := `AND ($5::text IS NULL OR (
+		    u.email ILIKE '%' || $5 || '%'
+		    OR a.first_name ILIKE '%' || $5 || '%'
+		    OR a.last_name ILIKE '%' || $5 || '%'
+		))`
 
 	// Fetch limit+1 to determine hasMore
 	queryLimit := limit + 1
 
-	var statusParam interface{}
+	var statusParam any
 	if filters.Status != nil {
 		statusParam = *filters.Status
 	}
 
-	rows, err := s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam)
+	var rows *sql.Rows
+	var err error
+
+	if voteSort {
+		// Vote-column sorting: cursor uses (sort_val, id)
+		var cursorVal *int
+		var cursorID *string
+		if cursor != nil {
+			cursorVal = cursor.SortVal
+			cursorID = &cursor.ID
+		}
+
+		var query string
+		if direction == DirectionBackward && cursor != nil {
+			// Backward: fetch items AFTER cursor in ASC order, then reverse
+			query = fmt.Sprintf(`%s
+				WHERE ($1::application_status IS NULL OR a.status = $1)
+				  AND ($2::int IS NULL OR (%s, a.id) > ($2, $3::uuid))
+				  %s
+				ORDER BY %s ASC, a.id ASC
+				LIMIT $4`, selectCols, col, searchClause, col)
+		} else {
+			// Forward (default): DESC order
+			query = fmt.Sprintf(`%s
+				WHERE ($1::application_status IS NULL OR a.status = $1)
+				  AND ($2::int IS NULL OR (%s, a.id) < ($2, $3::uuid))
+				  %s
+				ORDER BY %s DESC, a.id DESC
+				LIMIT $4`, selectCols, col, searchClause, col)
+		}
+
+		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorVal, cursorID, queryLimit, searchParam)
+	} else {
+		// Default created_at sorting
+		var cursorTime *time.Time
+		var cursorID *string
+		if cursor != nil {
+			cursorTime = &cursor.CreatedAt
+			cursorID = &cursor.ID
+		}
+
+		var query string
+		if direction == DirectionBackward && cursor != nil {
+			query = fmt.Sprintf(`%s
+				WHERE ($1::application_status IS NULL OR a.status = $1)
+				  AND (a.created_at, a.id) > ($2, $3::uuid)
+				  %s
+				ORDER BY a.created_at ASC, a.id ASC
+				LIMIT $4`, selectCols, searchClause)
+		} else {
+			query = fmt.Sprintf(`%s
+				WHERE ($1::application_status IS NULL OR a.status = $1)
+				  AND ($2::timestamptz IS NULL OR (a.created_at, a.id) < ($2, $3::uuid))
+				  %s
+				ORDER BY a.created_at DESC, a.id DESC
+				LIMIT $4`, selectCols, searchClause)
+		}
+
+		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -524,6 +623,7 @@ func (s *ApplicationsStore) List(
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
+			&item.HasResume,
 		); err != nil {
 			return nil, err
 		}
@@ -553,36 +653,39 @@ func (s *ApplicationsStore) List(
 
 	// Generate cursors
 	if len(items) > 0 {
-		//  Going Backwards
 		if direction == DirectionBackward {
 			lastItem := items[len(items)-1]
-			nc := EncodeCursor(lastItem.CreatedAt, lastItem.ID)
+			nc := s.encodeCursorForItem(lastItem, sortBy, voteSort)
 			result.NextCursor = &nc
 
-			// Prev cursor only if there are more items
 			if hasMore {
 				firstItem := items[0]
-				pc := EncodeCursor(firstItem.CreatedAt, firstItem.ID)
+				pc := s.encodeCursorForItem(firstItem, sortBy, voteSort)
 				result.PrevCursor = &pc
 			}
 		} else {
-			// Next cursor (default)
 			if hasMore {
 				lastItem := items[len(items)-1]
-				nc := EncodeCursor(lastItem.CreatedAt, lastItem.ID)
+				nc := s.encodeCursorForItem(lastItem, sortBy, voteSort)
 				result.NextCursor = &nc
 			}
 
-			// Prev cursor
 			if cursor != nil {
 				firstItem := items[0]
-				pc := EncodeCursor(firstItem.CreatedAt, firstItem.ID)
+				pc := s.encodeCursorForItem(firstItem, sortBy, voteSort)
 				result.PrevCursor = &pc
 			}
 		}
 	}
 
 	return result, nil
+}
+
+func (s *ApplicationsStore) encodeCursorForItem(item ApplicationListItem, sortBy ApplicationSortBy, voteSort bool) string {
+	if voteSort {
+		return EncodeSortCursor(getVoteVal(item, sortBy), item.ID)
+	}
+	return EncodeCursor(item.CreatedAt, item.ID)
 }
 
 func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
@@ -600,7 +703,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website,
+			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
 			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
@@ -615,7 +718,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website,
+		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
@@ -668,32 +771,38 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 	return &stats, nil
 }
 
-func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]string, error) {
+type UserEmailInfo struct {
+	UserID    string  `json:"user_id"`
+	Email     string  `json:"email"`
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
+}
+
+func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-				SELECT u.email
-				FROM applications a
-				INNER JOIN users u ON a.user_id = u.id
-				WHERE a.status = $1
-				ORDER BY u.email`
+		SELECT a.user_id, u.email, a.first_name, a.last_name
+		FROM applications a
+		INNER JOIN users u ON a.user_id = u.id
+		WHERE a.status = $1
+		ORDER BY u.email`
 
 	rows, err := s.db.QueryContext(ctx, query, status)
-
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var emails []string
+	var users []UserEmailInfo
 	for rows.Next() {
-		var email string
-		if err := rows.Scan(&email); err != nil {
+		var u UserEmailInfo
+		if err := rows.Scan(&u.UserID, &u.Email, &u.FirstName, &u.LastName); err != nil {
 			return nil, err
 		}
-		emails = append(emails, email)
+		users = append(users, u)
 	}
 
-	return emails, nil
+	return users, rows.Err()
 }
