@@ -37,9 +37,10 @@ type UpdateApplicationPayload struct {
 	DietaryRestrictions *[]string `json:"dietary_restrictions"`
 	Accommodations      *string   `json:"accommodations"`
 
-	Github   *string `json:"github" validate:"omitempty,url"`
-	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
-	Website  *string `json:"website" validate:"omitempty,url"`
+	Github     *string `json:"github" validate:"omitempty,url"`
+	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
+	Website    *string `json:"website" validate:"omitempty,url"`
+	ResumePath *string `json:"resume_path"`
 
 	AckApplication *bool `json:"ack_application"`
 	AckMLHCOC      *bool `json:"ack_mlh_coc"`
@@ -225,6 +226,9 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 	if req.Website != nil {
 		application.Website = req.Website
+	}
+	if req.ResumePath != nil {
+		application.ResumePath = req.ResumePath
 	}
 	if req.AckApplication != nil {
 		application.AckApplication = *req.AckApplication

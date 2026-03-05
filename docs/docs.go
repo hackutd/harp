@@ -440,6 +440,106 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/{applicationID}/resume-url": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS download URL for an application's resume.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/applications"
+                ],
+                "summary": "Get resume download URL (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResumeDownloadURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/reviews/completed": {
             "get": {
                 "security": [
@@ -1133,6 +1233,155 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Application not in draft status",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/applications/me/resume": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Deletes the resume reference from the authenticated user's draft application and best-effort deletes the object from GCS.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Delete resume",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Application"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/applications/me/resume-upload-url": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS upload URL for the authenticated user's resume. Application must be in draft status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Generate resume upload URL",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResumeUploadURLResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -1927,19 +2176,19 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns list of super admins and their review assignment toggle status",
+                "description": "Returns whether automatic review assignment is enabled",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "superadmin/settings"
                 ],
-                "summary": "Get review assignment settings (Super Admin)",
+                "summary": "Get review assignment enabled state (Super Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewAssignmentListResponse"
+                            "$ref": "#/definitions/main.ReviewAssignmentToggleResponse"
                         }
                     },
                     "401": {
@@ -1983,7 +2232,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Updates whether automatic review assignment is enabled for a specific super admin",
+                "description": "Updates whether automatic review assignment is enabled",
                 "consumes": [
                     "application/json"
                 ],
@@ -1993,7 +2242,7 @@ const docTemplate = `{
                 "tags": [
                     "superadmin/settings"
                 ],
-                "summary": "Set review assignment enabled state for a user (Super Admin)",
+                "summary": "Set review assignment enabled state (Super Admin)",
                 "parameters": [
                     {
                         "description": "Review assignment enabled state",
@@ -2736,6 +2985,9 @@ const docTemplate = `{
                 "reject_votes": {
                     "type": "integer"
                 },
+                "resume_path": {
+                    "type": "string"
+                },
                 "reviews_assigned": {
                     "type": "integer"
                 },
@@ -2892,28 +3144,22 @@ const docTemplate = `{
                 }
             }
         },
-        "main.ReviewAssignmentAdmin": {
+        "main.ResumeDownloadURLResponse": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "id": {
+                "download_url": {
                     "type": "string"
                 }
             }
         },
-        "main.ReviewAssignmentListResponse": {
+        "main.ResumeUploadURLResponse": {
             "type": "object",
             "properties": {
-                "admins": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/main.ReviewAssignmentAdmin"
-                    }
+                "resume_path": {
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
                 }
             }
         },
@@ -3005,15 +3251,9 @@ const docTemplate = `{
         },
         "main.SetReviewAssignmentTogglePayload": {
             "type": "object",
-            "required": [
-                "user_id"
-            ],
             "properties": {
                 "enabled": {
                     "type": "boolean"
-                },
-                "user_id": {
-                    "type": "string"
                 }
             }
         },
@@ -3086,105 +3326,7 @@ const docTemplate = `{
             }
         },
         "main.UpdateApplicationPayload": {
-            "type": "object",
-            "properties": {
-                "accommodations": {
-                    "type": "string"
-                },
-                "ack_application": {
-                    "type": "boolean"
-                },
-                "ack_mlh_coc": {
-                    "type": "boolean"
-                },
-                "ack_mlh_privacy": {
-                    "type": "boolean"
-                },
-                "age": {
-                    "type": "integer",
-                    "maximum": 150,
-                    "minimum": 1
-                },
-                "country_of_residence": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "dietary_restrictions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "ethnicity": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "first_name": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "gender": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "github": {
-                    "type": "string"
-                },
-                "hackathons_attended_count": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "heard_about": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "last_name": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "level_of_study": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "linkedin": {
-                    "type": "string"
-                },
-                "major": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "opt_in_mlh_emails": {
-                    "type": "boolean"
-                },
-                "phone_e164": {
-                    "type": "string"
-                },
-                "race": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "shirt_size": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "short_answer_responses": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "software_experience_level": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "university": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "website": {
-                    "type": "string"
-                }
-            }
+            "type": "object"
         },
         "main.UpdateRolePayload": {
             "type": "object",
@@ -3397,6 +3539,9 @@ const docTemplate = `{
                 "reject_votes": {
                     "type": "integer"
                 },
+                "resume_path": {
+                    "type": "string"
+                },
                 "reviews_assigned": {
                     "type": "integer"
                 },
@@ -3470,6 +3615,9 @@ const docTemplate = `{
                 },
                 "hackathons_attended_count": {
                     "type": "integer"
+                },
+                "has_resume": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"
