@@ -142,6 +142,7 @@ type ApplicationListItem struct {
 	ReviewsAssigned         int               `json:"reviews_assigned"`
 	ReviewsCompleted        int               `json:"reviews_completed"`
 	AIPercent               *int              `json:"ai_percent"`
+	HasResume               bool              `json:"has_resume"`
 }
 
 // ApplicationListResult contains paginated results
@@ -226,9 +227,10 @@ type Application struct {
 	DietaryRestrictions []string `json:"dietary_restrictions"`
 	Accommodations      *string  `json:"accommodations"`
 
-	Github   *string `json:"github" validate:"omitempty,url"`
-	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
-	Website  *string `json:"website" validate:"omitempty,url"`
+	Github     *string `json:"github" validate:"omitempty,url"`
+	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
+	Website    *string `json:"website" validate:"omitempty,url"`
+	ResumePath *string `json:"resume_path"`
 
 	AckApplication bool `json:"ack_application"`
 	AckMLHCOC      bool `json:"ack_mlh_coc"`
@@ -264,7 +266,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website,
+			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
 			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percent
@@ -281,7 +283,7 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website,
+		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercent,
@@ -308,7 +310,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website,
+			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
 			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
@@ -325,7 +327,7 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website,
+		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
@@ -394,6 +396,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 			github = $20,
 			linkedin = $21,
 			website = $22,
+			resume_path = $27,
 			ack_application = $23,
 			ack_mlh_coc = $24,
 			ack_mlh_privacy = $25,
@@ -412,6 +415,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 		app.ShirtSize, StringArray(app.DietaryRestrictions), app.Accommodations,
 		app.Github, app.LinkedIn, app.Website,
 		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
+		app.ResumePath,
 	).Scan(&app.UpdatedAt)
 
 	if err != nil {
@@ -523,7 +527,8 @@ func (s *ApplicationsStore) List(
 		       a.university, a.major, a.level_of_study,
 		       a.hackathons_attended_count,
 		       a.submitted_at, a.created_at, a.updated_at,
-		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent
+		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
+		       a.resume_path IS NOT NULL AS has_resume
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -618,6 +623,7 @@ func (s *ApplicationsStore) List(
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
+			&item.HasResume,
 		); err != nil {
 			return nil, err
 		}
@@ -697,7 +703,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 			short_answer_responses,
 			hackathons_attended_count, software_experience_level, heard_about,
 			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website,
+			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
 			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
@@ -712,7 +718,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 		&app.ShortAnswerResponses,
 		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website,
+		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,

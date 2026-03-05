@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hackutd/portal/internal/gcs"
 	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/ratelimiter"
 	"github.com/hackutd/portal/internal/store"
@@ -81,6 +82,7 @@ func newTestApplication(t *testing.T) *application {
 		store:       mockStore,
 		logger:      logger,
 		mailer:      &mailer.MockClient{},
+		gcsClient:   &gcs.MockClient{},
 		rateLimiter: rateLimiter,
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/hackutd/portal/internal/gcs"
 	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/ratelimiter"
 	"github.com/hackutd/portal/internal/store"
@@ -26,6 +27,7 @@ type application struct {
 	store       store.Storage
 	logger      *zap.SugaredLogger
 	mailer      mailer.Client
+	gcsClient   gcs.Client
 	rateLimiter ratelimiter.Limiter
 }
 
@@ -36,6 +38,7 @@ type config struct {
 	appURL           string
 	frontendURL      string
 	mail             mailConfig
+	gcs              gcsConfig
 	auth             authConfig
 	rateLimiter      ratelimiter.Config
 	supertokens      supertokensConfig
@@ -67,6 +70,10 @@ type mailConfig struct {
 
 type sendGridConfig struct {
 	apiKey string
+}
+
+type gcsConfig struct {
+	bucketName string
 }
 
 type dbConfig struct {
@@ -112,7 +119,7 @@ func (app *application) mount() http.Handler {
 	}
 	if app.config.publicCORSOrigin != "" {
 		allowedOrigins = append(allowedOrigins, app.config.publicCORSOrigin)
-}
+	}
 	if len(allowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   allowedOrigins,
@@ -161,6 +168,8 @@ func (app *application) mount() http.Handler {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Patch("/me", app.updateApplicationHandler)
 				r.Post("/me/submit", app.submitApplicationHandler)
+				r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
+				r.Delete("/me/resume", app.deleteResumeHandler)
 			})
 
 			r.Group(func(r chi.Router) {
@@ -173,6 +182,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.listApplicationsHandler)
 						r.Get("/stats", app.getApplicationStatsHandler)
 						r.Get("/{applicationID}", app.getApplication)
+						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
 
 						// Assigned Applications
 						r.Get("/{applicationID}/notes", app.getApplicationNotes)
