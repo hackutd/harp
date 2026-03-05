@@ -20,7 +20,6 @@ const AssignedPage = lazy(() => import("@/pages/admin/assigned/AssignedPage"));
 const CompletedPage = lazy(
   () => import("@/pages/admin/completed/CompletedPage"),
 );
-const FAQsPage = lazy(() => import("@/pages/admin/faqs/FAQsPage"));
 const SchedulePage = lazy(() => import("@/pages/admin/schedule/SchedulePage"));
 const ScansPage = lazy(() => import("@/pages/admin/scans/ScansPage"));
 const DashboardPage = lazy(
@@ -150,14 +149,6 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <CompletedPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "faqs",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <FAQsPage />
           </Suspense>
         ),
       },

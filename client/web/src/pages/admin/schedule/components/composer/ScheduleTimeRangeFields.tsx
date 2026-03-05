@@ -35,11 +35,13 @@ export function ScheduleTimeRangeFields({
             <SelectValue />
           </SelectTrigger>
           <SelectContent
-            className="!max-h-40 overflow-y-auto"
+            className="!max-h-40 overflow-y-auto data-[side=bottom]:translate-y-0"
             position="popper"
+            showScrollButtons={false}
+            matchTriggerHeight={false}
             side="bottom"
             align="start"
-            sideOffset={2}
+            sideOffset={0}
           >
             {Array.from(
               { length: QUARTER_HOUR_SLOTS },
@@ -57,11 +59,13 @@ export function ScheduleTimeRangeFields({
             <SelectValue />
           </SelectTrigger>
           <SelectContent
-            className="!max-h-40 overflow-y-auto"
+            className="!max-h-40 overflow-y-auto data-[side=bottom]:translate-y-0"
             position="popper"
+            showScrollButtons={false}
+            matchTriggerHeight={false}
             side="bottom"
             align="start"
-            sideOffset={2}
+            sideOffset={0}
           >
             {Array.from({ length: QUARTER_HOUR_SLOTS + 1 }, (_, value) => value)
               .filter((value) => value > startQuarter)

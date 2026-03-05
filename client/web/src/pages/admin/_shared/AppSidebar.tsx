@@ -3,7 +3,6 @@
 import {
   Calendar,
   CircleCheck,
-  CircleHelp,
   ClipboardList,
   ScanLine,
   Settings,
@@ -57,11 +56,6 @@ const eventNav = [
     name: "Schedule",
     url: "/admin/schedule",
     icon: Calendar,
-  },
-  {
-    name: "FAQs",
-    url: "/admin/faqs",
-    icon: CircleHelp,
   },
 ];
 
