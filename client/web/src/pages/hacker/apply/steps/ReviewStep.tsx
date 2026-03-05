@@ -228,7 +228,10 @@ export function ReviewStep({
           value={values.linkedin || "Not provided"}
         />
         <ReviewField label="Website" value={values.website || "Not provided"} />
-        <ReviewField label="Resume" value={hasResume ? "Uploaded" : "Not provided"} />
+        <ReviewField
+          label="Resume"
+          value={hasResume ? "Uploaded" : "Not provided"}
+        />
       </ReviewSection>
 
       {/* Acknowledgments */}
