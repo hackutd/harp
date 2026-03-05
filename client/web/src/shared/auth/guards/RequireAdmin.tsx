@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/shared/stores";
 
 interface RequireAdminProps {
@@ -30,10 +31,21 @@ export default function RequireAdmin({ children }: RequireAdminProps) {
   // session loading or fetching user data
   if (session.loading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="flex min-h-screen">
+        <div className="w-56 border-r p-4 space-y-4">
+          <Skeleton className="h-8 w-32" />
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-6 w-full" />
+          ))}
+        </div>
+        <div className="flex-1 p-6 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -47,10 +59,21 @@ export default function RequireAdmin({ children }: RequireAdminProps) {
   // Session exists but no user data - show loading while fetch happens
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="flex min-h-screen">
+        <div className="w-56 border-r p-4 space-y-4">
+          <Skeleton className="h-8 w-32" />
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-6 w-full" />
+          ))}
+        </div>
+        <div className="flex-1 p-6 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       </div>
     );

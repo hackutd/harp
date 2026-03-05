@@ -1,14 +1,14 @@
 "use client";
 
 import {
+  Calendar,
   CircleCheck,
-  LayoutDashboard,
-  Package,
+  ClipboardList,
   ScanLine,
   Settings,
+  Star,
   UserCheck,
   Users,
-  UsersRound,
 } from "lucide-react";
 import * as React from "react";
 import { useLocation } from "react-router-dom";
@@ -53,22 +53,27 @@ const eventNav = [
     icon: ScanLine,
   },
   {
-    name: "Hacker Pack",
-    url: "/admin/hacker-pack",
-    icon: Package,
-  },
-  {
-    name: "Groups",
-    url: "/admin/groups",
-    icon: UsersRound,
+    name: "Schedule",
+    url: "/admin/schedule",
+    icon: Calendar,
   },
 ];
 
 const superAdminNav = [
   {
-    name: "Dashboard",
-    url: "/superadmin",
-    icon: LayoutDashboard,
+    name: "Reviews",
+    url: "/admin/sa/reviews",
+    icon: Star,
+  },
+  {
+    name: "User Management",
+    url: "/admin/sa/user-management",
+    icon: Users,
+  },
+  {
+    name: "Application",
+    url: "/admin/sa/application",
+    icon: ClipboardList,
   },
 ];
 

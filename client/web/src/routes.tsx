@@ -20,18 +20,30 @@ const AssignedPage = lazy(() => import("@/pages/admin/assigned/AssignedPage"));
 const CompletedPage = lazy(
   () => import("@/pages/admin/completed/CompletedPage"),
 );
-const GroupsPage = lazy(() => import("@/pages/admin/groups/GroupsPage"));
-const HackerPackPage = lazy(
-  () => import("@/pages/admin/hacker-pack/HackerPackPage"),
-);
+const SchedulePage = lazy(() => import("@/pages/admin/schedule/SchedulePage"));
 const ScansPage = lazy(() => import("@/pages/admin/scans/ScansPage"));
 const DashboardPage = lazy(
   () => import("@/pages/hacker/dashboard/DashboardPage"),
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
 const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
-const SuperAdminDashboardPage = lazy(
-  () => import("@/pages/superadmin/dashboard/DashboardPage"),
+const SuperAdminUserManagementPage = lazy(
+  () => import("@/pages/superadmin/user-management/UserManagementPage"),
+);
+const SuperAdminApplicationPage = lazy(
+  () => import("@/pages/superadmin/application/ApplicationPage"),
+);
+const SuperAdminReviewsPage = lazy(
+  () => import("@/pages/superadmin/reviews/ReviewsPage"),
+);
+const SuperAdminGradingPage = lazy(
+  () => import("@/pages/superadmin/reviews/grading/GradingPage"),
+);
+const SuperAdminScansPage = lazy(
+  () => import("@/pages/superadmin/scans/ScansPage"),
+);
+const AssignedGradingPage = lazy(
+  () => import("@/pages/admin/assigned/grading/GradingPage"),
 );
 
 export const router = createBrowserRouter([
@@ -125,6 +137,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "assigned/grade",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AssignedGradingPage />
+          </Suspense>
+        ),
+      },
+      {
         path: "completed",
         element: (
           <Suspense fallback={<PageLoader />}>
@@ -133,33 +153,64 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "groups",
+        path: "schedule",
         element: (
           <Suspense fallback={<PageLoader />}>
-            <GroupsPage />
+            <SchedulePage />
           </Suspense>
+        ),
+      },
+      // Super Admin routes (nested under admin layout, guarded individually)
+      {
+        path: "sa/user-management",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminUserManagementPage />
+            </Suspense>
+          </RequireSuperAdmin>
         ),
       },
       {
-        path: "hacker-pack",
+        path: "sa/application",
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <HackerPackPage />
-          </Suspense>
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminApplicationPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/reviews",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminReviewsPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/reviews/grade",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminGradingPage />
+            </Suspense>
+          </RequireSuperAdmin>
+        ),
+      },
+      {
+        path: "sa/scans",
+        element: (
+          <RequireSuperAdmin>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminScansPage />
+            </Suspense>
+          </RequireSuperAdmin>
         ),
       },
     ],
-  },
-
-  // Super Admin routes
-  {
-    path: "/superadmin",
-    element: (
-      <RequireSuperAdmin>
-        <Suspense fallback={<PageLoader />}>
-          <SuperAdminDashboardPage />
-        </Suspense>
-      </RequireSuperAdmin>
-    ),
   },
 ]);

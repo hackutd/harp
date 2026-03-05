@@ -25,6 +25,13 @@ const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
+const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
+const SettingsKeyHackathonDateRange = "hackathon_date_range"
+
+type HackathonDateRange struct {
+	StartDate *string `json:"start_date"`
+	EndDate   *string `json:"end_date"`
+}
 
 // ReviewAssignmentEntry represents a single admin's review assignment toggle state.
 // Used in the review_assignment_toggle settings JSON array.
@@ -352,4 +359,102 @@ func (s *SettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdmi
 	}
 
 	return tx.Commit()
+}
+
+// GetAdminScheduleEditEnabled returns whether admins are allowed to edit schedule.
+// Defaults to true if the setting row does not exist.
+func (s *SettingsStore) GetAdminScheduleEditEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyAdminScheduleEditEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetAdminScheduleEditEnabled updates whether admins are allowed to edit schedule.
+func (s *SettingsStore) SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminScheduleEditEnabled, string(jsonValue))
+	return err
+}
+
+// GetHackathonDateRange returns the configured hackathon start/end dates.
+// Defaults to unconfigured (both null) if the row does not exist.
+func (s *SettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyHackathonDateRange).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return HackathonDateRange{}, nil
+		}
+		return HackathonDateRange{}, err
+	}
+
+	var dateRange HackathonDateRange
+	if err := json.Unmarshal(value, &dateRange); err != nil {
+		return HackathonDateRange{}, err
+	}
+
+	return dateRange, nil
+}
+
+// SetHackathonDateRange updates hackathon start/end dates.
+func (s *SettingsStore) SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(dateRange)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackathonDateRange, string(jsonValue))
+	return err
 }

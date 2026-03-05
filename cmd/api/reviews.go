@@ -29,11 +29,19 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
-// getPendingReviews returns all pending reviews assigned to the current admin
+type SetAIPercentPayload struct {
+	AIPercent int16 `json:"ai_percent" validate:"min=0,max=100"`
+}
+
+type AIPercentResponse struct {
+	AIPercent int16 `json:"ai_percent"`
+}
+
+// getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
 //
 //	@Summary		Get pending reviews (Admin)
 //	@Description	Returns all reviews assigned to the current admin that haven't been voted on yet, including application details
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	PendingReviewsListResponse
 //	@Failure		401	{object}	object{error=string}
@@ -63,7 +71,7 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 //
 //	@Summary		Get completed reviews (Admin)
 //	@Description	Returns all reviews the current admin has completed (voted on), including application details
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	CompletedReviewsListResponse
 //	@Failure		401	{object}	object{error=string}
@@ -93,7 +101,7 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 //
 //	@Summary		Get notes for an application (Admin)
 //	@Description	Returns all reviewer notes for a specific application without exposing votes
-//	@Tags			admin
+//	@Tags			admin/applications
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
 //	@Success		200				{object}	NotesListResponse
@@ -129,7 +137,7 @@ func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Reque
 //
 //	@Summary		Batch assign reviews (SuperAdmin)
 //	@Description	Finds all submitted applications needing more reviews and assigns them to admins using workload balancing
-//	@Tags			superadmin
+//	@Tags			superadmin/applications
 //	@Produce		json
 //	@Success		200	{object}	store.BatchAssignmentResult
 //	@Failure		401	{object}	object{error=string}
@@ -159,7 +167,7 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 //
 //	@Summary		Get next review assignment (Admin)
 //	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	ReviewResponse
 //	@Failure		401	{object}	object{error=string}
@@ -201,7 +209,7 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Submit vote on a review (Admin)
 //	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
-//	@Tags			admin
+//	@Tags			admin/reviews
 //	@Accept			json
 //	@Produce		json
 //	@Param			reviewID	path		string				true	"Review ID"
@@ -248,6 +256,64 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	response := ReviewResponse{
 		Review: *review,
 	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAIPercent records the AI-generated content percent for an assigned application review
+//
+//	@Summary		Set AI percent on a review (Admin)
+//	@Description	Records the estimated AI-generated content percent for an application assigned to the current admin
+//	@Tags			admin/applications
+//	@Accept			json
+//	@Produce		json
+//	@Param			applicationID	path		string				true	"Application ID"
+//	@Param			payload			body		SetAIPercentPayload	true	"AI percent (0–100)"
+//	@Success		200				{object}	AIPercentResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/ai-percent [put]
+func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
+
+	applicationID := chi.URLParam(r, "applicationID")
+
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	user := getUserFromContext(r.Context())
+
+	var req SetAIPercentPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err := app.store.ApplicationReviews.SetAIPercent(r.Context(), applicationID, user.ID, req.AIPercent)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percent already set"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	response := AIPercentResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

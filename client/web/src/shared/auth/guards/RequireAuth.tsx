@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/shared/stores";
 
 interface RequireAuthProps {
@@ -31,9 +32,10 @@ const RequireAuth = ({ children }: RequireAuthProps) => {
   if (session.loading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+        <div className="w-full max-w-md space-y-4 p-6">
+          <Skeleton className="h-8 w-48 mx-auto" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-6 w-64 mx-auto" />
         </div>
       </div>
     );
@@ -48,9 +50,10 @@ const RequireAuth = ({ children }: RequireAuthProps) => {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+        <div className="w-full max-w-md space-y-4 p-6">
+          <Skeleton className="h-8 w-48 mx-auto" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-6 w-64 mx-auto" />
         </div>
       </div>
     );

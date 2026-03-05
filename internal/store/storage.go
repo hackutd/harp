@@ -22,6 +22,8 @@ type Storage struct {
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
+		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
+		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
@@ -43,6 +45,10 @@ type Storage struct {
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error)
 		SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error
+		GetAdminScheduleEditEnabled(ctx context.Context) (bool, error)
+		SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error
+		GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error)
+		SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
@@ -60,6 +66,13 @@ type Storage struct {
 		GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error)
 		BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error)
 		AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error)
+		SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error
+	}
+	Schedule interface {
+		List(ctx context.Context) ([]ScheduleItem, error)
+		Create(ctx context.Context, item *ScheduleItem) error
+		Update(ctx context.Context, item *ScheduleItem) error
+		Delete(ctx context.Context, id string) error
 	}
 }
 
@@ -70,5 +83,6 @@ func NewStorage(db *sql.DB) Storage {
 		Settings:           &SettingsStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
+		Schedule:           &ScheduleStore{db: db},
 	}
 }

@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { memo } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +11,7 @@ interface PaginationControlsProps {
   onNextPage: () => void;
 }
 
-export function PaginationControls({
+export const PaginationControls = memo(function PaginationControls({
   prevCursor,
   nextCursor,
   loading,
@@ -39,4 +40,4 @@ export function PaginationControls({
       </Button>
     </div>
   );
-}
+});
