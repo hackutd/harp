@@ -32,17 +32,18 @@ type application struct {
 }
 
 type config struct {
-	addr             string
-	db               dbConfig
-	env              string
-	appURL           string
-	frontendURL      string
-	mail             mailConfig
-	gcs              gcsConfig
-	auth             authConfig
-	rateLimiter      ratelimiter.Config
-	supertokens      supertokensConfig
-	publicCORSOrigin string
+	addr              string
+	db                dbConfig
+	env               string
+	appURL            string
+	frontendURL       string
+	hackathonTimeZone string
+	mail              mailConfig
+	gcs               gcsConfig
+	auth              authConfig
+	rateLimiter       ratelimiter.Config
+	supertokens       supertokensConfig
+	publicCORSOrigin  string
 }
 
 type supertokensConfig struct {

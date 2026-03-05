@@ -235,7 +235,12 @@ func (app *application) deleteScheduleHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (app *application) validateSchedulePayloadAgainstConfiguredRange(ctx context.Context, payload SchedulePayload) error {
-	location, err := time.LoadLocation("America/Chicago")
+	timeZone := app.config.hackathonTimeZone
+	if timeZone == "" {
+		timeZone = "America/Chicago"
+	}
+
+	location, err := time.LoadLocation(timeZone)
 	if err != nil {
 		return err
 	}

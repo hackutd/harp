@@ -6,6 +6,7 @@ import (
 	"log"
 	"runtime"
 	"time"
+	_ "time/tzdata"
 
 	_ "github.com/hackutd/portal/docs"
 	"github.com/hackutd/portal/internal/auth"
@@ -78,8 +79,9 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL:      env.GetString("FRONTEND_URL", appURL),
-		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
+		frontendURL:       env.GetString("FRONTEND_URL", appURL),
+		publicCORSOrigin:  env.GetString("PUBLIC_CORS_ORIGIN", ""),
+		hackathonTimeZone: env.GetString("HACKATHON_TIMEZONE", "America/Chicago"),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),
@@ -87,6 +89,10 @@ func main() {
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
 			googleClientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
 		},
+	}
+
+	if _, err := time.LoadLocation(cfg.hackathonTimeZone); err != nil {
+		log.Fatalf("invalid HACKATHON_TIMEZONE %q: %v", cfg.hackathonTimeZone, err)
 	}
 
 	// Init Logger
