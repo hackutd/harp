@@ -1,5 +1,6 @@
 import { ClipboardPen, X } from "lucide-react";
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { errorAlert } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
+import { fetchApplicationResumeURL } from "../api";
 import { formatName, getStatusColor } from "../utils";
 import {
   DemographicsSection,
@@ -37,6 +40,32 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
   onClose,
   onGrade,
 }: ApplicationDetailPanelProps) {
+  const [isOpeningResume, setIsOpeningResume] = useState(false);
+
+  const handleViewResume = useCallback(async () => {
+    if (!application || !application.resume_path || isOpeningResume) {
+      return;
+    }
+
+    const resumeTab = window.open("", "_blank");
+    if (!resumeTab) {
+      toast.error("Please allow popups to view resumes.");
+      return;
+    }
+
+    setIsOpeningResume(true);
+    const res = await fetchApplicationResumeURL(application.id);
+
+    if (res.status === 200 && res.data?.download_url) {
+      resumeTab.location.href = res.data.download_url;
+    } else {
+      resumeTab.close();
+      errorAlert(res, "Failed to open resume");
+    }
+
+    setIsOpeningResume(false);
+  }, [application, isOpeningResume]);
+
   return (
     <Card className="w-1/2 shrink-0 rounded-l-none border-l-0 flex flex-col h-full py-0! gap-0!">
       <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
@@ -99,7 +128,11 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
             <ExperienceSection application={application} />
             <ShortAnswersSection application={application} />
             <EventPreferencesSection application={application} />
-            <LinksSection application={application} />
+            <LinksSection
+              application={application}
+              onViewResume={handleViewResume}
+              isOpeningResume={isOpeningResume}
+            />
             <TimelineSection application={application} />
           </div>
         ) : null}

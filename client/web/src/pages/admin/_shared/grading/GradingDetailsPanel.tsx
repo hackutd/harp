@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
+import { toast } from "sonner";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchApplicationResumeURL } from "@/pages/admin/all-applicants/api";
 import {
   DemographicsSection,
   EducationSection,
@@ -12,6 +14,7 @@ import {
   ShortAnswersSection,
   TimelineSection,
 } from "@/pages/admin/all-applicants/components/detail-sections";
+import { errorAlert } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
 interface GradingDetailsPanelProps {
@@ -25,6 +28,32 @@ export const GradingDetailsPanel = memo(function GradingDetailsPanel({
   loading,
   children,
 }: GradingDetailsPanelProps) {
+  const [isOpeningResume, setIsOpeningResume] = useState(false);
+
+  const handleViewResume = useCallback(async () => {
+    if (!application || !application.resume_path || isOpeningResume) {
+      return;
+    }
+
+    const resumeTab = window.open("", "_blank");
+    if (!resumeTab) {
+      toast.error("Please allow popups to view resumes.");
+      return;
+    }
+
+    setIsOpeningResume(true);
+    const res = await fetchApplicationResumeURL(application.id);
+
+    if (res.status === 200 && res.data?.download_url) {
+      resumeTab.location.href = res.data.download_url;
+    } else {
+      resumeTab.close();
+      errorAlert(res, "Failed to open resume");
+    }
+
+    setIsOpeningResume(false);
+  }, [application, isOpeningResume]);
+
   if (loading) {
     return (
       <div className="space-y-8 p-8">
@@ -49,7 +78,11 @@ export const GradingDetailsPanel = memo(function GradingDetailsPanel({
       <ExperienceSection application={application} />
       <ShortAnswersSection application={application} />
       <EventPreferencesSection application={application} />
-      <LinksSection application={application} />
+      <LinksSection
+        application={application}
+        onViewResume={handleViewResume}
+        isOpeningResume={isOpeningResume}
+      />
       <TimelineSection application={application} />
       {children}
     </div>
