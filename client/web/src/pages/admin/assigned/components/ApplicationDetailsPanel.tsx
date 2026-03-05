@@ -1,4 +1,4 @@
-import { ExternalLink, Loader2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -6,10 +6,40 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { errorAlert } from "@/shared/lib/api";
+import { cn } from "@/shared/lib/utils";
 import type { Application } from "@/types";
 
 import { fetchApplicationResumeURL } from "../../all-applicants/api";
 import type { Review } from "../types";
+
+function AgreementItem({
+  label,
+  checked,
+  required = false,
+}: {
+  label: string;
+  checked: boolean;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      {checked ? (
+        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+      ) : (
+        <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+      )}
+      <span
+        className={cn(
+          "text-sm leading-tight",
+          !checked && required && "text-red-600"
+        )}
+      >
+        {label}
+        {required && <span className="text-muted-foreground ml-1">*</span>}
+      </span>
+    </div>
+  );
+}
 
 interface ApplicationDetailsPanelProps {
   application: Application;
@@ -283,6 +313,32 @@ export function ApplicationDetailsPanel({
           </div>
         </div>
       )}
+
+      {/* Agreements & Acknowledgments */}
+      <div>
+        <h4 className="text-sm font-semibold mb-3">Agreements & Acknowledgments</h4>
+        <div className="space-y-2">
+          <AgreementItem
+            label="Understands application does not guarantee admission"
+            checked={application.ack_application}
+            required
+          />
+          <AgreementItem
+            label="Agreed to MLH Code of Conduct"
+            checked={application.ack_mlh_coc}
+            required
+          />
+          <AgreementItem
+            label="Authorized sharing info with MLH (Privacy Policy)"
+            checked={application.ack_mlh_privacy}
+            required
+          />
+          <AgreementItem
+            label="Opted in to MLH promotional emails"
+            checked={application.opt_in_mlh_emails}
+          />
+        </div>
+      </div>
 
       {/* Timeline */}
       <div>

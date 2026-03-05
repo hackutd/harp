@@ -8,14 +8,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
+import { SelectWithOther } from "../components/SelectWithOther";
+import { UniversityCombobox } from "../components/UniversityComboBox";
 import type { ApplicationFormData } from "../validations";
 import { LEVEL_OF_STUDY_OPTIONS } from "../validations";
 
@@ -38,7 +33,11 @@ export function SchoolInfoStep() {
           <FormItem>
             <FormLabel>Which university do you attend? *</FormLabel>
             <FormControl>
-              <Input placeholder="University of Texas at Dallas" {...field} />
+              <UniversityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Search for your university..."
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -50,9 +49,12 @@ export function SchoolInfoStep() {
         name="major"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>What is your major? *</FormLabel>
+            <FormLabel>Field(s) of study *</FormLabel>
             <FormControl>
-              <Input placeholder="Computer Science" {...field} />
+              <Input
+                placeholder="e.g., Computer Science, Data Science"
+                {...field}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -65,20 +67,15 @@ export function SchoolInfoStep() {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Current level of study *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your level of study" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {LEVEL_OF_STUDY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <SelectWithOther
+                options={LEVEL_OF_STUDY_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select your level of study"
+                otherPlaceholder="Please specify your level of study"
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

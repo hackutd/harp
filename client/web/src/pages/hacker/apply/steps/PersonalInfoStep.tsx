@@ -8,6 +8,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { SelectWithOther } from "../components/SelectWithOther";
 import type { ApplicationFormData } from "../validations";
 import {
   COUNTRY_OPTIONS,
@@ -89,12 +91,13 @@ export function PersonalInfoStep({ userEmail }: PersonalInfoStepProps) {
             <FormItem>
               <FormLabel>Phone Number *</FormLabel>
               <FormControl>
-                <Input placeholder="+12025551234" {...field} />
+                <PhoneInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="(123) 456-7890"
+                />
               </FormControl>
               <FormMessage />
-              <p className="text-xs text-muted-foreground">
-                Include country code (e.g., +1 for US)
-              </p>
             </FormItem>
           )}
         />
@@ -127,49 +130,40 @@ export function PersonalInfoStep({ userEmail }: PersonalInfoStepProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Country of Residence *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your country" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {COUNTRY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <SelectWithOther
+                options={COUNTRY_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select your country"
+                otherPlaceholder="Enter your country"
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-
+      
       <FormField
         control={form.control}
         name="gender"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Gender *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your gender" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {GENDER_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <SelectWithOther
+                options={GENDER_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select your gender"
+                otherPlaceholder="Please specify your gender"
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
+
 
       <FormField
         control={form.control}
