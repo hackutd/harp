@@ -162,6 +162,7 @@ func (app *application) mount() http.Handler {
 					// Application Config
 					r.Get("/settings/saquestions", app.getShortAnswerQuestions)
 					r.Put("/settings/saquestions", app.updateShortAnswerQuestions)
+					r.Put("/settings/applications-enabled", app.setApplicationsEnabled)
 
 					// Reviews Config
 					r.Get("/settings/reviews-per-app", app.getReviewsPerApp)

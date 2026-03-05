@@ -506,6 +506,10 @@ type ApplicationsEnabledResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetApplicationsEnabledResponse struct {
+	Enabled bool `json:"enabled"` //no validate required because bool enforces the only two possible values, which is what we want
+}
+
 // setApplicationStatus sets the final status on an application
 //
 //	@Summary		Set application status (Super Admin)
@@ -675,6 +679,43 @@ func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Re
 	}
 
 	response := ApplicationsEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setApplicationsEnabled updates whether applications are currently open
+//
+//	@Summary		Set applications enabled status
+//	@Description	Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.
+//	@Tags			superadmin
+//	@Produce		json
+//	@Param			enabled	query		bool	true	"Enable or disable applications"
+//	@Success		200		{object}	SetApplicationsEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/applications-enabled [put]
+func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := strconv.ParseBool(r.URL.Query().Get("enabled"))
+
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("enabled must be a boolean value"))
+		return
+	}
+
+	enabled, err = app.store.Application.SetApplicationsEnabled(r.Context(), enabled)
+	if err != nil {
+		app.internalServerError(w, r, err)
+	}
+
+	//NOTE: Following existing design pattern of Get response and Set response structs
+	response := SetApplicationsEnabledResponse{
 		Enabled: enabled,
 	}
 
