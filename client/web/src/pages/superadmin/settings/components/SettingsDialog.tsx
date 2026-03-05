@@ -1,6 +1,6 @@
 "use client";
 
-import { UserCog, UsersRound } from "lucide-react";
+import { CalendarRange, UserCog, UsersRound } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
 import ApplicationsTab from "../tabs/ApplicationsTab";
+import ScheduleTab from "../tabs/ScheduleTab";
 import { SetAdminTab } from "../tabs/SetAdminTab";
 
-type SettingsTab = "set-admin" | "applications";
+type SettingsTab = "set-admin" | "applications" | "schedule";
 
 const settingsTabs = [
   { id: "set-admin" as const, label: "Set Admin", icon: UserCog },
   { id: "applications" as const, label: "Applications", icon: UsersRound },
+  { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
 ];
 
 interface SettingsDialogProps {
@@ -79,6 +81,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
               <div className="p-8">
                 {activeTab === "set-admin" && <SetAdminTab />}
                 {activeTab === "applications" && <ApplicationsTab />}
+                {activeTab === "schedule" && <ScheduleTab />}
               </div>
             </ScrollArea>
 

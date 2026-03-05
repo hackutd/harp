@@ -208,6 +208,7 @@ func (app *application) mount() http.Handler {
 					// Schedule
 					r.Route("/schedule", func(r chi.Router) {
 						r.Get("/", app.listScheduleHandler)
+						r.Get("/date-range", app.getAdminScheduleDateRange)
 
 						r.Group(func(r chi.Router) {
 							r.Use(app.AdminScheduleEditPermissionMiddleware)
@@ -234,6 +235,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/review-assignment-toggle", app.setReviewAssignmentToggle)
 						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
 						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
+						r.Get("/hackathon-date-range", app.getHackathonDateRange)
+						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 					})
 

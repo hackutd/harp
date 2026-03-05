@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/hackutd/portal/internal/store"
 )
@@ -185,6 +186,17 @@ type AdminScheduleEditToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetHackathonDateRangePayload struct {
+	StartDate string `json:"start_date" validate:"required"`
+	EndDate   string `json:"end_date" validate:"required"`
+}
+
+type HackathonDateRangeResponse struct {
+	StartDate  *string `json:"start_date"`
+	EndDate    *string `json:"end_date"`
+	Configured bool    `json:"configured"`
+}
+
 // getReviewAssignmentToggle returns the current review assignment enabled setting
 //
 //	@Summary		Get review assignment enabled state (Super Admin)
@@ -315,6 +327,106 @@ func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 	}
 
 	response := AdminScheduleEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getHackathonDateRange returns hackathon start/end dates
+//
+//	@Summary		Get hackathon date range (Super Admin)
+//	@Description	Returns configured hackathon start and end dates
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	HackathonDateRangeResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hackathon-date-range [get]
+func (app *application) getHackathonDateRange(w http.ResponseWriter, r *http.Request) {
+	dateRange, err := app.store.Settings.GetHackathonDateRange(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonDateRangeResponse{
+		StartDate:  dateRange.StartDate,
+		EndDate:    dateRange.EndDate,
+		Configured: dateRange.StartDate != nil && dateRange.EndDate != nil,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setHackathonDateRange updates hackathon start/end dates
+//
+//	@Summary		Set hackathon date range (Super Admin)
+//	@Description	Updates configured hackathon start and end dates. Range must be at most 7 days inclusive.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			range	body		SetHackathonDateRangePayload	true	"Hackathon date range"
+//	@Success		200		{object}	HackathonDateRangeResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hackathon-date-range [post]
+func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Request) {
+	var req SetHackathonDateRangePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if req.StartDate == "" || req.EndDate == "" {
+		app.badRequestResponse(w, r, errors.New("start_date and end_date are required"))
+		return
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("start_date must be YYYY-MM-DD"))
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("end_date must be YYYY-MM-DD"))
+		return
+	}
+
+	if endDate.Before(startDate) {
+		app.badRequestResponse(w, r, errors.New("end_date must be on or after start_date"))
+		return
+	}
+
+	durationDays := int(endDate.Sub(startDate).Hours()/24) + 1
+	if durationDays > 7 {
+		app.badRequestResponse(w, r, errors.New("hackathon date range cannot exceed 7 days"))
+		return
+	}
+
+	dateRange := store.HackathonDateRange{
+		StartDate: &req.StartDate,
+		EndDate:   &req.EndDate,
+	}
+	if err := app.store.Settings.SetHackathonDateRange(r.Context(), dateRange); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonDateRangeResponse{
+		StartDate:  dateRange.StartDate,
+		EndDate:    dateRange.EndDate,
+		Configured: true,
+	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

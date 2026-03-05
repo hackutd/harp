@@ -64,11 +64,52 @@ func TestListSchedule(t *testing.T) {
 	})
 }
 
+func TestGetAdminScheduleDateRange(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("returns configured date range", func(t *testing.T) {
+		start := "2026-03-13"
+		end := "2026-03-15"
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getAdminScheduleDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		require.NotNil(t, body.Data.StartDate)
+		require.NotNil(t, body.Data.EndDate)
+		assert.Equal(t, start, *body.Data.StartDate)
+		assert.Equal(t, end, *body.Data.EndDate)
+		assert.True(t, body.Data.Configured)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
 func TestCreateSchedule(t *testing.T) {
 	t.Run("returns 201 on success", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		start := "2026-03-13"
+		end := "2026-03-15"
 
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
 		mockSchedule.On("Create", mock.AnythingOfType("*store.ScheduleItem")).Return(nil).Once()
 
 		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z","location":"Main Hall","tags":["ceremony"]}`
@@ -87,6 +128,7 @@ func TestCreateSchedule(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Opening Ceremony", resp.Data.Schedule.EventName)
 
+		mockSettings.AssertExpectations(t)
 		mockSchedule.AssertExpectations(t)
 	})
 
@@ -108,8 +150,15 @@ func TestUpdateSchedule(t *testing.T) {
 	t.Run("returns 200 on success", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
 		r := scheduleRouter(app)
+		start := "2026-03-13"
+		end := "2026-03-15"
 
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
 		mockSchedule.On("Update", mock.AnythingOfType("*store.ScheduleItem")).Return(nil).Once()
 
 		body := `{"event_name":"Updated Ceremony","start_time":"2026-03-14T11:00:00Z","end_time":"2026-03-14T12:00:00Z","location":"Room B"}`
@@ -128,14 +177,22 @@ func TestUpdateSchedule(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Updated Ceremony", resp.Data.Schedule.EventName)
 
+		mockSettings.AssertExpectations(t)
 		mockSchedule.AssertExpectations(t)
 	})
 
 	t.Run("returns 404 when not found", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
 		r := scheduleRouter(app)
+		start := "2026-03-13"
+		end := "2026-03-15"
 
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
 		mockSchedule.On("Update", mock.AnythingOfType("*store.ScheduleItem")).Return(store.ErrNotFound).Once()
 
 		body := `{"event_name":"Updated Ceremony","start_time":"2026-03-14T11:00:00Z","end_time":"2026-03-14T12:00:00Z"}`
@@ -147,7 +204,74 @@ func TestUpdateSchedule(t *testing.T) {
 		rr := executeRequest(req, r)
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
+		mockSettings.AssertExpectations(t)
 		mockSchedule.AssertExpectations(t)
+	})
+}
+
+func TestScheduleDateRangeValidation(t *testing.T) {
+	t.Run("create returns 400 when hackathon date range is not configured", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{}, nil).Once()
+
+		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduleHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("create returns 400 when event is outside configured date range", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		start := "2026-03-13"
+		end := "2026-03-15"
+
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
+
+		body := `{"event_name":"Post Event","start_time":"2026-03-16T10:00:00Z","end_time":"2026-03-16T11:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduleHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("create returns 400 when event spans multiple days", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		start := "2026-03-13"
+		end := "2026-03-15"
+
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
+
+		body := `{"event_name":"Overnight","start_time":"2026-03-15T04:30:00Z","end_time":"2026-03-15T06:30:00Z"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduleHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockSettings.AssertExpectations(t)
 	})
 }
 
@@ -245,8 +369,14 @@ func TestScheduleMutationPermission(t *testing.T) {
 		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)
 		r := protectedScheduleMutationRouter(app)
+		start := "2026-03-13"
+		end := "2026-03-15"
 
 		mockSettings.On("GetAdminScheduleEditEnabled").Return(true, nil).Once()
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
 		mockSchedule.On("Create", mock.AnythingOfType("*store.ScheduleItem")).Return(nil).Once()
 
 		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z"}`
@@ -264,8 +394,15 @@ func TestScheduleMutationPermission(t *testing.T) {
 	t.Run("super admin can create when admin schedule edits are disabled", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
 		r := protectedScheduleMutationRouter(app)
+		start := "2026-03-13"
+		end := "2026-03-15"
 
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
 		mockSchedule.On("Create", mock.AnythingOfType("*store.ScheduleItem")).Return(nil).Once()
 
 		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z"}`
@@ -276,6 +413,7 @@ func TestScheduleMutationPermission(t *testing.T) {
 
 		rr := executeRequest(req, r)
 		checkResponseCode(t, http.StatusCreated, rr.Code)
+		mockSettings.AssertExpectations(t)
 		mockSchedule.AssertExpectations(t)
 	})
 }

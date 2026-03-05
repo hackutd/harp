@@ -241,3 +241,106 @@ func TestSetAdminScheduleEditToggle(t *testing.T) {
 		mockSettings.AssertExpectations(t)
 	})
 }
+
+func TestGetHackathonDateRange(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return configured range", func(t *testing.T) {
+		start := "2026-03-13"
+		end := "2026-03-15"
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackathonDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		require.NotNil(t, body.Data.StartDate)
+		require.NotNil(t, body.Data.EndDate)
+		assert.Equal(t, start, *body.Data.StartDate)
+		assert.Equal(t, end, *body.Data.EndDate)
+		assert.True(t, body.Data.Configured)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestSetHackathonDateRange(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should set valid range", func(t *testing.T) {
+		start := "2026-03-13"
+		end := "2026-03-15"
+		mockSettings.On("SetHackathonDateRange", store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}).Return(nil).Once()
+
+		body := `{"start_date":"2026-03-13","end_date":"2026-03-15"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackathonDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.True(t, respBody.Data.Configured)
+		require.NotNil(t, respBody.Data.StartDate)
+		require.NotNil(t, respBody.Data.EndDate)
+		assert.Equal(t, start, *respBody.Data.StartDate)
+		assert.Equal(t, end, *respBody.Data.EndDate)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject ranges over 7 days", func(t *testing.T) {
+		body := `{"start_date":"2026-03-13","end_date":"2026-03-21"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackathonDateRange))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should reject when end is before start", func(t *testing.T) {
+		body := `{"start_date":"2026-03-15","end_date":"2026-03-13"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackathonDateRange))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should reject invalid date format", func(t *testing.T) {
+		body := `{"start_date":"03/13/2026","end_date":"03/15/2026"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackathonDateRange))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}

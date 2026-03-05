@@ -1,288 +1,292 @@
-import { CalendarDays } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/shared/lib/utils";
+import { ScheduleGrid } from "./components/ScheduleGrid";
+import { ScheduleHeaderCard } from "./components/ScheduleHeaderCard";
+import { DEFAULT_SCHEDULE_TAGS, QUARTER_HOUR_SLOTS } from "./constants";
+import { useScheduleCrud } from "./hooks/useScheduleCrud";
+import { useScheduleData } from "./hooks/useScheduleData";
+import { useScheduleEventIndex } from "./hooks/useScheduleEventIndex";
+import { useScheduleSelection } from "./hooks/useScheduleSelection";
+import type {
+  ScheduleComposerSession,
+  ScheduleComposerValues,
+  ScheduleItem,
+} from "./types";
+import { formatDayHeader, formatQuarterTime } from "./utils";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const HALF_HOUR_SLOTS = 48;
+const EMPTY_COMPOSER_VALUES: ScheduleComposerValues = {
+  title: "",
+  location: "",
+  details: "",
+  tag: "",
+  isOtherTagSelected: false,
+  otherTagValue: "",
+};
 
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
+function getInitialValuesFromScheduleItem(
+  item: ScheduleItem,
+): ScheduleComposerValues {
+  const tag = item.tags[0] ?? "";
+  const isPresetTag = DEFAULT_SCHEDULE_TAGS.includes(
+    tag as (typeof DEFAULT_SCHEDULE_TAGS)[number],
+  );
 
-function toInputDateValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseDate(value: string) {
-  if (!value) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
-
-function getDateRange(start: Date, end: Date) {
-  const days: Date[] = [];
-  for (let current = start; current <= end; ) {
-    days.push(current);
-    current = new Date(current.getTime() + MS_PER_DAY);
+  if (!tag || isPresetTag) {
+    return {
+      title: item.title,
+      location: item.location,
+      details: item.details,
+      tag,
+      isOtherTagSelected: false,
+      otherTagValue: "",
+    };
   }
-  return days;
-}
 
-function formatDayHeader(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function formatTime(slot: number) {
-  const hour24 = Math.floor(slot / 2);
-  const minute = slot % 2 === 0 ? "00" : "30";
-  const suffix = hour24 >= 12 ? "PM" : "AM";
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  return `${hour12}:${minute} ${suffix}`;
-}
-
-function formatPickerDate(date: Date | null) {
-  if (!date) return "Select date";
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
+  return {
+    title: item.title,
+    location: item.location,
+    details: item.details,
+    tag,
+    isOtherTagSelected: true,
+    otherTagValue: tag,
+  };
 }
 
 export default function SchedulePage() {
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const [startDate, setStartDate] = useState(toInputDateValue(today));
-  const [endDate, setEndDate] = useState(toInputDateValue(today));
+  const {
+    loading,
+    schedulingEnabled,
+    configuredStartDate,
+    configuredEndDate,
+    scheduleDays,
+    scheduleItems,
+    setScheduleItems,
+  } = useScheduleData();
 
-  const parsedStart = parseDate(startDate);
-  const parsedEnd = parseDate(endDate);
+  const { getStartsAt } = useScheduleEventIndex(scheduleItems);
 
-  const validationError = useMemo(() => {
-    if (!parsedStart || !parsedEnd) {
-      return "Select both a start date and an end date.";
-    }
+  const {
+    creatingItem,
+    deletingItem,
+    saveScheduleItem,
+    deleteScheduleItemByID,
+  } = useScheduleCrud({
+    scheduleDays,
+    setScheduleItems,
+  });
 
-    if (parsedEnd < parsedStart) {
-      return "End date must be on or after the start date.";
-    }
+  const [composerSession, setComposerSession] =
+    useState<ScheduleComposerSession | null>(null);
 
-    const durationDays =
-      Math.floor(
-        (startOfDay(parsedEnd).getTime() - startOfDay(parsedStart).getTime()) /
-          MS_PER_DAY,
-      ) + 1;
+  const hasAutoScrolledRef = useRef(false);
+  const eightAmRowRef = useRef<HTMLSpanElement | null>(null);
+  const sessionCounterRef = useRef(0);
 
-    if (durationDays > 7) {
-      return "Hackathon duration cannot exceed 7 days.";
-    }
+  const closeComposer = useCallback(() => {
+    setComposerSession(null);
+  }, []);
 
-    return null;
-  }, [parsedEnd, parsedStart]);
+  const openComposerForRange = useCallback(
+    (dayIndex: number, startQuarter: number, endQuarter: number) => {
+      if (!schedulingEnabled) return;
 
-  const scheduleDays = useMemo(() => {
-    if (!parsedStart || !parsedEnd || validationError) return [];
-    return getDateRange(startOfDay(parsedStart), startOfDay(parsedEnd));
-  }, [parsedEnd, parsedStart, validationError]);
+      const boundedStart = Math.max(
+        0,
+        Math.min(startQuarter, QUARTER_HOUR_SLOTS - 1),
+      );
+      const boundedEnd = Math.max(
+        boundedStart + 1,
+        Math.min(endQuarter, QUARTER_HOUR_SLOTS),
+      );
 
-  const maxEndDate = useMemo(() => {
-    if (!parsedStart) return undefined;
-    return new Date(startOfDay(parsedStart).getTime() + 6 * MS_PER_DAY);
-  }, [parsedStart]);
+      sessionCounterRef.current += 1;
+      setComposerSession({
+        sessionID: sessionCounterRef.current,
+        mode: "create",
+        itemID: null,
+        dayIndex,
+        startQuarter: boundedStart,
+        endQuarter: boundedEnd,
+        initialValues: EMPTY_COMPOSER_VALUES,
+      });
+    },
+    [schedulingEnabled],
+  );
 
-  const handleStartDateSelect = (selectedDate?: Date) => {
-    if (!selectedDate) return;
+  const {
+    activeSelection,
+    clearSelection,
+    onCellMouseDown,
+    onCellMouseEnter,
+    onCellDoubleClick,
+  } = useScheduleSelection({
+    enabled: schedulingEnabled,
+    onCommitRange: openComposerForRange,
+  });
 
-    const nextStart = startOfDay(selectedDate);
-    setStartDate(toInputDateValue(nextStart));
+  const handleSelectScheduleItemForEdit = useCallback(
+    (item: ScheduleItem) => {
+      clearSelection();
 
-    if (!parsedEnd) {
-      setEndDate(toInputDateValue(nextStart));
+      sessionCounterRef.current += 1;
+      setComposerSession({
+        sessionID: sessionCounterRef.current,
+        mode: "edit",
+        itemID: item.id,
+        dayIndex: item.dayIndex,
+        startQuarter: item.startQuarter,
+        endQuarter: item.endQuarter,
+        initialValues: getInitialValuesFromScheduleItem(item),
+      });
+    },
+    [clearSelection],
+  );
+
+  const handleComposerStartQuarterChange = useCallback((value: string) => {
+    const nextStart = Number(value);
+    if (Number.isNaN(nextStart)) return;
+
+    setComposerSession((current) => {
+      if (!current) return null;
+
+      const boundedStart = Math.max(
+        0,
+        Math.min(nextStart, QUARTER_HOUR_SLOTS - 1),
+      );
+      const nextEnd = Math.max(current.endQuarter, boundedStart + 1);
+
+      return {
+        ...current,
+        startQuarter: boundedStart,
+        endQuarter: Math.min(nextEnd, QUARTER_HOUR_SLOTS),
+      };
+    });
+  }, []);
+
+  const handleComposerEndQuarterChange = useCallback((value: string) => {
+    const nextEnd = Number(value);
+    if (Number.isNaN(nextEnd)) return;
+
+    setComposerSession((current) => {
+      if (!current) return null;
+
+      const boundedEnd = Math.max(
+        current.startQuarter + 1,
+        Math.min(nextEnd, QUARTER_HOUR_SLOTS),
+      );
+
+      return {
+        ...current,
+        endQuarter: boundedEnd,
+      };
+    });
+  }, []);
+
+  const handleComposerSave = useCallback(
+    async (values: ScheduleComposerValues) => {
+      if (!composerSession || !schedulingEnabled) return;
+
+      const didSave = await saveScheduleItem(composerSession, values);
+      if (!didSave) return;
+
+      closeComposer();
+      clearSelection();
+    },
+    [
+      clearSelection,
+      closeComposer,
+      composerSession,
+      saveScheduleItem,
+      schedulingEnabled,
+    ],
+  );
+
+  const handleComposerDelete = useCallback(async () => {
+    if (!composerSession || composerSession.mode !== "edit") return;
+
+    const didDelete = await deleteScheduleItemByID(composerSession.itemID);
+    if (!didDelete) return;
+
+    closeComposer();
+    clearSelection();
+  }, [clearSelection, closeComposer, composerSession, deleteScheduleItemByID]);
+
+  const handleComposerOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) return;
+      closeComposer();
+      clearSelection();
+    },
+    [clearSelection, closeComposer],
+  );
+
+  const composerRangeText = useMemo(() => {
+    if (!composerSession) return "";
+    return `${formatQuarterTime(composerSession.startQuarter)} - ${formatQuarterTime(
+      composerSession.endQuarter,
+    )}`;
+  }, [composerSession]);
+
+  const composerDayText = useMemo(() => {
+    if (!composerSession) return "";
+    const day = scheduleDays[composerSession.dayIndex];
+    return day ? formatDayHeader(day) : "";
+  }, [composerSession, scheduleDays]);
+
+  useEffect(() => {
+    if (!schedulingEnabled) {
+      hasAutoScrolledRef.current = false;
       return;
     }
 
-    if (parsedEnd < nextStart) {
-      setEndDate(toInputDateValue(nextStart));
-      return;
-    }
+    if (hasAutoScrolledRef.current) return;
 
-    const nextMaxEnd = new Date(nextStart.getTime() + 6 * MS_PER_DAY);
-    if (parsedEnd > nextMaxEnd) {
-      setEndDate(toInputDateValue(nextMaxEnd));
-    }
-  };
+    const animationFrame = window.requestAnimationFrame(() => {
+      eightAmRowRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      });
+      hasAutoScrolledRef.current = true;
+    });
 
-  const handleEndDateSelect = (selectedDate?: Date) => {
-    if (!selectedDate) return;
-    setEndDate(toInputDateValue(startOfDay(selectedDate)));
-  };
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, [schedulingEnabled, scheduleDays.length]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <Card>
-        <CardHeader>
-          <CardTitle>Hackathon Schedule</CardTitle>
-          <CardDescription>
-            Set your hackathon date range (up to 7 days), then configure time
-            blocks in the grid.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Start date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-between font-normal",
-                      !parsedStart && "text-muted-foreground",
-                    )}
-                  >
-                    {formatPickerDate(parsedStart)}
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={parsedStart ?? undefined}
-                    defaultMonth={parsedStart ?? undefined}
-                    onSelect={handleStartDateSelect}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>End date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-between font-normal",
-                      !parsedEnd && "text-muted-foreground",
-                    )}
-                  >
-                    {formatPickerDate(parsedEnd)}
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={parsedEnd ?? undefined}
-                    defaultMonth={parsedEnd ?? undefined}
-                    onSelect={handleEndDateSelect}
-                    disabled={(date) =>
-                      !parsedStart ||
-                      date < startOfDay(parsedStart) ||
-                      (maxEndDate ? date > startOfDay(maxEndDate) : false)
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          {validationError ? (
-            <p className="text-sm text-destructive">{validationError}</p>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Showing {scheduleDays.length}{" "}
-              {scheduleDays.length === 1 ? "day" : "days"} in 30-minute
-              intervals.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <ScheduleHeaderCard
+        loading={loading}
+        schedulingEnabled={schedulingEnabled}
+        configuredStartDate={configuredStartDate}
+        configuredEndDate={configuredEndDate}
+        scheduleDaysLength={scheduleDays.length}
+      />
 
-      {!validationError && scheduleDays.length > 0 ? (
-        <Card className="min-h-0 flex-1 gap-0 overflow-hidden py-0">
-          <CardContent className="h-full overflow-auto p-0">
-            <div
-              className="grid min-w-[760px]"
-              style={{
-                gridTemplateColumns: `96px repeat(${scheduleDays.length}, minmax(160px, 1fr))`,
-              }}
-            >
-              <div className="bg-muted/30 sticky left-0 z-20 border-r border-b p-3" />
-              {scheduleDays.map((day) => (
-                <div
-                  key={day.toISOString()}
-                  className="bg-muted/30 border-b p-3 text-center text-sm font-medium"
-                >
-                  {formatDayHeader(day)}
-                </div>
-              ))}
-
-              {Array.from({ length: HALF_HOUR_SLOTS }).map((_, slot) => {
-                const isHour = slot % 2 === 0;
-                return (
-                  <FragmentRow
-                    key={slot}
-                    slot={slot}
-                    isHour={isHour}
-                    scheduleDays={scheduleDays}
-                  />
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+      {schedulingEnabled ? (
+        <ScheduleGrid
+          scheduleDays={scheduleDays}
+          activeSelection={activeSelection}
+          composerSession={composerSession}
+          composerDayText={composerDayText}
+          composerRangeText={composerRangeText}
+          creatingItem={creatingItem}
+          deletingItem={deletingItem}
+          getStartsAt={getStartsAt}
+          onSelectExistingEvent={handleSelectScheduleItemForEdit}
+          onCellMouseDown={onCellMouseDown}
+          onCellMouseEnter={onCellMouseEnter}
+          onCellDoubleClick={onCellDoubleClick}
+          onComposerOpenChange={handleComposerOpenChange}
+          onComposerStartQuarterChange={handleComposerStartQuarterChange}
+          onComposerEndQuarterChange={handleComposerEndQuarterChange}
+          onComposerSave={handleComposerSave}
+          onComposerDelete={handleComposerDelete}
+          eightAmRowRef={eightAmRowRef}
+        />
       ) : null}
     </div>
-  );
-}
-
-type FragmentRowProps = {
-  slot: number;
-  isHour: boolean;
-  scheduleDays: Date[];
-};
-
-function FragmentRow({ slot, isHour, scheduleDays }: FragmentRowProps) {
-  const showTime = isHour && slot !== 0;
-
-  return (
-    <>
-      <div className="sticky left-0 z-10 border-r bg-background text-xs relative">
-        {showTime ? (
-          <span className="text-muted-foreground absolute top-0 right-2 -translate-y-1/2">
-            {formatTime(slot)}
-          </span>
-        ) : null}
-      </div>
-      {scheduleDays.map((day) => (
-        <div
-          key={`${day.toISOString()}-${slot}`}
-          className="h-8 border-t border-r transition-colors hover:bg-muted/30"
-        />
-      ))}
-    </>
   );
 }
