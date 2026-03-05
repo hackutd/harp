@@ -1,7 +1,14 @@
+import { ExternalLink, Loader2 } from "lucide-react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { errorAlert } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
+import { fetchApplicationResumeURL } from "../../all-applicants/api";
 import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
@@ -16,6 +23,31 @@ export function ApplicationDetailsPanel({
   isExpanded,
 }: ApplicationDetailsPanelProps) {
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
+  const [isOpeningResume, setIsOpeningResume] = useState(false);
+
+  const handleViewResume = useCallback(async () => {
+    if (!application.resume_path || isOpeningResume) {
+      return;
+    }
+
+    const resumeTab = window.open("", "_blank");
+    if (!resumeTab) {
+      toast.error("Please allow popups to view resumes.");
+      return;
+    }
+
+    setIsOpeningResume(true);
+    const res = await fetchApplicationResumeURL(application.id);
+
+    if (res.status === 200 && res.data?.download_url) {
+      resumeTab.location.href = res.data.download_url;
+    } else {
+      resumeTab.close();
+      errorAlert(res, "Failed to open resume");
+    }
+
+    setIsOpeningResume(false);
+  }, [application.id, application.resume_path, isOpeningResume]);
 
   return (
     <div className="space-y-6 pb-2">
@@ -166,7 +198,10 @@ export function ApplicationDetailsPanel({
       </div>
 
       {/* Links */}
-      {(application.github || application.linkedin || application.website) && (
+      {(application.github ||
+        application.linkedin ||
+        application.website ||
+        application.resume_path) && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Links</h4>
           <div
@@ -217,6 +252,32 @@ export function ApplicationDetailsPanel({
                     {application.website}
                   </a>
                 </p>
+              </div>
+            )}
+            {application.resume_path && (
+              <div>
+                <Label className="text-muted-foreground text-xs">Resume</Label>
+                <div className="pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewResume}
+                    disabled={isOpeningResume}
+                  >
+                    {isOpeningResume ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Opening...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Resume
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
