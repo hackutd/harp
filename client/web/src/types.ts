@@ -86,6 +86,7 @@ export interface Application {
   github: string | null;
   linkedin: string | null;
   website: string | null;
+  resume_path: string | null;
   ack_application: boolean;
   ack_mlh_coc: boolean;
   ack_mlh_privacy: boolean;

@@ -10,6 +10,7 @@ interface StepNavigationProps {
   onSubmit?: () => void;
   isSaving: boolean;
   isSubmitting: boolean;
+  isResumeBusy?: boolean;
   isLastStep: boolean;
 }
 
@@ -21,6 +22,7 @@ export function StepNavigation({
   onSubmit,
   isSaving,
   isSubmitting,
+  isResumeBusy = false,
   isLastStep,
 }: StepNavigationProps) {
   const isFirstStep = currentStep === 0;
@@ -32,7 +34,7 @@ export function StepNavigation({
         type="button"
         variant="outline"
         onClick={onSave}
-        disabled={isSaving || isSubmitting}
+        disabled={isSaving || isSubmitting || isResumeBusy}
       >
         <Save className="w-4 h-4 mr-2" />
         {isSaving ? "Saving..." : "Save Progress"}
@@ -44,7 +46,7 @@ export function StepNavigation({
           type="button"
           variant="outline"
           onClick={onPrevious}
-          disabled={isFirstStep || isSaving || isSubmitting}
+          disabled={isFirstStep || isSaving || isSubmitting || isResumeBusy}
         >
           <ChevronLeft className="w-4 h-4 mr-1" />
           Previous
@@ -54,7 +56,7 @@ export function StepNavigation({
           <Button
             type="button"
             onClick={onSubmit}
-            disabled={isSaving || isSubmitting}
+            disabled={isSaving || isSubmitting || isResumeBusy}
           >
             {isSubmitting ? "Submitting..." : "Submit Application"}
             <Send className="w-4 h-4 ml-2" />
@@ -63,7 +65,7 @@ export function StepNavigation({
           <Button
             type="button"
             onClick={onNext}
-            disabled={isSaving || isSubmitting}
+            disabled={isSaving || isSubmitting || isResumeBusy}
           >
             Next
             <ChevronRight className="w-4 h-4 ml-1" />

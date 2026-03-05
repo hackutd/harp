@@ -15,11 +15,17 @@ import {
 import {
   errorAlert,
   getRequest,
-  patchRequest,
   postRequest,
 } from "@/shared/lib/api";
 import type { Application, ShortAnswerQuestion } from "@/types";
 
+import {
+  deleteMyResume as deleteResume,
+  MAX_RESUME_SIZE_BYTES as MAX_RESUME_UPLOAD_SIZE_BYTES,
+  requestResumeUploadURL as getResumeUploadURL,
+  updateMyApplication,
+  uploadResumeToSignedURL as uploadToSignedURL,
+} from "../api";
 import { EventInfoStep } from "../steps/EventInfoStep";
 import { ExperienceStep } from "../steps/ExperienceStep";
 import { PersonalInfoStep } from "../steps/PersonalInfoStep";
@@ -35,6 +41,9 @@ import { StepNavigation } from "./StepNavigation";
 interface ApplicationWizardProps {
   userEmail?: string;
 }
+
+const PDF_MIME_TYPE = "application/pdf";
+const MAX_RESUME_SIZE_MB = MAX_RESUME_UPLOAD_SIZE_BYTES / (1024 * 1024);
 
 const STEPS = [
   { id: "personal", title: "Personal Info" },
@@ -190,6 +199,10 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [questions, setQuestions] = useState<ShortAnswerQuestion[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [isDeletingResume, setIsDeletingResume] = useState(false);
+
+  const isResumeBusy = isUploadingResume || isDeletingResume;
 
   const form = useForm({
     resolver: zodResolver(applicationSchema),
@@ -234,6 +247,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Navigate to next step
   const goToNextStep = async () => {
+    if (isResumeBusy) return;
     setApiError(null);
     const isValid = await validateCurrentStep();
     if (isValid) {
@@ -244,6 +258,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Navigate to previous step
   const goToPreviousStep = () => {
+    if (isResumeBusy) return;
     setApiError(null);
     setCurrentStep((prev) => Math.max(prev - 1, 0));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -251,6 +266,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Jump to specific step (from review page)
   const goToStep = (stepIndex: number) => {
+    if (isResumeBusy) return;
     setApiError(null);
     setCurrentStep(stepIndex);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -258,6 +274,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Save draft
   const saveDraft = async () => {
+    if (isResumeBusy) return;
     setSaving(true);
     setApiError(null);
     setSaveSuccess(false);
@@ -265,11 +282,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const formData = form.getValues();
     const payload = transformFormDataToPayload(formData);
 
-    const res = await patchRequest<Application>(
-      "/applications/me",
-      payload,
-      "application",
-    );
+    const res = await updateMyApplication(payload);
 
     if (res.status === 200 && res.data) {
       setApplication(res.data);
@@ -283,6 +296,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Submit application
   const submitApplication = async () => {
+    if (isResumeBusy) return;
     setSubmitting(true);
     setApiError(null);
 
@@ -314,17 +328,17 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const formData = form.getValues();
     const payload = transformFormDataToPayload(formData);
 
-    const saveRes = await patchRequest<Application>(
-      "/applications/me",
-      payload,
-      "application",
-    );
+    const saveRes = await updateMyApplication(payload);
 
     if (saveRes.status !== 200) {
       setApiError(saveRes.error || "Failed to save before submitting");
       errorAlert(saveRes);
       setSubmitting(false);
       return;
+    }
+
+    if (saveRes.data) {
+      setApplication(saveRes.data);
     }
 
     // Now submit
@@ -342,6 +356,98 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       errorAlert(submitRes);
     }
     setSubmitting(false);
+  };
+
+  const uploadResume = async (file: File) => {
+    if (!application) return;
+    if (isResumeBusy || saving || submitting) return;
+
+    if (application.status !== "draft") {
+      setApiError("Cannot update submitted application");
+      return;
+    }
+
+    if (application.resume_path) {
+      setApiError("Delete your current resume before uploading a new one.");
+      return;
+    }
+
+    const isPDF =
+      file.type === PDF_MIME_TYPE ||
+      file.name.toLowerCase().trim().endsWith(".pdf");
+    if (!isPDF) {
+      setApiError("Resume must be a PDF file.");
+      return;
+    }
+
+    if (file.size > MAX_RESUME_UPLOAD_SIZE_BYTES) {
+      setApiError(`Resume must be ${MAX_RESUME_SIZE_MB} MB or smaller.`);
+      return;
+    }
+
+    setApiError(null);
+    setSaveSuccess(false);
+    setIsUploadingResume(true);
+
+    const uploadURLRes = await getResumeUploadURL();
+    if (uploadURLRes.status !== 200 || !uploadURLRes.data) {
+      setApiError(uploadURLRes.error || "Failed to generate resume upload URL");
+      errorAlert(uploadURLRes);
+      setIsUploadingResume(false);
+      return;
+    }
+
+    const uploadRes = await uploadToSignedURL(
+      uploadURLRes.data.upload_url,
+      file,
+    );
+    if (uploadRes.status < 200 || uploadRes.status >= 300) {
+      setApiError(uploadRes.error || "Failed to upload resume");
+      setIsUploadingResume(false);
+      return;
+    }
+
+    const saveRes = await updateMyApplication({
+      resume_path: uploadURLRes.data.resume_path,
+    });
+    if (saveRes.status === 200 && saveRes.data) {
+      setApplication(saveRes.data);
+      setSaveSuccess(true);
+    } else {
+      setApiError(saveRes.error || "Failed to save resume");
+      errorAlert(saveRes);
+    }
+    setIsUploadingResume(false);
+  };
+
+  const removeResume = async () => {
+    if (!application) return;
+    if (isResumeBusy || saving || submitting) return;
+
+    if (application.status !== "draft") {
+      setApiError("Cannot update submitted application");
+      return;
+    }
+
+    if (!application.resume_path) {
+      setApiError("No resume found to delete.");
+      return;
+    }
+
+    setApiError(null);
+    setSaveSuccess(false);
+    setIsDeletingResume(true);
+
+    const res = await deleteResume();
+    if (res.status === 200 && res.data) {
+      setApplication(res.data);
+      setSaveSuccess(true);
+    } else {
+      setApiError(res.error || "Failed to delete resume");
+      errorAlert(res);
+    }
+
+    setIsDeletingResume(false);
   };
 
   // Loading state
@@ -404,13 +510,22 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       case 4:
         return <EventInfoStep />;
       case 5:
-        return <SponsorInfoStep />;
+        return (
+          <SponsorInfoStep
+            hasResume={Boolean(application?.resume_path)}
+            isUploadingResume={isUploadingResume}
+            isDeletingResume={isDeletingResume}
+            onResumeSelected={uploadResume}
+            onDeleteResume={removeResume}
+          />
+        );
       case 6:
         return (
           <ReviewStep
             onEditStep={goToStep}
             userEmail={userEmail}
             questions={questions}
+            hasResume={Boolean(application?.resume_path)}
           />
         );
       default:
@@ -464,6 +579,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
               onSubmit={submitApplication}
               isSaving={saving}
               isSubmitting={submitting}
+              isResumeBusy={isResumeBusy}
               isLastStep={currentStep === STEPS.length - 1}
             />
           </form>
