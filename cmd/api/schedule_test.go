@@ -22,6 +22,14 @@ func scheduleRouter(app *application) chi.Router {
 	return r
 }
 
+func protectedScheduleMutationRouter(app *application) chi.Router {
+	r := chi.NewRouter()
+	r.With(app.AdminScheduleEditPermissionMiddleware).Post("/", app.createScheduleHandler)
+	r.With(app.AdminScheduleEditPermissionMiddleware).Put("/{scheduleID}", app.updateScheduleHandler)
+	r.With(app.AdminScheduleEditPermissionMiddleware).Delete("/{scheduleID}", app.deleteScheduleHandler)
+	return r
+}
+
 func TestListSchedule(t *testing.T) {
 	t.Run("returns 200 with items", func(t *testing.T) {
 		app := newTestApplication(t)
@@ -175,6 +183,99 @@ func TestDeleteSchedule(t *testing.T) {
 		rr := executeRequest(req, r)
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
+		mockSchedule.AssertExpectations(t)
+	})
+}
+
+func TestScheduleMutationPermission(t *testing.T) {
+	t.Run("admin receives 403 for create when admin schedule edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedScheduleMutationRouter(app)
+
+		mockSettings.On("GetAdminScheduleEditEnabled").Return(false, nil).Once()
+
+		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin receives 403 for update when admin schedule edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedScheduleMutationRouter(app)
+
+		mockSettings.On("GetAdminScheduleEditEnabled").Return(false, nil).Once()
+
+		body := `{"event_name":"Updated Ceremony","start_time":"2026-03-14T11:00:00Z","end_time":"2026-03-14T12:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPut, "/item-1", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin receives 403 for delete when admin schedule edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedScheduleMutationRouter(app)
+
+		mockSettings.On("GetAdminScheduleEditEnabled").Return(false, nil).Once()
+
+		req, err := http.NewRequest(http.MethodDelete, "/item-1", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin can create when admin schedule edits are enabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedScheduleMutationRouter(app)
+
+		mockSettings.On("GetAdminScheduleEditEnabled").Return(true, nil).Once()
+		mockSchedule.On("Create", mock.AnythingOfType("*store.ScheduleItem")).Return(nil).Once()
+
+		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+		mockSettings.AssertExpectations(t)
+		mockSchedule.AssertExpectations(t)
+	})
+
+	t.Run("super admin can create when admin schedule edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSchedule := app.store.Schedule.(*store.MockScheduleStore)
+		r := protectedScheduleMutationRouter(app)
+
+		mockSchedule.On("Create", mock.AnythingOfType("*store.ScheduleItem")).Return(nil).Once()
+
+		body := `{"event_name":"Opening Ceremony","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-14T11:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusCreated, rr.Code)
 		mockSchedule.AssertExpectations(t)
 	})
 }

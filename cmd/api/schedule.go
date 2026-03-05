@@ -30,18 +30,18 @@ type ScheduleItemResponse struct {
 	Schedule store.ScheduleItem `json:"schedule"`
 }
 
-// listScheduleHandler returns all schedule items (Super Admin)
+// listScheduleHandler returns all schedule items (Admin)
 //
-//	@Summary		List schedule (Super Admin)
+//	@Summary		List schedule (Admin)
 //	@Description	Returns the full event schedule, ordered by start time ascending
-//	@Tags			superadmin/schedule
+//	@Tags			admin/schedule
 //	@Produce		json
 //	@Success		200	{object}	ScheduleListResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/schedule [get]
+//	@Router			/admin/schedule [get]
 func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	items, err := app.store.Schedule.List(r.Context())
 	if err != nil {
@@ -54,11 +54,11 @@ func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// createScheduleHandler creates a new schedule item (Super Admin)
+// createScheduleHandler creates a new schedule item (Admin)
 //
-//	@Summary		Create schedule item (Super Admin)
+//	@Summary		Create schedule item (Admin)
 //	@Description	Creates a new event in the schedule
-//	@Tags			superadmin/schedule
+//	@Tags			admin/schedule
 //	@Accept			json
 //	@Produce		json
 //	@Param			schedule	body		CreateSchedulePayload	true	"Schedule item to create"
@@ -68,7 +68,7 @@ func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Reque
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/schedule [post]
+//	@Router			/admin/schedule [post]
 func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreateSchedulePayload
 	if err := readJSON(w, r, &payload); err != nil {
@@ -105,11 +105,11 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// updateScheduleHandler updates an existing schedule item (Super Admin)
+// updateScheduleHandler updates an existing schedule item (Admin)
 //
-//	@Summary		Update schedule item (Super Admin)
+//	@Summary		Update schedule item (Admin)
 //	@Description	Updates an existing event in the schedule
-//	@Tags			superadmin/schedule
+//	@Tags			admin/schedule
 //	@Accept			json
 //	@Produce		json
 //	@Param			scheduleID	path		string					true	"Schedule item ID"
@@ -121,7 +121,7 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 //	@Failure		404			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/schedule/{scheduleID} [put]
+//	@Router			/admin/schedule/{scheduleID} [put]
 func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	scheduleID := chi.URLParam(r, "scheduleID")
 
@@ -165,11 +165,11 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// deleteScheduleHandler deletes a schedule item (Super Admin)
+// deleteScheduleHandler deletes a schedule item (Admin)
 //
-//	@Summary		Delete schedule item (Super Admin)
+//	@Summary		Delete schedule item (Admin)
 //	@Description	Deletes an event from the schedule
-//	@Tags			superadmin/schedule
+//	@Tags			admin/schedule
 //	@Param			scheduleID	path	string	true	"Schedule item ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
@@ -177,7 +177,7 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 //	@Failure		404	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/schedule/{scheduleID} [delete]
+//	@Router			/admin/schedule/{scheduleID} [delete]
 func (app *application) deleteScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	scheduleID := chi.URLParam(r, "scheduleID")
 

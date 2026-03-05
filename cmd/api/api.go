@@ -92,10 +92,10 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/applications",
 		"admin/reviews",
 		"admin/scans",
+		"admin/schedule",
 		"superadmin/applications",
 		"superadmin/settings",
-		"superadmin/users",
-		"superadmin/schedule"
+		"superadmin/users"
 	];
 	const index = (tag) => {
 		const i = order.indexOf(tag);
@@ -204,6 +204,18 @@ func (app *application) mount() http.Handler {
 						r.Get("/user/{userID}", app.getUserScansHandler)
 						r.Get("/stats", app.getScanStatsHandler)
 					})
+
+					// Schedule
+					r.Route("/schedule", func(r chi.Router) {
+						r.Get("/", app.listScheduleHandler)
+
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminScheduleEditPermissionMiddleware)
+							r.Post("/", app.createScheduleHandler)
+							r.Put("/{scheduleID}", app.updateScheduleHandler)
+							r.Delete("/{scheduleID}", app.deleteScheduleHandler)
+						})
+					})
 				})
 			})
 
@@ -220,6 +232,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Get("/review-assignment-toggle", app.getReviewAssignmentToggle)
 						r.Post("/review-assignment-toggle", app.setReviewAssignmentToggle)
+						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
+						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 					})
 
@@ -235,13 +249,6 @@ func (app *application) mount() http.Handler {
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
 
-					// Schedule
-					r.Route("/schedule", func(r chi.Router) {
-						r.Get("/", app.listScheduleHandler)
-						r.Post("/", app.createScheduleHandler)
-						r.Put("/{scheduleID}", app.updateScheduleHandler)
-						r.Delete("/{scheduleID}", app.deleteScheduleHandler)
-					})
 				})
 			})
 		})

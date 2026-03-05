@@ -45,6 +45,8 @@ type Storage struct {
 		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
 		GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error)
 		SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error
+		GetAdminScheduleEditEnabled(ctx context.Context) (bool, error)
+		SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)

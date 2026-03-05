@@ -177,6 +177,14 @@ type ReviewAssignmentToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetAdminScheduleEditTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminScheduleEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 // getReviewAssignmentToggle returns the current review assignment enabled setting
 //
 //	@Summary		Get review assignment enabled state (Super Admin)
@@ -245,6 +253,68 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 	}
 
 	response := ReviewAssignmentToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getAdminScheduleEditToggle returns whether admins can edit schedule
+//
+//	@Summary		Get admin schedule edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete schedule items
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminScheduleEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-schedule-edit-toggle [get]
+func (app *application) getAdminScheduleEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminScheduleEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminScheduleEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminScheduleEditToggle updates whether admins can edit schedule
+//
+//	@Summary		Set admin schedule edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete schedule items
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminScheduleEditTogglePayload	true	"Admin schedule editing enabled state"
+//	@Success		200		{object}	AdminScheduleEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-schedule-edit-toggle [post]
+func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminScheduleEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminScheduleEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminScheduleEditToggleResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
