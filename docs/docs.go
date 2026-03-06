@@ -2290,44 +2290,19 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Updates whether users with admin role can create, update, and delete schedule items",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Generates and sends personalized QR code emails to all accepted hackers. QR encodes the user UUID for check-in scanning.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "superadmin/settings"
                 ],
-                "summary": "Set admin schedule edit state (Super Admin)",
-                "parameters": [
-                    {
-                        "description": "Admin schedule editing enabled state",
-                        "name": "enabled",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.SetAdminScheduleEditTogglePayload"
-                        }
-                    }
-                ],
+                "summary": "Send QR code emails (Super Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.AdminScheduleEditToggleResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/main.SendQREmailsResponse"
                         }
                     },
                     "401": {
@@ -2366,96 +2341,35 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings/hackathon-date-range": {
-            "get": {
+        "/superadmin/settings/applications-enabled": {
+            "put": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns configured hackathon start and end dates",
+                "description": "Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin/settings"
+                    "superadmin"
                 ],
-                "summary": "Get hackathon date range (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.HackathonDateRangeResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Updates configured hackathon start and end dates. Range must be at most 7 days inclusive.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Set hackathon date range (Super Admin)",
+                "summary": "Set applications enabled status",
                 "parameters": [
                     {
-                        "description": "Hackathon date range",
-                        "name": "range",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.SetHackathonDateRangePayload"
-                        }
+                        "type": "boolean",
+                        "description": "Enable or disable applications",
+                        "name": "enabled",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.HackathonDateRangeResponse"
+                            "$ref": "#/definitions/main.SetApplicationsEnabledResponse"
                         }
                     },
                     "400": {
@@ -3382,6 +3296,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ApplicationsEnabledResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.CheckEmailResponse": {
             "type": "object",
             "properties": {
@@ -3592,7 +3514,7 @@ const docTemplate = `{
                 "schedule": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/store.ScheduleItem"
+                        "type": "string"
                     }
                 }
             }

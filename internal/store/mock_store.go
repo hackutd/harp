@@ -129,6 +129,16 @@ func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status App
 	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Get(0).(bool), args.Error(1)
+}
+
+func (m *MockApplicationStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
+	args := m.Called()
+	return args.Get(0).(bool), args.Error(1)
+}
+
 // mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock
