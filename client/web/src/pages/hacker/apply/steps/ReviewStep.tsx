@@ -136,7 +136,7 @@ export function ReviewStep({
         onEdit={onEditStep}
       >
         <ReviewField label="University" value={values.university} />
-        <ReviewField label="Major" value={values.major} />
+        <ReviewField label="Field(s) of Study" value={values.major} />
         <ReviewField
           label="Level of Study"
           value={getLabel(LEVEL_OF_STUDY_OPTIONS, values.level_of_study)}

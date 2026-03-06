@@ -17,6 +17,7 @@ import type { Application } from "@/types";
 import { fetchApplicationResumeURL } from "../api";
 import { formatName, getStatusColor } from "../utils";
 import {
+  AgreementsSection,
   DemographicsSection,
   EducationSection,
   EventPreferencesSection,
@@ -133,6 +134,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
               onViewResume={handleViewResume}
               isOpeningResume={isOpeningResume}
             />
+            <AgreementsSection application={application} />
             <TimelineSection application={application} />
           </div>
         ) : null}
