@@ -26,7 +26,7 @@ function AgreementItem({
       <span
         className={cn(
           "text-sm leading-tight",
-          !checked && required && "text-red-600"
+          !checked && required && "text-red-600",
         )}
       >
         {label}
@@ -39,7 +39,9 @@ function AgreementItem({
 export function AgreementsSection({ application }: AgreementsSectionProps) {
   return (
     <div>
-      <h4 className="text-sm font-semibold mb-3">Agreements & Acknowledgments</h4>
+      <h4 className="text-sm font-semibold mb-3">
+        Agreements & Acknowledgments
+      </h4>
       <div className="space-y-2.5">
         <AgreementItem
           label="Understands application does not guarantee admission"

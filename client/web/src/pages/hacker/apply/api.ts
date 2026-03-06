@@ -94,7 +94,6 @@ export async function uploadResumeToSignedURL(
 
 export { MAX_RESUME_SIZE_BYTES };
 
-
 // University Search API (Hipo)
 export interface University {
   name: string;

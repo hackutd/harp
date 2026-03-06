@@ -33,7 +33,7 @@ export function SelectWithOther({
 }: SelectWithOtherProps) {
   // Check if current value is a predefined option
   const isPredefinedValue = options.some((opt) => opt.value === value);
-  
+
   // Determine initial state: show input if value exists but isn't a predefined option
   const getInitialOtherMode = () => {
     if (!value) return false;
@@ -43,7 +43,7 @@ export function SelectWithOther({
 
   const [isOtherMode, setIsOtherMode] = React.useState(getInitialOtherMode);
   const [customValue, setCustomValue] = React.useState(
-    value && !isPredefinedValue && value !== "other" ? value : ""
+    value && !isPredefinedValue && value !== "other" ? value : "",
   );
 
   // Only sync from props on mount - intentionally empty deps to run once

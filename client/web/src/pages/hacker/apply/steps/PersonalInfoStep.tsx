@@ -143,7 +143,7 @@ export function PersonalInfoStep({ userEmail }: PersonalInfoStepProps) {
           </FormItem>
         )}
       />
-      
+
       <FormField
         control={form.control}
         name="gender"
@@ -163,7 +163,6 @@ export function PersonalInfoStep({ userEmail }: PersonalInfoStepProps) {
           </FormItem>
         )}
       />
-
 
       <FormField
         control={form.control}

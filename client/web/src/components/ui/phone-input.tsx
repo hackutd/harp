@@ -52,14 +52,17 @@ function formatPhoneDisplay(digits: string): string {
 }
 
 // Parse E.164 to extract country code and national number
-function parseE164(e164: string): { countryCode: string; nationalNumber: string } {
+function parseE164(e164: string): {
+  countryCode: string;
+  nationalNumber: string;
+} {
   if (!e164 || !e164.startsWith("+")) {
     return { countryCode: "US", nationalNumber: "" };
   }
 
   // Sort by dial code length (longest first) to match correctly
   const sortedCodes = [...COUNTRY_CODES].sort(
-    (a, b) => b.dialCode.length - a.dialCode.length
+    (a, b) => b.dialCode.length - a.dialCode.length,
   );
 
   for (const country of sortedCodes) {
@@ -92,10 +95,13 @@ function PhoneInput({
   // Parse the E.164 value
   const parsed = parseE164(value);
   const [countryCode, setCountryCode] = React.useState(parsed.countryCode);
-  const [nationalNumber, setNationalNumber] = React.useState(parsed.nationalNumber);
+  const [nationalNumber, setNationalNumber] = React.useState(
+    parsed.nationalNumber,
+  );
 
   // Get the dial code for selected country
-  const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[0];
+  const selectedCountry =
+    COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[0];
 
   // Sync when value prop changes externally
   React.useEffect(() => {
@@ -106,7 +112,8 @@ function PhoneInput({
 
   // Update the E.164 value when country or number changes
   const updateValue = (newCountryCode: string, newNationalNumber: string) => {
-    const country = COUNTRY_CODES.find((c) => c.code === newCountryCode) || COUNTRY_CODES[0];
+    const country =
+      COUNTRY_CODES.find((c) => c.code === newCountryCode) || COUNTRY_CODES[0];
     const digits = newNationalNumber.replace(/\D/g, "");
     if (digits) {
       onChange?.(country.dialCode + digits);
@@ -129,7 +136,11 @@ function PhoneInput({
   return (
     <div className={cn("flex gap-2", className)}>
       {/* Country Code Dropdown */}
-      <Select value={countryCode} onValueChange={handleCountryChange} disabled={disabled}>
+      <Select
+        value={countryCode}
+        onValueChange={handleCountryChange}
+        disabled={disabled}
+      >
         <SelectTrigger className="w-[110px] shrink-0">
           <SelectValue>
             {selectedCountry.code} {selectedCountry.dialCode}
