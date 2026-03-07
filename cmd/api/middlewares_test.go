@@ -241,3 +241,4 @@ func TestRateLimiterMiddleware(t *testing.T) {
 		checkResponseCode(t, http.StatusOK, rr.Code)
 	})
 }
+
