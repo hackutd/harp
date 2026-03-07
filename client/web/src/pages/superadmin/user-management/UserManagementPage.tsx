@@ -34,16 +34,17 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     async function fetchUsers() {
-      const res = await getRequest<{ admins: {id: string, email: string, enabled: boolean}[] }>(
-        "/superadmin/settings/review-assignment-toggle",
-        "super admins",
-      );
+      const res = await getRequest<{
+        admins: { id: string; email: string; enabled: boolean }[];
+      }>("/superadmin/settings/review-assignment-toggle", "super admins");
       if (res.status === 200 && res.data) {
-        setUsers(res.data.admins.map(a => ({
-          id: a.id,
-          email: a.email,
-          review_assignment_enabled: a.enabled,
-        })));
+        setUsers(
+          res.data.admins.map((a) => ({
+            id: a.id,
+            email: a.email,
+            review_assignment_enabled: a.enabled,
+          })),
+        );
       } else {
         errorAlert(res);
       }
@@ -118,7 +119,10 @@ export default function UserManagementPage() {
                         <Switch
                           checked={user.review_assignment_enabled}
                           onCheckedChange={() =>
-                            handleToggle(user.id, user.review_assignment_enabled)
+                            handleToggle(
+                              user.id,
+                              user.review_assignment_enabled,
+                            )
                           }
                           disabled={togglingId === user.id}
                           className="cursor-pointer"
