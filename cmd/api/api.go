@@ -241,7 +241,7 @@ func (app *application) mount() http.Handler {
 						r.Put("/scan-types", app.updateScanTypesHandler)
 					})
 
-					r.Route("/applciations", func(r chi.Router) {
+					r.Route("/applications", func(r chi.Router) {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
