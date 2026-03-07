@@ -187,6 +187,7 @@ type ReviewAssignmentAdmin struct {
 
 type ReviewAssignmentListResponse struct {
 	Admins []ReviewAssignmentAdmin `json:"admins"`
+}
 type SetAdminScheduleEditTogglePayload struct {
 	Enabled bool `json:"enabled"`
 }
