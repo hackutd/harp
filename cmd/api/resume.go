@@ -24,18 +24,18 @@ type ResumeDownloadURLResponse struct {
 
 // generateResumeUploadURLHandler returns a signed upload URL for hacker resume uploads.
 //
-// @Summary		Generate resume upload URL
-// @Description	Generates a signed GCS upload URL for the authenticated user's resume. Application must be in draft status.
-// @Tags			hackers
-// @Produce		json
-// @Success		200	{object}	ResumeUploadURLResponse
-// @Failure		401	{object}	object{error=string}
-// @Failure		404	{object}	object{error=string}
-// @Failure		409	{object}	object{error=string}
-// @Failure		500	{object}	object{error=string}
-// @Failure		503	{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/applications/me/resume-upload-url [post]
+//	@Summary		Generate resume upload URL
+//	@Description	Generates a signed GCS upload URL for the authenticated user's resume. Application must be in draft status.
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	ResumeUploadURLResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}
+//	@Failure		409	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Failure		503	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/applications/me/resume-upload-url [post]
 func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -88,17 +88,17 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 
 // deleteResumeHandler removes the resume path from the draft application and best-effort deletes from GCS.
 //
-// @Summary		Delete resume
-// @Description	Deletes the resume reference from the authenticated user's draft application and best-effort deletes the object from GCS.
-// @Tags			hackers
-// @Produce		json
-// @Success		200	{object}	store.Application
-// @Failure		401	{object}	object{error=string}
-// @Failure		404	{object}	object{error=string}
-// @Failure		409	{object}	object{error=string}
-// @Failure		500	{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/applications/me/resume [delete]
+//	@Summary		Delete resume
+//	@Description	Deletes the resume reference from the authenticated user's draft application and best-effort deletes the object from GCS.
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	store.Application
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}
+//	@Failure		409	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/applications/me/resume [delete]
 func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {
@@ -147,20 +147,20 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 
 // getResumeDownloadURLHandler returns a signed download URL for admin viewing.
 //
-// @Summary		Get resume download URL (Admin)
-// @Description	Generates a signed GCS download URL for an application's resume.
-// @Tags			admin/applications
-// @Produce		json
-// @Param			applicationID	path		string	true	"Application ID"
-// @Success		200				{object}	ResumeDownloadURLResponse
-// @Failure		400				{object}	object{error=string}
-// @Failure		401				{object}	object{error=string}
-// @Failure		403				{object}	object{error=string}
-// @Failure		404				{object}	object{error=string}
-// @Failure		500				{object}	object{error=string}
-// @Failure		503				{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/applications/{applicationID}/resume-url [get]
+//	@Summary		Get resume download URL (Admin)
+//	@Description	Generates a signed GCS download URL for an application's resume.
+//	@Tags			admin/applications
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	ResumeDownloadURLResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Failure		503				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/resume-url [get]
 func (app *application) getResumeDownloadURLHandler(w http.ResponseWriter, r *http.Request) {
 	applicationID := chi.URLParam(r, "applicationID")
 	if applicationID == "" {
