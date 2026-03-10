@@ -4,10 +4,6 @@
 
 Hackathon management system with Go backend and React frontend.
 
-```markdown
-http://localhost:3567
-```
-
 ## Quick Start
 
 ### Prerequisites
@@ -41,3 +37,5 @@ The backend runs database migrations automatically on startup. Both the frontend
 **Backend:** Go, Chi, PostgreSQL, SuperTokens, SendGrid
 
 **Frontend:** React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui
+
+**Deployment:** GCP (GCR, GCS), multi-stage Docker (scratch), Neon DB
