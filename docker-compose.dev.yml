@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16.3
+    container_name: harp-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portal
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d portal"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql
+    container_name: harp-dev-supertokens
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_CONNECTION_URI: "postgresql://admin:adminpassword@db:5432/supertokens"
+      API_KEYS: "dev-api-key-that-is-long-enough"
+    ports:
+      - "3567:3567"
+
+  go-dev:
+    container_name: harp-dev-backend
+    build:
+      context: "./"
+      dockerfile: dev.Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      supertokens:
+        condition: service_started
+    environment:
+      - DB_ADDR=postgres://admin:adminpassword@db:5432/portal?sslmode=disable
+      - SUPERTOKENS_CONNECTION_URI=http://supertokens:3567
+      - SUPERTOKENS_API_KEY=dev-api-key-that-is-long-enough
+      - AUTH_BASIC_USER=admin
+      - AUTH_BASIC_PASS=admin
+      - APP_URL=http://localhost:8080
+      - FRONTEND_URL=http://localhost:3000
+      - ENV=development
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/app
+      - go-mod-cache:/go/pkg/mod
+
+  node-dev:
+    container_name: harp-dev-frontend
+    depends_on:
+      - go-dev
+    build:
+      context: "./client/web"
+      dockerfile: dev.Dockerfile
+    environment:
+      - API_PROXY_TARGET=http://go-dev:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client/web:/app
+      - /app/node_modules
+
+volumes:
+  dev-db-data:
+  go-mod-cache:
