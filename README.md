@@ -8,7 +8,7 @@ Hackathon management system with Go backend and React frontend.
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/)
+- <a href="https://docs.docker.com/get-docker/" target="_blank">Docker</a>
 
 ### Setup
 
@@ -19,16 +19,14 @@ docker compose -f docker-compose.dev.yml up --build
 
 This starts:
 
-
-| Service      | URL                                                                        |
-| ------------ | -------------------------------------------------------------------------- |
-| Frontend     | [http://localhost:3000](http://localhost:3000)                             |
-| Backend API  | [http://localhost:8080/v1](http://localhost:8080/v1)                       |
-| SuperTokens  | localhost:3567                                                             |
-| PostgreSQL   | localhost:5432                                                             |
-| Swagger Docs | [http://localhost:8080/v1/swagger/](http://localhost:8080/v1/swagger/)     |
-| Debug Vars   | [http://localhost:8080/v1/debug/vars](http://localhost:8080/v1/debug/vars) |
-
+| Service      | URL                                 |
+| ------------ | ----------------------------------- |
+| Frontend     | `http://localhost:3000`               |
+| Backend API  | `http://localhost:8080/v1`            |
+| SuperTokens  | `localhost:3567`                      |
+| PostgreSQL   | `localhost:5432`                      |
+| Swagger Docs | `http://localhost:8080/v1/swagger/`   |
+| Debug Vars   | `http://localhost:8080/v1/debug/vars` |
 
 The backend runs database migrations automatically on startup. Both the frontend and backend support hot reload via mounted volumes.
 
