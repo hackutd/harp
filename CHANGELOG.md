@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.3.0](https://github.com/hackutd/harp/compare/v1.2.0...v1.3.0) (2026-03-10)
+
+
+### Features
+
+* add "other" scan category and enforce single check_in type ([5e6e26a](https://github.com/hackutd/harp/commit/5e6e26a927f434ee29cce861fe174560489008a9))
+* add Docker dev environment and update README quickstart ([c09e37b](https://github.com/hackutd/harp/commit/c09e37b9e87a2ab7b9fb3458626d13097a998524))
+* add search input to all applicants page ([e6a0f58](https://github.com/hackutd/harp/commit/e6a0f588d288a3af9c422b54e22038c7d8083938))
+* allow super admins to toggle perms for admin schedule building ([5ff2ed3](https://github.com/hackutd/harp/commit/5ff2ed37c276a1a7f565978b7b6c0e8e4f334916))
+* generate email csv for sendgrid ([3eefd6e](https://github.com/hackutd/harp/commit/3eefd6e26cef9e7060298eb68450f881f9f41787))
+* merge ai percent on apps ([b58408b](https://github.com/hackutd/harp/commit/b58408b03103ccac8416ede342357ebfebded4b4))
+* new super admin pages ([568d1af](https://github.com/hackutd/harp/commit/568d1af8e2885e89da1c2a508ae27f59d04b137a))
+* refactor admin scheduler and move superadmin schedule controls ([c37d94a](https://github.com/hackutd/harp/commit/c37d94ae8a19a14aa0ee3757f60b22af11dbf97f))
+* remove email qr code email + handler ([e920646](https://github.com/hackutd/harp/commit/e920646ae974826c8f2339e4f087aec0a20144aa))
+* schedule endpoints ([3305d12](https://github.com/hackutd/harp/commit/3305d12804ed2dec46530c01d61047e0a26189d9))
+* **sidebar:** add super admin section to admin sidebar ([55267bf](https://github.com/hackutd/harp/commit/55267bf468a29169d056e0ec3ad4fa2826eed426))
+* ui issues ([d3302fa](https://github.com/hackutd/harp/commit/d3302fa7506f54e1ae0e650424b2fb7cb462ef5f))
+* **ui:** admins, superadmins view resumes ([010241c](https://github.com/hackutd/harp/commit/010241c50912ac7f87ebcfc19c8cdad8795480a9))
+* **ui:** applicant upload resume ([54d40b3](https://github.com/hackutd/harp/commit/54d40b3704933988cdd54ab41b6672e9f0ea0b61))
+* **ui:** application config page for super admins ([935acec](https://github.com/hackutd/harp/commit/935acec565a53e6499955a082f82680bdc9e7a01))
+* **ui:** placeholder instead of spinner loading ([3deeff1](https://github.com/hackutd/harp/commit/3deeff174b14323b8782efb523832792bde04068))
+* **ui:** super admin scan types crud ([5cb0807](https://github.com/hackutd/harp/commit/5cb080721cb250f19bd3c9d9f20744489da3c631))
+* **ui:** superadmin final reviews page ([096ac67](https://github.com/hackutd/harp/commit/096ac6769d4e2557104fb5b2252b3ed078eafeb4))
+* upload resume and add gcs package ([e57bb5d](https://github.com/hackutd/harp/commit/e57bb5de359187ecb6646956a2f9d142add12705))
+* **web:** add admin scans page with QR code scanning ([cd24bb6](https://github.com/hackutd/harp/commit/cd24bb6dc84d61ceb55810d94372faca08f868e0))
+* **web:** crud scan types for super admin ([3613084](https://github.com/hackutd/harp/commit/36130843a4ce9004eca0527cb9897aa7f39de41c))
+* **web:** explicity turn off camera when not on scanning ([ff7664b](https://github.com/hackutd/harp/commit/ff7664b37da8dd467d4e9e860679609063b1c385))
+* **web:** mobile friendly ([f98845b](https://github.com/hackutd/harp/commit/f98845bb71d2861cbbfcf1d5ff6348c6a6872580))
+
+
+### Bug Fixes
+
+* applications typo ([7b282a4](https://github.com/hackutd/harp/commit/7b282a4a5ddec5a5802ca87bd893a4fa4dc0c960))
+* change qr code scanner to one that is supported by safari ([fa8d90f](https://github.com/hackutd/harp/commit/fa8d90f61ca282c627b2eec5d50d7945cfd82710))
+* ci check ([1348833](https://github.com/hackutd/harp/commit/13488336da6c86fb3ae155b3c3d54d846ff83f5f))
+* formatting for ci ([2dd753a](https://github.com/hackutd/harp/commit/2dd753a2083e631a7599d685386f56904fa5c51e))
+* prevent full page re-render on applicant search ([75b8807](https://github.com/hackutd/harp/commit/75b88071029601e74f721c0e0bf9a94f17dc7288))
+* remove required sendgrid api key ([7e888c7](https://github.com/hackutd/harp/commit/7e888c79e109a1af98f03acb40ac30b856612bb7))
+* resolve minimatch high severity vulnerability ([927964c](https://github.com/hackutd/harp/commit/927964c76c97087d437faf5a52f926f17ec66e3c))
+* timezones for creating schedules ([3ff9b99](https://github.com/hackutd/harp/commit/3ff9b99de49e464a78f16474c884f419dc840114))
+* **ui:** duplicate requests ([d8330ce](https://github.com/hackutd/harp/commit/d8330ce99489c332574f4807e97a9b4b0771d887))
+* **ui:** remove duplicate API calls when toggling status filters ([3f5de97](https://github.com/hackutd/harp/commit/3f5de97540cecc1cdef4b15aa7bc2c3ee8023adc))
+* update percentage -&gt; percent migration ([133d9e2](https://github.com/hackutd/harp/commit/133d9e2b753b8ada486b248b3bcdd384dc688f03))
+
 ## [1.2.0](https://github.com/hackutd/harp/compare/v1.1.1...v1.2.0) (2026-02-25)
 
 
