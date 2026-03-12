@@ -20,11 +20,7 @@ import { refreshAssignedPage } from "./hooks/updateReviewPage";
 import { useReviewKeyboardShortcuts } from "./hooks/useReviewKeyboardShortcuts";
 import { useReviewsStore } from "./store";
 import type { NotesListResponse, ReviewNote, ReviewVote } from "./types";
-
-function formatName(firstName: string | null, lastName: string | null) {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
-}
+import { formatName } from "./utils";
 
 export default function AssignedPage() {
   const { reviews, loading, submitting, fetchPendingReviews, submitVote } =
