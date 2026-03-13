@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CircleCheck,
   Package,
   ScanLine,
   Settings,
@@ -37,11 +36,6 @@ const applicantsNav = [
     name: "Assigned",
     url: "/admin/assigned",
     icon: UserCheck,
-  },
-  {
-    name: "Completed",
-    url: "/admin/completed",
-    icon: CircleCheck,
   },
 ];
 
