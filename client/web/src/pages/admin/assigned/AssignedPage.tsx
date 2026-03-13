@@ -12,6 +12,11 @@ import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
 import { ReviewsPageLayout } from "../_shared";
+
+const REVIEWS_TABS = [
+  { label: "Assigned", to: "/admin/assigned" },
+  { label: "Completed", to: "/admin/completed" },
+];
 import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { VoteBadge } from "./components/VoteBadge";
@@ -204,6 +209,7 @@ export default function AssignedPage() {
 
   return (
     <ReviewsPageLayout
+      tabs={REVIEWS_TABS}
       isExpanded={isExpanded}
       headerDescription={`${reviews.length} review(s) assigned to you`}
       headerActions={
