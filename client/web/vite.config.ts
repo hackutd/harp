@@ -4,13 +4,15 @@ import path from "path";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
+const apiTarget = process.env.API_PROXY_TARGET || 'http://localhost:8080';
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
     proxy: {
-      "/auth": {
-        target: "http://localhost:8080",
+      '/auth': {
+        target: apiTarget,
         changeOrigin: true,
         bypass: (req) => {
           // Frontend routes that React Router should handle
@@ -38,8 +40,8 @@ export default defineConfig({
           }
         },
       },
-      "/v1": {
-        target: "http://localhost:8080",
+      '/v1': {
+        target: apiTarget,
         changeOrigin: true,
       },
     },
