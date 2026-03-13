@@ -9,10 +9,14 @@ import type { Application } from "@/types";
 import { ReviewsPageLayout } from "../_shared";
 import { ApplicationDetailsPanel } from "../assigned/components/ApplicationDetailsPanel";
 import { VoteBadge } from "../assigned/components/VoteBadge";
-import { formatName } from "../assigned/utils";
 import { CompletedReviewsTable } from "./components/CompletedReviewsTable";
 import { useCompletedReviewsStore } from "./store";
 import type { NotesListResponse, ReviewNote } from "./types";
+
+function formatName(firstName: string | null, lastName: string | null) {
+  if (!firstName && !lastName) return "-";
+  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
+}
 
 export default function CompletedPage() {
   const { reviews, loading, fetchCompletedReviews } =
