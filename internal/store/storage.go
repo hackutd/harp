@@ -72,6 +72,13 @@ type Storage struct {
 		Update(ctx context.Context, item *ScheduleItem) error
 		Delete(ctx context.Context, id string) error
 	}
+	Sponsors interface {
+		List(ctx context.Context) ([]Sponsor, error)
+		Create(ctx context.Context, sponsor *Sponsor) error
+		Update(ctx context.Context, sponsor *Sponsor) error
+		Delete(ctx context.Context, id string) error
+		GetByID(ctx context.Context, id string) (*Sponsor, error)
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -82,5 +89,6 @@ func NewStorage(db *sql.DB) Storage {
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
 		Schedule:           &ScheduleStore{db: db},
+		Sponsors:           &SponsorsStore{db: db},
 	}
 }
