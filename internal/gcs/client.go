@@ -15,8 +15,9 @@ const (
 )
 
 type GCSClient struct {
-	client *storage.Client
-	bucket *storage.BucketHandle
+	client     *storage.Client
+	bucket     *storage.BucketHandle
+	bucketName string
 }
 
 func New(ctx context.Context, bucketName string) (*GCSClient, error) {
@@ -26,8 +27,9 @@ func New(ctx context.Context, bucketName string) (*GCSClient, error) {
 	}
 
 	return &GCSClient{
-		client: client,
-		bucket: client.Bucket(bucketName),
+		client:     client,
+		bucket:     client.Bucket(bucketName),
+		bucketName: bucketName,
 	}, nil
 }
 
@@ -40,6 +42,20 @@ func (c *GCSClient) GenerateUploadURL(_ context.Context, objectPath string) (str
 			fmt.Sprintf("x-goog-content-length-range:0,%d", maxResumeSizeBytes),
 		},
 		Scheme: storage.SigningSchemeV4,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+func (c *GCSClient) GenerateImageUploadURL(_ context.Context, objectPath string) (string, error) {
+	url, err := c.bucket.SignedURL(objectPath, &storage.SignedURLOptions{
+		Method:      "PUT",
+		Expires:     time.Now().Add(signedURLExpiry),
+		ContentType: "image/*",
+		Scheme:      storage.SigningSchemeV4,
 	})
 	if err != nil {
 		return "", err
@@ -67,4 +83,8 @@ func (c *GCSClient) DeleteObject(ctx context.Context, objectPath string) error {
 
 func (c *GCSClient) Close() error {
 	return c.client.Close()
+}
+
+func (c *GCSClient) GeneratePublicURL(objectPath string) string {
+	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", c.bucketName, objectPath)
 }
