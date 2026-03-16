@@ -229,6 +229,25 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 	return err
 }
 
+// parseReviewAssignmentEntries tries the new object format first, then falls back to legacy []string.
+func parseReviewAssignmentEntries(value []byte) ([]ReviewAssignmentEntry, error) {
+	var entries []ReviewAssignmentEntry
+	if err := json.Unmarshal(value, &entries); err == nil {
+		return entries, nil
+	}
+
+	var ids []string
+	if err := json.Unmarshal(value, &ids); err == nil {
+		entries = make([]ReviewAssignmentEntry, len(ids))
+		for i, id := range ids {
+			entries[i] = ReviewAssignmentEntry{ID: id, Enabled: true}
+		}
+		return entries, nil
+	}
+
+	return nil, errors.New("unrecognized review_assignment_toggle format")
+}
+
 // GetAllReviewAssignmentToggles returns all review assignment toggle entries.
 func (s *SettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -249,16 +268,8 @@ func (s *SettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]Re
 		return nil, err
 	}
 
-	var entries []ReviewAssignmentEntry
-	if err := json.Unmarshal(value, &entries); err != nil {
-		// Fallback: legacy format was an array of IDs (strings)
-		var ids []string
-		if err2 := json.Unmarshal(value, &ids); err2 == nil {
-			for _, id := range ids {
-				entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-			}
-			return entries, nil
-		}
+	entries, err := parseReviewAssignmentEntries(value)
+	if err != nil {
 		return nil, err
 	}
 
@@ -266,8 +277,8 @@ func (s *SettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]Re
 }
 
 // GetReviewAssignmentToggle returns whether review assignment is enabled for the given super admin ID.
-// The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
-// If the setting row does not exist, defaults to false.
+// The setting is stored as a JSON array of ReviewAssignmentEntry objects.
+// If the setting row does not exist or the admin has no entry, defaults to true (eligible for reviews).
 func (s *SettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -282,40 +293,29 @@ func (s *SettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdmi
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentToggle).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
+			return true, nil
 		}
 		return false, err
 	}
 
-	// Treat empty/empty-object/empty-array as disabled
+	// Treat empty/empty-object/empty-array as enabled (default)
 	sv := string(value)
 	if sv == "" || sv == "null" || sv == "{}" || sv == "[]" {
-		return false, nil
+		return true, nil
 	}
 
-	// New format: array of objects {"id": "...", "enabled": true}
-	var entries []ReviewAssignmentEntry
-	if err := json.Unmarshal(value, &entries); err == nil {
-		for _, e := range entries {
-			if e.ID == superAdminID && e.Enabled {
-				return true, nil
-			}
+	entries, err := parseReviewAssignmentEntries(value)
+	if err != nil {
+		return true, nil
+	}
+
+	for _, e := range entries {
+		if e.ID == superAdminID {
+			return e.Enabled, nil
 		}
-		return false, nil
 	}
 
-	// Fallback: legacy format was an array of IDs (strings)
-	var ids []string
-	if err := json.Unmarshal(value, &ids); err == nil {
-		for _, id := range ids {
-			if id == superAdminID {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	return false, nil
+	return true, nil
 }
 
 // SetReviewAssignmentToggle updates whether review assignment is enabled for the given super admin ID.
@@ -345,19 +345,11 @@ func (s *SettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdmi
 		}
 		entries = []ReviewAssignmentEntry{}
 	} else {
-		// Try new format first
-		if jerr := json.Unmarshal(value, &entries); jerr != nil {
-			// Fallback: legacy array of IDs
-			var ids []string
-			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-				// convert legacy ids to entries with enabled=true
-				for _, id := range ids {
-					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-				}
-			} else {
-				// If we can't parse either, start fresh
-				entries = []ReviewAssignmentEntry{}
-			}
+		parsed, parseErr := parseReviewAssignmentEntries(value)
+		if parseErr != nil {
+			entries = []ReviewAssignmentEntry{}
+		} else {
+			entries = parsed
 		}
 	}
 
