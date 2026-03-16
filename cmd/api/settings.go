@@ -304,7 +304,7 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 		return
 	}
 
-	response := ReviewAssignmentToggleResponse{UserID: req.UserID, Enabled: req.Enabled}
+	response := ReviewAssignmentToggleResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
