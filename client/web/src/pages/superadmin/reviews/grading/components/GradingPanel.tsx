@@ -9,7 +9,7 @@ import {
 } from "@/pages/admin/_shared/grading";
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
-import type { ReviewNote } from "@/pages/admin/assigned/types";
+import type { ReviewNote } from "@/pages/admin/reviews/types";
 
 interface GradingPanelProps {
   listItem: ApplicationListItem | null;
