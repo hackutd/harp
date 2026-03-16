@@ -65,8 +65,13 @@ export async function fetchApplicationStats(
  */
 export async function fetchApplicationById(
   id: string,
+  signal?: AbortSignal,
 ): Promise<ApiResponse<Application>> {
-  return getRequest<Application>(`/admin/applications/${id}`, "application");
+  return getRequest<Application>(
+    `/admin/applications/${id}`,
+    "application",
+    signal,
+  );
 }
 
 /**

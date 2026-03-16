@@ -51,8 +51,8 @@ import type {
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
-import type { AssignedState } from "@/pages/admin/assigned/hooks/updateReviewPage";
-import { refreshAssignedPage } from "@/pages/admin/assigned/hooks/updateReviewPage";
+import type { AssignedState } from "@/pages/admin/reviews/hooks/updateReviewPage";
+import { refreshAssignedPage } from "@/pages/admin/reviews/hooks/updateReviewPage";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import { useUserStore } from "@/shared/stores/user";
 

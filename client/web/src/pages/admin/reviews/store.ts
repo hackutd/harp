@@ -1,30 +1,47 @@
-// Application Review feature store
+// Unified Reviews store with tab state
 
 import { create } from "zustand";
 
-import { fetchPendingReviews, submitReviewVote } from "./api";
+import {
+  fetchCompletedReviews,
+  fetchPendingReviews,
+  submitReviewVote,
+} from "./api";
 import type { Review, SubmitVotePayload } from "./types";
 
+export type ReviewTab = "assigned" | "completed";
+
 export interface ReviewsState {
+  tab: ReviewTab;
   reviews: Review[];
   loading: boolean;
   submitting: boolean;
-  fetchPendingReviews: (signal?: AbortSignal) => Promise<void>;
+  setTab: (tab: ReviewTab) => void;
+  fetchReviews: (signal?: AbortSignal) => Promise<void>;
   submitVote: (
     reviewId: string,
     payload: SubmitVotePayload,
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export const useReviewsStore = create<ReviewsState>((set) => ({
+export const useReviewsStore = create<ReviewsState>((set, get) => ({
+  tab: "assigned",
   reviews: [],
   loading: false,
   submitting: false,
 
-  fetchPendingReviews: async (signal?: AbortSignal) => {
+  setTab: (tab: ReviewTab) => {
+    set({ tab, reviews: [] });
+  },
+
+  fetchReviews: async (signal?: AbortSignal) => {
     set({ loading: true });
 
-    const res = await fetchPendingReviews(signal);
+    const { tab } = get();
+    const res =
+      tab === "assigned"
+        ? await fetchPendingReviews(signal)
+        : await fetchCompletedReviews(signal);
 
     if (signal?.aborted) return;
 
