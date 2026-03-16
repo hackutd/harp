@@ -1,5 +1,4 @@
 import { Maximize2 } from "lucide-react";
-import { memo } from "react";
 
 import {
   Table,
@@ -9,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatName } from "@/pages/admin/all-applicants/utils";
 
 import type { ReviewTab } from "../store";
 import type { Review } from "../types";
@@ -23,6 +21,14 @@ interface ReviewsTableProps {
   variant: ReviewTab;
 }
 
+<<<<<<<< HEAD:client/web/src/pages/admin/assigned/components/ReviewsTable.tsx
+function formatName(firstName: string | null, lastName: string | null) {
+  if (!firstName && !lastName) return "-";
+  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
+}
+
+export function ReviewsTable({
+========
 const CONFIG = {
   assigned: {
     voteHeader: "Vote",
@@ -39,6 +45,7 @@ const CONFIG = {
 };
 
 export const ReviewsTable = memo(function ReviewsTable({
+>>>>>>>> 605e2e03 (feat: centralize assign and completed ui):client/web/src/pages/admin/reviews/components/ReviewsTable.tsx
   reviews,
   loading,
   selectedId,
@@ -109,4 +116,4 @@ export const ReviewsTable = memo(function ReviewsTable({
       </Table>
     </div>
   );
-});
+}

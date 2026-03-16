@@ -31,11 +31,11 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
   submitting: false,
 
   setTab: (tab: ReviewTab) => {
-    set({ tab });
+    set({ tab, reviews: [] });
   },
 
   fetchReviews: async (signal?: AbortSignal) => {
-    set({ loading: true, reviews: [] });
+    set({ loading: true });
 
     const { tab } = get();
     const res =
