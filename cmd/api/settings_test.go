@@ -168,6 +168,126 @@ func TestSetReviewsPerApp(t *testing.T) {
 	})
 }
 
+func TestGetReviewAssignmentToggle(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockUsers := app.store.Users.(*store.MockUsersStore)
+
+	t.Run("should return admins with toggles defaulting to true", func(t *testing.T) {
+		admins := []store.User{
+			{ID: "sa-1", Email: "a@test.com", Role: store.RoleSuperAdmin},
+			{ID: "sa-2", Email: "b@test.com", Role: store.RoleSuperAdmin},
+		}
+		toggles := []store.ReviewAssignmentEntry{
+			{ID: "sa-1", Enabled: false},
+		}
+
+		mockUsers.On("GetByRole", store.RoleSuperAdmin).Return(admins, nil).Once()
+		mockSettings.On("GetAllReviewAssignmentToggles").Return(toggles, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getReviewAssignmentToggle))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ReviewAssignmentListResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		require.Len(t, body.Data.Admins, 2)
+		assert.False(t, body.Data.Admins[0].Enabled)
+		assert.True(t, body.Data.Admins[1].Enabled) // default to true
+
+		mockSettings.AssertExpectations(t)
+		mockUsers.AssertExpectations(t)
+	})
+}
+
+func TestSetReviewAssignmentToggle(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockUsers := app.store.Users.(*store.MockUsersStore)
+
+	t.Run("happy path: set toggle for super admin", func(t *testing.T) {
+		targetUser := &store.User{
+			ID:    "sa-1",
+			Email: "a@test.com",
+			Role:  store.RoleSuperAdmin,
+		}
+		mockUsers.On("GetByID", "sa-1").Return(targetUser, nil).Once()
+		mockSettings.On("SetReviewAssignmentToggle", "sa-1", false).Return(nil).Once()
+
+		body := `{"user_id":"sa-1","enabled":false}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setReviewAssignmentToggle))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data ReviewAssignmentToggleResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Equal(t, "sa-1", respBody.Data.UserID)
+		assert.False(t, respBody.Data.Enabled)
+
+		mockSettings.AssertExpectations(t)
+		mockUsers.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 for unknown user", func(t *testing.T) {
+		mockUsers.On("GetByID", "unknown").Return(nil, store.ErrNotFound).Once()
+
+		body := `{"user_id":"unknown","enabled":true}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setReviewAssignmentToggle))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockUsers.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 for non-super-admin user", func(t *testing.T) {
+		adminUser := &store.User{
+			ID:    "admin-1",
+			Email: "admin@test.com",
+			Role:  store.RoleAdmin,
+		}
+		mockUsers.On("GetByID", "admin-1").Return(adminUser, nil).Once()
+
+		body := `{"user_id":"admin-1","enabled":true}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setReviewAssignmentToggle))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockUsers.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 for missing user_id", func(t *testing.T) {
+		body := `{"enabled":true}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setReviewAssignmentToggle))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
 func TestGetAdminScheduleEditToggle(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)

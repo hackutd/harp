@@ -36,7 +36,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "List applications (Admin)",
                 "parameters": [
@@ -62,6 +62,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Pagination direction: forward (default) or backward",
                         "name": "direction",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes",
+                        "name": "sort_by",
                         "in": "query"
                     }
                 ],
@@ -131,7 +137,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Get application stats (Admin)",
                 "responses": {
@@ -189,7 +195,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Get application by ID (Admin)",
                 "parameters": [
@@ -835,7 +841,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Create a scan (Admin)",
                 "parameters": [
@@ -926,7 +932,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Get scan statistics (Admin)",
                 "responses": {
@@ -1042,7 +1048,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/scans"
                 ],
                 "summary": "Get scans for a user (Admin)",
                 "parameters": [
@@ -1491,7 +1497,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "hackers"
                 ],
                 "summary": "Get or create application",
                 "responses": {
@@ -1539,7 +1545,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "hackers"
                 ],
                 "summary": "Update application",
                 "parameters": [
@@ -1768,7 +1774,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "hackers"
                 ],
                 "summary": "Submit application",
                 "responses": {
@@ -2054,7 +2060,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Get applicant emails by status (Super Admin)",
                 "parameters": [
@@ -2135,7 +2141,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Set application status (Super Admin)",
                 "parameters": [
@@ -2650,7 +2656,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Get reviews per application (Super Admin)",
                 "responses": {
@@ -2709,7 +2715,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Set reviews per application (Super Admin)",
                 "parameters": [
@@ -2789,7 +2795,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Get short answer questions (Super Admin)",
                 "responses": {
@@ -2848,7 +2854,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Update short answer questions (Super Admin)",
                 "parameters": [
@@ -2931,7 +2937,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Update scan types (Super Admin)",
                 "parameters": [
@@ -3011,7 +3017,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/users"
                 ],
                 "summary": "Search users (Super Admin)",
                 "parameters": [
@@ -3104,7 +3110,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/users"
                 ],
                 "summary": "Update user role (Super Admin)",
                 "parameters": [
@@ -3545,6 +3551,9 @@ const docTemplate = `{
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },

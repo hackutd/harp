@@ -39,7 +39,7 @@ export default function UserManagementPage() {
       }>("/superadmin/settings/review-assignment-toggle", "super admins");
       if (res.status === 200 && res.data) {
         setUsers(
-          res.data.admins.map((a) => ({
+          (res.data.admins ?? []).map((a) => ({
             id: a.id,
             email: a.email,
             review_assignment_enabled: a.enabled,
@@ -55,21 +55,21 @@ export default function UserManagementPage() {
 
   async function handleToggle(userId: string, currentStatus: boolean) {
     setTogglingId(userId);
-    const newStatus = !currentStatus;
-    const res = await postRequest<{ enabled: boolean }>(
+    const res = await postRequest<{ user_id: string; enabled: boolean }>(
       `/superadmin/settings/review-assignment-toggle`,
-      { user_id: userId, enabled: newStatus },
+      { user_id: userId, enabled: !currentStatus },
       "review assignment status",
     );
 
-    if (res.status === 200) {
+    if (res.status === 200 && res.data) {
+      const enabled = res.data.enabled;
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === userId ? { ...u, review_assignment_enabled: newStatus } : u,
+          u.id === userId ? { ...u, review_assignment_enabled: enabled } : u,
         ),
       );
       toast.success(
-        `Review assignment ${newStatus ? "enabled" : "disabled"} for user`,
+        `Review assignment ${enabled ? "enabled" : "disabled"} for user`,
       );
     } else {
       errorAlert(res);
@@ -124,7 +124,8 @@ export default function UserManagementPage() {
                               user.review_assignment_enabled,
                             )
                           }
-                          disabled={togglingId === user.id}
+                          disabled={togglingId !== null}
+                          aria-label={`Toggle review assignment for ${user.email}`}
                           className="cursor-pointer"
                         />
                         <span className="text-sm text-muted-foreground">

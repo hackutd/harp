@@ -176,7 +176,8 @@ type SetReviewAssignmentTogglePayload struct {
 
 // ReviewAssignmentToggleResponse wraps the review assignment enabled value for API response
 type ReviewAssignmentToggleResponse struct {
-	Enabled bool `json:"enabled"`
+	UserID  string `json:"user_id"`
+	Enabled bool   `json:"enabled"`
 }
 
 type ReviewAssignmentAdmin struct {
@@ -188,6 +189,7 @@ type ReviewAssignmentAdmin struct {
 type ReviewAssignmentListResponse struct {
 	Admins []ReviewAssignmentAdmin `json:"admins"`
 }
+
 type SetAdminScheduleEditTogglePayload struct {
 	Enabled bool `json:"enabled"`
 }
@@ -282,12 +284,27 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Validate that user_id belongs to an existing super admin
+	targetUser, err := app.store.Users.GetByID(r.Context(), req.UserID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("user not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+	if targetUser.Role != store.RoleSuperAdmin {
+		app.badRequestResponse(w, r, errors.New("user is not a super admin"))
+		return
+	}
+
 	if err := app.store.Settings.SetReviewAssignmentToggle(r.Context(), req.UserID, req.Enabled); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ReviewAssignmentToggleResponse{Enabled: req.Enabled}
+	response := ReviewAssignmentToggleResponse{UserID: req.UserID, Enabled: req.Enabled}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

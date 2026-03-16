@@ -153,17 +153,11 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 			// no settings row yet; create with this admin/super_admin
 			entries = []ReviewAssignmentEntry{{ID: user.ID, Enabled: defaultEnabled}}
 		} else {
-			// Try to parse new format
-			if jerr := json.Unmarshal(value, &entries); jerr != nil {
-				// Fallback: try legacy array of ids
-				var ids []string
-				if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-					for _, id := range ids {
-						entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-					}
-				} else {
-					entries = []ReviewAssignmentEntry{}
-				}
+			parsed, parseErr := parseReviewAssignmentEntries(value)
+			if parseErr != nil {
+				entries = []ReviewAssignmentEntry{}
+			} else {
+				entries = parsed
 			}
 
 			// Ensure entry exists
@@ -382,7 +376,7 @@ func (s *UsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, erro
 	}
 	defer rows.Close()
 
-	var users []User
+	users := make([]User, 0)
 	for rows.Next() {
 		var user User
 		if err := rows.Scan(&user.ID, &user.SuperTokensUserID, &user.Email, &user.Role, &user.AuthMethod, &user.ProfilePictureURL, &user.CreatedAt, &user.UpdatedAt); err != nil {
