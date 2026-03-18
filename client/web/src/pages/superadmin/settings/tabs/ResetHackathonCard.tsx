@@ -146,9 +146,7 @@ export function ResetHackathonCard() {
                       >
                         {item.label}
                       </Label>
-                      <p className="text-xs text-zinc-500">
-                        {item.desc}
-                      </p>
+                      <p className="text-xs text-zinc-500">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -156,7 +154,8 @@ export function ResetHackathonCard() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirm" className="text-zinc-200">
-                  Type <strong className="text-red-500">RESET HACKATHON</strong> to confirm
+                  Type <strong className="text-red-500">RESET HACKATHON</strong>{" "}
+                  to confirm
                 </Label>
                 <Input
                   id="confirm"

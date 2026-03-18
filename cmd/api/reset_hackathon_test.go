@@ -9,7 +9,6 @@ import (
 
 	"github.com/hackutd/portal/internal/store"
 	"github.com/stretchr/testify/assert"
-	
 )
 
 func TestResetHackathon(t *testing.T) {
@@ -58,7 +57,7 @@ func TestResetHackathon(t *testing.T) {
 
 		// Simulate partial failure/rollback by returning error from store
 		app.store.Hackathon.(*store.MockHackathonStore).
-			On("Reset",true, false, false, false).
+			On("Reset", true, false, false, false).
 			Return([]string(nil), errors.New("db transaction failed"))
 
 		reqBody, _ := json.Marshal(payload)

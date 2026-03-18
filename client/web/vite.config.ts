@@ -4,30 +4,31 @@ import path from "path";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
-const apiTarget = process.env.API_PROXY_TARGET || 'http://localhost:8080';
+const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:8080";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
     proxy: {
-      '/auth': {
+      "/auth": {
         target: apiTarget,
         changeOrigin: true,
         bypass: (req) => {
           // Frontend routes that React Router should handle
-          const frontendRoutes = ['/auth/callback', '/auth/verify'];
+          const frontendRoutes = ["/auth/callback", "/auth/verify"];
 
           // Check if this is a frontend route (without OAuth query params)
           for (const route of frontendRoutes) {
             if (req.url?.startsWith(route)) {
               // If it has OAuth params (code, error), it's a backend callback - proxy it
               // Exception: /auth/callback/google with params should go to frontend
-              const url = new URL(req.url, 'http://localhost');
-              const hasOAuthParams = url.searchParams.has('code') || url.searchParams.has('error');
+              const url = new URL(req.url, "http://localhost");
+              const hasOAuthParams =
+                url.searchParams.has("code") || url.searchParams.has("error");
 
               // /auth/callback/google is always a frontend route (handles OAuth response)
-              if (req.url.startsWith('/auth/callback/google')) {
+              if (req.url.startsWith("/auth/callback/google")) {
                 return req.url;
               }
 
@@ -39,7 +40,7 @@ export default defineConfig({
           }
         },
       },
-      '/v1': {
+      "/v1": {
         target: apiTarget,
         changeOrigin: true,
       },

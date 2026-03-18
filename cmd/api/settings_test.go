@@ -72,7 +72,7 @@ func TestUpdateShortAnswerQuestions(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		req = setUserContext(req, newSuperAdminUser())
 	})
-	
+
 	t.Run("should return 500 when transaction fails", func(t *testing.T) {
 		app := newTestApplication(t)
 		app.gcsClient = nil
