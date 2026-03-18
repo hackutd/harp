@@ -76,7 +76,7 @@ export default function GradingPage() {
   useGradingKeyboardShortcuts({
     disabled: submitting,
     canAct: !!currentReview?.id && !currentReview?.vote,
-    escapeUrl: "/admin/assigned",
+    escapeUrl: "/admin/reviews",
     onNavigateNext: navigateNext,
     onNavigatePrev: navigatePrev,
     onActionJ: () => handleVote("reject"),
@@ -86,7 +86,7 @@ export default function GradingPage() {
 
   return (
     <GradingPageLayout
-      backUrl="/admin/assigned"
+      backUrl="/admin/reviews"
       loading={loading}
       headerContent={
         currentReview ? (
@@ -146,10 +146,10 @@ export default function GradingPage() {
           <Button
             variant="outline"
             className="cursor-pointer"
-            onClick={() => navigate("/admin/assigned")}
+            onClick={() => navigate("/admin/reviews")}
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" />
-            Back to Assigned
+            Back to Reviews
           </Button>
         </div>
       }

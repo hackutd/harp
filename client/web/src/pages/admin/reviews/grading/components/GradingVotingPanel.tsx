@@ -131,21 +131,13 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
-        ) : aiPercent != null ? (
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm">{aiPercent}%</p>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 cursor-pointer"
-              onClick={startEditing}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-          </div>
         ) : (
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-muted-foreground italic">Not set</p>
+            <p
+              className={`text-sm ${aiPercent == null ? "text-muted-foreground italic" : ""}`}
+            >
+              {aiPercent != null ? `${aiPercent}%` : "Not set"}
+            </p>
             <Button
               size="icon"
               variant="ghost"
