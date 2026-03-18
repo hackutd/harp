@@ -2,7 +2,6 @@
 
 import {
   Calendar,
-  CircleCheck,
   ClipboardList,
   ScanLine,
   Settings,
@@ -35,14 +34,9 @@ const applicantsNav = [
     icon: Users,
   },
   {
-    name: "Assigned",
-    url: "/admin/assigned",
+    name: "Reviews",
+    url: "/admin/reviews",
     icon: UserCheck,
-  },
-  {
-    name: "Completed",
-    url: "/admin/completed",
-    icon: CircleCheck,
   },
 ];
 

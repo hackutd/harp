@@ -2595,19 +2595,19 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns whether automatic review assignment is enabled",
+                "description": "Returns list of super admins and their review assignment toggle status",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin/settings"
+                    "superadmin"
                 ],
-                "summary": "Get review assignment enabled state (Super Admin)",
+                "summary": "Get review assignment settings (Super Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewAssignmentToggleResponse"
+                            "$ref": "#/definitions/main.ReviewAssignmentListResponse"
                         }
                     },
                     "401": {
@@ -2651,7 +2651,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Updates whether automatic review assignment is enabled",
+                "description": "Updates whether automatic review assignment is enabled for a specific super admin",
                 "consumes": [
                     "application/json"
                 ],
@@ -2659,9 +2659,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin/settings"
+                    "superadmin"
                 ],
-                "summary": "Set review assignment enabled state (Super Admin)",
+                "summary": "Set review assignment enabled state for a user (Super Admin)",
                 "parameters": [
                     {
                         "description": "Review assignment enabled state",
@@ -3644,11 +3644,39 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ReviewAssignmentAdmin": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ReviewAssignmentListResponse": {
+            "type": "object",
+            "properties": {
+                "admins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.ReviewAssignmentAdmin"
+                    }
+                }
+            }
+        },
         "main.ReviewAssignmentToggleResponse": {
             "type": "object",
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3755,9 +3783,15 @@ const docTemplate = `{
         },
         "main.SetReviewAssignmentTogglePayload": {
             "type": "object",
+            "required": [
+                "user_id"
+            ],
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },

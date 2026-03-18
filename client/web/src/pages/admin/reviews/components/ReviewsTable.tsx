@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { formatName } from "@/pages/admin/all-applicants/utils";
 
+import type { ReviewTab } from "../store";
 import type { Review } from "../types";
 import { VoteBadge } from "./VoteBadge";
 
@@ -19,14 +20,33 @@ interface ReviewsTableProps {
   loading: boolean;
   selectedId: string | null;
   onSelectReview: (id: string) => void;
+  variant: ReviewTab;
 }
+
+const CONFIG = {
+  assigned: {
+    voteHeader: "Vote",
+    dateHeader: "Assigned At",
+    dateField: "assigned_at" as const,
+    emptyText: "No pending reviews",
+  },
+  completed: {
+    voteHeader: "Decision",
+    dateHeader: "Reviewed At",
+    dateField: "reviewed_at" as const,
+    emptyText: "No completed reviews",
+  },
+};
 
 export const ReviewsTable = memo(function ReviewsTable({
   reviews,
   loading,
   selectedId,
   onSelectReview,
+  variant,
 }: ReviewsTableProps) {
+  const { voteHeader, dateHeader, dateField, emptyText } = CONFIG[variant];
+
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
       {loading && (
@@ -35,7 +55,7 @@ export const ReviewsTable = memo(function ReviewsTable({
       <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
-            <TableHead>Vote</TableHead>
+            <TableHead>{voteHeader}</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Age</TableHead>
@@ -43,14 +63,14 @@ export const ReviewsTable = memo(function ReviewsTable({
             <TableHead>Major</TableHead>
             <TableHead>Country</TableHead>
             <TableHead>Hackathons</TableHead>
-            <TableHead>Assigned At</TableHead>
+            <TableHead>{dateHeader}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {reviews.length === 0 ? (
             <TableRow>
               <TableCell colSpan={9} className="text-center text-gray-500">
-                No pending reviews
+                {emptyText}
               </TableCell>
             </TableRow>
           ) : (
@@ -78,7 +98,9 @@ export const ReviewsTable = memo(function ReviewsTable({
                 <TableCell>{review.country_of_residence ?? "-"}</TableCell>
                 <TableCell>{review.hackathons_attended_count ?? "-"}</TableCell>
                 <TableCell className="whitespace-nowrap">
-                  {new Date(review.assigned_at).toLocaleDateString()}
+                  {review[dateField]
+                    ? new Date(review[dateField]!).toLocaleDateString()
+                    : "-"}
                 </TableCell>
               </TableRow>
             ))
