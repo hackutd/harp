@@ -2260,8 +2260,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/main.ResetHackathonResponse"
                         }
                     },
                     "400": {
@@ -3599,6 +3598,29 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "reset_settings": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.ResetHackathonResponse": {
+            "type": "object",
+            "properties": {
+                "reset_applications": {
+                    "type": "boolean"
+                },
+                "reset_scans": {
+                    "type": "boolean"
+                },
+                "reset_schedule": {
+                    "type": "boolean"
+                },
+                "reset_settings": {
+                    "type": "boolean"
+                },
+                "resumes_deleted": {
+                    "type": "integer"
+                },
+                "success": {
                     "type": "boolean"
                 }
             }
