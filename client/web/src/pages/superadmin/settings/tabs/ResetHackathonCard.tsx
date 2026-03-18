@@ -66,7 +66,7 @@ export function ResetHackathonCard() {
         reset_settings: false,
       });
     } catch (err) {
-      toast.error("An unexpected error occurred");
+      toast.error("An unexpected error occurred" + (err instanceof Error ? `: ${err.message}` : ""));
     } finally {
       setLoading(false);
     }

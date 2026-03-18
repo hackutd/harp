@@ -67,10 +67,14 @@ func TestUpdateShortAnswerQuestions(t *testing.T) {
 
 	t.Run("should return 400 for duplicate question IDs", func(t *testing.T) {
 		body := `{"questions":[{"id":"q1","question":"A?","required":true,"display_order":0},{"id":"q1","question":"B?","required":false,"display_order":1}]}`
+
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateShortAnswerQuestions))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("should return 500 when transaction fails", func(t *testing.T) {
