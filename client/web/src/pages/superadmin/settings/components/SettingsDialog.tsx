@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarRange, UserCog, UsersRound } from "lucide-react";
+import { CalendarRange, UsersRound } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,10 @@ import { cn } from "@/shared/lib/utils";
 
 import ApplicationsTab from "../tabs/ApplicationsTab";
 import ScheduleTab from "../tabs/ScheduleTab";
-import { SetAdminTab } from "../tabs/SetAdminTab";
 
-type SettingsTab = "set-admin" | "applications" | "schedule";
+type SettingsTab = "applications" | "schedule";
 
 const settingsTabs = [
-  { id: "set-admin" as const, label: "Set Admin", icon: UserCog },
   { id: "applications" as const, label: "Applications", icon: UsersRound },
   { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
 ];
@@ -34,7 +32,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>("set-admin");
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>("applications");
 
   const handleClose = () => {
     setOpen(false);
@@ -79,7 +77,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
             <ScrollArea className="flex-1 min-h-0">
               <div className="p-8">
-                {activeTab === "set-admin" && <SetAdminTab />}
                 {activeTab === "applications" && <ApplicationsTab />}
                 {activeTab === "schedule" && <ScheduleTab />}
               </div>
