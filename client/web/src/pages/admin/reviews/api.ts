@@ -5,7 +5,7 @@ import type { ApiResponse } from "@/types";
 
 import type {
   NotesListResponse,
-  PendingReviewsResponse,
+  ReviewsListResponse,
   SubmitVotePayload,
 } from "./types";
 
@@ -14,10 +14,23 @@ import type {
  */
 export async function fetchPendingReviews(
   signal?: AbortSignal,
-): Promise<ApiResponse<PendingReviewsResponse>> {
-  return getRequest<PendingReviewsResponse>(
+): Promise<ApiResponse<ReviewsListResponse>> {
+  return getRequest<ReviewsListResponse>(
     "/admin/reviews/pending",
     "pending reviews",
+    signal,
+  );
+}
+
+/**
+ * Fetch completed reviews for the current admin
+ */
+export async function fetchCompletedReviews(
+  signal?: AbortSignal,
+): Promise<ApiResponse<ReviewsListResponse>> {
+  return getRequest<ReviewsListResponse>(
+    "/admin/reviews/completed",
+    "completed reviews",
     signal,
   );
 }

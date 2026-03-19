@@ -51,9 +51,14 @@ import type {
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
-import type { AssignedState } from "@/pages/admin/assigned/hooks/updateReviewPage";
-import { refreshAssignedPage } from "@/pages/admin/assigned/hooks/updateReviewPage";
-import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
+import type { AssignedState } from "@/pages/admin/reviews/hooks/updateReviewPage";
+import { refreshAssignedPage } from "@/pages/admin/reviews/hooks/updateReviewPage";
+import {
+  errorAlert,
+  getRequest,
+  postRequest,
+  putRequest,
+} from "@/shared/lib/api";
 import { useUserStore } from "@/shared/stores/user";
 
 import { fetchApplicantEmails } from "./api";
@@ -107,15 +112,18 @@ export default function ReviewsPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const [reviewsRes, toggleRes] = await Promise.all([
+      const [reviewsRes, usersRes] = await Promise.all([
         getRequest<{ reviews_per_application: number }>(
           "/superadmin/settings/reviews-per-app",
           "reviews per application",
         ),
         getRequest<{
-          admins: { id: string; email: string; enabled: boolean }[];
+          users: {
+            id: string;
+            review_assignment_enabled: boolean | null;
+          }[];
         }>(
-          "/superadmin/settings/review-assignment-toggle",
+          "/superadmin/users?role=super_admin",
           "fetch review assignment enabled",
         ),
       ]);
@@ -123,11 +131,11 @@ export default function ReviewsPage() {
       if (reviewsRes.status === 200 && reviewsRes.data) {
         setReviewsPerApp(reviewsRes.data.reviews_per_application);
       }
-      if (toggleRes.status === 200 && toggleRes.data) {
-        const me = (toggleRes.data.admins ?? []).find(
-          (a) => a.id === currentUser?.id,
+      if (usersRes.status === 200 && usersRes.data) {
+        const me = (usersRes.data.users ?? []).find(
+          (u) => u.id === currentUser?.id,
         );
-        setReviewAssignmentEnabled(me?.enabled ?? true);
+        setReviewAssignmentEnabled(me?.review_assignment_enabled ?? true);
       }
       setLoading(false);
     }
@@ -227,7 +235,7 @@ export default function ReviewsPage() {
   async function handleToggleAssignmentEnabled(enabled: boolean) {
     if (!currentUser) return;
     setTogglingAssignment(true);
-    const res = await postRequest<{ user_id: string; enabled: boolean }>(
+    const res = await putRequest<{ user_id: string; enabled: boolean }>(
       "/superadmin/settings/review-assignment-toggle",
       { user_id: currentUser.id, enabled },
       "review assignment toggle",
