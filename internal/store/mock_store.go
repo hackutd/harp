@@ -69,6 +69,14 @@ func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, 
 	return args.Get(0).([]User), args.Error(1)
 }
 
+func (m *MockUsersStore) ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error) {
+	args := m.Called(filters, cursor, direction, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserListResult), args.Error(1)
+}
+
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
