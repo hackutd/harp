@@ -144,6 +144,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)
 			r.Get("/schedule", app.getPublicScheduleHandler)
+			r.Get("/sponsors", app.getPublicSponsorsHandler)
 		})
 
 		// Auth endpoints not handled by SuperTokens
@@ -218,6 +219,17 @@ func (app *application) mount() http.Handler {
 							r.Delete("/{scheduleID}", app.deleteScheduleHandler)
 						})
 					})
+
+					// Sponsors
+					r.Route("/sponsors", func(r chi.Router) {
+						r.Get("/", app.listSponsorsHandler)
+
+						// TODO: Protect Under a AdminSponsorEditPermissionMiddleware
+						r.Post("/", app.createSponsorHandler)
+						r.Put("/{sponsorID}", app.updateSponsorHandler)
+						r.Delete("/{sponsorID}", app.deleteSponsorHandler)
+						r.Post("/{sponsorID}/logo-upload-url", app.generateLogoUploadURLHandler)
+					})
 				})
 			})
 
@@ -251,7 +263,6 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
-
 				})
 			})
 		})
