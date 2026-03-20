@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   CalendarRange,
-  UserCog,
   UsersRound,
 } from "lucide-react";
 import { CalendarRange, UsersRound } from "lucide-react";
