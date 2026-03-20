@@ -203,3 +203,10 @@ func (app *application) AdminScheduleEditPermissionMiddleware(next http.Handler)
 		next.ServeHTTP(w, r)
 	})
 }
+
+// Hacker mutation routes
+func (app *application) ApplicationsEnabledMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	})
+}
