@@ -180,16 +180,6 @@ type ReviewAssignmentToggleResponse struct {
 	Enabled bool   `json:"enabled"`
 }
 
-type ReviewAssignmentAdmin struct {
-	ID      string `json:"id"`
-	Email   string `json:"email"`
-	Enabled bool   `json:"enabled"`
-}
-
-type ReviewAssignmentListResponse struct {
-	Admins []ReviewAssignmentAdmin `json:"admins"`
-}
-
 type SetAdminScheduleEditTogglePayload struct {
 	Enabled bool `json:"enabled"`
 }
@@ -209,59 +199,11 @@ type HackathonDateRangeResponse struct {
 	Configured bool    `json:"configured"`
 }
 
-// getReviewAssignmentToggle returns the current review assignment enabled setting
-//
-//	@Summary		Get review assignment settings (Super Admin)
-//	@Description	Returns list of super admins and their review assignment toggle status
-//	@Tags			superadmin
-//	@Produce		json
-//	@Success		200	{object}	ReviewAssignmentListResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/review-assignment-toggle [get]
-func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
-	admins, err := app.store.Users.GetByRole(r.Context(), store.RoleSuperAdmin)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	toggles, err := app.store.Settings.GetAllReviewAssignmentToggles(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	toggleMap := make(map[string]bool)
-	for _, t := range toggles {
-		toggleMap[t.ID] = t.Enabled
-	}
-
-	result := make([]ReviewAssignmentAdmin, 0, len(admins))
-	for _, admin := range admins {
-		enabled, exists := toggleMap[admin.ID]
-		if !exists {
-			enabled = true // Default to true
-		}
-		result = append(result, ReviewAssignmentAdmin{
-			ID:      admin.ID,
-			Email:   admin.Email,
-			Enabled: enabled,
-		})
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, ReviewAssignmentListResponse{Admins: result}); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
 // setReviewAssignmentToggle updates the review assignment enabled setting
 //
 //	@Summary		Set review assignment enabled state for a user (Super Admin)
 //	@Description	Updates whether automatic review assignment is enabled for a specific super admin
-//	@Tags			superadmin
+//	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			enabled	body		SetReviewAssignmentTogglePayload	true	"Review assignment enabled state"
@@ -271,7 +213,7 @@ func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http
 //	@Failure		403		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/settings/review-assignment-toggle [post]
+//	@Router			/superadmin/settings/review-assignment-toggle [put]
 func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
 	var req SetReviewAssignmentTogglePayload
 	if err := readJSON(w, r, &req); err != nil {

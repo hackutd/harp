@@ -277,25 +277,6 @@ export default function ReviewsPage() {
     );
   }
 
-  // --- Loading state ---
-  if (loading && reviews.length === 0) {
-    return (
-      <div className="flex flex-1 min-h-0">
-        <Card className="overflow-hidden flex flex-col h-full w-full">
-          <CardHeader className="shrink-0 flex flex-row items-center justify-between">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-8 w-28 rounded-md" />
-          </CardHeader>
-          <CardContent className="p-0 flex-1 space-y-3 px-6 pb-6">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-1 min-h-0">
       <Card
@@ -303,7 +284,11 @@ export default function ReviewsPage() {
       >
         <CardHeader className="shrink-0 flex flex-row items-center pb-2 justify-between">
           <div className="flex items-center gap-4">
-            <ReviewsTabToggle activeTab={tab} onTabChange={handleTabChange} />
+            <ReviewsTabToggle
+              activeTab={tab}
+              onTabChange={handleTabChange}
+              disabled={loading}
+            />
             <CardDescription className="font-light">
               {description}
             </CardDescription>
@@ -312,7 +297,15 @@ export default function ReviewsPage() {
         </CardHeader>
         <hr className="border-border -mb-2" />
         <CardContent className="p-0 flex-1 overflow-hidden">
-          {table}
+          {loading && reviews.length === 0 ? (
+            <div className="space-y-3 p-6 pt-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : (
+            table
+          )}
         </CardContent>
       </Card>
       {detailPanel}

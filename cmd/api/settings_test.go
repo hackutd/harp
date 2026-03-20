@@ -184,44 +184,6 @@ func TestSetReviewsPerApp(t *testing.T) {
 	})
 }
 
-func TestGetReviewAssignmentToggle(t *testing.T) {
-	app := newTestApplication(t)
-	mockSettings := app.store.Settings.(*store.MockSettingsStore)
-	mockUsers := app.store.Users.(*store.MockUsersStore)
-
-	t.Run("should return admins with toggles defaulting to true", func(t *testing.T) {
-		admins := []store.User{
-			{ID: "sa-1", Email: "a@test.com", Role: store.RoleSuperAdmin},
-			{ID: "sa-2", Email: "b@test.com", Role: store.RoleSuperAdmin},
-		}
-		toggles := []store.ReviewAssignmentEntry{
-			{ID: "sa-1", Enabled: false},
-		}
-
-		mockUsers.On("GetByRole", store.RoleSuperAdmin).Return(admins, nil).Once()
-		mockSettings.On("GetAllReviewAssignmentToggles").Return(toggles, nil).Once()
-
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
-		require.NoError(t, err)
-		req = setUserContext(req, newSuperAdminUser())
-
-		rr := executeRequest(req, http.HandlerFunc(app.getReviewAssignmentToggle))
-		checkResponseCode(t, http.StatusOK, rr.Code)
-
-		var body struct {
-			Data ReviewAssignmentListResponse `json:"data"`
-		}
-		err = json.NewDecoder(rr.Body).Decode(&body)
-		require.NoError(t, err)
-		require.Len(t, body.Data.Admins, 2)
-		assert.False(t, body.Data.Admins[0].Enabled)
-		assert.True(t, body.Data.Admins[1].Enabled) // default to true
-
-		mockSettings.AssertExpectations(t)
-		mockUsers.AssertExpectations(t)
-	})
-}
-
 func TestSetReviewAssignmentToggle(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
