@@ -2227,6 +2227,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/reset-hackathon": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Resets selected hackathon data (applications, scans, schedule, settings). Operations are performed in a single transaction.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin"
+                ],
+                "summary": "Reset hackathon data (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Reset options",
+                        "name": "options",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.ResetHackathonPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResetHackathonResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/admin-schedule-edit-toggle": {
             "get": {
                 "security": [
@@ -3443,6 +3526,46 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/store.ApplicationReviewWithDetails"
                     }
+                }
+            }
+        },
+        "main.ResetHackathonPayload": {
+            "type": "object",
+            "properties": {
+                "reset_applications": {
+                    "type": "boolean"
+                },
+                "reset_scans": {
+                    "type": "boolean"
+                },
+                "reset_schedule": {
+                    "type": "boolean"
+                },
+                "reset_settings": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.ResetHackathonResponse": {
+            "type": "object",
+            "properties": {
+                "reset_applications": {
+                    "type": "boolean"
+                },
+                "reset_scans": {
+                    "type": "boolean"
+                },
+                "reset_schedule": {
+                    "type": "boolean"
+                },
+                "reset_settings": {
+                    "type": "boolean"
+                },
+                "resumes_deleted": {
+                    "type": "integer"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
