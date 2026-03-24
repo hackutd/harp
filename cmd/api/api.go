@@ -182,6 +182,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/applications", func(r chi.Router) {
 						r.Get("/", app.listApplicationsHandler)
 						r.Get("/stats", app.getApplicationStatsHandler)
+						r.Get("/enabled", app.getApplicationsEnabled)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
 
@@ -238,6 +239,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
+						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})
 
 					r.Route("/applications", func(r chi.Router) {
