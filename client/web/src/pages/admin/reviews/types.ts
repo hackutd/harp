@@ -30,7 +30,7 @@ export interface ReviewNote {
   created_at: string;
 }
 
-export interface PendingReviewsResponse {
+export interface ReviewsListResponse {
   reviews: Review[];
 }
 

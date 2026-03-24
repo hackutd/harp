@@ -1,6 +1,5 @@
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useEffect } from "react";
 
 import {
   AlertDialog,
@@ -23,87 +22,27 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { errorAlert, getRequest, putRequest } from "@/shared/lib/api";
-import type { ShortAnswerQuestion } from "@/types";
 
 import { ApplicationPreview } from "./components/ApplicationPreview";
+import { useApplicationSettingsStore } from "./store";
 
 export default function ApplicationPage() {
-  const [questions, setQuestions] = useState<ShortAnswerQuestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const {
+    questions,
+    loading,
+    saving,
+    fetchQuestions,
+    saveQuestions,
+    updateQuestion,
+    addQuestion,
+    removeQuestion,
+  } = useApplicationSettingsStore();
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      setLoading(true);
-      const res = await getRequest<{ questions: ShortAnswerQuestion[] }>(
-        "/superadmin/settings/saquestions",
-        "short answer questions",
-      );
-      if (res.status === 200 && res.data) {
-        setQuestions(res.data.questions ?? []);
-      } else {
-        errorAlert(res);
-      }
-      setLoading(false);
-    };
-    fetchQuestions();
-  }, []);
-
-  const saveQuestions = useCallback(async () => {
-    const emptyQuestion = questions.find((q) => !q.question.trim());
-    if (emptyQuestion) {
-      toast.error("All questions must have text before saving");
-      return;
-    }
-
-    setSaving(true);
-    const payload = questions.map((q, i) => ({ ...q, display_order: i + 1 }));
-    const res = await putRequest<{ questions: ShortAnswerQuestion[] }>(
-      "/superadmin/settings/saquestions",
-      { questions: payload },
-      "short answer questions",
-    );
-    if (res.status === 200 && res.data) {
-      toast.success("Questions saved");
-    } else {
-      errorAlert(res);
-    }
-    setSaving(false);
-  }, [questions]);
-
-  const updateQuestions = useCallback(
-    (updater: (prev: ShortAnswerQuestion[]) => ShortAnswerQuestion[]) => {
-      setQuestions((prev) => updater(prev));
-    },
-    [],
-  );
-
-  const updateQuestion = (
-    index: number,
-    field: keyof ShortAnswerQuestion,
-    value: string | boolean | number,
-  ) => {
-    updateQuestions((prev) =>
-      prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)),
-    );
-  };
-
-  const addQuestion = () => {
-    updateQuestions((prev) => [
-      ...prev,
-      {
-        id: `saq_${Date.now()}`,
-        question: "",
-        required: false,
-        display_order: prev.length + 1,
-      },
-    ]);
-  };
-
-  const removeQuestion = (index: number) => {
-    updateQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
+    const controller = new AbortController();
+    fetchQuestions(controller.signal);
+    return () => controller.abort();
+  }, [fetchQuestions]);
 
   return (
     <div className="flex flex-1 min-h-0">

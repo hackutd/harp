@@ -131,6 +131,16 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 - **Go:** gofmt check, `go mod verify`, build, `go vet`, `staticcheck`, `go test -race ./...`
 - **Frontend:** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`
 
+## Deployment & Infrastructure
+
+- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — Go checks (gofmt, vet, staticcheck, tests) and frontend checks (format, lint, build, audit)
+- **CD:** Merges to `main` trigger Google Cloud Build → Google Cloud Run (auto-deploy)
+- **Container:** Multi-stage `Dockerfile` — builds frontend (Node 22), builds Go binary, runs from `scratch` image on port 8080. Frontend is compiled at build time and served as static files
+- **Database:** Neon DB (managed PostgreSQL)
+- **File Storage:** Google Cloud Storage (GCS)
+- **Auth:** SuperTokens (self-hosted or managed, free tier: 5,000 MAUs) — Passwordless + Google OAuth
+- **Email:** SendGrid
+
 ## Git Conventions
 
 - **Commit messages:** Use [Conventional Commits] format (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`)

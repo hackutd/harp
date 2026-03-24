@@ -546,7 +546,7 @@ type ApplicationsEnabledResponse struct {
 //
 //	@Summary		Set application status (Super Admin)
 //	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
-//	@Tags			superadmin
+//	@Tags			superadmin/applications
 //	@Accept			json
 //	@Produce		json
 //	@Param			applicationID	path		string				true	"Application ID"
@@ -596,7 +596,7 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 //
 //	@Summary		Get application by ID (Admin)
 //	@Description	Returns a single application by its ID with embedded short answer questions
-//	@Tags			admin
+//	@Tags			admin/applications
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
 //	@Success		200				{object}	ApplicationWithQuestions
@@ -645,7 +645,7 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Get applicant emails by status (Super Admin)
 //	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
-//	@Tags			superadmin
+//	@Tags			superadmin/applications
 //	@Produce		json
 //	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
 //	@Success		200		{object}	EmailListResponse

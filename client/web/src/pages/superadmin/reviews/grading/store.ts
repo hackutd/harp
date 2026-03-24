@@ -11,8 +11,8 @@ import type {
   ApplicationStatus,
   FetchParams,
 } from "@/pages/admin/all-applicants/types";
-import { fetchReviewNotes } from "@/pages/admin/assigned/api";
-import type { ReviewNote } from "@/pages/admin/assigned/types";
+import { fetchReviewNotes } from "@/pages/admin/reviews/api";
+import type { ReviewNote } from "@/pages/admin/reviews/types";
 import type { Application } from "@/types";
 
 import { setApplicationStatus } from "./api";

@@ -1,7 +1,7 @@
 import { MessageSquare } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
-import type { ReviewNote } from "@/pages/admin/assigned/types";
+import type { ReviewNote } from "@/pages/admin/reviews/types";
 
 interface ReviewerNotesListProps {
   notes: ReviewNote[];
