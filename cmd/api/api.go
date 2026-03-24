@@ -169,7 +169,6 @@ func (app *application) mount() http.Handler {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Patch("/me", app.updateApplicationHandler)
 				r.Post("/me/submit", app.submitApplicationHandler)
-				r.Get("/enabled", app.getApplicationsEnabled)
 				r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
 				r.Delete("/me/resume", app.deleteResumeHandler)
 			})
@@ -183,6 +182,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/applications", func(r chi.Router) {
 						r.Get("/", app.listApplicationsHandler)
 						r.Get("/stats", app.getApplicationStatsHandler)
+						r.Get("/enabled", app.getApplicationsEnabled)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
 

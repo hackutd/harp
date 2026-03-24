@@ -416,22 +416,22 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 
 // listApplicationsHandler lists all applications with cursor-based pagination
 //
-//		@Summary		List applications (Admin)
-//		@Description	Lists all applications with cursor-based pagination and optional status filter
-//		@Tags			admin/applications
-//		@Produce		json
-//		@Param			cursor		query		string	false	"Pagination cursor"
-//		@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
-//		@Param			limit		query		int		false	"Page size (default 50, max 100)"
-//		@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
-//	 @Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
-//		@Success		200			{object}	store.ApplicationListResult
-//		@Failure		400			{object}	object{error=string}
-//		@Failure		401			{object}	object{error=string}
-//		@Failure		403			{object}	object{error=string}
-//		@Failure		500			{object}	object{error=string}
-//		@Security		CookieAuth
-//		@Router			/admin/applications [get]
+//	@Summary		List applications (Admin)
+//	@Description	Lists all applications with cursor-based pagination and optional status filter
+//	@Tags			admin/applications
+//	@Produce		json
+//	@Param			cursor		query		string	false	"Pagination cursor"
+//	@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
+//	@Param			limit		query		int		false	"Page size (default 50, max 100)"
+//	@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
+//	@Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
+//	@Success		200			{object}	store.ApplicationListResult
+//	@Failure		400			{object}	object{error=string}
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		403			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications [get]
 func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
@@ -542,27 +542,23 @@ type ApplicationsEnabledResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
-type SetApplicationsEnabledResponse struct {
-	Enabled bool `json:"enabled"` //no validate required because bool enforces the only two possible values, which is what we want
-}
-
 // setApplicationStatus sets the final status on an application
 //
-// @Summary		Set application status (Super Admin)
-// @Description	Sets the final status (accepted, rejected, or waitlisted) on an application
-// @Tags			superadmin
-// @Accept			json
-// @Produce		json
-// @Param			applicationID	path		string				true	"Application ID"
-// @Param			status			body		SetStatusPayload	true	"New status"
-// @Success		200				{object}	ApplicationResponse
-// @Failure		400				{object}	object{error=string}
-// @Failure		401				{object}	object{error=string}
-// @Failure		403				{object}	object{error=string}
-// @Failure		404				{object}	object{error=string}
-// @Failure		500				{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/superadmin/applications/{applicationID}/status [patch]
+//	@Summary		Set application status (Super Admin)
+//	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
+//	@Tags			superadmin
+//	@Accept			json
+//	@Produce		json
+//	@Param			applicationID	path		string				true	"Application ID"
+//	@Param			status			body		SetStatusPayload	true	"New status"
+//	@Success		200				{object}	ApplicationResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/{applicationID}/status [patch]
 func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Request) {
 	applicationID := chi.URLParam(r, "applicationID")
 	if applicationID == "" {
@@ -598,18 +594,18 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 
 // getApplication returns a single application by ID with embedded questions
 //
-// @Summary		Get application by ID (Admin)
-// @Description	Returns a single application by its ID with embedded short answer questions
-// @Tags			admin
-// @Produce		json
-// @Param			applicationID	path		string	true	"Application ID"
-// @Success		200				{object}	ApplicationWithQuestions
-// @Failure		400				{object}	object{error=string}
-// @Failure		401				{object}	object{error=string}
-// @Failure		403				{object}	object{error=string}
-// @Failure		404				{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/admin/applications/{applicationID} [get]
+//	@Summary		Get application by ID (Admin)
+//	@Description	Returns a single application by its ID with embedded short answer questions
+//	@Tags			admin
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	ApplicationWithQuestions
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID} [get]
 func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	applicationID := chi.URLParam(r, "applicationID")
 	if applicationID == "" {
@@ -647,18 +643,18 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 
 // getApplicantEmailsByStatusHandler returns applicant emails filtered by status
 //
-// @Summary		Get applicant emails by status (Super Admin)
-// @Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
-// @Tags			superadmin
-// @Produce		json
-// @Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
-// @Success		200		{object}	EmailListResponse
-// @Failure		400		{object}	object{error=string}
-// @Failure		401		{object}	object{error=string}
-// @Failure		403		{object}	object{error=string}
-// @Failure		500		{object}	object{error=string}
-// @Security		CookieAuth
-// @Router			/superadmin/applications/emails [get]
+//	@Summary		Get applicant emails by status (Super Admin)
+//	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
+//	@Tags			superadmin
+//	@Produce		json
+//	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
+//	@Success		200		{object}	EmailListResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/emails [get]
 func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
 	statusStr := r.URL.Query().Get("status")
 	if statusStr == "" {
@@ -698,68 +694,4 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		app.internalServerError(w, r, err)
 	}
 
-}
-
-// getApplicationsEnabled returns whether applications are currently open
-//
-//	@Summary		Get applications enabled status
-//	@Description	Returns whether the application portal is currently open for submissions
-//	@Tags			applications
-//	@Produce		json
-//	@Success		200	{object}	ApplicationsEnabledResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/applications/enabled [get]
-func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
-	enabled, err := app.store.Application.GetApplicationsEnabled(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	response := ApplicationsEnabledResponse{
-		Enabled: enabled,
-	}
-
-	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
-// setApplicationsEnabled updates whether applications are currently open
-//
-//	@Summary		Set applications enabled status
-//	@Description	Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.
-//	@Tags			superadmin
-//	@Produce		json
-//	@Param			enabled	query		bool	true	"Enable or disable applications"
-//	@Success		200		{object}	SetApplicationsEnabledResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/applications-enabled [put]
-func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
-	enabled, err := strconv.ParseBool(r.URL.Query().Get("enabled"))
-
-	if err != nil {
-		app.badRequestResponse(w, r, errors.New("enabled must be a boolean value"))
-		return
-	}
-
-	enabled, err = app.store.Application.SetApplicationsEnabled(r.Context(), enabled)
-	if err != nil {
-		app.internalServerError(w, r, err)
-	}
-
-	//NOTE: Following existing design pattern of Get response and Set response structs
-	response := SetApplicationsEnabledResponse{
-		Enabled: enabled,
-	}
-
-	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
-		app.internalServerError(w, r, err)
-	}
 }
