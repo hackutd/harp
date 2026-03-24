@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { NavLink } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -7,7 +8,6 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { NavLink } from "react-router-dom";
 
 interface TabConfig {
   label: string;
