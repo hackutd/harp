@@ -27,6 +27,7 @@ const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
+const SettingsKeyMealGroups = "meal_groups"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -485,4 +486,83 @@ func (s *SettingsStore) SetHackathonDateRange(ctx context.Context, dateRange Hac
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackathonDateRange, string(jsonValue))
 	return err
+}
+
+// GetMealGroups returns the configured list of meal group names (e.g., ["A", "B", "C", "D"])
+func (s *SettingsStore) GetMealGroups(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyMealGroups).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+
+	var groups []string
+	if err := json.Unmarshal(value, &groups); err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}
+
+// SetMealGroups updates the available meal group names
+func (s *SettingsStore) SetMealGroups(ctx context.Context, groups []string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(groups)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyMealGroups, value)
+	return err
+}
+
+// GetMealGroupStats returns the number of hackers assigned to each meal group
+func (s *SettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT meal_group, COUNT(*)
+		FROM applications
+		WHERE meal_group IS NOT NULL
+		GROUP BY meal_group
+	`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make(map[string]int)
+	for rows.Next() {
+		var group string
+		var count int
+		if err := rows.Scan(&group, &count); err != nil {
+			return nil, err
+		}
+		stats[group] = count
+	}
+
+	return stats, nil
 }
