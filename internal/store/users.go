@@ -237,6 +237,36 @@ func (s *UsersStore) BatchUpdateRoles(ctx context.Context, userIDs []string, rol
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, role, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(
+			&u.ID,
+			&u.SuperTokensUserID,
+			&u.Email,
+			&u.Role,
+			&u.AuthMethod,
+			&u.ProfilePictureURL,
+			&u.CreatedAt,
+			&u.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 // UserListItem is a lightweight user view for search results
 type UserListItem struct {
 	ID                string    `json:"id"`
@@ -299,24 +329,6 @@ func (s *UsersStore) Search(ctx context.Context, query string, limit int, offset
 	}
 	defer rows.Close()
 
-	var users []*User
-	for rows.Next() {
-		var u User
-		if err := rows.Scan(
-			&u.ID,
-			&u.SuperTokensUserID,
-			&u.Email,
-			&u.Role,
-			&u.AuthMethod,
-			&u.ProfilePictureURL,
-			&u.CreatedAt,
-			&u.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		users = append(users, &u)
-	}
-
 	users := make([]UserListItem, 0, limit)
 	for rows.Next() {
 		var u UserListItem
@@ -329,7 +341,6 @@ func (s *UsersStore) Search(ctx context.Context, query string, limit int, offset
 		return nil, err
 	}
 
-	return users, nil
 	return &UserSearchResult{Users: users, TotalCount: totalCount}, nil
 }
 

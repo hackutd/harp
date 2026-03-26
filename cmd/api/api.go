@@ -255,8 +255,6 @@ func (app *application) mount() http.Handler {
 					// Users
 					r.Patch("/users/role", app.batchUpdateRolesHandler)
 
-					// Emails
-					r.Post("/emails/qr", app.sendQREmailsHandler)
 				})
 			})
 		})

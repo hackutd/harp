@@ -53,6 +53,38 @@ func (m *MockUsersStore) BatchUpdateRoles(ctx context.Context, userIDs []string,
 	return args.Get(0).([]*User), args.Error(1)
 }
 
+func (m *MockUsersStore) Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error) {
+	args := m.Called(query, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserSearchResult), args.Error(1)
+}
+
+func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error) {
+	args := m.Called(userID, role)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*User), args.Error(1)
+}
+
+func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
+	args := m.Called(role)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]User), args.Error(1)
+}
+
+func (m *MockUsersStore) ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error) {
+	args := m.Called(filters, cursor, direction, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserListResult), args.Error(1)
+}
+
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
