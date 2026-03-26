@@ -87,7 +87,7 @@ func (app *application) mount() http.Handler {
 	if app.config.frontendURL != app.config.appURL {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   []string{app.config.frontendURL},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 			AllowedHeaders:   append([]string{"Content-Type"}, supertokens.GetAllCORSHeaders()...),
 			AllowCredentials: true,
 		}))
@@ -173,6 +173,9 @@ func (app *application) mount() http.Handler {
 
 					// Scans Config
 					r.Put("/settings/scan-types", app.updateScanTypesHandler)
+
+					// Users
+					r.Patch("/users/role", app.batchUpdateRolesHandler)
 
 					// Emails
 					r.Post("/emails/qr", app.sendQREmailsHandler)

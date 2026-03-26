@@ -45,6 +45,14 @@ func (m *MockUsersStore) UpdateProfilePicture(ctx context.Context, supertokensUs
 	return args.Error(0)
 }
 
+func (m *MockUsersStore) BatchUpdateRoles(ctx context.Context, userIDs []string, role UserRole) ([]*User, error) {
+	args := m.Called(userIDs, role)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*User), args.Error(1)
+}
+
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
