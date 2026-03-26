@@ -22,6 +22,7 @@ type Storage struct {
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
+		BatchUpdateRoles(ctx context.Context, userIDs []string, role UserRole) ([]*User, error)
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 		GetByRole(ctx context.Context, role UserRole) ([]User, error)

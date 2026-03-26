@@ -123,9 +123,9 @@ func (app *application) mount() http.Handler {
 	}
 	if len(allowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
-			AllowedOrigins:   allowedOrigins,
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   append([]string{"Content-Type", "X-API-Key"}, supertokens.GetAllCORSHeaders()...),
+			AllowedOrigins:   []string{app.config.frontendURL},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowedHeaders:   append([]string{"Content-Type"}, supertokens.GetAllCORSHeaders()...),
 			AllowCredentials: true,
 		}))
 	}
@@ -251,6 +251,9 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
+
+					// Users
+					r.Patch("/users/role", app.batchUpdateRolesHandler)
 
 				})
 			})

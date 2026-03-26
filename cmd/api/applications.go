@@ -58,7 +58,7 @@ type ApplicationWithQuestions struct {
 //
 //	@Summary		Get or create application
 //	@Description	Returns the authenticated user's hackathon application. If no application exists, creates a new draft application.
-//	@Tags			hackers
+//	@Tags			applications
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	store.Application
@@ -119,7 +119,7 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 //
 //	@Summary		Update application
 //	@Description	Partially updates the authenticated user's application. Only fields included in the request body are updated. Application must be in draft status.
-//	@Tags			hackers
+//	@Tags			applications
 //	@Accept			json
 //	@Produce		json
 //	@Param			application	body		UpdateApplicationPayload	true	"Fields to update"
@@ -257,7 +257,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 //
 //	@Summary		Submit application
 //	@Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
-//	@Tags			hackers
+//	@Tags			applications
 //	@Produce		json
 //	@Success		200	{object}	store.Application
 //	@Failure		400	{object}	object{error=string}	"Missing required fields"
@@ -394,7 +394,7 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 //
 //	@Summary		Get application stats (Admin)
 //	@Description	Returns aggregated statistics for all applications
-//	@Tags			admin/applications
+//	@Tags			admin
 //	@Produce		json
 //	@Success		200	{object}	store.ApplicationStats
 //	@Failure		401	{object}	object{error=string}
@@ -418,13 +418,12 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 //
 //	@Summary		List applications (Admin)
 //	@Description	Lists all applications with cursor-based pagination and optional status filter
-//	@Tags			admin/applications
+//	@Tags			admin
 //	@Produce		json
 //	@Param			cursor		query		string	false	"Pagination cursor"
 //	@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
 //	@Param			limit		query		int		false	"Page size (default 50, max 100)"
 //	@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
-//	@Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
 //	@Success		200			{object}	store.ApplicationListResult
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
@@ -542,7 +541,7 @@ type EmailListResponse struct {
 //
 //	@Summary		Set application status (Super Admin)
 //	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
-//	@Tags			superadmin/applications
+//	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
 //	@Param			applicationID	path		string				true	"Application ID"
@@ -592,7 +591,7 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 //
 //	@Summary		Get application by ID (Admin)
 //	@Description	Returns a single application by its ID with embedded short answer questions
-//	@Tags			admin/applications
+//	@Tags			admin
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
 //	@Success		200				{object}	ApplicationWithQuestions
@@ -641,7 +640,7 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Get applicant emails by status (Super Admin)
 //	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
-//	@Tags			superadmin/applications
+//	@Tags			superadmin
 //	@Produce		json
 //	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
 //	@Success		200		{object}	EmailListResponse

@@ -225,6 +225,48 @@ func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error
 	return &user, nil
 }
 
+func (s *UsersStore) BatchUpdateRoles(ctx context.Context, userIDs []string, role UserRole) ([]*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET role = $1, updated_at = NOW()
+		WHERE id = ANY($2)
+		RETURNING id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, role, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(
+			&u.ID,
+			&u.SuperTokensUserID,
+			&u.Email,
+			&u.Role,
+			&u.AuthMethod,
+			&u.ProfilePictureURL,
+			&u.CreatedAt,
+			&u.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 // UserListItem is a lightweight user view for search results
 type UserListItem struct {
 	ID                string    `json:"id"`
