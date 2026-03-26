@@ -104,7 +104,7 @@ export interface University {
   state_province: string | null;
 }
 
-const HIPO_API_BASE = "http://universities.hipolabs.com";
+const HIPO_API_BASE = "https://universities.hipolabs.com";
 const universityCache = new Map<string, University[]>();
 
 //Search universities via Hipo API
@@ -136,12 +136,3 @@ export async function searchUniversities(query: string): Promise<University[]> {
     return [];
   }
 }
-
-export const POPULAR_UNIVERSITIES = [
-  "University of Texas at Dallas",
-  "University of Texas at Austin",
-  "Texas A&M University",
-  "Massachusetts Institute of Technology",
-  "Stanford University",
-  "Harvard University",
-];

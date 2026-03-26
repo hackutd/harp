@@ -232,8 +232,7 @@ func (app *application) mount() http.Handler {
 						r.Put("/saquestions", app.updateShortAnswerQuestions)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
-						r.Get("/review-assignment-toggle", app.getReviewAssignmentToggle)
-						r.Post("/review-assignment-toggle", app.setReviewAssignmentToggle)
+						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
 						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
 						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
@@ -241,7 +240,7 @@ func (app *application) mount() http.Handler {
 						r.Put("/scan-types", app.updateScanTypesHandler)
 					})
 
-					r.Route("/applciations", func(r chi.Router) {
+					r.Route("/applications", func(r chi.Router) {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/shared/lib/utils";
 
-import { POPULAR_UNIVERSITIES, searchUniversities } from "../api";
+import { searchUniversities } from "../api";
 
 interface UniversityComboboxProps {
   value?: string;
@@ -34,14 +34,13 @@ export function UniversityCombobox({
 }: UniversityComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [universities, setUniversities] =
-    React.useState<string[]>(POPULAR_UNIVERSITIES);
+  const [universities, setUniversities] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
 
   // Debounced search
   React.useEffect(() => {
     if (searchQuery.length < 2) {
-      setUniversities(POPULAR_UNIVERSITIES);
+      setUniversities([]);
       return;
     }
 
@@ -49,12 +48,8 @@ export function UniversityCombobox({
       setLoading(true);
       try {
         const results = await searchUniversities(searchQuery);
-        if (results.length > 0) {
-          const names = [...new Set(results.map((u) => u.name))];
-          setUniversities(names.slice(0, 50));
-        } else {
-          setUniversities(POPULAR_UNIVERSITIES);
-        }
+        const names = [...new Set(results.map((u) => u.name))];
+        setUniversities(names.slice(0, 50));
       } finally {
         setLoading(false);
       }
@@ -108,7 +103,9 @@ export function UniversityCombobox({
               <>
                 <CommandEmpty>
                   <p className="text-sm text-muted-foreground">
-                    No universities found.
+                    {searchQuery.length < 2
+                      ? "Type at least 2 characters to search..."
+                      : "No universities found."}
                   </p>
                 </CommandEmpty>
                 <CommandGroup>

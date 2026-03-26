@@ -61,6 +61,22 @@ func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role Use
 	return args.Get(0).(*User), args.Error(1)
 }
 
+func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
+	args := m.Called(role)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]User), args.Error(1)
+}
+
+func (m *MockUsersStore) ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error) {
+	args := m.Called(filters, cursor, direction, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserListResult), args.Error(1)
+}
+
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
@@ -155,6 +171,14 @@ func (m *MockSettingsStore) GetReviewsPerApplication(ctx context.Context) (int, 
 func (m *MockSettingsStore) SetReviewsPerApplication(ctx context.Context, value int) error {
 	args := m.Called(value)
 	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ReviewAssignmentEntry), args.Error(1)
 }
 
 func (m *MockSettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error) {

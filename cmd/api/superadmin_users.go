@@ -14,6 +14,18 @@ type UserSearchResponse struct {
 	TotalCount int                  `json:"total_count"`
 }
 
+type AdminUserListItem struct {
+	store.UserListItem
+	ReviewAssignmentEnabled *bool `json:"review_assignment_enabled"`
+}
+
+type AdminUserListResponse struct {
+	Users      []AdminUserListItem `json:"users"`
+	NextCursor *string             `json:"next_cursor,omitempty"`
+	PrevCursor *string             `json:"prev_cursor,omitempty"`
+	HasMore    bool                `json:"has_more"`
+}
+
 type UpdateRolePayload struct {
 	Role store.UserRole `json:"role" validate:"required,oneof=hacker admin super_admin"`
 }
@@ -41,9 +53,17 @@ type UpdateRoleResponse struct {
 func (app *application) searchUsersHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
+	// Role-based listing mode
+	roleParams := query["role"]
+	if len(roleParams) > 0 {
+		app.listUsersByRole(w, r, roleParams)
+		return
+	}
+
+	// Search mode
 	search := query.Get("search")
 	if search == "" {
-		app.badRequestResponse(w, r, errors.New("search parameter is required"))
+		app.badRequestResponse(w, r, errors.New("search or role parameter is required"))
 		return
 	}
 	if len(search) < 2 {
@@ -82,6 +102,103 @@ func (app *application) searchUsersHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+func (app *application) listUsersByRole(w http.ResponseWriter, r *http.Request, roleParams []string) {
+	query := r.URL.Query()
+
+	validRoles := map[string]store.UserRole{
+		"admin":       store.RoleAdmin,
+		"super_admin": store.RoleSuperAdmin,
+		"hacker":      store.RoleHacker,
+	}
+
+	roles := make([]store.UserRole, 0, len(roleParams))
+	for _, rp := range roleParams {
+		role, ok := validRoles[rp]
+		if !ok {
+			app.badRequestResponse(w, r, errors.New("invalid role: "+rp))
+			return
+		}
+		roles = append(roles, role)
+	}
+
+	search := query.Get("search")
+	if search != "" && len(search) < 2 {
+		app.badRequestResponse(w, r, errors.New("search must be at least 2 characters"))
+		return
+	}
+	if len(search) > 100 {
+		app.badRequestResponse(w, r, errors.New("search must be at most 100 characters"))
+		return
+	}
+
+	var userCursor *store.UserCursor
+	if cursorStr := query.Get("cursor"); cursorStr != "" {
+		decoded, err := store.DecodeUserCursor(cursorStr)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("invalid cursor"))
+			return
+		}
+		userCursor = decoded
+	}
+
+	direction := store.DirectionForward
+	if dirStr := query.Get("direction"); dirStr == "backward" {
+		direction = store.DirectionBackward
+	}
+
+	limit := 50
+	if limitStr := query.Get("limit"); limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err != nil || parsedLimit < 1 || parsedLimit > 100 {
+			app.badRequestResponse(w, r, errors.New("limit must be between 1 and 100"))
+			return
+		}
+		limit = parsedLimit
+	}
+
+	filters := store.UserListFilters{Roles: roles, Search: search}
+	listResult, err := app.store.Users.ListUsers(r.Context(), filters, userCursor, direction, limit)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	// Fetch review assignment toggles to merge into response
+	toggles, err := app.store.Settings.GetAllReviewAssignmentToggles(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	toggleMap := make(map[string]bool)
+	for _, t := range toggles {
+		toggleMap[t.ID] = t.Enabled
+	}
+
+	result := make([]AdminUserListItem, 0, len(listResult.Users))
+	for _, u := range listResult.Users {
+		item := AdminUserListItem{UserListItem: u}
+		if u.Role == store.RoleSuperAdmin {
+			enabled, exists := toggleMap[u.ID]
+			if !exists {
+				enabled = true
+			}
+			item.ReviewAssignmentEnabled = &enabled
+		}
+		result = append(result, item)
+	}
+
+	resp := AdminUserListResponse{
+		Users:      result,
+		NextCursor: listResult.NextCursor,
+		PrevCursor: listResult.PrevCursor,
+		HasMore:    listResult.HasMore,
+	}
+	if err := app.jsonResponse(w, http.StatusOK, resp); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

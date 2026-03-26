@@ -16,7 +16,6 @@ vendor/
 
 # Air live reload
 tmp/
-.air.toml
 
 # IDE
 .idea/

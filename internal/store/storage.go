@@ -24,6 +24,8 @@ type Storage struct {
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
+		GetByRole(ctx context.Context, role UserRole) ([]User, error)
+		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
@@ -41,6 +43,7 @@ type Storage struct {
 		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
+		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
 		GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error)
 		SetReviewAssignmentToggle(ctx context.Context, superAdminID string, enabled bool) error
 		GetAdminScheduleEditEnabled(ctx context.Context) (bool, error)
