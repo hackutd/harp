@@ -195,7 +195,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "admin"
+                    "admin/applications"
                 ],
                 "summary": "Get application by ID (Admin)",
                 "parameters": [
@@ -2107,7 +2107,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Get applicant emails by status (Super Admin)",
                 "parameters": [
@@ -2188,7 +2188,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/applications"
                 ],
                 "summary": "Set application status (Super Admin)",
                 "parameters": [

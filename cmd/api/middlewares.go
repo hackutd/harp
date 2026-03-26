@@ -204,9 +204,31 @@ func (app *application) AdminScheduleEditPermissionMiddleware(next http.Handler)
 	})
 }
 
-// Hacker mutation routes
+// Checks whether the applications feature is enabled. If not, blocks access to all application-related endpoints for non-super-admins.
 func (app *application) ApplicationsEnabledMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
 
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetApplicationsEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("applications are currently closed"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

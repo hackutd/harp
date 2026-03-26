@@ -37,8 +37,6 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
-		GetApplicationsEnabled(ctx context.Context) (bool, error)
-		SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error)
 	}
 	Settings interface {
 		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
@@ -55,6 +53,8 @@ type Storage struct {
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
+		GetApplicationsEnabled(ctx context.Context) (bool, error)
+		SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error

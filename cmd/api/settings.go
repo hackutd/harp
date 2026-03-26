@@ -428,7 +428,7 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 //	@Security		CookieAuth
 //	@Router			/applications/enabled [get]
 func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
-	enabled, err := app.store.Application.GetApplicationsEnabled(r.Context())
+	enabled, err := app.store.Settings.GetApplicationsEnabled(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -466,7 +466,7 @@ func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	enabled, err = app.store.Application.SetApplicationsEnabled(r.Context(), enabled)
+	enabled, err = app.store.Settings.SetApplicationsEnabled(r.Context(), enabled)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
