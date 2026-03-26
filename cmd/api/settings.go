@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/hackutd/portal/internal/store"
@@ -412,5 +413,72 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+	}
+}
+
+// getApplicationsEnabled returns whether applications are currently open
+//
+//	@Summary		Get applications enabled status
+//	@Description	Returns whether the application portal is currently open for submissions
+//	@Tags			applications
+//	@Produce		json
+//	@Success		200	{object}	ApplicationsEnabledResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/applications/enabled [get]
+func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetApplicationsEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ApplicationsEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+}
+
+// setApplicationsEnabled updates whether applications are currently open
+//
+//	@Summary		Set applications enabled status
+//	@Description	Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.
+//	@Tags			superadmin
+//	@Produce		json
+//	@Param			enabled	query		bool	true	"Enable or disable applications"
+//	@Success		200		{object}	ApplicationsEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/applications-enabled [put]
+func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := strconv.ParseBool(r.URL.Query().Get("enabled"))
+
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("enabled must be a boolean value"))
+		return
+	}
+
+	enabled, err = app.store.Settings.SetApplicationsEnabled(r.Context(), enabled)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	//NOTE: Following existing design pattern of Get response and Set response structs
+	response := ApplicationsEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+		return
 	}
 }

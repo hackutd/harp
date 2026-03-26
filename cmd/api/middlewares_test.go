@@ -8,6 +8,7 @@ import (
 	"github.com/hackutd/portal/internal/ratelimiter"
 	"github.com/hackutd/portal/internal/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -238,6 +239,43 @@ func TestRateLimiterMiddleware(t *testing.T) {
 		req2.RemoteAddr = "10.0.0.3:1234"
 
 		rr = executeRequest(req2, handler)
+		checkResponseCode(t, http.StatusOK, rr.Code)
+	})
+}
+
+func TestApplicationsEnabledMiddleware(t *testing.T) {
+	app := newTestApplication(t)
+
+	// Dummy handler that returns 200 if the middleware lets the request through
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	t.Run("should return 403 when applications are disabled", func(t *testing.T) {
+		app.store.Settings.(*store.MockSettingsStore).On("GetApplicationsEnabled", mock.Anything).Return(false, nil).Once()
+
+		handler := app.ApplicationsEnabledMiddleware(ok)
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req = setUserContext(req, newTestUser()) // need a user in context to get past AuthRequiredMiddleware
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+	})
+
+	t.Run("should allow request when applications are enabled", func(t *testing.T) {
+		app.store.Settings.(*store.MockSettingsStore).On("GetApplicationsEnabled", mock.Anything).Return(true, nil).Once()
+
+		handler := app.ApplicationsEnabledMiddleware(ok)
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req = setUserContext(req, newTestUser()) // need a user in context to get past AuthRequiredMiddleware
+
+		rr := executeRequest(req, handler)
 		checkResponseCode(t, http.StatusOK, rr.Code)
 	})
 }
