@@ -86,6 +86,7 @@ export interface Application {
   github: string | null;
   linkedin: string | null;
   website: string | null;
+  resume_path: string | null;
   ack_application: boolean;
   ack_mlh_coc: boolean;
   ack_mlh_privacy: boolean;
@@ -93,6 +94,7 @@ export interface Application {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  ai_percent: number | null;
 }
 
 export interface ApiResponse<T = unknown> {

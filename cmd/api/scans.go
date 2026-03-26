@@ -33,7 +33,7 @@ type UpdateScanTypesPayload struct {
 //
 //	@Summary		Get scan types (Admin)
 //	@Description	Returns all configured scan types for the hackathon
-//	@Tags			admin
+//	@Tags			admin/scans
 //	@Produce		json
 //	@Success		200	{object}	ScanTypesResponse
 //	@Failure		401	{object}	object{error=string}

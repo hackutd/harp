@@ -1,4 +1,5 @@
 import { Maximize2 } from "lucide-react";
+import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ interface ApplicationsTableProps {
   onSelectApplication: (id: string) => void;
 }
 
-export function ApplicationsTable({
+export const ApplicationsTable = memo(function ApplicationsTable({
   applications,
   loading,
   selectedId,
@@ -30,9 +31,7 @@ export function ApplicationsTable({
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
       {loading && (
-        <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        </div>
+        <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
       )}
       <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
@@ -51,6 +50,7 @@ export function ApplicationsTable({
             <TableHead>Submitted</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
+            <TableHead>AI Percent</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -104,6 +104,9 @@ export function ApplicationsTable({
                 <TableCell className="whitespace-nowrap">
                   {new Date(app.updated_at).toLocaleDateString()}
                 </TableCell>
+                <TableCell>
+                  {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
+                </TableCell>
               </TableRow>
             ))
           )}
@@ -111,4 +114,4 @@ export function ApplicationsTable({
       </Table>
     </div>
   );
-}
+});

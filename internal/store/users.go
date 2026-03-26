@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -153,17 +155,11 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 			// no settings row yet; create with this admin/super_admin
 			entries = []ReviewAssignmentEntry{{ID: user.ID, Enabled: defaultEnabled}}
 		} else {
-			// Try to parse new format
-			if jerr := json.Unmarshal(value, &entries); jerr != nil {
-				// Fallback: try legacy array of ids
-				var ids []string
-				if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-					for _, id := range ids {
-						entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-					}
-				} else {
-					entries = []ReviewAssignmentEntry{}
-				}
+			parsed, parseErr := parseReviewAssignmentEntries(value)
+			if parseErr != nil {
+				entries = []ReviewAssignmentEntry{}
+			} else {
+				entries = parsed
 			}
 
 			// Ensure entry exists
@@ -241,6 +237,63 @@ func (s *UsersStore) BatchUpdateRoles(ctx context.Context, userIDs []string, rol
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, role, userIDs)
+// UserListItem is a lightweight user view for search results
+type UserListItem struct {
+	ID                string    `json:"id"`
+	Email             string    `json:"email"`
+	Role              UserRole  `json:"role"`
+	FirstName         *string   `json:"first_name"`
+	LastName          *string   `json:"last_name"`
+	ProfilePictureURL *string   `json:"profile_picture_url,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
+// UserSearchResult contains paginated user search results
+type UserSearchResult struct {
+	Users      []UserListItem `json:"users"`
+	TotalCount int            `json:"total_count"`
+}
+
+func (s *UsersStore) Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM users u
+		LEFT JOIN applications a ON a.user_id = u.id
+		WHERE u.email ILIKE '%' || $1 || '%'
+		   OR a.first_name ILIKE '%' || $1 || '%'
+		   OR a.last_name ILIKE '%' || $1 || '%'
+	`
+
+	var totalCount int
+	if err := s.db.QueryRowContext(ctx, countQuery, query).Scan(&totalCount); err != nil {
+		return nil, err
+	}
+
+	searchQuery := `
+		SELECT u.id, u.email, u.role, a.first_name, a.last_name, u.profile_picture_url, u.created_at
+		FROM users u
+		LEFT JOIN applications a ON a.user_id = u.id
+		WHERE u.email ILIKE '%' || $1 || '%'
+		   OR a.first_name ILIKE '%' || $1 || '%'
+		   OR a.last_name ILIKE '%' || $1 || '%'
+		ORDER BY u.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := s.db.QueryContext(ctx, searchQuery, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -264,11 +317,52 @@ func (s *UsersStore) BatchUpdateRoles(ctx context.Context, userIDs []string, rol
 		users = append(users, &u)
 	}
 
+	users := make([]UserListItem, 0, limit)
+	for rows.Next() {
+		var u UserListItem
+		if err := rows.Scan(&u.ID, &u.Email, &u.Role, &u.FirstName, &u.LastName, &u.ProfilePictureURL, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
 	return users, nil
+	return &UserSearchResult{Users: users, TotalCount: totalCount}, nil
+}
+
+func (s *UsersStore) UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET role = $2, updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
+	`
+
+	var user User
+	err := s.db.QueryRowContext(ctx, query, userID, role).Scan(
+		&user.ID,
+		&user.SuperTokensUserID,
+		&user.Email,
+		&user.Role,
+		&user.AuthMethod,
+		&user.ProfilePictureURL,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error {
@@ -296,4 +390,206 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 	}
 
 	return nil
+}
+
+func (s *UsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
+		FROM users
+		WHERE role = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]User, 0)
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.ID, &user.SuperTokensUserID, &user.Email, &user.Role, &user.AuthMethod, &user.ProfilePictureURL, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+// UserCursor represents pagination cursor for user listing
+type UserCursor struct {
+	CreatedAt time.Time `json:"c"`
+	ID        string    `json:"i"`
+}
+
+func EncodeUserCursor(createdAt time.Time, id string) string {
+	cursor := UserCursor{CreatedAt: createdAt, ID: id}
+	data, _ := json.Marshal(cursor)
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+func DecodeUserCursor(encoded string) (*UserCursor, error) {
+	data, err := base64.URLEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cursor encoding")
+	}
+	var cursor UserCursor
+	if err := json.Unmarshal(data, &cursor); err != nil {
+		return nil, fmt.Errorf("invalid cursor format")
+	}
+	if cursor.ID == "" || cursor.CreatedAt.IsZero() {
+		return nil, fmt.Errorf("invalid cursor: missing fields")
+	}
+	return &cursor, nil
+}
+
+// UserListFilters for cursor-paginated user listing
+type UserListFilters struct {
+	Roles  []UserRole
+	Search string
+}
+
+// UserListResult contains cursor-paginated user results
+type UserListResult struct {
+	Users      []UserListItem `json:"users"`
+	NextCursor *string        `json:"next_cursor,omitempty"`
+	PrevCursor *string        `json:"prev_cursor,omitempty"`
+	HasMore    bool           `json:"has_more"`
+}
+
+func (s *UsersStore) ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var conditions []string
+	var args []any
+	paramIdx := 1
+
+	if filters.Search != "" {
+		searchParam := "%" + filters.Search + "%"
+		conditions = append(conditions, fmt.Sprintf(
+			"(u.email ILIKE $%d OR a.first_name ILIKE $%d OR a.last_name ILIKE $%d)",
+			paramIdx, paramIdx, paramIdx,
+		))
+		args = append(args, searchParam)
+		paramIdx++
+	}
+
+	if len(filters.Roles) > 0 {
+		placeholders := make([]string, len(filters.Roles))
+		for i, r := range filters.Roles {
+			placeholders[i] = fmt.Sprintf("$%d", paramIdx)
+			args = append(args, string(r))
+			paramIdx++
+		}
+		conditions = append(conditions, "u.role IN ("+strings.Join(placeholders, ", ")+")")
+	}
+
+	if cursor != nil {
+		if direction == DirectionBackward {
+			conditions = append(conditions, fmt.Sprintf(
+				"(u.created_at, u.id) > ($%d, $%d::uuid)",
+				paramIdx, paramIdx+1,
+			))
+		} else {
+			conditions = append(conditions, fmt.Sprintf(
+				"(u.created_at, u.id) < ($%d, $%d::uuid)",
+				paramIdx, paramIdx+1,
+			))
+		}
+		args = append(args, cursor.CreatedAt, cursor.ID)
+		paramIdx += 2
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	orderDir := "DESC"
+	if direction == DirectionBackward {
+		orderDir = "ASC"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT u.id, u.email, u.role, a.first_name, a.last_name, u.profile_picture_url, u.created_at
+		FROM users u
+		LEFT JOIN applications a ON a.user_id = u.id
+		%s
+		ORDER BY u.created_at %s, u.id %s
+		LIMIT $%d
+	`, whereClause, orderDir, orderDir, paramIdx)
+
+	args = append(args, limit+1)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]UserListItem, 0, limit+1)
+	for rows.Next() {
+		var u UserListItem
+		if err := rows.Scan(&u.ID, &u.Email, &u.Role, &u.FirstName, &u.LastName, &u.ProfilePictureURL, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	hasMore := len(items) > limit
+	if hasMore {
+		items = items[:limit]
+	}
+
+	if direction == DirectionBackward {
+		for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
+			items[i], items[j] = items[j], items[i]
+		}
+	}
+
+	result := &UserListResult{
+		Users:   items,
+		HasMore: hasMore,
+	}
+
+	if len(items) > 0 {
+		if direction == DirectionBackward {
+			lastItem := items[len(items)-1]
+			nc := EncodeUserCursor(lastItem.CreatedAt, lastItem.ID)
+			result.NextCursor = &nc
+
+			if hasMore {
+				firstItem := items[0]
+				pc := EncodeUserCursor(firstItem.CreatedAt, firstItem.ID)
+				result.PrevCursor = &pc
+			}
+		} else {
+			if hasMore {
+				lastItem := items[len(items)-1]
+				nc := EncodeUserCursor(lastItem.CreatedAt, lastItem.ID)
+				result.NextCursor = &nc
+			}
+
+			if cursor != nil {
+				firstItem := items[0]
+				pc := EncodeUserCursor(firstItem.CreatedAt, firstItem.ID)
+				result.PrevCursor = &pc
+			}
+		}
+	}
+
+	return result, nil
 }

@@ -25,6 +25,13 @@ const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
+const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
+const SettingsKeyHackathonDateRange = "hackathon_date_range"
+
+type HackathonDateRange struct {
+	StartDate *string `json:"start_date"`
+	EndDate   *string `json:"end_date"`
+}
 
 // ReviewAssignmentEntry represents a single admin's review assignment toggle state.
 // Used in the review_assignment_toggle settings JSON array.
@@ -228,9 +235,56 @@ func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, question
 	return err
 }
 
+// parseReviewAssignmentEntries tries the new object format first, then falls back to legacy []string.
+func parseReviewAssignmentEntries(value []byte) ([]ReviewAssignmentEntry, error) {
+	var entries []ReviewAssignmentEntry
+	if err := json.Unmarshal(value, &entries); err == nil {
+		return entries, nil
+	}
+
+	var ids []string
+	if err := json.Unmarshal(value, &ids); err == nil {
+		entries = make([]ReviewAssignmentEntry, len(ids))
+		for i, id := range ids {
+			entries[i] = ReviewAssignmentEntry{ID: id, Enabled: true}
+		}
+		return entries, nil
+	}
+
+	return nil, errors.New("unrecognized review_assignment_toggle format")
+}
+
+// GetAllReviewAssignmentToggles returns all review assignment toggle entries.
+func (s *SettingsStore) GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentToggle).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []ReviewAssignmentEntry{}, nil
+		}
+		return nil, err
+	}
+
+	entries, err := parseReviewAssignmentEntries(value)
+	if err != nil {
+		return nil, err
+	}
+
+	return entries, nil
+}
+
 // GetReviewAssignmentToggle returns whether review assignment is enabled for the given super admin ID.
-// The setting is stored as a JSON array of super admin IDs who have enabled review assignment.
-// If the setting row does not exist, defaults to false.
+// The setting is stored as a JSON array of ReviewAssignmentEntry objects.
+// If the setting row does not exist or the admin has no entry, defaults to true (eligible for reviews).
 func (s *SettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdminID string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -245,40 +299,29 @@ func (s *SettingsStore) GetReviewAssignmentToggle(ctx context.Context, superAdmi
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyReviewAssignmentToggle).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
+			return true, nil
 		}
 		return false, err
 	}
 
-	// Treat empty/empty-object/empty-array as disabled
+	// Treat empty/empty-object/empty-array as enabled (default)
 	sv := string(value)
 	if sv == "" || sv == "null" || sv == "{}" || sv == "[]" {
-		return false, nil
+		return true, nil
 	}
 
-	// New format: array of objects {"id": "...", "enabled": true}
-	var entries []ReviewAssignmentEntry
-	if err := json.Unmarshal(value, &entries); err == nil {
-		for _, e := range entries {
-			if e.ID == superAdminID && e.Enabled {
-				return true, nil
-			}
+	entries, err := parseReviewAssignmentEntries(value)
+	if err != nil {
+		return true, nil
+	}
+
+	for _, e := range entries {
+		if e.ID == superAdminID {
+			return e.Enabled, nil
 		}
-		return false, nil
 	}
 
-	// Fallback: legacy format was an array of IDs (strings)
-	var ids []string
-	if err := json.Unmarshal(value, &ids); err == nil {
-		for _, id := range ids {
-			if id == superAdminID {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	return false, nil
+	return true, nil
 }
 
 // SetReviewAssignmentToggle updates whether review assignment is enabled for the given super admin ID.
@@ -308,19 +351,11 @@ func (s *SettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdmi
 		}
 		entries = []ReviewAssignmentEntry{}
 	} else {
-		// Try new format first
-		if jerr := json.Unmarshal(value, &entries); jerr != nil {
-			// Fallback: legacy array of IDs
-			var ids []string
-			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-				// convert legacy ids to entries with enabled=true
-				for _, id := range ids {
-					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-				}
-			} else {
-				// If we can't parse either, start fresh
-				entries = []ReviewAssignmentEntry{}
-			}
+		parsed, parseErr := parseReviewAssignmentEntries(value)
+		if parseErr != nil {
+			entries = []ReviewAssignmentEntry{}
+		} else {
+			entries = parsed
 		}
 	}
 
@@ -352,4 +387,102 @@ func (s *SettingsStore) SetReviewAssignmentToggle(ctx context.Context, superAdmi
 	}
 
 	return tx.Commit()
+}
+
+// GetAdminScheduleEditEnabled returns whether admins are allowed to edit schedule.
+// Defaults to true if the setting row does not exist.
+func (s *SettingsStore) GetAdminScheduleEditEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyAdminScheduleEditEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetAdminScheduleEditEnabled updates whether admins are allowed to edit schedule.
+func (s *SettingsStore) SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminScheduleEditEnabled, string(jsonValue))
+	return err
+}
+
+// GetHackathonDateRange returns the configured hackathon start/end dates.
+// Defaults to unconfigured (both null) if the row does not exist.
+func (s *SettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyHackathonDateRange).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return HackathonDateRange{}, nil
+		}
+		return HackathonDateRange{}, err
+	}
+
+	var dateRange HackathonDateRange
+	if err := json.Unmarshal(value, &dateRange); err != nil {
+		return HackathonDateRange{}, err
+	}
+
+	return dateRange, nil
+}
+
+// SetHackathonDateRange updates hackathon start/end dates.
+func (s *SettingsStore) SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(dateRange)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackathonDateRange, string(jsonValue))
+	return err
 }

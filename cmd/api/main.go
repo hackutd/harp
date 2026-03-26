@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"expvar"
 	"log"
 	"runtime"
 	"time"
+	_ "time/tzdata"
 
 	_ "github.com/hackutd/portal/docs"
 	"github.com/hackutd/portal/internal/auth"
 	"github.com/hackutd/portal/internal/db"
 	"github.com/hackutd/portal/internal/env"
+	"github.com/hackutd/portal/internal/gcs"
 	"github.com/hackutd/portal/internal/logger"
 	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/ratelimiter"
@@ -56,15 +59,19 @@ func main() {
 		env: env.GetString("ENV", "development"),
 		mail: mailConfig{
 			sendGrid: sendGridConfig{
-				apiKey: env.GetRequiredString("SENDGRID_API_KEY"),
+				apiKey: env.GetString("SENDGRID_API_KEY", ""),
 			},
 			fromEmail: env.GetString("MAIL_FROM", "noreply@hackportal.com"),
+		},
+		gcs: gcsConfig{
+			bucketName: env.GetString("GCS_BUCKET_NAME", ""),
 		},
 		auth: authConfig{
 			basic: basicConfig{
 				user: env.GetRequiredString("AUTH_BASIC_USER"),
 				pass: env.GetRequiredString("AUTH_BASIC_PASS"),
 			},
+			publicAPIKey: env.GetString("PUBLIC_API_KEY", ""),
 		},
 		rateLimiter: ratelimiter.Config{
 			// Limit 20 requests every 5 seconds per IP
@@ -72,7 +79,9 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL: env.GetString("FRONTEND_URL", appURL),
+		frontendURL:       env.GetString("FRONTEND_URL", appURL),
+		publicCORSOrigin:  env.GetString("PUBLIC_CORS_ORIGIN", ""),
+		hackathonTimeZone: env.GetString("HACKATHON_TIMEZONE", "America/Chicago"),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),
@@ -80,6 +89,10 @@ func main() {
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
 			googleClientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
 		},
+	}
+
+	if _, err := time.LoadLocation(cfg.hackathonTimeZone); err != nil {
+		log.Fatalf("invalid HACKATHON_TIMEZONE %q: %v", cfg.hackathonTimeZone, err)
 	}
 
 	// Init Logger
@@ -122,6 +135,19 @@ func main() {
 	// Init mailer
 	mailClient := mailer.NewSendGrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
 
+	// Init GCS (optional in local/dev)
+	var gcsClient gcs.Client
+	if cfg.gcs.bucketName != "" {
+		gc, err := gcs.New(context.Background(), cfg.gcs.bucketName)
+		if err != nil {
+			logger.Fatal("failed to initialize gcs client", zap.Error(err))
+		}
+		defer gc.Close()
+
+		gcsClient = gc
+		logger.Infow("gcs client initialized", "bucket", cfg.gcs.bucketName)
+	}
+
 	// Init rate limiter
 	rateLimiter := ratelimiter.NewFixedWindowLimiter(
 		cfg.rateLimiter.RequestPerTimeFrame,
@@ -134,6 +160,7 @@ func main() {
 		store:       store,
 		logger:      logger,
 		mailer:      mailClient,
+		gcsClient:   gcsClient,
 		rateLimiter: rateLimiter,
 	}
 

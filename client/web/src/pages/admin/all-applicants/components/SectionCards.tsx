@@ -1,4 +1,5 @@
 import { Check, Clock, Percent, Users } from "lucide-react";
+import { memo } from "react";
 
 import {
   Card,
@@ -13,7 +14,10 @@ interface SectionCardsProps {
   loading?: boolean;
 }
 
-export function SectionCards({ stats, loading }: SectionCardsProps) {
+export const SectionCards = memo(function SectionCards({
+  stats,
+  loading,
+}: SectionCardsProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -57,7 +61,7 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
   ];
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.title} className="@container/card min-w-0">
           <CardHeader className="min-w-0">
@@ -67,7 +71,7 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
               </CardDescription>
               <card.icon className="size-5 shrink-0 text-muted-foreground" />
             </div>
-            <CardTitle className="truncate text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            <CardTitle className="truncate text-xl font-semibold tabular-nums @[250px]/card:text-2xl">
               {card.value}
             </CardTitle>
             <p className="truncate text-sm text-muted-foreground">
@@ -78,4 +82,4 @@ export function SectionCards({ stats, loading }: SectionCardsProps) {
       ))}
     </div>
   );
-}
+});

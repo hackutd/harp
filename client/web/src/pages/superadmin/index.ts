@@ -1,2 +1,1 @@
-export { SettingsDialog } from "./dashboard/components/SettingsDialog";
-export { default as DashboardPage } from "./dashboard/DashboardPage";
+export { SettingsDialog } from "./settings/components/SettingsDialog";

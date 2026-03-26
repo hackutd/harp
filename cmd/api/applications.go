@@ -37,9 +37,10 @@ type UpdateApplicationPayload struct {
 	DietaryRestrictions *[]string `json:"dietary_restrictions"`
 	Accommodations      *string   `json:"accommodations"`
 
-	Github   *string `json:"github" validate:"omitempty,url"`
-	LinkedIn *string `json:"linkedin" validate:"omitempty,url"`
-	Website  *string `json:"website" validate:"omitempty,url"`
+	Github     *string `json:"github" validate:"omitempty,url"`
+	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
+	Website    *string `json:"website" validate:"omitempty,url"`
+	ResumePath *string `json:"resume_path"`
 
 	AckApplication *bool `json:"ack_application"`
 	AckMLHCOC      *bool `json:"ack_mlh_coc"`
@@ -225,6 +226,9 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 	if req.Website != nil {
 		application.Website = req.Website
+	}
+	if req.ResumePath != nil {
+		application.ResumePath = req.ResumePath
 	}
 	if req.AckApplication != nil {
 		application.AckApplication = *req.AckApplication
@@ -455,6 +459,19 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Parse search
+	if searchStr := query.Get("search"); searchStr != "" {
+		if len(searchStr) < 2 {
+			app.badRequestResponse(w, r, errors.New("search must be at least 2 characters"))
+			return
+		}
+		if len(searchStr) > 100 {
+			app.badRequestResponse(w, r, errors.New("search must be at most 100 characters"))
+			return
+		}
+		filters.Search = &searchStr
+	}
+
 	// Parse limit
 	limit := 50
 	if limitStr := query.Get("limit"); limitStr != "" {
@@ -478,6 +495,18 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Parse sort_by
+	if sortStr := query.Get("sort_by"); sortStr != "" {
+		switch store.ApplicationSortBy(sortStr) {
+		case store.SortByCreatedAt, store.SortByAcceptVotes,
+			store.SortByRejectVotes, store.SortByWaitlistVotes:
+			filters.SortBy = store.ApplicationSortBy(sortStr)
+		default:
+			app.badRequestResponse(w, r, errors.New("invalid sort_by value"))
+			return
+		}
+	}
+
 	result, err := app.store.Application.List(r.Context(), filters, cursor, direction, limit)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -497,9 +526,15 @@ type ApplicationResponse struct {
 	Application *store.Application `json:"application"`
 }
 
+type ApplicantInfo struct {
+	Email     string  `json:"email"`
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
+}
+
 type EmailListResponse struct {
-	Emails []string `json:"emails"`
-	Count  int      `json:"count"`
+	Applicants []ApplicantInfo `json:"applicants"`
+	Count      int             `json:"count"`
 }
 
 // setApplicationStatus sets the final status on an application
@@ -636,14 +671,18 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	emails := make([]string, len(users))
+	applicants := make([]ApplicantInfo, len(users))
 	for i, u := range users {
-		emails[i] = u.Email
+		applicants[i] = ApplicantInfo{
+			Email:     u.Email,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+		}
 	}
 
 	response := EmailListResponse{
-		Emails: emails,
-		Count:  len(emails),
+		Applicants: applicants,
+		Count:      len(applicants),
 	}
 
 	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {

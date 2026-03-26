@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/hackutd/portal/internal/store"
 )
@@ -169,53 +170,40 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 // SetReviewAssignmentTogglePayload for setting whether review assignment is enabled
 type SetReviewAssignmentTogglePayload struct {
-	Enabled bool `json:"enabled"`
+	UserID  string `json:"user_id" validate:"required"`
+	Enabled bool   `json:"enabled"`
 }
 
 // ReviewAssignmentToggleResponse wraps the review assignment enabled value for API response
 type ReviewAssignmentToggleResponse struct {
+	UserID  string `json:"user_id"`
+	Enabled bool   `json:"enabled"`
+}
+
+type SetAdminScheduleEditTogglePayload struct {
 	Enabled bool `json:"enabled"`
 }
 
-// getReviewAssignmentToggle returns the current review assignment enabled setting
-//
-//	@Summary		Get review assignment enabled state (Super Admin)
-//	@Description	Returns whether automatic review assignment is enabled
-//	@Tags			superadmin
-//	@Produce		json
-//	@Success		200	{object}	ReviewAssignmentToggleResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/review-assignment-toggle [get]
-func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
-	user := getUserFromContext(r.Context())
-	if user == nil {
-		app.internalServerError(w, r, errors.New("user not in context"))
-		return
-	}
+type AdminScheduleEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
 
-	enabled, err := app.store.Settings.GetReviewAssignmentToggle(r.Context(), user.ID)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+type SetHackathonDateRangePayload struct {
+	StartDate string `json:"start_date" validate:"required"`
+	EndDate   string `json:"end_date" validate:"required"`
+}
 
-	response := ReviewAssignmentToggleResponse{
-		Enabled: enabled,
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
-		app.internalServerError(w, r, err)
-	}
+type HackathonDateRangeResponse struct {
+	StartDate  *string `json:"start_date"`
+	EndDate    *string `json:"end_date"`
+	Configured bool    `json:"configured"`
 }
 
 // setReviewAssignmentToggle updates the review assignment enabled setting
 //
-//	@Summary		Set review assignment enabled state (Super Admin)
-//	@Description	Updates whether automatic review assignment is enabled
-//	@Tags			superadmin
+//	@Summary		Set review assignment enabled state for a user (Super Admin)
+//	@Description	Updates whether automatic review assignment is enabled for a specific super admin
+//	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			enabled	body		SetReviewAssignmentTogglePayload	true	"Review assignment enabled state"
@@ -225,7 +213,7 @@ func (app *application) getReviewAssignmentToggle(w http.ResponseWriter, r *http
 //	@Failure		403		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/settings/review-assignment-toggle [post]
+//	@Router			/superadmin/settings/review-assignment-toggle [put]
 func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http.Request) {
 	var req SetReviewAssignmentTogglePayload
 	if err := readJSON(w, r, &req); err != nil {
@@ -233,18 +221,194 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 		return
 	}
 
-	user := getUserFromContext(r.Context())
-	if user == nil {
-		app.internalServerError(w, r, errors.New("user not in context"))
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if err := app.store.Settings.SetReviewAssignmentToggle(r.Context(), user.ID, req.Enabled); err != nil {
+	// Validate that user_id belongs to an existing super admin
+	targetUser, err := app.store.Users.GetByID(r.Context(), req.UserID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("user not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+	if targetUser.Role != store.RoleSuperAdmin {
+		app.badRequestResponse(w, r, errors.New("user is not a super admin"))
+		return
+	}
+
+	if err := app.store.Settings.SetReviewAssignmentToggle(r.Context(), req.UserID, req.Enabled); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
 	response := ReviewAssignmentToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getAdminScheduleEditToggle returns whether admins can edit schedule
+//
+//	@Summary		Get admin schedule edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete schedule items
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminScheduleEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-schedule-edit-toggle [get]
+func (app *application) getAdminScheduleEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminScheduleEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminScheduleEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminScheduleEditToggle updates whether admins can edit schedule
+//
+//	@Summary		Set admin schedule edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete schedule items
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminScheduleEditTogglePayload	true	"Admin schedule editing enabled state"
+//	@Success		200		{object}	AdminScheduleEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-schedule-edit-toggle [post]
+func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminScheduleEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminScheduleEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminScheduleEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getHackathonDateRange returns hackathon start/end dates
+//
+//	@Summary		Get hackathon date range (Super Admin)
+//	@Description	Returns configured hackathon start and end dates
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	HackathonDateRangeResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hackathon-date-range [get]
+func (app *application) getHackathonDateRange(w http.ResponseWriter, r *http.Request) {
+	dateRange, err := app.store.Settings.GetHackathonDateRange(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonDateRangeResponse{
+		StartDate:  dateRange.StartDate,
+		EndDate:    dateRange.EndDate,
+		Configured: dateRange.StartDate != nil && dateRange.EndDate != nil,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setHackathonDateRange updates hackathon start/end dates
+//
+//	@Summary		Set hackathon date range (Super Admin)
+//	@Description	Updates configured hackathon start and end dates. Range must be at most 7 days inclusive.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			range	body		SetHackathonDateRangePayload	true	"Hackathon date range"
+//	@Success		200		{object}	HackathonDateRangeResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hackathon-date-range [post]
+func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Request) {
+	var req SetHackathonDateRangePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if req.StartDate == "" || req.EndDate == "" {
+		app.badRequestResponse(w, r, errors.New("start_date and end_date are required"))
+		return
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("start_date must be YYYY-MM-DD"))
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("end_date must be YYYY-MM-DD"))
+		return
+	}
+
+	if endDate.Before(startDate) {
+		app.badRequestResponse(w, r, errors.New("end_date must be on or after start_date"))
+		return
+	}
+
+	durationDays := int(endDate.Sub(startDate).Hours()/24) + 1
+	if durationDays > 7 {
+		app.badRequestResponse(w, r, errors.New("hackathon date range cannot exceed 7 days"))
+		return
+	}
+
+	dateRange := store.HackathonDateRange{
+		StartDate: &req.StartDate,
+		EndDate:   &req.EndDate,
+	}
+	if err := app.store.Settings.SetHackathonDateRange(r.Context(), dateRange); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonDateRangeResponse{
+		StartDate:  dateRange.StartDate,
+		EndDate:    dateRange.EndDate,
+		Configured: true,
+	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

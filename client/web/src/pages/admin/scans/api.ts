@@ -1,7 +1,12 @@
-import { getRequest, postRequest } from "@/shared/lib/api";
+import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
-import type { Scan, ScanStatsResponse, ScanTypesResponse } from "./types";
+import type {
+  Scan,
+  ScanStatsResponse,
+  ScanType,
+  ScanTypesResponse,
+} from "./types";
 
 export async function fetchScanTypes(
   signal?: AbortSignal,
@@ -33,5 +38,15 @@ export async function fetchScanStats(
     "/admin/scans/stats",
     "scan stats",
     signal,
+  );
+}
+
+export async function saveScanTypes(
+  scanTypes: ScanType[],
+): Promise<ApiResponse<ScanTypesResponse>> {
+  return putRequest<ScanTypesResponse>(
+    "/superadmin/settings/scan-types",
+    { scan_types: scanTypes },
+    "scan types",
   );
 }

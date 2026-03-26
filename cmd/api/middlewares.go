@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -158,4 +159,47 @@ func (app *application) RequireRoleMiddleware(minRole store.UserRole) func(http.
 func getUserFromContext(ctx context.Context) *store.User {
 	user, _ := ctx.Value(userContextKey).(*store.User)
 	return user
+}
+
+// Validates the X-API-Key header for public API endpoints
+func (app *application) APIKeyMiddleware(next http.Handler) http.Handler {
+	expectedKey := []byte(app.config.auth.publicAPIKey)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("X-API-Key")
+		if key == "" || subtle.ConstantTimeCompare([]byte(key), expectedKey) != 1 {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("invalid or missing API key"))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Blocks schedule mutations by admins when the admin schedule edit setting is disabled.
+// Super admins are always allowed.
+func (app *application) AdminScheduleEditPermissionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetAdminScheduleEditEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if user.Role == store.RoleAdmin && !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("admin schedule editing is disabled"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

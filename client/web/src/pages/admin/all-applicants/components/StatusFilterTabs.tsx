@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -10,7 +12,7 @@ interface StatusFilterTabsProps {
   onStatusChange: (status: ApplicationStatus | null) => void;
 }
 
-export function StatusFilterTabs({
+export const StatusFilterTabs = memo(function StatusFilterTabs({
   stats,
   loading,
   currentStatus,
@@ -27,11 +29,11 @@ export function StatusFilterTabs({
       onValueChange={handleValueChange}
       className="min-w-0"
     >
-      <TabsList className="h-auto flex-wrap justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5">
+      <TabsList className="h-auto w-full flex-wrap rounded-md border justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5">
         <TabsTrigger
           value="all"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer rounded-sm"
         >
           All
           {stats && (
@@ -43,7 +45,7 @@ export function StatusFilterTabs({
         <TabsTrigger
           value="draft"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Draft
           {stats && stats.draft > 0 && (
@@ -55,7 +57,7 @@ export function StatusFilterTabs({
         <TabsTrigger
           value="submitted"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Submitted
           {stats && stats.submitted > 0 && (
@@ -67,7 +69,7 @@ export function StatusFilterTabs({
         <TabsTrigger
           value="accepted"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Accepted
           {stats && stats.accepted > 0 && (
@@ -79,7 +81,7 @@ export function StatusFilterTabs({
         <TabsTrigger
           value="waitlisted"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Waitlisted
           {stats && stats.waitlisted > 0 && (
@@ -91,7 +93,7 @@ export function StatusFilterTabs({
         <TabsTrigger
           value="rejected"
           disabled={loading}
-          className="font-normal cursor-pointer"
+          className="font-light cursor-pointer"
         >
           Rejected
           {stats && stats.rejected > 0 && (
@@ -103,4 +105,4 @@ export function StatusFilterTabs({
       </TabsList>
     </Tabs>
   );
-}
+});

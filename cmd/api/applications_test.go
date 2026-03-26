@@ -409,6 +409,39 @@ func TestListApplications(t *testing.T) {
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 
+	t.Run("should return 400 for search too short", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/?search=a", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should accept valid search param", func(t *testing.T) {
+		search := "john"
+		result := &store.ApplicationListResult{
+			Applications: []store.ApplicationListItem{},
+			HasMore:      false,
+		}
+
+		mockApps.On("List",
+			store.ApplicationListFilters{Search: &search},
+			(*store.ApplicationCursor)(nil),
+			store.DirectionForward,
+			50,
+		).Return(result, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/?search=john", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
 	t.Run("should accept valid status filter", func(t *testing.T) {
 		status := store.StatusSubmitted
 		result := &store.ApplicationListResult{
@@ -424,6 +457,62 @@ func TestListApplications(t *testing.T) {
 		).Return(result, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/?status=submitted", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 for invalid sort_by", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/?sort_by=invalid", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should accept valid sort_by accept_votes", func(t *testing.T) {
+		result := &store.ApplicationListResult{
+			Applications: []store.ApplicationListItem{},
+			HasMore:      false,
+		}
+
+		mockApps.On("List",
+			store.ApplicationListFilters{SortBy: store.SortByAcceptVotes},
+			(*store.ApplicationCursor)(nil),
+			store.DirectionForward,
+			50,
+		).Return(result, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/?sort_by=accept_votes", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should accept sort_by with status filter", func(t *testing.T) {
+		status := store.StatusSubmitted
+		result := &store.ApplicationListResult{
+			Applications: []store.ApplicationListItem{},
+			HasMore:      false,
+		}
+
+		mockApps.On("List",
+			store.ApplicationListFilters{Status: &status, SortBy: store.SortByRejectVotes},
+			(*store.ApplicationCursor)(nil),
+			store.DirectionForward,
+			50,
+		).Return(result, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/?status=submitted&sort_by=reject_votes", nil)
 		require.NoError(t, err)
 		req = setUserContext(req, newAdminUser())
 
