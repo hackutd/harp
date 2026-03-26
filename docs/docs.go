@@ -2506,69 +2506,13 @@ const docTemplate = `{
             }
         },
         "/superadmin/settings/review-assignment-toggle": {
-            "get": {
+            "put": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns whether automatic review assignment is enabled",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Get review assignment enabled state (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.ReviewAssignmentToggleResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Updates whether automatic review assignment is enabled",
+                "description": "Updates whether automatic review assignment is enabled for a specific super admin",
                 "consumes": [
                     "application/json"
                 ],
@@ -2578,7 +2522,7 @@ const docTemplate = `{
                 "tags": [
                     "superadmin/settings"
                 ],
-                "summary": "Set review assignment enabled state (Super Admin)",
+                "summary": "Set review assignment enabled state for a user (Super Admin)",
                 "parameters": [
                     {
                         "description": "Review assignment enabled state",
@@ -3526,6 +3470,9 @@ const docTemplate = `{
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3632,9 +3579,15 @@ const docTemplate = `{
         },
         "main.SetReviewAssignmentTogglePayload": {
             "type": "object",
+            "required": [
+                "user_id"
+            ],
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
