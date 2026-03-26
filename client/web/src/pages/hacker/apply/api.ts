@@ -93,3 +93,46 @@ export async function uploadResumeToSignedURL(
 }
 
 export { MAX_RESUME_SIZE_BYTES };
+
+// University Search API (Hipo)
+export interface University {
+  name: string;
+  country: string;
+  alpha_two_code: string;
+  domains: string[];
+  web_pages: string[];
+  state_province: string | null;
+}
+
+const HIPO_API_BASE = "https://universities.hipolabs.com";
+const universityCache = new Map<string, University[]>();
+
+//Search universities via Hipo API
+export async function searchUniversities(query: string): Promise<University[]> {
+  if (query.length < 2) return [];
+
+  const cacheKey = query.toLowerCase();
+  if (universityCache.has(cacheKey)) {
+    return universityCache.get(cacheKey)!;
+  }
+
+  try {
+    const params = new URLSearchParams({ name: query });
+    const response = await fetch(`${HIPO_API_BASE}/search?${params}`);
+
+    if (!response.ok) return [];
+
+    const universities: University[] = await response.json();
+
+    // Cache results (limit cache size)
+    if (universityCache.size > 100) {
+      const firstKey = universityCache.keys().next().value;
+      if (firstKey) universityCache.delete(firstKey);
+    }
+    universityCache.set(cacheKey, universities);
+
+    return universities;
+  } catch {
+    return [];
+  }
+}

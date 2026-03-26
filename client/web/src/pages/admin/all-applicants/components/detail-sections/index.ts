@@ -1,3 +1,4 @@
+export { AgreementsSection } from "./AgreementsSection";
 export { DemographicsSection } from "./DemographicsSection";
 export { EducationSection } from "./EducationSection";
 export { EventPreferencesSection } from "./EventPreferencesSection";
