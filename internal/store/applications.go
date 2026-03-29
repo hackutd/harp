@@ -143,6 +143,7 @@ type ApplicationListItem struct {
 	ReviewsCompleted        int               `json:"reviews_completed"`
 	AIPercent               *int              `json:"ai_percent"`
 	HasResume               bool              `json:"has_resume"`
+	MealGroup               *string           `json:"meal_group"`
 }
 
 // ApplicationListResult contains paginated results
@@ -247,7 +248,8 @@ type Application struct {
 	ReviewsAssigned  int `json:"reviews_assigned"`
 	ReviewsCompleted int `json:"reviews_completed"`
 
-	AIPercent *int16 `json:"ai_percent"`
+	AIPercent *int16  `json:"ai_percent"`
+	MealGroup *string `json:"meal_group"`
 }
 
 type ApplicationsStore struct {
@@ -268,8 +270,9 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percent
+			submitted_at, created_at, updated_at, meal_group,
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
+			ai_percent
 		FROM applications
 		WHERE id = $1
 	`
@@ -285,8 +288,9 @@ func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Applicatio
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercent,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
+		&app.AIPercent,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -312,8 +316,9 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 			shirt_size, dietary_restrictions, accommodations,
 			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
+			submitted_at, created_at, updated_at, meal_group,
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
+			ai_percent
 		FROM applications
 		WHERE user_id = $1
 	`
@@ -329,8 +334,9 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
 		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
+		&app.AIPercent,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -400,7 +406,8 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 			ack_application = $23,
 			ack_mlh_coc = $24,
 			ack_mlh_privacy = $25,
-			opt_in_mlh_emails = $26
+			opt_in_mlh_emails = $26,
+			meal_group = $28
 		WHERE id = $1
 		RETURNING updated_at
 	`
@@ -416,6 +423,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 		app.Github, app.LinkedIn, app.Website,
 		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
 		app.ResumePath,
+		app.MealGroup,
 	).Scan(&app.UpdatedAt)
 
 	if err != nil {
@@ -528,7 +536,7 @@ func (s *ApplicationsStore) List(
 		       a.hackathons_attended_count,
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
-		       a.resume_path IS NOT NULL AS has_resume
+		       a.resume_path IS NOT NULL AS has_resume, a.meal_group
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -623,7 +631,7 @@ func (s *ApplicationsStore) List(
 			&item.HackathonsAttendedCount,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
-			&item.HasResume,
+			&item.HasResume, &item.MealGroup,
 		); err != nil {
 			return nil, err
 		}
@@ -706,7 +714,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 			github, linkedin, website, resume_path,
 			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
+			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, meal_group
 	`
 
 	var app Application
@@ -721,7 +729,7 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
 		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.MealGroup,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -805,4 +813,44 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 	}
 
 	return users, rows.Err()
+}
+
+// SetMealGroup updates the meal group for a specific application
+func (s *ApplicationsStore) SetMealGroup(ctx context.Context, id string, mealGroup string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET meal_group = $2, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := s.db.ExecContext(ctx, query, id, mealGroup)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+// GetMealGroupByUserID returns the assigned meal group for a user
+func (s *ApplicationsStore) GetMealGroupByUserID(ctx context.Context, userID string) (*string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var mealGroup *string
+	err := s.db.QueryRowContext(ctx, "SELECT meal_group FROM applications WHERE user_id = $1", userID).Scan(&mealGroup)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return mealGroup, err
 }

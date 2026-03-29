@@ -426,3 +426,87 @@ func TestSetHackathonDateRange(t *testing.T) {
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 }
+
+func TestGetMealGroups(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return meal groups", func(t *testing.T) {
+		groups := []string{"A", "B", "C"}
+		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getMealGroups))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data MealGroupsResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, groups, body.Data.Groups)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestUpdateMealGroups(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should update meal groups", func(t *testing.T) {
+		groups := []string{"Alpha", "Beta"}
+		mockSettings.On("SetMealGroups", groups).Return(nil).Once()
+
+		body := `{"groups":["Alpha", "Beta"]}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateMealGroups))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 for duplicate names", func(t *testing.T) {
+		body := `{"groups":["A", "A"]}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateMealGroups))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
+func TestGetMealGroupStats(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return stats", func(t *testing.T) {
+		stats := map[string]int{"A": 10, "B": 20}
+		mockSettings.On("GetMealGroupStats").Return(stats, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getMealGroupStats))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data MealGroupStatsResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, stats, body.Data.Stats)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
