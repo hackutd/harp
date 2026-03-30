@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchApplicationResumeURL } from "@/pages/admin/all-applicants/api";
 import {
+  AgreementsSection,
   DemographicsSection,
   EducationSection,
   EventPreferencesSection,
@@ -83,6 +84,7 @@ export const GradingDetailsPanel = memo(function GradingDetailsPanel({
         onViewResume={handleViewResume}
         isOpeningResume={isOpeningResume}
       />
+      <AgreementsSection application={application} />
       <TimelineSection application={application} />
       {children}
     </div>
