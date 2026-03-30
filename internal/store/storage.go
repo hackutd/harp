@@ -25,6 +25,7 @@ type Storage struct {
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 		GetByRole(ctx context.Context, role UserRole) ([]User, error)
+		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
@@ -52,6 +53,8 @@ type Storage struct {
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
+		GetApplicationsEnabled(ctx context.Context) (bool, error)
+		SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error

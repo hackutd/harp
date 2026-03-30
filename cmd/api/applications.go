@@ -538,6 +538,10 @@ type EmailListResponse struct {
 	Count      int             `json:"count"`
 }
 
+type ApplicationsEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 // setApplicationStatus sets the final status on an application
 //
 //	@Summary		Set application status (Super Admin)

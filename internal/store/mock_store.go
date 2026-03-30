@@ -69,6 +69,14 @@ func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, 
 	return args.Get(0).([]User), args.Error(1)
 }
 
+func (m *MockUsersStore) ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error) {
+	args := m.Called(filters, cursor, direction, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserListResult), args.Error(1)
+}
+
 // mock implementation of the Application interface
 type MockApplicationStore struct {
 	mock.Mock
@@ -225,6 +233,16 @@ func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, e
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(map[string]int), args.Error(1)
+}
+
+func (m *MockSettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
+	args := m.Called(enabled)
+	return args.Bool(0), args.Error(1)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
