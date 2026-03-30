@@ -42,9 +42,7 @@ const SuperAdminScansPage = lazy(
 const AdminGradingPage = lazy(
   () => import("@/pages/admin/reviews/grading/GradingPage"),
 );
-const SponsorsPage = lazy(
-  () => import("@/pages/admin/sponsors/SponsorsPage"),
-);
+const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
 
 export const router = createBrowserRouter([
   // Public routes
