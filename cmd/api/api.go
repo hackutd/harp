@@ -94,6 +94,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/reviews",
 		"admin/scans",
 		"admin/schedule",
+		"admin/sponsors",
 		"superadmin/applications",
 		"superadmin/settings",
 		"superadmin/users"
@@ -228,7 +229,7 @@ func (app *application) mount() http.Handler {
 						r.Post("/", app.createSponsorHandler)
 						r.Put("/{sponsorID}", app.updateSponsorHandler)
 						r.Delete("/{sponsorID}", app.deleteSponsorHandler)
-						r.Post("/{sponsorID}/logo-upload-url", app.generateLogoUploadURLHandler)
+						r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
 					})
 				})
 			})

@@ -1,55 +1,53 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/gcs"
 	"github.com/hackutd/portal/internal/store"
 )
+
+var allowedLogoContentTypes = map[string]bool{
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
+const maxLogoBytes = 1 * 1024 * 1024 // 1MB decoded limit
 
 type SponsorPayload struct {
 	Name         string `json:"name" validate:"required,min=1,max=100"`
 	Tier         string `json:"tier" validate:"required,min=1,max=50"`
 	WebsiteURL   string `json:"website_url" validate:"omitempty,url"`
-	LogoPath     string `json:"logo_path"`
 	Description  string `json:"description"`
 	DisplayOrder int    `json:"display_order" validate:"min=0"`
 }
 
-type SponsorResponse struct {
-	store.Sponsor
-	LogoURL string `json:"logo_url,omitempty"`
-}
-
 type SponsorListResponse struct {
-	Sponsors []SponsorResponse `json:"sponsors"`
+	Sponsors []store.Sponsor `json:"sponsors"`
 }
 
-type LogoUploadURLPayload struct {
+type LogoUploadPayload struct {
+	LogoData    string `json:"logo_data" validate:"required"`
 	ContentType string `json:"content_type" validate:"required"`
-}
-
-type LogoUploadURLResponse struct {
-	UploadURL   string `json:"upload_url"`
-	LogoPath    string `json:"logo_path"`
-	ContentType string `json:"content_type"`
 }
 
 // listSponsorsHandler returns all sponsors (Super Admin)
 //
 //	@Summary		List sponsors (Super Admin)
 //	@Description	Returns all sponsors ordered by display order
-//	@Tags			superadmin/sponsors
+//	@Tags			admin/sponsors
 //	@Produce		json
 //	@Success		200	{object}	SponsorListResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/sponsors [get]
+//	@Router			/admin/sponsors [get]
 func (app *application) listSponsorsHandler(w http.ResponseWriter, r *http.Request) {
 	sponsors, err := app.store.Sponsors.List(r.Context())
 	if err != nil {
@@ -57,15 +55,7 @@ func (app *application) listSponsorsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	response := make([]SponsorResponse, len(sponsors))
-	for i, s := range sponsors {
-		response[i] = SponsorResponse{Sponsor: s}
-		if s.LogoPath != "" && app.gcsClient != nil {
-			response[i].LogoURL = app.gcsClient.GeneratePublicURL(s.LogoPath)
-		}
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, SponsorListResponse{Sponsors: response}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, SponsorListResponse{Sponsors: sponsors}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -74,17 +64,17 @@ func (app *application) listSponsorsHandler(w http.ResponseWriter, r *http.Reque
 //
 //	@Summary		Create sponsor (Super Admin)
 //	@Description	Creates a new sponsor
-//	@Tags			superadmin/sponsors
+//	@Tags			admin/sponsors
 //	@Accept			json
 //	@Produce		json
 //	@Param			sponsor	body		SponsorPayload	true	"Sponsor to create"
-//	@Success		201		{object}	SponsorResponse
+//	@Success		201		{object}	store.Sponsor
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
 //	@Failure		403		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/sponsors [post]
+//	@Router			/admin/sponsors [post]
 func (app *application) createSponsorHandler(w http.ResponseWriter, r *http.Request) {
 	var payload SponsorPayload
 	if err := readJSON(w, r, &payload); err != nil {
@@ -100,7 +90,6 @@ func (app *application) createSponsorHandler(w http.ResponseWriter, r *http.Requ
 	sponsor := &store.Sponsor{
 		Name:         payload.Name,
 		Tier:         payload.Tier,
-		LogoPath:     payload.LogoPath,
 		WebsiteURL:   payload.WebsiteURL,
 		Description:  payload.Description,
 		DisplayOrder: payload.DisplayOrder,
@@ -111,12 +100,7 @@ func (app *application) createSponsorHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp := SponsorResponse{Sponsor: *sponsor}
-	if sponsor.LogoPath != "" && app.gcsClient != nil {
-		resp.LogoURL = app.gcsClient.GeneratePublicURL(sponsor.LogoPath)
-	}
-
-	if err := app.jsonResponse(w, http.StatusCreated, resp); err != nil {
+	if err := app.jsonResponse(w, http.StatusCreated, sponsor); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -125,19 +109,19 @@ func (app *application) createSponsorHandler(w http.ResponseWriter, r *http.Requ
 //
 //	@Summary		Update sponsor (Super Admin)
 //	@Description	Updates an existing sponsor
-//	@Tags			superadmin/sponsors
+//	@Tags			admin/sponsors
 //	@Accept			json
 //	@Produce		json
 //	@Param			sponsorID	path		string			true	"Sponsor ID"
 //	@Param			sponsor		body		SponsorPayload	true	"Sponsor updates"
-//	@Success		200			{object}	SponsorResponse
+//	@Success		200			{object}	store.Sponsor
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		404			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/sponsors/{sponsorID} [put]
+//	@Router			/admin/sponsors/{sponsorID} [put]
 func (app *application) updateSponsorHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "sponsorID")
 	if id == "" {
@@ -160,7 +144,6 @@ func (app *application) updateSponsorHandler(w http.ResponseWriter, r *http.Requ
 		ID:           id,
 		Name:         payload.Name,
 		Tier:         payload.Tier,
-		LogoPath:     payload.LogoPath,
 		WebsiteURL:   payload.WebsiteURL,
 		Description:  payload.Description,
 		DisplayOrder: payload.DisplayOrder,
@@ -175,23 +158,7 @@ func (app *application) updateSponsorHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Re-fetch to get created_at if needed, but we have everything else.
-	// We can construct response directly or fetch fresh.
-	// Since update returns updated_at, we might need to fetch if we want consistent CreatedAt.
-	// Let's just return what we have, usually UI updates local state.
-	// But to get the correct LogoURL and timestamps, let's fetch.
-	updatedSponsor, err := app.store.Sponsors.GetByID(r.Context(), id)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	resp := SponsorResponse{Sponsor: *updatedSponsor}
-	if updatedSponsor.LogoPath != "" && app.gcsClient != nil {
-		resp.LogoURL = app.gcsClient.GeneratePublicURL(updatedSponsor.LogoPath)
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, resp); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, sponsor); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -199,8 +166,8 @@ func (app *application) updateSponsorHandler(w http.ResponseWriter, r *http.Requ
 // deleteSponsorHandler deletes a sponsor (Super Admin)
 //
 //	@Summary		Delete sponsor (Super Admin)
-//	@Description	Deletes a sponsor and their logo from GCS
-//	@Tags			superadmin/sponsors
+//	@Description	Deletes a sponsor
+//	@Tags			admin/sponsors
 //	@Param			sponsorID	path	string	true	"Sponsor ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
@@ -208,7 +175,7 @@ func (app *application) updateSponsorHandler(w http.ResponseWriter, r *http.Requ
 //	@Failure		404	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/sponsors/{sponsorID} [delete]
+//	@Router			/admin/sponsors/{sponsorID} [delete]
 func (app *application) deleteSponsorHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "sponsorID")
 	if id == "" {
@@ -216,8 +183,7 @@ func (app *application) deleteSponsorHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	sponsor, err := app.store.Sponsors.GetByID(r.Context(), id)
-	if err != nil {
+	if err := app.store.Sponsors.Delete(r.Context(), id); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			app.notFoundResponse(w, r, errors.New("sponsor not found"))
 			return
@@ -226,38 +192,27 @@ func (app *application) deleteSponsorHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := app.store.Sponsors.Delete(r.Context(), id); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if sponsor.LogoPath != "" && app.gcsClient != nil {
-		if err := app.gcsClient.DeleteObject(r.Context(), sponsor.LogoPath); err != nil {
-			app.logger.Warnw("failed to delete sponsor logo", "error", err, "path", sponsor.LogoPath)
-		}
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// generateLogoUploadURLHandler returns a signed upload URL for a sponsor logo (Super Admin)
+// uploadLogoHandler uploads a base64-encoded logo for a sponsor (Super Admin)
 //
-//	@Summary		Generate logo upload URL (Super Admin)
-//	@Description	Generates a signed GCS upload URL for a sponsor logo.
-//	@Tags			superadmin/sponsors
+//	@Summary		Upload sponsor logo (Super Admin)
+//	@Description	Uploads a base64-encoded logo image for a sponsor
+//	@Tags			admin/sponsors
 //	@Accept			json
 //	@Produce		json
-//	@Param			sponsorID	path		string					true	"Sponsor ID"
-//	@Param			body		body		LogoUploadURLPayload	true	"Upload URL request"
-//	@Success		200			{object}	LogoUploadURLResponse
+//	@Param			sponsorID	path		string				true	"Sponsor ID"
+//	@Param			body		body		LogoUploadPayload	true	"Base64-encoded logo"
+//	@Success		200			{object}	store.Sponsor
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		404			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/sponsors/{sponsorID}/logo-upload-url [post]
-func (app *application) generateLogoUploadURLHandler(w http.ResponseWriter, r *http.Request) {
+//	@Router			/admin/sponsors/{sponsorID}/logo [put]
+func (app *application) uploadLogoHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "sponsorID")
 	if id == "" {
 		app.badRequestResponse(w, r, errors.New("missing sponsor ID"))
@@ -273,44 +228,49 @@ func (app *application) generateLogoUploadURLHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	if app.gcsClient == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "gcs not configured")
-		return
-	}
-
-	var payload LogoUploadURLPayload
+	var payload LogoUploadPayload
 	if err := readJSON(w, r, &payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
+
 	if err := Validate.Struct(payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
-	if !gcs.AllowedImageContentTypes[payload.ContentType] {
+
+	if !allowedLogoContentTypes[payload.ContentType] {
 		app.badRequestResponse(w, r, fmt.Errorf("unsupported content type: %s", payload.ContentType))
 		return
 	}
 
-	randomID, err := randomHex(16)
+	decoded, err := base64.StdEncoding.DecodeString(payload.LogoData)
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("invalid base64 data"))
+		return
+	}
+
+	if len(decoded) > maxLogoBytes {
+		app.badRequestResponse(w, r, fmt.Errorf("logo exceeds maximum size of %d bytes", maxLogoBytes))
+		return
+	}
+
+	if err := app.store.Sponsors.UpdateLogo(r.Context(), id, payload.LogoData, payload.ContentType); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("sponsor not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	sponsor, err := app.store.Sponsors.GetByID(r.Context(), id)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	objectPath := fmt.Sprintf("sponsors/%s/%s", id, randomID)
-
-	uploadURL, err := app.gcsClient.GenerateImageUploadURL(r.Context(), objectPath, payload.ContentType)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, LogoUploadURLResponse{
-		UploadURL:   uploadURL,
-		LogoPath:    objectPath,
-		ContentType: payload.ContentType,
-	}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, sponsor); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

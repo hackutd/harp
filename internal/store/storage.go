@@ -81,6 +81,7 @@ type Storage struct {
 		Update(ctx context.Context, sponsor *Sponsor) error
 		Delete(ctx context.Context, id string) error
 		GetByID(ctx context.Context, id string) (*Sponsor, error)
+		UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error
 	}
 }
 

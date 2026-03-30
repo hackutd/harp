@@ -388,6 +388,11 @@ func (m *MockSponsorsStore) GetByID(ctx context.Context, id string) (*Sponsor, e
 	return args.Get(0).(*Sponsor), args.Error(1)
 }
 
+func (m *MockSponsorsStore) UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error {
+	args := m.Called(id, logoData, logoContentType)
+	return args.Error(0)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
