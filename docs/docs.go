@@ -2425,7 +2425,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin"
+                    "superadmin/settings"
                 ],
                 "summary": "Set applications enabled status",
                 "parameters": [
