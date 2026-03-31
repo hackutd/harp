@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/hackutd/portal/internal/store"
@@ -192,6 +191,10 @@ type AdminScheduleEditToggleResponse struct {
 type SetHackathonDateRangePayload struct {
 	StartDate string `json:"start_date" validate:"required"`
 	EndDate   string `json:"end_date" validate:"required"`
+}
+
+type SetApplicationsEnabledPayload struct {
+	Enabled bool `json:"enabled"`
 }
 
 type HackathonDateRangeResponse struct {
@@ -448,7 +451,7 @@ func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Re
 //
 //	@Summary		Set applications enabled status
 //	@Description	Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.
-//	@Tags			superadmin
+//	@Tags			superadmin/settings
 //	@Produce		json
 //	@Param			enabled	query		bool	true	"Enable or disable applications"
 //	@Success		200		{object}	ApplicationsEnabledResponse
@@ -459,20 +462,18 @@ func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Re
 //	@Security		CookieAuth
 //	@Router			/superadmin/settings/applications-enabled [put]
 func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
-	enabled, err := strconv.ParseBool(r.URL.Query().Get("enabled"))
-
-	if err != nil {
-		app.badRequestResponse(w, r, errors.New("enabled must be a boolean value"))
+	var req SetApplicationsEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	enabled, err = app.store.Settings.SetApplicationsEnabled(r.Context(), enabled)
+	enabled, err := app.store.Settings.SetApplicationsEnabled(r.Context(), req.Enabled)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	//NOTE: Following existing design pattern of Get response and Set response structs
 	response := ApplicationsEnabledResponse{
 		Enabled: enabled,
 	}
