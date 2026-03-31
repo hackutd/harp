@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"strconv"
 )
 
 // ShortAnswerQuestion represents a single configurable question
@@ -28,6 +27,7 @@ const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
+const SettingsKeyApplicationsEnabled = "applications_enabled"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -495,30 +495,45 @@ func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error
 	query := `
 		SELECT value
 		FROM settings
-		WHERE key = 'applications_enabled'
+		WHERE key = $1
 	`
-	var value bool
-	err := s.db.QueryRowContext(ctx, query).Scan(&value)
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
 	if err != nil {
-		return false, err // We won't handle err here, (because if the setting doesn't exist, we want it to error instead of defaulting to false)
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
 	}
-	return value, nil
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
 }
 
 func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return false, err
+	}
+
 	query := `
-		UPDATE settings
-		SET value = $1::jsonb
-		WHERE key = 'applications_enabled'
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 		RETURNING value`
 
 	var value bool
-	err := s.db.QueryRowContext(ctx, query, strconv.FormatBool(enabled)).Scan(&value)
+	err = s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled, string(jsonValue)).Scan(&value)
 	if err != nil {
-		return value, err
+		return false, err
 	}
 
 	return value, nil
