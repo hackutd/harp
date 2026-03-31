@@ -495,14 +495,24 @@ func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error
 	query := `
 		SELECT value
 		FROM settings
-		WHERE key = 'applications_enabled'
+		WHERE key = $1
 	`
-	var value bool
+
+	var value []byte
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
 	if err != nil {
-		return false, err // We won't handle err here, (because if the setting doesn't exist, we want it to error instead of defaulting to false)
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
 	}
-	return value, nil
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
 }
 
 func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
