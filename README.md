@@ -1,4 +1,4 @@
-# HARP - Hacker Applications & Review Platform
+# [DEV] HARP - Hacker Applications & Review Platform
 
 > **Work in Progress** - This project is under active development.
 
