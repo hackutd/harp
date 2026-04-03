@@ -54,6 +54,9 @@ type Storage struct {
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
 	}
+	Hackathon interface {
+		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error)
+	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
 		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
@@ -90,6 +93,7 @@ func NewStorage(db *sql.DB) Storage {
 		Users:              &UsersStore{db: db},
 		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
+		Hackathon:          &HackathonStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
 		Schedule:           &ScheduleStore{db: db},
