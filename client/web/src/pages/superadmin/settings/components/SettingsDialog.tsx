@@ -20,7 +20,7 @@ import ApplicationsTab from "../tabs/ApplicationsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
 import ScheduleTab from "../tabs/ScheduleTab";
 
-type SettingsTab = "set-admin" | "applications" | "schedule" | "reset";
+type SettingsTab = "applications" | "schedule" | "reset";
 
 const settingsTabs = [
   { id: "applications" as const, label: "Applications", icon: UsersRound },
