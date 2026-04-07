@@ -61,10 +61,10 @@ func (s *HackathonStore) Reset(ctx context.Context, resetApplications, resetScan
 	}
 
 	if resetSettings {
-		if _, err := tx.ExecContext(ctx, "UPDATE settings SET value = '{}', updated_at = NOW() WHERE key = $1", SettingsKeyScanStats); err != nil {
+		if err := resetScanStats(ctx, tx); err != nil {
 			return nil, err
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE settings SET value = '[]', updated_at = NOW() WHERE key = $1", SettingsKeyReviewAssignmentToggle); err != nil {
+		if err := resetReviewAssignmentToggle(ctx, tx); err != nil {
 			return nil, err
 		}
 	}
