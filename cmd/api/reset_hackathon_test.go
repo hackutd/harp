@@ -70,6 +70,28 @@ func TestResetHackathon(t *testing.T) {
 		app.store.Hackathon.(*store.MockHackathonStore).AssertExpectations(t)
 	})
 
+	t.Run("should return 400 for invalid JSON body", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBufferString("{invalid json"))
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetHackathonHandler))
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should return 400 when no options selected", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		payload := ResetHackathonPayload{}
+		reqBody, _ := json.Marshal(payload)
+		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetHackathonHandler))
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
 	t.Run("should forbid non-super-admin users", func(t *testing.T) {
 		app := newTestApplication(t)
 		payload := ResetHackathonPayload{ResetApplications: true}
