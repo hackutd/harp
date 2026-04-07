@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { postRequest } from "@/shared/lib/api";
+import { resetHackathon } from "../api";
 
 export function ResetHackathonCard() {
   const [open, setOpen] = useState(false);
@@ -46,10 +46,7 @@ export function ResetHackathonCard() {
 
     setLoading(true);
     try {
-      const res = await postRequest<{ success: boolean }>(
-        "/superadmin/reset-hackathon",
-        options,
-      );
+      const res = await resetHackathon(options);
 
       if (res.error) {
         toast.error(res.error);
