@@ -49,6 +49,11 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if !req.ResetApplications && !req.ResetScans && !req.ResetSchedule && !req.ResetSettings {
+		app.badRequestResponse(w, r, errors.New("at least one reset option must be selected"))
+		return
+	}
+
 	user := getUserFromContext(r.Context())
 	if user == nil {
 		app.internalServerError(w, r, errors.New("user not in context"))
