@@ -41,7 +41,6 @@ func TestResetHackathon(t *testing.T) {
 		}
 		err := json.Unmarshal(rr.Body.Bytes(), &respBody)
 		assert.NoError(t, err)
-		assert.True(t, respBody.Data.Success)
 		assert.Equal(t, 2, respBody.Data.ResumesDeleted)
 
 		app.store.Hackathon.(*store.MockHackathonStore).AssertExpectations(t)

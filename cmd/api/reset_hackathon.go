@@ -14,7 +14,6 @@ type ResetHackathonPayload struct {
 }
 
 type ResetHackathonResponse struct {
-	Success           bool `json:"success"`
 	ResetApplications bool `json:"reset_applications"`
 	ResetScans        bool `json:"reset_scans"`
 	ResetSchedule     bool `json:"reset_schedule"`
@@ -78,7 +77,6 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 	app.logger.Infow("hackathon data reset", "user_id", user.ID, "user_email", user.Email, "reset_apps", req.ResetApplications, "reset_scans", req.ResetScans, "reset_schedule", req.ResetSchedule, "reset_settings", req.ResetSettings, "resumes_deleted_count", len(resumePaths))
 
 	response := ResetHackathonResponse{
-		Success:           true,
 		ResetApplications: req.ResetApplications,
 		ResetScans:        req.ResetScans,
 		ResetSchedule:     req.ResetSchedule,
