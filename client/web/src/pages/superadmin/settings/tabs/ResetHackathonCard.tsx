@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import { resetHackathon } from "../api";
 
 export function ResetHackathonCard() {
@@ -146,7 +147,9 @@ export function ResetHackathonCard() {
                       >
                         {item.label}
                       </Label>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.desc}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -154,7 +157,8 @@ export function ResetHackathonCard() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirm" className="text-foreground">
-                  Type <strong className="text-destructive">RESET HACKATHON</strong>{" "}
+                  Type{" "}
+                  <strong className="text-destructive">RESET HACKATHON</strong>{" "}
                   to confirm
                 </Label>
                 <Input
