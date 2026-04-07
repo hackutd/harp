@@ -90,6 +90,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"auth",
 		"public",
 		"hackers",
+		"hackers/teams",
 		"admin/applications",
 		"admin/reviews",
 		"admin/scans",
@@ -176,6 +177,16 @@ func (app *application) mount() http.Handler {
 					r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
 					r.Delete("/me/resume", app.deleteResumeHandler)
 				})
+			})
+
+			// Team routes
+			r.Route("/teams", func(r chi.Router) {
+				r.Post("/", app.createTeamHandler)
+				r.Get("/me", app.getTeamHandler)
+				r.Post("/join", app.joinTeamHandler)
+				r.Delete("/leave", app.leaveTeamHandler)
+				r.Put("/{teamID}", app.updateTeamHandler)
+				r.Delete("/{teamID}", app.deleteTeamHandler)
 			})
 
 			r.Group(func(r chi.Router) {

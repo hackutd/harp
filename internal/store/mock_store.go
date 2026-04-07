@@ -362,6 +362,68 @@ func (m *MockScheduleStore) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+// MockTeamsStore is a mock implementation of the Teams interface
+type MockTeamsStore struct {
+	mock.Mock
+}
+
+func (m *MockTeamsStore) Create(ctx context.Context, team *Team, userID string) error {
+	args := m.Called(team, userID)
+	return args.Error(0)
+}
+
+func (m *MockTeamsStore) GetByID(ctx context.Context, id string) (*Team, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Team), args.Error(1)
+}
+
+func (m *MockTeamsStore) GetByUserID(ctx context.Context, userID string) (*Team, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Team), args.Error(1)
+}
+
+func (m *MockTeamsStore) GetByCode(ctx context.Context, code string) (*Team, error) {
+	args := m.Called(code)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Team), args.Error(1)
+}
+
+func (m *MockTeamsStore) AddMember(ctx context.Context, teamID string, userID string) error {
+	args := m.Called(teamID, userID)
+	return args.Error(0)
+}
+
+func (m *MockTeamsStore) RemoveMember(ctx context.Context, teamID string, userID string) error {
+	args := m.Called(teamID, userID)
+	return args.Error(0)
+}
+
+func (m *MockTeamsStore) GetMembers(ctx context.Context, teamID string) ([]TeamMember, error) {
+	args := m.Called(teamID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]TeamMember), args.Error(1)
+}
+
+func (m *MockTeamsStore) Update(ctx context.Context, team *Team) error {
+	args := m.Called(team)
+	return args.Error(0)
+}
+
+func (m *MockTeamsStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
@@ -371,5 +433,6 @@ func NewMockStore() Storage {
 		ApplicationReviews: &MockApplicationReviewsStore{},
 		Scans:              &MockScansStore{},
 		Schedule:           &MockScheduleStore{},
+		Teams:              &MockTeamsStore{},
 	}
 }

@@ -77,6 +77,17 @@ type Storage struct {
 		Update(ctx context.Context, item *ScheduleItem) error
 		Delete(ctx context.Context, id string) error
 	}
+	Teams interface {
+		Create(ctx context.Context, team *Team, userID string) error
+		GetByID(ctx context.Context, id string) (*Team, error)
+		GetByUserID(ctx context.Context, userID string) (*Team, error)
+		GetByCode(ctx context.Context, code string) (*Team, error)
+		AddMember(ctx context.Context, teamID string, userID string) error
+		RemoveMember(ctx context.Context, teamID string, userID string) error
+		GetMembers(ctx context.Context, teamID string) ([]TeamMember, error)
+		Update(ctx context.Context, team *Team) error
+		Delete(ctx context.Context, id string) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -87,5 +98,6 @@ func NewStorage(db *sql.DB) Storage {
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
 		Schedule:           &ScheduleStore{db: db},
+		Teams:              &TeamsStore{db: db},
 	}
 }
