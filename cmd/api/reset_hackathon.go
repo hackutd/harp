@@ -53,12 +53,6 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	user := getUserFromContext(r.Context())
-	if user == nil {
-		app.internalServerError(w, r, errors.New("user not in context"))
-		return
-	}
-
 	resumePaths, err := app.store.Hackathon.Reset(r.Context(), req.ResetApplications, req.ResetScans, req.ResetSchedule, req.ResetSettings)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -73,8 +67,6 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 			}
 		}(resumePaths)
 	}
-
-	app.logger.Infow("hackathon data reset", "user_id", user.ID, "user_email", user.Email, "reset_apps", req.ResetApplications, "reset_scans", req.ResetScans, "reset_schedule", req.ResetSchedule, "reset_settings", req.ResetSettings, "resumes_deleted_count", len(resumePaths))
 
 	response := ResetHackathonResponse{
 		ResetApplications: req.ResetApplications,
