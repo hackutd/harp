@@ -28,6 +28,7 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
 		mockGCS.On(
 			"GenerateUploadURL",
+			mock.Anything,
 			mock.MatchedBy(func(path string) bool {
 				return strings.HasPrefix(path, "resumes/"+user.ID+"/") && strings.HasSuffix(path, ".pdf")
 			}),
@@ -103,7 +104,7 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 		user := newTestUser()
 		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockGCS.On("GenerateUploadURL", mock.AnythingOfType("string")).Return("", errors.New("gcs failed")).Once()
+		mockGCS.On("GenerateUploadURL", mock.Anything, mock.AnythingOfType("string")).Return("", errors.New("gcs failed")).Once()
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
@@ -133,7 +134,7 @@ func TestDeleteResume(t *testing.T) {
 		}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockGCS.On("DeleteObject", resumePath).Return(nil).Once()
+		mockGCS.On("DeleteObject", mock.Anything, resumePath).Return(nil).Once()
 		mockApps.On("Update", mock.AnythingOfType("*store.Application")).Run(func(args mock.Arguments) {
 			updated := args.Get(0).(*store.Application)
 			assert.Nil(t, updated.ResumePath)
@@ -202,7 +203,7 @@ func TestGetResumeDownloadURL(t *testing.T) {
 		resumePath := "resumes/user-1/file.pdf"
 		application := &store.Application{ID: "app-1", ResumePath: &resumePath}
 		mockApps.On("GetByID", "app-1").Return(application, nil).Once()
-		mockGCS.On("GenerateDownloadURL", resumePath).Return("https://download.example.com", nil).Once()
+		mockGCS.On("GenerateDownloadURL", mock.Anything, resumePath).Return("https://download.example.com", nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
