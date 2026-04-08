@@ -238,6 +238,7 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
+					r.Post("/reset-hackathon", app.resetHackathonHandler)
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {

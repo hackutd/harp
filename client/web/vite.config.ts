@@ -4,14 +4,14 @@ import path from "path";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
-const apiTarget = process.env.API_PROXY_TARGET || 'http://localhost:8080';
+const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:8080";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
     proxy: {
-      '/auth': {
+      "/auth": {
         target: apiTarget,
         changeOrigin: true,
         bypass: (req) => {
@@ -40,7 +40,7 @@ export default defineConfig({
           }
         },
       },
-      '/v1': {
+      "/v1": {
         target: apiTarget,
         changeOrigin: true,
       },

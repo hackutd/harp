@@ -235,6 +235,19 @@ func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, e
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+// MockHackathonStore is a mock implementation of the Hackathon interface
+type MockHackathonStore struct {
+	mock.Mock
+}
+
+func (m *MockHackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error) {
+	args := m.Called(resetApplications, resetScans, resetSchedule, resetSettings)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
 type MockApplicationReviewsStore struct {
 	mock.Mock
@@ -399,6 +412,7 @@ func NewMockStore() Storage {
 		Users:              &MockUsersStore{},
 		Application:        &MockApplicationStore{},
 		Settings:           &MockSettingsStore{},
+		Hackathon:          &MockHackathonStore{},
 		ApplicationReviews: &MockApplicationReviewsStore{},
 		Scans:              &MockScansStore{},
 		Schedule:           &MockScheduleStore{},
