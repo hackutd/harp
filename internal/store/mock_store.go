@@ -365,6 +365,47 @@ func (m *MockScheduleStore) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+// MockSponsorsStore is a mock implementation of the Sponsors interface
+type MockSponsorsStore struct {
+	mock.Mock
+}
+
+func (m *MockSponsorsStore) List(ctx context.Context) ([]Sponsor, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]Sponsor), args.Error(1)
+}
+
+func (m *MockSponsorsStore) Create(ctx context.Context, sponsor *Sponsor) error {
+	args := m.Called(sponsor)
+	return args.Error(0)
+}
+
+func (m *MockSponsorsStore) Update(ctx context.Context, sponsor *Sponsor) error {
+	args := m.Called(sponsor)
+	return args.Error(0)
+}
+
+func (m *MockSponsorsStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockSponsorsStore) GetByID(ctx context.Context, id string) (*Sponsor, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Sponsor), args.Error(1)
+}
+
+func (m *MockSponsorsStore) UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error {
+	args := m.Called(id, logoData, logoContentType)
+	return args.Error(0)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
@@ -375,5 +416,6 @@ func NewMockStore() Storage {
 		ApplicationReviews: &MockApplicationReviewsStore{},
 		Scans:              &MockScansStore{},
 		Schedule:           &MockScheduleStore{},
+		Sponsors:           &MockSponsorsStore{},
 	}
 }
