@@ -3563,9 +3563,6 @@ const docTemplate = `{
                 },
                 "resumes_deleted": {
                     "type": "integer"
-                },
-                "success": {
-                    "type": "boolean"
                 }
             }
         },

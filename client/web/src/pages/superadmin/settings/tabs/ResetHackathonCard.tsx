@@ -74,38 +74,38 @@ export function ResetHackathonCard() {
   };
 
   return (
-    <Card className="bg-card border-border border-0 rounded-md">
+    <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
       <CardHeader>
-        <CardTitle className="text-destructive flex items-center gap-2">
+        <CardTitle className="text-red-400 flex items-center gap-2">
           <AlertTriangle className="size-5" />
           Danger Zone
         </CardTitle>
-        <CardDescription className="text-muted-foreground">
+        <CardDescription className="text-zinc-400">
           Irreversible actions that destroy data. Proceed with caution.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button variant="destructive" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto cursor-pointer bg-white text-black hover:bg-zinc-200">
               <Trash2 className="mr-2 size-4" />
-              Reset Hackathon Data
+              Reset Options
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-card border-border text-foreground">
+          <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-zinc-100">
             <DialogHeader>
-              <DialogTitle className="text-destructive flex items-center gap-2">
+              <DialogTitle className="text-red-400 flex items-center gap-2">
                 <AlertTriangle className="size-5" />
                 Reset Hackathon Data
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
+              <DialogDescription className="text-zinc-400">
                 This action cannot be undone. This will permanently delete the
                 selected data from the database and remove associated files.
               </DialogDescription>
             </DialogHeader>
 
             <div className="py-4 space-y-4">
-              <div className="space-y-3 border border-border rounded-md p-4 bg-background/50">
+              <div className="space-y-3 border border-zinc-800 rounded-md p-4 bg-zinc-950/50">
                 {[
                   {
                     id: "reset_applications",
@@ -138,27 +138,24 @@ export function ResetHackathonCard() {
                           [item.id]: !!c,
                         }))
                       }
-                      className="border-border data-[state=checked]:bg-destructive data-[state=checked]:border-destructive"
+                      className="border-zinc-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
                     />
                     <div className="grid gap-1.5 leading-none">
                       <Label
                         htmlFor={item.id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-zinc-100"
                       >
                         {item.label}
                       </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {item.desc}
-                      </p>
+                      <p className="text-xs text-zinc-500">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm" className="text-foreground">
-                  Type{" "}
-                  <strong className="text-destructive">RESET HACKATHON</strong>{" "}
+                <Label htmlFor="confirm" className="text-zinc-100">
+                  Type <strong className="text-red-400">RESET HACKATHON</strong>{" "}
                   to confirm
                 </Label>
                 <Input
@@ -166,7 +163,7 @@ export function ResetHackathonCard() {
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
                   placeholder="RESET HACKATHON"
-                  className="bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-destructive/20 focus-visible:border-destructive"
+                  className="bg-zinc-950 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-red-400/20 focus-visible:border-red-400"
                 />
               </div>
             </div>
@@ -176,7 +173,7 @@ export function ResetHackathonCard() {
                 variant="outline"
                 onClick={() => setOpen(false)}
                 disabled={loading}
-                className="bg-transparent border-border text-foreground hover:bg-accent hover:text-accent-foreground"
+                className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
               >
                 Cancel
               </Button>
@@ -188,7 +185,6 @@ export function ResetHackathonCard() {
                   confirmText !== "RESET HACKATHON" ||
                   !Object.values(options).some(Boolean)
                 }
-                className=""
               >
                 {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Reset Data
