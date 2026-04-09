@@ -425,9 +425,9 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 // getApplicationsEnabled returns whether applications are currently open
 //
-//	@Summary		Get applications enabled status (Super Admin)
+//	@Summary		Get applications enabled status
 //	@Description	Returns whether the application portal is currently open for submissions
-//	@Tags			superadmin/settings
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	ApplicationsEnabledResponse
 //	@Failure		401	{object}	object{error=string}

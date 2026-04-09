@@ -1905,9 +1905,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "superadmin/settings"
+                    "hackers"
                 ],
-                "summary": "Get applications enabled status (Super Admin)",
+                "summary": "Get applications enabled status",
                 "responses": {
                     "200": {
                         "description": "OK",
