@@ -115,7 +115,9 @@ export default function UserManagementPage() {
               {searchInput.length >= MIN_SEARCH_LENGTH && (
                 <span>matching &quot;{searchInput}&quot;</span>
               )}
-              <span>filtered by</span>
+              <span>
+                {activeRoles.length === 0 ? "showing all" : "filtered by"}
+              </span>
               {allRoles.map((role) => {
                 const isActive = activeRoles.includes(role);
                 return (

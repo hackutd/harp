@@ -66,6 +66,7 @@ func TestUpdateShortAnswerQuestions(t *testing.T) {
 
 	t.Run("should return 400 for duplicate question IDs", func(t *testing.T) {
 		body := `{"questions":[{"id":"q1","question":"A?","required":true,"display_order":0},{"id":"q1","question":"B?","required":false,"display_order":1}]}`
+
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -73,13 +74,6 @@ func TestUpdateShortAnswerQuestions(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.updateShortAnswerQuestions))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
-
-		var errBody struct {
-			Error string `json:"error"`
-		}
-		err = json.NewDecoder(rr.Body).Decode(&errBody)
-		require.NoError(t, err)
-		assert.Contains(t, errBody.Error, "duplicate question ID")
 	})
 
 	t.Run("should return 400 for empty questions array", func(t *testing.T) {

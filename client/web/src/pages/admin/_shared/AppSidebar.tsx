@@ -3,6 +3,7 @@
 import {
   Calendar,
   ClipboardList,
+  Handshake,
   ScanLine,
   Settings,
   Star,
@@ -50,6 +51,11 @@ const eventNav = [
     name: "Schedule",
     url: "/admin/schedule",
     icon: Calendar,
+  },
+  {
+    name: "Sponsors",
+    url: "/admin/sponsors",
+    icon: Handshake,
   },
 ];
 

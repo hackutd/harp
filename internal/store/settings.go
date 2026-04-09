@@ -216,6 +216,20 @@ func incrementScanStat(ctx context.Context, tx *sql.Tx, scanType string) error {
 	return err
 }
 
+// resetScanStats resets the scan stats within an existing transaction.
+func resetScanStats(ctx context.Context, tx *sql.Tx) error {
+	query := `UPDATE settings SET value = '{}', updated_at = NOW() WHERE key = $1`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyScanStats)
+	return err
+}
+
+// resetReviewAssignmentToggle resets review assignment toggles within an existing transaction.
+func resetReviewAssignmentToggle(ctx context.Context, tx *sql.Tx) error {
+	query := `UPDATE settings SET value = '[]', updated_at = NOW() WHERE key = $1`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyReviewAssignmentToggle)
+	return err
+}
+
 // UpdateShortAnswerQuestions replaces all questions with the provided array
 func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)

@@ -56,6 +56,9 @@ type Storage struct {
 		GetApplicationsEnabled(ctx context.Context) (bool, error)
 		SetApplicationsEnabled(ctx context.Context, enabled bool) error
 	}
+	Hackathon interface {
+		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error)
+	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
 		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
@@ -77,6 +80,14 @@ type Storage struct {
 		Update(ctx context.Context, item *ScheduleItem) error
 		Delete(ctx context.Context, id string) error
 	}
+	Sponsors interface {
+		List(ctx context.Context) ([]Sponsor, error)
+		Create(ctx context.Context, sponsor *Sponsor) error
+		Update(ctx context.Context, sponsor *Sponsor) error
+		Delete(ctx context.Context, id string) error
+		GetByID(ctx context.Context, id string) (*Sponsor, error)
+		UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -84,8 +95,10 @@ func NewStorage(db *sql.DB) Storage {
 		Users:              &UsersStore{db: db},
 		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
+		Hackathon:          &HackathonStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
 		Schedule:           &ScheduleStore{db: db},
+		Sponsors:           &SponsorsStore{db: db},
 	}
 }

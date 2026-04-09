@@ -94,6 +94,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/reviews",
 		"admin/scans",
 		"admin/schedule",
+		"admin/sponsors",
 		"superadmin/applications",
 		"superadmin/settings",
 		"superadmin/users"
@@ -144,6 +145,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)
 			r.Get("/schedule", app.getPublicScheduleHandler)
+			r.Get("/sponsors", app.getPublicSponsorsHandler)
 		})
 
 		// Auth endpoints not handled by SuperTokens
@@ -223,6 +225,17 @@ func (app *application) mount() http.Handler {
 							r.Delete("/{scheduleID}", app.deleteScheduleHandler)
 						})
 					})
+
+					// Sponsors
+					r.Route("/sponsors", func(r chi.Router) {
+						r.Get("/", app.listSponsorsHandler)
+
+						// TODO: Protect Under a AdminSponsorEditPermissionMiddleware
+						r.Post("/", app.createSponsorHandler)
+						r.Put("/{sponsorID}", app.updateSponsorHandler)
+						r.Delete("/{sponsorID}", app.deleteSponsorHandler)
+						r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+					})
 				})
 			})
 
@@ -230,6 +243,7 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
+					r.Post("/reset-hackathon", app.resetHackathonHandler)
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
@@ -257,7 +271,6 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
-
 				})
 			})
 		})
