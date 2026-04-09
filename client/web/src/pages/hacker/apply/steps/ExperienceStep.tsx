@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { SelectWithOther } from "../components/SelectWithOther";
 import type { ApplicationFormData } from "../validations";
 import { EXPERIENCE_LEVEL_OPTIONS, HEARD_ABOUT_OPTIONS } from "../validations";
 
@@ -87,20 +88,15 @@ export function ExperienceStep() {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Where did you hear about this event? *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select how you heard about us" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {HEARD_ABOUT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <SelectWithOther
+                options={HEARD_ABOUT_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select how you heard about us"
+                otherPlaceholder="Please specify"
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
