@@ -240,9 +240,9 @@ func (m *MockSettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, e
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
+func (m *MockSettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) error {
 	args := m.Called(enabled)
-	return args.Bool(0), args.Error(1)
+	return args.Error(0)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface

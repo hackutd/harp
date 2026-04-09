@@ -1494,9 +1494,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "superadmin/settings"
                 ],
-                "summary": "Get applications enabled status",
+                "summary": "Get applications enabled status (Super Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2421,20 +2421,25 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "superadmin/settings"
                 ],
-                "summary": "Set applications enabled status",
+                "summary": "Set applications enabled status (Super Admin)",
                 "parameters": [
                     {
-                        "type": "boolean",
                         "description": "Enable or disable applications",
-                        "name": "enabled",
-                        "in": "query",
-                        "required": true
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetApplicationsEnabledPayload"
+                        }
                     }
                 ],
                 "responses": {
@@ -3688,6 +3693,14 @@ const docTemplate = `{
             }
         },
         "main.SetAdminScheduleEditTogglePayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.SetApplicationsEnabledPayload": {
             "type": "object",
             "properties": {
                 "enabled": {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -251,6 +252,16 @@ func TestApplicationsEnabledMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	t.Run("should return 401 when no user in context", func(t *testing.T) {
+		handler := app.ApplicationsEnabledMiddleware(ok)
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusUnauthorized, rr.Code)
+	})
+
 	t.Run("should return 403 when applications are disabled", func(t *testing.T) {
 		app.store.Settings.(*store.MockSettingsStore).On("GetApplicationsEnabled", mock.Anything).Return(false, nil).Once()
 
@@ -259,7 +270,7 @@ func TestApplicationsEnabledMiddleware(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
 
-		req = setUserContext(req, newTestUser()) // need a user in context to get past AuthRequiredMiddleware
+		req = setUserContext(req, newTestUser())
 
 		rr := executeRequest(req, handler)
 		checkResponseCode(t, http.StatusForbidden, rr.Code)
@@ -273,9 +284,35 @@ func TestApplicationsEnabledMiddleware(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
 
-		req = setUserContext(req, newTestUser()) // need a user in context to get past AuthRequiredMiddleware
+		req = setUserContext(req, newTestUser())
 
 		rr := executeRequest(req, handler)
 		checkResponseCode(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("should always allow super admin through", func(t *testing.T) {
+		handler := app.ApplicationsEnabledMiddleware(ok)
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("should return 500 when store errors", func(t *testing.T) {
+		app.store.Settings.(*store.MockSettingsStore).On("GetApplicationsEnabled", mock.Anything).Return(false, fmt.Errorf("db error")).Once()
+
+		handler := app.ApplicationsEnabledMiddleware(ok)
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 	})
 }

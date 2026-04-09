@@ -197,6 +197,10 @@ type SetApplicationsEnabledPayload struct {
 	Enabled bool `json:"enabled"`
 }
 
+type ApplicationsEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 type HackathonDateRangeResponse struct {
 	StartDate  *string `json:"start_date"`
 	EndDate    *string `json:"end_date"`
@@ -421,9 +425,9 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 // getApplicationsEnabled returns whether applications are currently open
 //
-//	@Summary		Get applications enabled status
+//	@Summary		Get applications enabled status (Super Admin)
 //	@Description	Returns whether the application portal is currently open for submissions
-//	@Tags			applications
+//	@Tags			superadmin/settings
 //	@Produce		json
 //	@Success		200	{object}	ApplicationsEnabledResponse
 //	@Failure		401	{object}	object{error=string}
@@ -449,11 +453,12 @@ func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Re
 
 // setApplicationsEnabled updates whether applications are currently open
 //
-//	@Summary		Set applications enabled status
+//	@Summary		Set applications enabled status (Super Admin)
 //	@Description	Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.
 //	@Tags			superadmin/settings
+//	@Accept			json
 //	@Produce		json
-//	@Param			enabled	query		bool	true	"Enable or disable applications"
+//	@Param			payload	body		SetApplicationsEnabledPayload	true	"Enable or disable applications"
 //	@Success		200		{object}	ApplicationsEnabledResponse
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
@@ -468,18 +473,14 @@ func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	enabled, err := app.store.Settings.SetApplicationsEnabled(r.Context(), req.Enabled)
-	if err != nil {
+	if err := app.store.Settings.SetApplicationsEnabled(r.Context(), req.Enabled); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ApplicationsEnabledResponse{
-		Enabled: enabled,
-	}
+	response := ApplicationsEnabledResponse(req)
 
-	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }

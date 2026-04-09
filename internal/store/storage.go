@@ -54,7 +54,7 @@ type Storage struct {
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
 		GetApplicationsEnabled(ctx context.Context) (bool, error)
-		SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error)
+		SetApplicationsEnabled(ctx context.Context, enabled bool) error
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
