@@ -1893,6 +1893,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/applications/enabled": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether the application portal is currently open for submissions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get applications enabled status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationsEnabledResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/applications/me": {
             "get": {
                 "security": [
@@ -2911,6 +2958,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/applications-enabled": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set applications enabled status (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Enable or disable applications",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetApplicationsEnabledPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationsEnabledResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/hackathon-date-range": {
             "get": {
                 "security": [
@@ -3871,6 +4001,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ApplicationsEnabledResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.CheckEmailResponse": {
             "type": "object",
             "properties": {
@@ -4152,6 +4290,14 @@ const docTemplate = `{
             }
         },
         "main.SetAdminScheduleEditTogglePayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.SetApplicationsEnabledPayload": {
             "type": "object",
             "properties": {
                 "enabled": {

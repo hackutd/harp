@@ -235,6 +235,16 @@ func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, e
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockSettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 // MockHackathonStore is a mock implementation of the Hackathon interface
 type MockHackathonStore struct {
 	mock.Mock

@@ -197,6 +197,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
+  const [applicationsEnabled, setApplicationsEnabled] = useState(true);
 
   const isResumeBusy = isUploadingResume || isDeletingResume;
 
@@ -206,21 +207,30 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     mode: "onTouched",
   });
 
-  // Load existing application data
+  // Load existing application data and check if applications are enabled
   useEffect(() => {
     const loadApplication = async () => {
-      const res = await getRequest<Application>(
-        "/applications/me",
-        "application",
-      );
-      if (res.status === 200 && res.data) {
-        setApplication(res.data);
-        if (res.data.short_answer_questions) {
-          setQuestions(res.data.short_answer_questions);
+      const [appRes, enabledRes] = await Promise.all([
+        getRequest<Application>("/applications/me", "application"),
+        getRequest<{ enabled: boolean }>(
+          "/applications/enabled",
+          "applications status",
+        ),
+      ]);
+
+      if (appRes.status === 200 && appRes.data) {
+        setApplication(appRes.data);
+        if (appRes.data.short_answer_questions) {
+          setQuestions(appRes.data.short_answer_questions);
         }
-        const formData = transformApplicationToFormData(res.data);
+        const formData = transformApplicationToFormData(appRes.data);
         form.reset({ ...defaultValues, ...formData });
       }
+
+      if (enabledRes.status === 200 && enabledRes.data) {
+        setApplicationsEnabled(enabledRes.data.enabled);
+      }
+
       setLoading(false);
     };
     loadApplication();
@@ -457,6 +467,32 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
               Loading your application...
             </p>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Applications closed
+  if (!applicationsEnabled) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Applications Closed</CardTitle>
+          <CardDescription>
+            The application portal is not currently accepting submissions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Submissions Unavailable</AlertTitle>
+            <AlertDescription>
+              Applications are currently closed. Please check back later.
+              {application &&
+                application.status === "draft" &&
+                " Your draft has been saved and will be here when applications reopen."}
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
     );

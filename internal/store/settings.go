@@ -27,6 +27,7 @@ const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
+const SettingsKeyApplicationsEnabled = "applications_enabled"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -498,5 +499,51 @@ func (s *SettingsStore) SetHackathonDateRange(ctx context.Context, dateRange Hac
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackathonDateRange, string(jsonValue))
+	return err
+}
+
+func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationsEnabled, string(jsonValue))
 	return err
 }

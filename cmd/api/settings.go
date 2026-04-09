@@ -193,6 +193,14 @@ type SetHackathonDateRangePayload struct {
 	EndDate   string `json:"end_date" validate:"required"`
 }
 
+type SetApplicationsEnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type ApplicationsEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 type HackathonDateRangeResponse struct {
 	StartDate  *string `json:"start_date"`
 	EndDate    *string `json:"end_date"`
@@ -409,6 +417,68 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 		EndDate:    dateRange.EndDate,
 		Configured: true,
 	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getApplicationsEnabled returns whether applications are currently open
+//
+//	@Summary		Get applications enabled status
+//	@Description	Returns whether the application portal is currently open for submissions
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	ApplicationsEnabledResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/applications/enabled [get]
+func (app *application) getApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetApplicationsEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ApplicationsEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+}
+
+// setApplicationsEnabled updates whether applications are currently open
+//
+//	@Summary		Set applications enabled status (Super Admin)
+//	@Description	Sets whether the application portal is currently open for submissions. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetApplicationsEnabledPayload	true	"Enable or disable applications"
+//	@Success		200		{object}	ApplicationsEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/applications-enabled [put]
+func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	var req SetApplicationsEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetApplicationsEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ApplicationsEnabledResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

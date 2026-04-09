@@ -169,10 +169,15 @@ func (app *application) mount() http.Handler {
 			// Hacker Routes
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
-				r.Patch("/me", app.updateApplicationHandler)
-				r.Post("/me/submit", app.submitApplicationHandler)
-				r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
-				r.Delete("/me/resume", app.deleteResumeHandler)
+				r.Get("/enabled", app.getApplicationsEnabled)
+
+				r.Group(func(r chi.Router) {
+					r.Use(app.ApplicationsEnabledMiddleware)
+					r.Patch("/me", app.updateApplicationHandler)
+					r.Post("/me/submit", app.submitApplicationHandler)
+					r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
+					r.Delete("/me/resume", app.deleteResumeHandler)
+				})
 			})
 
 			r.Group(func(r chi.Router) {
@@ -252,6 +257,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
+						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})
 
 					r.Route("/applications", func(r chi.Router) {

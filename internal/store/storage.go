@@ -53,6 +53,8 @@ type Storage struct {
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
+		GetApplicationsEnabled(ctx context.Context) (bool, error)
+		SetApplicationsEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
 		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error)
