@@ -22,11 +22,11 @@ func newCompleteApplication(userID string) *store.Application {
 		UserID: userID,
 		Status: store.StatusDraft,
 		Responses: json.RawMessage(`{
-			"first_name":"John","last_name":"Doe","phone_e164":"+11234567890",
+			"first_name":"John","last_name":"Doe","phone":"+11234567890",
 			"age":20,"country_of_residence":"US","gender":"Male","race":"Asian",
 			"ethnicity":"Not Hispanic","university":"UT Dallas","major":"CS",
-			"level_of_study":"Undergraduate","hackathons_attended_count":2,
-			"software_experience_level":"Intermediate","heard_about":"Friend",
+			"level_of_study":"Undergraduate","hackathons_attended":2,
+			"experience_level":"Intermediate","heard_about":"Friend",
 			"shirt_size":"M"
 		}`),
 		AckMLHCOC:     true,

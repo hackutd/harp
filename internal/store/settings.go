@@ -87,7 +87,7 @@ func (s *SettingsStore) UpdateApplicationSchema(ctx context.Context, fields []Ap
 	query := `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationSchema, string(value))
@@ -183,7 +183,7 @@ func (s *SettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []ScanTyp
 	query := `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyScanTypes, value)

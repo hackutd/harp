@@ -61,14 +61,14 @@ type ApplicationListItem struct {
 	Status                  ApplicationStatus `json:"status"`
 	FirstName               *string           `json:"first_name"`
 	LastName                *string           `json:"last_name"`
-	PhoneE164               *string           `json:"phone_e164"`
+	Phone                   *string           `json:"phone"`
 	Age                     *int16            `json:"age"`
 	CountryOfResidence      *string           `json:"country_of_residence"`
 	Gender                  *string           `json:"gender"`
 	University              *string           `json:"university"`
 	Major                   *string           `json:"major"`
 	LevelOfStudy            *string           `json:"level_of_study"`
-	HackathonsAttendedCount *int16            `json:"hackathons_attended_count"`
+	HackathonsAttended      *int16            `json:"hackathons_attended"`
 	SubmittedAt             *time.Time        `json:"submitted_at"`
 	CreatedAt               time.Time         `json:"created_at"`
 	UpdatedAt               time.Time         `json:"updated_at"`
@@ -369,14 +369,14 @@ func (s *ApplicationsStore) List(
 		SELECT a.id, a.user_id, u.email, a.status,
 		       a.responses->>'first_name' AS first_name,
 		       a.responses->>'last_name' AS last_name,
-		       a.responses->>'phone_e164' AS phone_e164,
-		       (a.responses->>'age')::smallint AS age,
+		       a.responses->>'phone' AS phone,
+		       NULLIF(a.responses->>'age', '')::smallint AS age,
 		       a.responses->>'country_of_residence' AS country_of_residence,
 		       a.responses->>'gender' AS gender,
 		       a.responses->>'university' AS university,
 		       a.responses->>'major' AS major,
 		       a.responses->>'level_of_study' AS level_of_study,
-		       (a.responses->>'hackathons_attended_count')::smallint AS hackathons_attended_count,
+		       NULLIF(a.responses->>'hackathons_attended', '')::smallint AS hackathons_attended,
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
 		       a.resume_path IS NOT NULL AS has_resume
@@ -468,10 +468,10 @@ func (s *ApplicationsStore) List(
 		var item ApplicationListItem
 		if err := rows.Scan(
 			&item.ID, &item.UserID, &item.Email, &item.Status,
-			&item.FirstName, &item.LastName, &item.PhoneE164, &item.Age,
+			&item.FirstName, &item.LastName, &item.Phone, &item.Age,
 			&item.CountryOfResidence, &item.Gender,
 			&item.University, &item.Major, &item.LevelOfStudy,
-			&item.HackathonsAttendedCount,
+			&item.HackathonsAttended,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
 			&item.HasResume,
