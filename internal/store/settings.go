@@ -21,6 +21,7 @@ type SettingsStore struct {
 }
 
 const SettingsKeyShortAnswerQuestions = "short_answer_questions"
+const SettingsKeyApplicationSchema = "application_schema"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
@@ -32,6 +33,19 @@ const SettingsKeyApplicationsEnabled = "applications_enabled"
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
 	EndDate   *string `json:"end_date"`
+}
+
+// ApplicationSchemaField defines a single field in the configurable application form.
+// The full schema is stored as a JSON array in the settings table under key "application_schema".
+type ApplicationSchemaField struct {
+	ID           string                 `json:"id"`
+	Type         string                 `json:"type"`
+	Label        string                 `json:"label"`
+	Required     bool                   `json:"required"`
+	Section      string                 `json:"section,omitempty"`
+	DisplayOrder int                    `json:"display_order"`
+	Options      []string               `json:"options,omitempty"`
+	Validation   map[string]interface{} `json:"validation,omitempty"`
 }
 
 // ReviewAssignmentEntry represents a single admin's review assignment toggle state.
@@ -67,6 +81,54 @@ func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAns
 	}
 
 	return questions, nil
+}
+
+// GetApplicationSchema returns the parsed application form schema fields
+func (s *SettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationSchema).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []ApplicationSchemaField{}, nil
+		}
+		return nil, err
+	}
+
+	var fields []ApplicationSchemaField
+	if err := json.Unmarshal(value, &fields); err != nil {
+		return nil, err
+	}
+
+	return fields, nil
+}
+
+// UpdateApplicationSchema replaces the application form schema with the provided fields
+func (s *SettingsStore) UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationSchema, string(value))
+	return err
 }
 
 // GetReviewsPerApplication returns the configured number of reviews per application

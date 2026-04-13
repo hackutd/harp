@@ -163,6 +163,19 @@ func (m *MockSettingsStore) UpdateShortAnswerQuestions(ctx context.Context, ques
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ApplicationSchemaField), args.Error(1)
+}
+
+func (m *MockSettingsStore) UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	args := m.Called(fields)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetReviewsPerApplication(ctx context.Context) (int, error) {
 	args := m.Called()
 	return args.Int(0), args.Error(1)
