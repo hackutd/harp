@@ -21,21 +21,6 @@ const (
 	StatusWaitlisted ApplicationStatus = "waitlisted"
 )
 
-type DietaryRestriction string
-
-const (
-	DietaryVegan      DietaryRestriction = "vegan"
-	DietaryVegetarian DietaryRestriction = "vegetarian"
-	DietaryHalal      DietaryRestriction = "halal"
-	DietaryNuts       DietaryRestriction = "nuts"
-	DietaryFish       DietaryRestriction = "fish"
-	DietaryWheat      DietaryRestriction = "wheat"
-	DietaryDairy      DietaryRestriction = "dairy"
-	DietaryEggs       DietaryRestriction = "eggs"
-	DietaryNoBeef     DietaryRestriction = "no_beef"
-	DietaryNoPork     DietaryRestriction = "no_pork"
-)
-
 // PaginationDirection for bidirectional cursor traversal
 type PaginationDirection string
 
@@ -154,43 +139,13 @@ type Application struct {
 	UserID string            `json:"user_id"`
 	Status ApplicationStatus `json:"status"`
 
-	FirstName *string `json:"first_name" validate:"omitempty,min=1"`
-	LastName  *string `json:"last_name" validate:"omitempty,min=1"`
-	PhoneE164 *string `json:"phone_e164" validate:"omitempty,e164"`
-	Age       *int16  `json:"age" validate:"omitempty,min=1,max=150"`
+	Responses  json.RawMessage `json:"responses"`
+	ResumePath *string         `json:"resume_path"`
+	AIPercent  *int16          `json:"ai_percent"`
 
-	CountryOfResidence *string `json:"country_of_residence" validate:"omitempty,min=1"`
-	Gender             *string `json:"gender" validate:"omitempty,min=1"`
-	Race               *string `json:"race" validate:"omitempty,min=1"`
-	Ethnicity          *string `json:"ethnicity" validate:"omitempty,min=1"`
-
-	University   *string `json:"university" validate:"omitempty,min=1"`
-	Major        *string `json:"major" validate:"omitempty,min=1"`
-	LevelOfStudy *string `json:"level_of_study" validate:"omitempty,min=1"`
-
-	ShortAnswerResponses json.RawMessage `json:"short_answer_responses"`
-
-	HackathonsAttendedCount *int16  `json:"hackathons_attended_count" validate:"omitempty,min=0"`
-	SoftwareExperienceLevel *string `json:"software_experience_level" validate:"omitempty,min=1"`
-	HeardAbout              *string `json:"heard_about" validate:"omitempty,min=1"`
-
-	ShirtSize           *string  `json:"shirt_size" validate:"omitempty,min=1"`
-	DietaryRestrictions []string `json:"dietary_restrictions"`
-	Accommodations      *string  `json:"accommodations"`
-
-	Github     *string `json:"github" validate:"omitempty,url"`
-	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
-	Website    *string `json:"website" validate:"omitempty,url"`
-	ResumePath *string `json:"resume_path"`
-
-	AckApplication bool `json:"ack_application"`
 	AckMLHCOC      bool `json:"ack_mlh_coc"`
 	AckMLHPrivacy  bool `json:"ack_mlh_privacy"`
 	OptInMLHEmails bool `json:"opt_in_mlh_emails"`
-
-	SubmittedAt *time.Time `json:"submitted_at"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
 
 	AcceptVotes      int `json:"accept_votes"`
 	RejectVotes      int `json:"reject_votes"`
@@ -198,47 +153,40 @@ type Application struct {
 	ReviewsAssigned  int `json:"reviews_assigned"`
 	ReviewsCompleted int `json:"reviews_completed"`
 
-	AIPercent *int16 `json:"ai_percent"`
+	SubmittedAt *time.Time `json:"submitted_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type ApplicationsStore struct {
 	db *sql.DB
 }
 
+// applicationSelectCols is the standard SELECT for loading a full Application
+const applicationSelectCols = `
+	id, user_id, status, responses, resume_path, ai_percent,
+	ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
+	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
+	submitted_at, created_at, updated_at`
+
+// scanApplication scans a row into an Application struct
+func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
+	return row.Scan(
+		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
+		&app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
+		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+	)
+}
+
 func (s *ApplicationsStore) GetByID(ctx context.Context, id string) (*Application, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `
-		SELECT id, user_id, status,
-			first_name, last_name, phone_e164, age,
-			country_of_residence, gender, race, ethnicity,
-			university, major, level_of_study,
-			short_answer_responses,
-			hackathons_attended_count, software_experience_level, heard_about,
-			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website, resume_path,
-			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed, ai_percent
-		FROM applications
-		WHERE id = $1
-	`
+	query := `SELECT ` + applicationSelectCols + ` FROM applications WHERE id = $1`
 
 	var app Application
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&app.ID, &app.UserID, &app.Status,
-		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
-		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
-		&app.University, &app.Major, &app.LevelOfStudy,
-		&app.ShortAnswerResponses,
-		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
-		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
-		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted, &app.AIPercent,
-	)
+	err := scanApplication(s.db.QueryRowContext(ctx, query, id), &app)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -253,36 +201,10 @@ func (s *ApplicationsStore) GetByUserID(ctx context.Context, userID string) (*Ap
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `
-		SELECT id, user_id, status,
-			first_name, last_name, phone_e164, age,
-			country_of_residence, gender, race, ethnicity,
-			university, major, level_of_study,
-			short_answer_responses,
-			hackathons_attended_count, software_experience_level, heard_about,
-			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website, resume_path,
-			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
-		FROM applications
-		WHERE user_id = $1
-	`
+	query := `SELECT ` + applicationSelectCols + ` FROM applications WHERE user_id = $1`
 
 	var app Application
-	err := s.db.QueryRowContext(ctx, query, userID).Scan(
-		&app.ID, &app.UserID, &app.Status,
-		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
-		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
-		&app.University, &app.Major, &app.LevelOfStudy,
-		&app.ShortAnswerResponses,
-		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
-		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
-		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
-	)
+	err := scanApplication(s.db.QueryRowContext(ctx, query, userID), &app)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -300,14 +222,14 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 	query := `
 		INSERT INTO applications (user_id)
 		VALUES ($1)
-		RETURNING id, status, short_answer_responses, dietary_restrictions,
-				  ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
+		RETURNING id, status, responses,
+				  ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 				  created_at, updated_at
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.UserID).Scan(
-		&app.ID, &app.Status, &app.ShortAnswerResponses, (*StringArray)(&app.DietaryRestrictions),
-		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
+		&app.ID, &app.Status, &app.Responses,
+		&app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.CreatedAt, &app.UpdatedAt,
 	)
 	if err != nil {
@@ -326,47 +248,19 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 
 	query := `
 		UPDATE applications SET
-			first_name = $2,
-			last_name = $3,
-			phone_e164 = $4,
-			age = $5,
-			country_of_residence = $6,
-			gender = $7,
-			race = $8,
-			ethnicity = $9,
-			university = $10,
-			major = $11,
-			level_of_study = $12,
-			short_answer_responses = $13,
-			hackathons_attended_count = $14,
-			software_experience_level = $15,
-			heard_about = $16,
-			shirt_size = $17,
-			dietary_restrictions = $18,
-			accommodations = $19,
-			github = $20,
-			linkedin = $21,
-			website = $22,
-			resume_path = $27,
-			ack_application = $23,
-			ack_mlh_coc = $24,
-			ack_mlh_privacy = $25,
-			opt_in_mlh_emails = $26
+			responses = $2,
+			resume_path = $3,
+			ack_mlh_coc = $4,
+			ack_mlh_privacy = $5,
+			opt_in_mlh_emails = $6
 		WHERE id = $1
 		RETURNING updated_at
 	`
 
 	err := s.db.QueryRowContext(ctx, query,
 		app.ID,
-		app.FirstName, app.LastName, app.PhoneE164, app.Age,
-		app.CountryOfResidence, app.Gender, app.Race, app.Ethnicity,
-		app.University, app.Major, app.LevelOfStudy,
-		app.ShortAnswerResponses,
-		app.HackathonsAttendedCount, app.SoftwareExperienceLevel, app.HeardAbout,
-		app.ShirtSize, StringArray(app.DietaryRestrictions), app.Accommodations,
-		app.Github, app.LinkedIn, app.Website,
-		app.AckApplication, app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
-		app.ResumePath,
+		app.Responses, app.ResumePath,
+		app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
 	).Scan(&app.UpdatedAt)
 
 	if err != nil {
@@ -473,10 +367,16 @@ func (s *ApplicationsStore) List(
 
 	selectCols := `
 		SELECT a.id, a.user_id, u.email, a.status,
-		       a.first_name, a.last_name, a.phone_e164, a.age,
-		       a.country_of_residence, a.gender,
-		       a.university, a.major, a.level_of_study,
-		       a.hackathons_attended_count,
+		       a.responses->>'first_name' AS first_name,
+		       a.responses->>'last_name' AS last_name,
+		       a.responses->>'phone_e164' AS phone_e164,
+		       (a.responses->>'age')::smallint AS age,
+		       a.responses->>'country_of_residence' AS country_of_residence,
+		       a.responses->>'gender' AS gender,
+		       a.responses->>'university' AS university,
+		       a.responses->>'major' AS major,
+		       a.responses->>'level_of_study' AS level_of_study,
+		       (a.responses->>'hackathons_attended_count')::smallint AS hackathons_attended_count,
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
 		       a.resume_path IS NOT NULL AS has_resume
@@ -485,8 +385,8 @@ func (s *ApplicationsStore) List(
 
 	searchClause := `AND ($5::text IS NULL OR (
 		    u.email ILIKE '%' || $5 || '%'
-		    OR a.first_name ILIKE '%' || $5 || '%'
-		    OR a.last_name ILIKE '%' || $5 || '%'
+		    OR a.responses->>'first_name' ILIKE '%' || $5 || '%'
+		    OR a.responses->>'last_name' ILIKE '%' || $5 || '%'
 		))`
 
 	// Fetch limit+1 to determine hasMore
@@ -647,33 +547,10 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 		UPDATE applications
 		SET status = $2, updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, user_id, status,
-			first_name, last_name, phone_e164, age,
-			country_of_residence, gender, race, ethnicity,
-			university, major, level_of_study,
-			short_answer_responses,
-			hackathons_attended_count, software_experience_level, heard_about,
-			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin, website, resume_path,
-			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, created_at, updated_at,
-			accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed
-	`
+		RETURNING ` + applicationSelectCols
 
 	var app Application
-	err := s.db.QueryRowContext(ctx, query, id, status).Scan(
-		&app.ID, &app.UserID, &app.Status,
-		&app.FirstName, &app.LastName, &app.PhoneE164, &app.Age,
-		&app.CountryOfResidence, &app.Gender, &app.Race, &app.Ethnicity,
-		&app.University, &app.Major, &app.LevelOfStudy,
-		&app.ShortAnswerResponses,
-		&app.HackathonsAttendedCount, &app.SoftwareExperienceLevel, &app.HeardAbout,
-		&app.ShirtSize, (*StringArray)(&app.DietaryRestrictions), &app.Accommodations,
-		&app.Github, &app.LinkedIn, &app.Website, &app.ResumePath,
-		&app.AckApplication, &app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
-		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
-	)
+	err := scanApplication(s.db.QueryRowContext(ctx, query, id, status), &app)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -734,7 +611,9 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 	defer cancel()
 
 	query := `
-		SELECT a.user_id, u.email, a.first_name, a.last_name
+		SELECT a.user_id, u.email,
+		       a.responses->>'first_name' AS first_name,
+		       a.responses->>'last_name' AS last_name
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id
 		WHERE a.status = $1
