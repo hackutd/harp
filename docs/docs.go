@@ -4568,7 +4568,7 @@ const docTemplate = `{
                 "gender": {
                     "type": "string"
                 },
-                "hackathons_attended_count": {
+                "hackathons_attended": {
                     "type": "integer"
                 },
                 "has_resume": {
@@ -4586,7 +4586,7 @@ const docTemplate = `{
                 "major": {
                     "type": "string"
                 },
-                "phone_e164": {
+                "phone": {
                     "type": "string"
                 },
                 "reject_votes": {
@@ -4698,7 +4698,7 @@ const docTemplate = `{
                     "description": "Application fields",
                     "type": "string"
                 },
-                "hackathons_attended_count": {
+                "hackathons_attended": {
                     "type": "integer"
                 },
                 "id": {

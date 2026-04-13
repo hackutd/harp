@@ -1,26 +1,26 @@
 import { getRequest, putRequest } from "@/shared/lib/api";
-import type { ApiResponse, ShortAnswerQuestion } from "@/types";
+import type { ApiResponse, ApplicationSchemaField } from "@/types";
 
-interface SAQuestionsResponse {
-  questions: ShortAnswerQuestion[];
+interface ApplicationSchemaResponse {
+  fields: ApplicationSchemaField[];
 }
 
-export async function fetchSAQuestions(
+export async function fetchApplicationSchema(
   signal?: AbortSignal,
-): Promise<ApiResponse<SAQuestionsResponse>> {
-  return getRequest<SAQuestionsResponse>(
-    "/superadmin/settings/saquestions",
-    "short answer questions",
+): Promise<ApiResponse<ApplicationSchemaResponse>> {
+  return getRequest<ApplicationSchemaResponse>(
+    "/superadmin/settings/application-schema",
+    "application schema",
     signal,
   );
 }
 
-export async function saveSAQuestions(
-  questions: ShortAnswerQuestion[],
-): Promise<ApiResponse<SAQuestionsResponse>> {
-  return putRequest<SAQuestionsResponse>(
-    "/superadmin/settings/saquestions",
-    { questions },
-    "short answer questions",
+export async function saveApplicationSchema(
+  fields: ApplicationSchemaField[],
+): Promise<ApiResponse<ApplicationSchemaResponse>> {
+  return putRequest<ApplicationSchemaResponse>(
+    "/superadmin/settings/application-schema",
+    { fields },
+    "application schema",
   );
 }

@@ -2,92 +2,129 @@ import { toast } from "sonner";
 import { create } from "zustand";
 
 import { errorAlert } from "@/shared/lib/api";
-import type { ShortAnswerQuestion } from "@/types";
+import type { ApplicationSchemaField } from "@/types";
 
-import { fetchSAQuestions, saveSAQuestions } from "./api";
+import { fetchApplicationSchema, saveApplicationSchema } from "./api";
 
-interface ApplicationSettingsState {
-  questions: ShortAnswerQuestion[];
+interface ApplicationSchemaState {
+  fields: ApplicationSchemaField[];
   loading: boolean;
   saving: boolean;
 
-  fetchQuestions: (signal?: AbortSignal) => Promise<void>;
-  saveQuestions: () => Promise<void>;
-  updateQuestion: (
-    index: number,
-    field: keyof ShortAnswerQuestion,
-    value: string | boolean | number,
+  fetchSchema: (signal?: AbortSignal) => Promise<void>;
+  saveSchema: () => Promise<void>;
+  updateField: (
+    fieldId: string,
+    updates: Partial<ApplicationSchemaField>,
   ) => void;
-  addQuestion: () => void;
-  removeQuestion: (index: number) => void;
+  addField: (field: ApplicationSchemaField) => void;
+  removeField: (fieldId: string) => void;
+  moveField: (fieldId: string, direction: "up" | "down") => void;
 }
 
-export const useApplicationSettingsStore = create<ApplicationSettingsState>(
+export const useApplicationSchemaStore = create<ApplicationSchemaState>(
   (set, get) => ({
-    questions: [],
+    fields: [],
     loading: false,
     saving: false,
 
-    fetchQuestions: async (signal?: AbortSignal) => {
+    fetchSchema: async (signal?: AbortSignal) => {
       set({ loading: true });
-      const res = await fetchSAQuestions(signal);
+      const res = await fetchApplicationSchema(signal);
       if (signal?.aborted) return;
       if (res.status === 200 && res.data) {
-        set({ questions: res.data.questions ?? [], loading: false });
+        set({ fields: res.data.fields ?? [], loading: false });
       } else {
         errorAlert(res);
         set({ loading: false });
       }
     },
 
-    saveQuestions: async () => {
-      const { questions } = get();
-      const emptyQuestion = questions.find((q) => !q.question.trim());
-      if (emptyQuestion) {
-        toast.error("All questions must have text before saving");
+    saveSchema: async () => {
+      const { fields } = get();
+
+      const emptyLabel = fields.find((f) => !f.label.trim());
+      if (emptyLabel) {
+        toast.error("All fields must have a label before saving");
         return;
       }
 
+      const missingOptions = fields.find(
+        (f) =>
+          (f.type === "select" || f.type === "multi_select") &&
+          (!f.options || f.options.length === 0),
+      );
+      if (missingOptions) {
+        toast.error(
+          `"${missingOptions.label}" needs at least one option`,
+        );
+        return;
+      }
+
+      // Recalculate display_order per section (sequential, no gaps)
+      const sectionCounters: Record<string, number> = {};
+      const normalized = fields.map((f) => {
+        const section = f.section;
+        sectionCounters[section] = (sectionCounters[section] ?? 0) + 1;
+        return { ...f, display_order: sectionCounters[section] };
+      });
+
       set({ saving: true });
-      const payload = questions.map((q, i) => ({
-        ...q,
-        display_order: i + 1,
-      }));
-      const res = await saveSAQuestions(payload);
+      const res = await saveApplicationSchema(normalized);
       if (res.status === 200 && res.data) {
-        toast.success("Questions saved");
+        set({ fields: res.data.fields, saving: false });
+        toast.success("Application schema saved");
       } else {
         errorAlert(res);
+        set({ saving: false });
       }
-      set({ saving: false });
     },
 
-    updateQuestion: (index, field, value) => {
+    updateField: (fieldId, updates) => {
       set((state) => ({
-        questions: state.questions.map((q, i) =>
-          i === index ? { ...q, [field]: value } : q,
+        fields: state.fields.map((f) =>
+          f.id === fieldId ? { ...f, ...updates } : f,
         ),
       }));
     },
 
-    addQuestion: () => {
+    addField: (field) => {
+      set((state) => ({ fields: [...state.fields, field] }));
+    },
+
+    removeField: (fieldId) => {
       set((state) => ({
-        questions: [
-          ...state.questions,
-          {
-            id: `saq_${Date.now()}`,
-            question: "",
-            required: false,
-            display_order: state.questions.length + 1,
-          },
-        ],
+        fields: state.fields.filter((f) => f.id !== fieldId),
       }));
     },
 
-    removeQuestion: (index) => {
-      set((state) => ({
-        questions: state.questions.filter((_, i) => i !== index),
-      }));
+    moveField: (fieldId, direction) => {
+      set((state) => {
+        const field = state.fields.find((f) => f.id === fieldId);
+        if (!field) return state;
+
+        // Get fields in this section sorted by display_order
+        const sectionFields = state.fields
+          .filter((f) => f.section === field.section)
+          .sort((a, b) => a.display_order - b.display_order);
+
+        const idx = sectionFields.findIndex((f) => f.id === fieldId);
+        const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= sectionFields.length) return state;
+
+        const swapField = sectionFields[swapIdx];
+        const tempOrder = field.display_order;
+
+        return {
+          fields: state.fields.map((f) => {
+            if (f.id === fieldId)
+              return { ...f, display_order: swapField.display_order };
+            if (f.id === swapField.id)
+              return { ...f, display_order: tempOrder };
+            return f;
+          }),
+        };
+      });
     },
   }),
 );

@@ -1,5 +1,33 @@
 export type UserRole = "hacker" | "admin" | "super_admin";
 
+export type FieldType =
+  | "text"
+  | "number"
+  | "textarea"
+  | "select"
+  | "multi_select"
+  | "checkbox"
+  | "phone";
+
+export type SectionName =
+  | "personal"
+  | "education"
+  | "links"
+  | "experience"
+  | "short_answers"
+  | "logistics";
+
+export interface ApplicationSchemaField {
+  id: string;
+  type: FieldType;
+  label: string;
+  required: boolean;
+  section: SectionName;
+  display_order: number;
+  options?: string[];
+  validation?: Record<string, unknown>;
+}
+
 export interface ShortAnswerQuestion {
   id: string;
   question: string;

@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import type { ApplicationSchemaField } from "@/types";
 
-import type { ShortAnswerQuestion } from "@/types";
+import { SECTION_LABELS, SECTION_ORDER } from "../constants";
 
 interface ApplicationPreviewProps {
-  questions: ShortAnswerQuestion[];
+  fields: ApplicationSchemaField[];
 }
 
 function PreviewSection({
@@ -77,51 +77,82 @@ function PreviewCheckbox({ label }: { label: string }) {
   );
 }
 
-const DIETARY_OPTIONS = [
-  "Vegan",
-  "Vegetarian",
-  "Halal",
-  "Nut Allergy",
-  "Fish Allergy",
-  "Wheat/Gluten",
-  "Dairy",
-  "Eggs",
-  "No Beef",
-  "No Pork",
-];
+function renderField(field: ApplicationSchemaField) {
+  switch (field.type) {
+    case "text":
+    case "phone":
+    case "number":
+      return (
+        <PreviewField
+          key={field.id}
+          label={field.label}
+          placeholder={
+            field.type === "phone"
+              ? "+1 (202) 555-1234"
+              : field.type === "number"
+                ? "0"
+                : "Enter..."
+          }
+          required={field.required}
+        />
+      );
+    case "textarea":
+      return (
+        <PreviewTextarea
+          key={field.id}
+          label={field.label}
+          placeholder="Your answer..."
+          required={field.required}
+        />
+      );
+    case "select":
+      return (
+        <PreviewField
+          key={field.id}
+          label={field.label}
+          placeholder="Select..."
+          required={field.required}
+        />
+      );
+    case "multi_select":
+      return (
+        <div key={field.id} className="space-y-1.5">
+          <label className="text-xs font-medium text-gray-700">
+            {field.label}
+            {field.required && <span className="text-gray-400 ml-1">*</span>}
+            <span className="text-gray-400 ml-1 font-normal">
+              — select all that apply
+            </span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(field.options ?? []).map((option) => (
+              <PreviewCheckbox key={option} label={option} />
+            ))}
+          </div>
+        </div>
+      );
+    case "checkbox":
+      return (
+        <PreviewCheckbox key={field.id} label={field.label} />
+      );
+  }
+}
 
-export function ApplicationPreview({ questions }: ApplicationPreviewProps) {
-  const shortAnswersRef = useRef<HTMLDivElement>(null);
-  const hasScrolled = useRef(false);
-
-  useEffect(() => {
-    if (
-      questions.length > 0 &&
-      !hasScrolled.current &&
-      shortAnswersRef.current
-    ) {
-      shortAnswersRef.current.scrollIntoView({ behavior: "smooth" });
-      hasScrolled.current = true;
-    }
-  }, [questions]);
-
-  const sortedQuestions = [...questions].sort(
-    (a, b) => a.display_order - b.display_order,
+export function ApplicationPreview({ fields }: ApplicationPreviewProps) {
+  const sectionsWithFields = SECTION_ORDER.filter((section) =>
+    fields.some((f) => f.section === section),
   );
+
+  const stepPills = [
+    ...sectionsWithFields.map((s) => SECTION_LABELS[s]),
+    "Agreements",
+  ];
 
   return (
     <div className="p-6 space-y-8">
       {/* Step pills */}
       <div className="flex gap-1.5 flex-wrap">
-        {[
-          "Personal Info",
-          "School",
-          "Experience",
-          "Short Answers",
-          "Event",
-          "Sponsor",
-          "Agreements",
-        ].map((label) => (
+        {stepPills.map((label) => (
           <span
             key={label}
             className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
@@ -131,120 +162,20 @@ export function ApplicationPreview({ questions }: ApplicationPreviewProps) {
         ))}
       </div>
 
-      {/* 1. Personal Info */}
-      <PreviewSection title="Personal Information">
-        <div className="grid grid-cols-2 gap-3">
-          <PreviewField label="First Name" placeholder="John" required />
-          <PreviewField label="Last Name" placeholder="Doe" required />
-        </div>
-        <PreviewField
-          label="Email"
-          placeholder="From your account — read only"
-        />
-        <PreviewField
-          label="Phone Number"
-          placeholder="+1 (202) 555-1234"
-          required
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <PreviewField label="Age" placeholder="18" required />
-          <PreviewField
-            label="Country of Residence"
-            placeholder="Select..."
-            required
-          />
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <PreviewField label="Gender" placeholder="Select..." required />
-          <PreviewField label="Race" placeholder="Select..." required />
-          <PreviewField label="Ethnicity" placeholder="Select..." required />
-        </div>
-      </PreviewSection>
+      {/* Dynamic sections from schema */}
+      {sectionsWithFields.map((section) => {
+        const sectionFields = fields
+          .filter((f) => f.section === section)
+          .sort((a, b) => a.display_order - b.display_order);
 
-      {/* 2. School Info */}
-      <PreviewSection title="School Information">
-        <PreviewField
-          label="University"
-          placeholder="University of Texas at Dallas"
-          required
-        />
-        <PreviewField label="Major" placeholder="Computer Science" required />
-        <PreviewField label="Level of Study" placeholder="Select..." required />
-      </PreviewSection>
+        return (
+          <PreviewSection key={section} title={SECTION_LABELS[section]}>
+            {sectionFields.map(renderField)}
+          </PreviewSection>
+        );
+      })}
 
-      {/* 3. Experience */}
-      <PreviewSection title="Hackathon Experience">
-        <PreviewField label="Hackathons Attended" placeholder="0" required />
-        <PreviewField
-          label="Software Experience Level"
-          placeholder="Select..."
-          required
-        />
-        <PreviewField
-          label="How did you hear about us?"
-          placeholder="Select..."
-          required
-        />
-      </PreviewSection>
-
-      {/* 4. Short Answers — live from props */}
-      <div ref={shortAnswersRef} />
-      <PreviewSection title="Short Answer Questions">
-        {sortedQuestions.length === 0 ? (
-          <p className="text-xs text-gray-400 italic">
-            No questions configured yet.
-          </p>
-        ) : (
-          sortedQuestions.map((q, i) => (
-            <PreviewTextarea
-              key={q.id}
-              label={q.question || `Question ${i + 1}`}
-              placeholder="Your answer..."
-              required={q.required}
-            />
-          ))
-        )}
-      </PreviewSection>
-
-      {/* 5. Event Info */}
-      <PreviewSection title="Event Information">
-        <PreviewField label="Shirt Size" placeholder="Select..." required />
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-700">
-            Dietary Restrictions
-            <span className="text-gray-400 ml-1 font-normal">
-              — select all that apply
-            </span>
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {DIETARY_OPTIONS.map((label) => (
-              <PreviewCheckbox key={label} label={label} />
-            ))}
-          </div>
-        </div>
-        <PreviewTextarea
-          label="Accommodations"
-          placeholder="List any accessibility needs..."
-        />
-      </PreviewSection>
-
-      {/* 6. Sponsor Info */}
-      <PreviewSection title="Sponsor Information">
-        <PreviewField
-          label="GitHub"
-          placeholder="https://github.com/username"
-        />
-        <PreviewField
-          label="LinkedIn"
-          placeholder="https://linkedin.com/in/username"
-        />
-        <PreviewField
-          label="Personal Website"
-          placeholder="https://yourwebsite.com"
-        />
-      </PreviewSection>
-
-      {/* 7. Agreements */}
+      {/* Hardcoded Agreements section (not part of configurable schema) */}
       <PreviewSection title="Agreements">
         <div className="space-y-3">
           <PreviewCheckbox label="I understand that this is an application and does not guarantee admission. *" />
