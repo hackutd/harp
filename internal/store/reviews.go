@@ -96,8 +96,11 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 		SELECT
 			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
-			a.first_name, a.last_name, u.email, a.age,
-			a.university, a.major, a.country_of_residence, a.hackathons_attended_count
+			a.responses->>'first_name', a.responses->>'last_name', u.email,
+			(a.responses->>'age')::smallint,
+			a.responses->>'university', a.responses->>'major',
+			a.responses->>'country_of_residence',
+			(a.responses->>'hackathons_attended_count')::smallint
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
@@ -144,8 +147,11 @@ func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adm
 		SELECT
 			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
-			a.first_name, a.last_name, u.email, a.age,
-			a.university, a.major, a.country_of_residence, a.hackathons_attended_count
+			a.responses->>'first_name', a.responses->>'last_name', u.email,
+			(a.responses->>'age')::smallint,
+			a.responses->>'university', a.responses->>'major',
+			a.responses->>'country_of_residence',
+			(a.responses->>'hackathons_attended_count')::smallint
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
