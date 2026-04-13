@@ -208,27 +208,19 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		responses = make(map[string]interface{})
 	}
 
-	// Validate required schema fields
-	var missing []string
-	for _, field := range schema {
-		if field.Required {
-			val, exists := responses[field.ID]
-			if !exists || isEmpty(val) {
-				missing = append(missing, field.ID)
-			}
-		}
-	}
+	// Validate responses against schema
+	validationErrors := validateResponses(schema, responses)
 
 	// Validate acknowledgments
 	if !application.AckMLHCOC {
-		missing = append(missing, "ack_mlh_coc")
+		validationErrors = append(validationErrors, "ack_mlh_coc is required")
 	}
 	if !application.AckMLHPrivacy {
-		missing = append(missing, "ack_mlh_privacy")
+		validationErrors = append(validationErrors, "ack_mlh_privacy is required")
 	}
 
-	if len(missing) > 0 {
-		app.badRequestResponse(w, r, fmt.Errorf("missing required fields: %v", missing))
+	if len(validationErrors) > 0 {
+		app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
 		return
 	}
 
@@ -241,6 +233,93 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// validateResponses checks each response value against its schema field definition.
+// Returns a list of human-readable validation error strings.
+func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}) []string {
+	var errs []string
+
+	for _, field := range schema {
+		val, exists := responses[field.ID]
+
+		// Required check
+		if field.Required && (!exists || isEmpty(val)) {
+			errs = append(errs, field.ID+" is required")
+			continue
+		}
+
+		// Skip further validation if value is absent or empty
+		if !exists || isEmpty(val) {
+			continue
+		}
+
+		// Type-specific validation
+		switch field.Type {
+		case "text", "textarea", "phone":
+			s, ok := val.(string)
+			if !ok {
+				errs = append(errs, field.ID+" must be a string")
+				continue
+			}
+			if maxLen, ok := field.Validation["maxLength"]; ok {
+				if ml, ok := maxLen.(float64); ok && float64(len(s)) > ml {
+					errs = append(errs, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
+				}
+			}
+
+		case "number":
+			n, ok := val.(float64)
+			if !ok {
+				errs = append(errs, field.ID+" must be a number")
+				continue
+			}
+			if minVal, ok := field.Validation["min"]; ok {
+				if mv, ok := minVal.(float64); ok && n < mv {
+					errs = append(errs, fmt.Sprintf("%s must be at least %v", field.ID, mv))
+				}
+			}
+			if maxVal, ok := field.Validation["max"]; ok {
+				if mv, ok := maxVal.(float64); ok && n > mv {
+					errs = append(errs, fmt.Sprintf("%s must be at most %v", field.ID, mv))
+				}
+			}
+
+		case "select":
+			s, ok := val.(string)
+			if !ok {
+				errs = append(errs, field.ID+" must be a string")
+				continue
+			}
+			if len(field.Options) > 0 && !containsString(field.Options, s) {
+				errs = append(errs, field.ID+" has invalid option: "+s)
+			}
+
+		case "multi_select":
+			arr, ok := val.([]interface{})
+			if !ok {
+				errs = append(errs, field.ID+" must be an array")
+				continue
+			}
+			for _, item := range arr {
+				s, ok := item.(string)
+				if !ok {
+					errs = append(errs, field.ID+" array items must be strings")
+					break
+				}
+				if len(field.Options) > 0 && !containsString(field.Options, s) {
+					errs = append(errs, field.ID+" has invalid option: "+s)
+				}
+			}
+
+		case "checkbox":
+			if _, ok := val.(bool); !ok {
+				errs = append(errs, field.ID+" must be a boolean")
+			}
+		}
+	}
+
+	return errs
 }
 
 // isEmpty checks if a response value is considered empty
@@ -256,6 +335,16 @@ func isEmpty(val interface{}) bool {
 	default:
 		return false
 	}
+}
+
+// containsString checks if a string slice contains the given value
+func containsString(slice []string, val string) bool {
+	for _, s := range slice {
+		if s == val {
+			return true
+		}
+	}
+	return false
 }
 
 // getApplicationStatsHandler returns aggregated statistics for all applications

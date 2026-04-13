@@ -211,7 +211,7 @@ func TestSubmitApplication(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Contains(t, body.Error, "missing required fields")
+		assert.Contains(t, body.Error, "validation errors")
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
@@ -242,7 +242,70 @@ func TestSubmitApplication(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Contains(t, body.Error, "first_name")
+		assert.Contains(t, body.Error, "first_name is required")
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 when select field has invalid option", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","gender":"InvalidOption"}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "gender", Type: "select", Label: "Gender", Required: false, Options: []string{"Male", "Female", "Other"}},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Contains(t, body.Error, "gender has invalid option")
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 when number field exceeds max", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","last_name":"Doe","age":200}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: "age", Type: "number", Label: "Age", Required: false, Validation: map[string]interface{}{"min": float64(1), "max": float64(150)}},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Contains(t, body.Error, "age must be at most")
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
