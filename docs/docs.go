@@ -190,7 +190,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a single application by its ID with embedded short answer questions",
+                "description": "Returns a single application by its ID with embedded application schema",
                 "produces": [
                     "application/json"
                 ],
@@ -211,7 +211,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ApplicationWithQuestions"
+                            "$ref": "#/definitions/main.ApplicationWithSchema"
                         }
                     },
                     "400": {
@@ -1962,7 +1962,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/store.Application"
+                            "$ref": "#/definitions/main.ApplicationWithSchema"
                         }
                     },
                     "401": {
@@ -2227,7 +2227,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.",
+                "description": "Submits the authenticated user's application for review. All required schema fields must be filled and acknowledgments must be accepted. Application must be in draft status.",
                 "produces": [
                     "application/json"
                 ],
@@ -2958,6 +2958,145 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/application-schema": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configurable application schema fields for hacker applications",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get application schema (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationSchemaResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Replaces the application schema with the provided array of fields",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Update application schema (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Schema fields to set",
+                        "name": "fields",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateApplicationSchemaPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationSchemaResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/applications-enabled": {
             "put": {
                 "security": [
@@ -3402,145 +3541,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings/saquestions": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Returns all configurable short answer questions for hacker applications",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Get short answer questions (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.ShortAnswerQuestionsResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Replaces all short answer questions with the provided array",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Update short answer questions (Super Admin)",
-                "parameters": [
-                    {
-                        "description": "Questions to set",
-                        "name": "questions",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.UpdateShortAnswerQuestionsPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.ShortAnswerQuestionsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/superadmin/settings/scan-types": {
             "put": {
                 "security": [
@@ -3855,17 +3855,22 @@ const docTemplate = `{
                 }
             }
         },
-        "main.ApplicationWithQuestions": {
+        "main.ApplicationSchemaResponse": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                }
+            }
+        },
+        "main.ApplicationWithSchema": {
             "type": "object",
             "properties": {
                 "accept_votes": {
                     "type": "integer"
-                },
-                "accommodations": {
-                    "type": "string"
-                },
-                "ack_application": {
-                    "type": "boolean"
                 },
                 "ack_mlh_coc": {
                     "type": "boolean"
@@ -3873,80 +3878,32 @@ const docTemplate = `{
                 "ack_mlh_privacy": {
                     "type": "boolean"
                 },
-                "age": {
-                    "type": "integer",
-                    "maximum": 150,
-                    "minimum": 1
-                },
                 "ai_percent": {
                     "type": "integer"
                 },
-                "country_of_residence": {
-                    "type": "string",
-                    "minLength": 1
+                "application_schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
                 },
                 "created_at": {
                     "type": "string"
                 },
-                "dietary_restrictions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "ethnicity": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "first_name": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "gender": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "github": {
-                    "type": "string"
-                },
-                "hackathons_attended_count": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "heard_about": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "id": {
                     "type": "string"
-                },
-                "last_name": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "level_of_study": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "linkedin": {
-                    "type": "string"
-                },
-                "major": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "opt_in_mlh_emails": {
                     "type": "boolean"
                 },
-                "phone_e164": {
-                    "type": "string"
-                },
-                "race": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "reject_votes": {
                     "type": "integer"
+                },
+                "responses": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "resume_path": {
                     "type": "string"
@@ -3957,35 +3914,11 @@ const docTemplate = `{
                 "reviews_completed": {
                     "type": "integer"
                 },
-                "shirt_size": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "short_answer_questions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/store.ShortAnswerQuestion"
-                    }
-                },
-                "short_answer_responses": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "software_experience_level": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
                 },
                 "submitted_at": {
                     "type": "string"
-                },
-                "university": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "updated_at": {
                     "type": "string"
@@ -3995,9 +3928,6 @@ const docTemplate = `{
                 },
                 "waitlist_votes": {
                     "type": "integer"
-                },
-                "website": {
-                    "type": "string"
                 }
             }
         },
@@ -4367,17 +4297,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.ShortAnswerQuestionsResponse": {
-            "type": "object",
-            "properties": {
-                "questions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/store.ShortAnswerQuestion"
-                    }
-                }
-            }
-        },
         "main.SponsorListResponse": {
             "type": "object",
             "properties": {
@@ -4444,6 +4363,20 @@ const docTemplate = `{
         },
         "main.UpdateApplicationPayload": {
             "type": "object"
+        },
+        "main.UpdateApplicationSchemaPayload": {
+            "type": "object",
+            "required": [
+                "fields"
+            ],
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                }
+            }
         },
         "main.UpdateRolePayload": {
             "type": "object",
@@ -4512,20 +4445,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.UpdateShortAnswerQuestionsPayload": {
-            "type": "object",
-            "required": [
-                "questions"
-            ],
-            "properties": {
-                "questions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/store.ShortAnswerQuestion"
-                    }
-                }
-            }
-        },
         "main.UserResponse": {
             "type": "object",
             "properties": {
@@ -4569,92 +4488,32 @@ const docTemplate = `{
                 "accept_votes": {
                     "type": "integer"
                 },
-                "accommodations": {
-                    "type": "string"
-                },
-                "ack_application": {
-                    "type": "boolean"
-                },
                 "ack_mlh_coc": {
                     "type": "boolean"
                 },
                 "ack_mlh_privacy": {
                     "type": "boolean"
                 },
-                "age": {
-                    "type": "integer",
-                    "maximum": 150,
-                    "minimum": 1
-                },
                 "ai_percent": {
                     "type": "integer"
-                },
-                "country_of_residence": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "created_at": {
                     "type": "string"
                 },
-                "dietary_restrictions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "ethnicity": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "first_name": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "gender": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "github": {
-                    "type": "string"
-                },
-                "hackathons_attended_count": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "heard_about": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "id": {
                     "type": "string"
-                },
-                "last_name": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "level_of_study": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "linkedin": {
-                    "type": "string"
-                },
-                "major": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "opt_in_mlh_emails": {
                     "type": "boolean"
                 },
-                "phone_e164": {
-                    "type": "string"
-                },
-                "race": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "reject_votes": {
                     "type": "integer"
+                },
+                "responses": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "resume_path": {
                     "type": "string"
@@ -4665,29 +4524,11 @@ const docTemplate = `{
                 "reviews_completed": {
                     "type": "integer"
                 },
-                "shirt_size": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "short_answer_responses": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "software_experience_level": {
-                    "type": "string",
-                    "minLength": 1
-                },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
                 },
                 "submitted_at": {
                     "type": "string"
-                },
-                "university": {
-                    "type": "string",
-                    "minLength": 1
                 },
                 "updated_at": {
                     "type": "string"
@@ -4697,9 +4538,6 @@ const docTemplate = `{
                 },
                 "waitlist_votes": {
                     "type": "integer"
-                },
-                "website": {
-                    "type": "string"
                 }
             }
         },
@@ -4886,6 +4724,39 @@ const docTemplate = `{
                 },
                 "vote": {
                     "$ref": "#/definitions/store.ReviewVote"
+                }
+            }
+        },
+        "store.ApplicationSchemaField": {
+            "type": "object",
+            "properties": {
+                "display_order": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "validation": {
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },
@@ -5098,32 +4969,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                }
-            }
-        },
-        "store.ShortAnswerQuestion": {
-            "type": "object",
-            "required": [
-                "id",
-                "question"
-            ],
-            "properties": {
-                "display_order": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "id": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1
-                },
-                "question": {
-                    "type": "string",
-                    "maxLength": 500,
-                    "minLength": 1
-                },
-                "required": {
-                    "type": "boolean"
                 }
             }
         },
