@@ -20,17 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import type {
-  ApplicationSchemaField,
-  FieldType,
-  SectionName,
-} from "@/types";
+import type { ApplicationSchemaField, FieldType } from "@/types";
 
-import {
-  FIELD_TYPE_LABELS,
-  SECTION_LABELS,
-  SECTION_ORDER,
-} from "../constants";
+import { FIELD_TYPE_LABELS } from "../constants";
 import { useApplicationSchemaStore } from "../store";
 import { OptionsEditor } from "./OptionsEditor";
 
@@ -45,26 +37,25 @@ const FIELD_TYPES: FieldType[] = [
 ];
 
 interface AddFieldDialogProps {
-  defaultSection?: SectionName;
+  defaultSection?: string;
 }
 
 export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
   const [open, setOpen] = useState(false);
-  const [section, setSection] = useState<SectionName>(
-    defaultSection ?? "personal",
-  );
+  const [section, setSection] = useState(defaultSection ?? "");
   const [type, setType] = useState<FieldType>("text");
   const [label, setLabel] = useState("");
   const [required, setRequired] = useState(false);
   const [options, setOptions] = useState<string[]>([""]);
 
   const fields = useApplicationSchemaStore((s) => s.fields);
+  const sections = useApplicationSchemaStore((s) => s.sections);
   const addField = useApplicationSchemaStore((s) => s.addField);
 
   const hasOptions = type === "select" || type === "multi_select";
 
   const reset = () => {
-    setSection(defaultSection ?? "personal");
+    setSection(defaultSection ?? sections[0]?.id ?? "");
     setType("text");
     setLabel("");
     setRequired(false);
@@ -80,12 +71,15 @@ export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
       0,
     );
 
+    const sectionDef = sections.find((s) => s.id === section);
+
     const field: ApplicationSchemaField = {
       id: `field_${Date.now()}`,
       type,
       label: label.trim(),
       required,
       section,
+      section_label: sectionDef?.label,
       display_order: maxOrder + 1,
       ...(hasOptions ? { options: options.filter((o) => o.trim()) } : {}),
     };
@@ -120,17 +114,14 @@ export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
           {/* Section */}
           <div className="space-y-1.5">
             <Label className="text-sm">Section</Label>
-            <Select
-              value={section}
-              onValueChange={(v: SectionName) => setSection(v)}
-            >
+            <Select value={section} onValueChange={setSection}>
               <SelectTrigger className="cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SECTION_ORDER.map((s) => (
-                  <SelectItem key={s} value={s} className="cursor-pointer">
-                    {SECTION_LABELS[s]}
+                {sections.map((s) => (
+                  <SelectItem key={s.id} value={s.id} className="cursor-pointer">
+                    {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>

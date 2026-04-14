@@ -149,17 +149,18 @@ export default function StatusPage() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <p className="text-gray-600">Name:</p>
                   <p className="font-medium">
-                    {application.first_name} {application.last_name}
+                    {String(application.responses?.first_name ?? "")}{" "}
+                    {String(application.responses?.last_name ?? "")}
                   </p>
 
                   <p className="text-gray-600">University:</p>
                   <p className="font-medium">
-                    {application.university || "Not provided"}
+                    {String(application.responses?.university || "Not provided")}
                   </p>
 
                   <p className="text-gray-600">Major:</p>
                   <p className="font-medium">
-                    {application.major || "Not provided"}
+                    {String(application.responses?.major || "Not provided")}
                   </p>
 
                   {application.submitted_at && (

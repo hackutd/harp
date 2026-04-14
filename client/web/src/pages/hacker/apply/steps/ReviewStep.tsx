@@ -10,35 +10,20 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import type { ShortAnswerQuestion } from "@/types";
-
-import type { ApplicationFormData } from "../validations";
 import {
-  COUNTRY_OPTIONS,
-  DIETARY_RESTRICTION_OPTIONS,
-  ETHNICITY_OPTIONS,
-  EXPERIENCE_LEVEL_OPTIONS,
-  GENDER_OPTIONS,
-  HEARD_ABOUT_OPTIONS,
-  LEVEL_OF_STUDY_OPTIONS,
-  RACE_OPTIONS,
-  SHIRT_SIZE_OPTIONS,
-} from "../validations";
+  deriveSections,
+  formatResponseValue,
+  groupFieldsBySection,
+} from "@/shared/lib/schema-utils";
+import type { ApplicationSchemaField } from "@/types";
 
 interface ReviewStepProps {
   onEditStep: (stepIndex: number) => void;
   userEmail?: string;
-  questions: ShortAnswerQuestion[];
+  schema: ApplicationSchemaField[];
   hasResume: boolean;
-}
-
-// Helper to get label from options
-function getLabel(
-  options: { value: string; label: string }[],
-  value: string | undefined,
-): string {
-  if (!value) return "Not provided";
-  return options.find((o) => o.value === value)?.label || value;
+  /** Map section id → step index so "Edit" buttons jump to the right step. */
+  sectionStepMap: Record<string, number>;
 }
 
 function ReviewSection({
@@ -83,16 +68,14 @@ function ReviewField({ label, value }: { label: string; value: string }) {
 export function ReviewStep({
   onEditStep,
   userEmail,
-  questions,
+  schema,
   hasResume,
+  sectionStepMap,
 }: ReviewStepProps) {
-  const form = useFormContext<ApplicationFormData>();
+  const form = useFormContext();
   const values = form.watch();
-
-  const sortedQuestions = [...questions].sort(
-    (a, b) => a.display_order - b.display_order,
-  );
-  const responses = values.short_answer_responses || {};
+  const sections = deriveSections(schema);
+  const grouped = groupFieldsBySection(schema);
 
   return (
     <div className="space-y-6">
@@ -103,163 +86,41 @@ export function ReviewStep({
         </p>
       </div>
 
-      {/* Personal Info */}
-      <ReviewSection
-        title="Personal Information"
-        stepIndex={0}
-        onEdit={onEditStep}
-      >
-        <ReviewField label="First Name" value={values.first_name} />
-        <ReviewField label="Last Name" value={values.last_name} />
-        {userEmail && <ReviewField label="Email" value={userEmail} />}
-        <ReviewField label="Phone" value={values.phone_e164} />
-        <ReviewField label="Age" value={values.age?.toString() || ""} />
-        <ReviewField
-          label="Country"
-          value={getLabel(COUNTRY_OPTIONS, values.country_of_residence)}
-        />
-        <ReviewField
-          label="Gender"
-          value={getLabel(GENDER_OPTIONS, values.gender)}
-        />
-        <ReviewField label="Race" value={getLabel(RACE_OPTIONS, values.race)} />
-        <ReviewField
-          label="Ethnicity"
-          value={getLabel(ETHNICITY_OPTIONS, values.ethnicity)}
-        />
-      </ReviewSection>
+      {sections.map(({ id: sectionId, label: sectionLabel }) => {
+        const fields = grouped[sectionId];
+        if (!fields || fields.length === 0) return null;
+        const stepIndex = sectionStepMap[sectionId] ?? 0;
 
-      {/* School Info */}
-      <ReviewSection
-        title="School Information"
-        stepIndex={1}
-        onEdit={onEditStep}
-      >
-        <ReviewField label="University" value={values.university} />
-        <ReviewField label="Major" value={values.major} />
-        <ReviewField
-          label="Level of Study"
-          value={getLabel(LEVEL_OF_STUDY_OPTIONS, values.level_of_study)}
-        />
-      </ReviewSection>
-
-      {/* Experience */}
-      <ReviewSection
-        title="Hackathon Experience"
-        stepIndex={2}
-        onEdit={onEditStep}
-      >
-        <ReviewField
-          label="Hackathons Attended"
-          value={values.hackathons_attended_count?.toString() || "0"}
-        />
-        <ReviewField
-          label="Experience Level"
-          value={getLabel(
-            EXPERIENCE_LEVEL_OPTIONS,
-            values.software_experience_level,
-          )}
-        />
-        <ReviewField
-          label="Heard About"
-          value={getLabel(HEARD_ABOUT_OPTIONS, values.heard_about)}
-        />
-      </ReviewSection>
-
-      {/* Short Answers */}
-      <ReviewSection
-        title="Short Answer Questions"
-        stepIndex={3}
-        onEdit={onEditStep}
-      >
-        <div className="space-y-3">
-          {sortedQuestions.length === 0 ? (
-            <p className="text-muted-foreground">No questions configured.</p>
-          ) : (
-            sortedQuestions.map((q) => (
-              <div key={q.id}>
-                <p className="text-muted-foreground text-xs mb-1">
-                  {q.question} {q.required && "*"}
-                </p>
-                <p className="whitespace-pre-wrap">
-                  {responses[q.id] || "Not provided"}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </ReviewSection>
-
-      {/* Event Info */}
-      <ReviewSection
-        title="Event Information"
-        stepIndex={4}
-        onEdit={onEditStep}
-      >
-        <ReviewField
-          label="Shirt Size"
-          value={getLabel(SHIRT_SIZE_OPTIONS, values.shirt_size)}
-        />
-        <ReviewField
-          label="Dietary Restrictions"
-          value={
-            values.dietary_restrictions?.length
-              ? values.dietary_restrictions
-                  .map((v) => getLabel(DIETARY_RESTRICTION_OPTIONS, v))
-                  .join(", ")
-              : "None"
-          }
-        />
-        <ReviewField
-          label="Accommodations"
-          value={values.accommodations || "None"}
-        />
-      </ReviewSection>
-
-      {/* Sponsor Info */}
-      <ReviewSection
-        title="Sponsor Information"
-        stepIndex={5}
-        onEdit={onEditStep}
-      >
-        <ReviewField label="GitHub" value={values.github || "Not provided"} />
-        <ReviewField
-          label="LinkedIn"
-          value={values.linkedin || "Not provided"}
-        />
-        <ReviewField label="Website" value={values.website || "Not provided"} />
-        <ReviewField
-          label="Resume"
-          value={hasResume ? "Uploaded" : "Not provided"}
-        />
-      </ReviewSection>
+        return (
+          <ReviewSection
+            key={sectionId}
+            title={sectionLabel}
+            stepIndex={stepIndex}
+            onEdit={onEditStep}
+          >
+            {sectionId === "personal" && userEmail && (
+              <ReviewField label="Email" value={userEmail} />
+            )}
+            {fields.map((field) => (
+              <ReviewField
+                key={field.id}
+                label={field.label}
+                value={formatResponseValue(values[field.id], field)}
+              />
+            ))}
+            {sectionId === "links" && (
+              <ReviewField
+                label="Resume"
+                value={hasResume ? "Uploaded" : "Not provided"}
+              />
+            )}
+          </ReviewSection>
+        );
+      })}
 
       {/* Acknowledgments */}
       <div className="border rounded-lg p-4 space-y-4">
         <h3 className="font-semibold">Agreements & Acknowledgments</h3>
-
-        <FormField
-          control={form.control}
-          name="ack_application"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="font-normal">
-                  <span className="font-medium">Disclaimer:</span> I understand
-                  that this is an application and does not guarantee admission.
-                  *
-                </FormLabel>
-                <FormMessage />
-              </div>
-            </FormItem>
-          )}
-        />
 
         <FormField
           control={form.control}

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
@@ -12,25 +12,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
-import type { Application, ShortAnswerQuestion } from "@/types";
+import {
+  buildDefaultValues,
+  deriveSections,
+  groupFieldsBySection,
+} from "@/shared/lib/schema-utils";
+import type { Application, ApplicationSchemaField } from "@/types";
 
 import {
   deleteMyResume as deleteResume,
   MAX_RESUME_SIZE_BYTES as MAX_RESUME_UPLOAD_SIZE_BYTES,
   requestResumeUploadURL as getResumeUploadURL,
+  type UpdateApplicationPayload,
   updateMyApplication,
   uploadResumeToSignedURL as uploadToSignedURL,
 } from "../api";
-import { EventInfoStep } from "../steps/EventInfoStep";
-import { ExperienceStep } from "../steps/ExperienceStep";
-import { PersonalInfoStep } from "../steps/PersonalInfoStep";
 import { ReviewStep } from "../steps/ReviewStep";
-import { SchoolInfoStep } from "../steps/SchoolInfoStep";
-import { ShortAnswerStep } from "../steps/ShortAnswerStep";
+import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
 import { SponsorInfoStep } from "../steps/SponsorInfoStep";
-import type { ApplicationFormData } from "../validations";
-import { applicationSchema, STEP_FIELDS } from "../validations";
+import { buildApplicationSchema } from "../validations";
 import { StepIndicator } from "./StepIndicator";
 import { StepNavigation } from "./StepNavigation";
 
@@ -41,148 +43,58 @@ interface ApplicationWizardProps {
 const PDF_MIME_TYPE = "application/pdf";
 const MAX_RESUME_SIZE_MB = MAX_RESUME_UPLOAD_SIZE_BYTES / (1024 * 1024);
 
-const STEPS = [
-  { id: "personal", title: "Personal Info" },
-  { id: "school", title: "School Info" },
-  { id: "experience", title: "Experience" },
-  { id: "short-answer", title: "Short Answers" },
-  { id: "event", title: "Event Info" },
-  { id: "sponsor", title: "Sponsor Info" },
-  { id: "review", title: "Review" },
-];
+/** Sections that become wizard steps, derived dynamically from the schema. */
 
-// Dietary restriction enum type
-type DietaryRestriction =
-  | "vegan"
-  | "vegetarian"
-  | "halal"
-  | "nuts"
-  | "fish"
-  | "wheat"
-  | "dairy"
-  | "eggs"
-  | "no_beef"
-  | "no_pork";
-
-// Default form values
-const defaultValues: ApplicationFormData = {
-  first_name: "",
-  last_name: "",
-  phone_e164: "",
-  age: 0,
-  country_of_residence: "",
-  gender: "",
-  race: "",
-  ethnicity: "",
-  university: "",
-  major: "",
-  level_of_study: "",
-  hackathons_attended_count: 0,
-  software_experience_level: "",
-  heard_about: "",
-  short_answer_responses: {},
-  shirt_size: "",
-  dietary_restrictions: [] as DietaryRestriction[],
-  accommodations: "",
-  github: "",
-  linkedin: "",
-  website: "",
-  ack_application: false,
-  ack_mlh_coc: false,
-  ack_mlh_privacy: false,
-  opt_in_mlh_emails: false,
-};
-
-// Transform API response to form data
-function transformApplicationToFormData(app: Application): ApplicationFormData {
-  return {
-    first_name: app.first_name ?? "",
-    last_name: app.last_name ?? "",
-    phone_e164: app.phone_e164 ?? "",
-    age: app.age ?? 0,
-    country_of_residence: app.country_of_residence ?? "",
-    gender: app.gender ?? "",
-    race: app.race ?? "",
-    ethnicity: app.ethnicity ?? "",
-    university: app.university ?? "",
-    major: app.major ?? "",
-    level_of_study: app.level_of_study ?? "",
-    hackathons_attended_count: app.hackathons_attended_count ?? 0,
-    software_experience_level: app.software_experience_level ?? "",
-    heard_about: app.heard_about ?? "",
-    short_answer_responses: app.short_answer_responses ?? {},
-    shirt_size: app.shirt_size ?? "",
-    dietary_restrictions: (app.dietary_restrictions ??
-      []) as DietaryRestriction[],
-    accommodations: app.accommodations ?? "",
-    github: app.github ?? "",
-    linkedin: app.linkedin ?? "",
-    website: app.website ?? "",
-    ack_application: app.ack_application ?? false,
-    ack_mlh_coc: app.ack_mlh_coc ?? false,
-    ack_mlh_privacy: app.ack_mlh_privacy ?? false,
-    opt_in_mlh_emails: app.opt_in_mlh_emails ?? false,
-  };
-}
-
-// Transform form data to API payload
-// Using Record<string, unknown> because react-hook-form with zod coerce types as unknown
-function transformFormDataToPayload(
-  data: Record<string, unknown>,
+/**
+ * Extract form values from the API Application object.
+ * Responses are a flat key-value object; ack fields are top-level.
+ */
+function transformApplicationToFormData(
+  app: Application,
+  schemaFields: ApplicationSchemaField[],
 ): Record<string, unknown> {
-  const payload: Record<string, unknown> = {};
+  const defaults = buildDefaultValues(schemaFields);
+  const responses = app.responses ?? {};
 
-  // String fields - only include if non-empty
-  const stringFields = [
-    "first_name",
-    "last_name",
-    "phone_e164",
-    "country_of_residence",
-    "gender",
-    "race",
-    "ethnicity",
-    "university",
-    "major",
-    "level_of_study",
-    "software_experience_level",
-    "heard_about",
-    "shirt_size",
-    "accommodations",
-    "github",
-    "linkedin",
-    "website",
-  ];
-
-  for (const field of stringFields) {
-    const value = data[field];
-    if (value !== undefined && value !== "") {
-      payload[field] = value;
+  // Merge stored responses over defaults
+  const data: Record<string, unknown> = { ...defaults };
+  for (const [key, value] of Object.entries(responses)) {
+    if (value !== null && value !== undefined) {
+      data[key] = value;
     }
   }
 
-  // Number fields
-  const age = data.age as number | undefined;
-  if (age !== undefined && !isNaN(age)) {
-    payload.age = age;
+  // Ack fields live outside responses
+  data.ack_mlh_coc = app.ack_mlh_coc ?? false;
+  data.ack_mlh_privacy = app.ack_mlh_privacy ?? false;
+  data.opt_in_mlh_emails = app.opt_in_mlh_emails ?? false;
+
+  return data;
+}
+
+/**
+ * Transform form data into the API payload shape:
+ * { responses: {...}, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails }
+ */
+function transformFormDataToPayload(
+  data: Record<string, unknown>,
+  schemaFields: ApplicationSchemaField[],
+): UpdateApplicationPayload {
+  const schemaFieldIds = new Set(schemaFields.map((f) => f.id));
+  const responses: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (schemaFieldIds.has(key)) {
+      responses[key] = value;
+    }
   }
-  const hackathonsCount = data.hackathons_attended_count as number | undefined;
-  if (hackathonsCount !== undefined) {
-    payload.hackathons_attended_count = hackathonsCount;
-  }
 
-  // Array field
-  payload.dietary_restrictions = data.dietary_restrictions || [];
-
-  // Short answer responses
-  payload.short_answer_responses = data.short_answer_responses || {};
-
-  // Boolean fields
-  payload.ack_application = data.ack_application;
-  payload.ack_mlh_coc = data.ack_mlh_coc;
-  payload.ack_mlh_privacy = data.ack_mlh_privacy;
-  payload.opt_in_mlh_emails = data.opt_in_mlh_emails;
-
-  return payload;
+  return {
+    responses,
+    ack_mlh_coc: data.ack_mlh_coc as boolean | undefined,
+    ack_mlh_privacy: data.ack_mlh_privacy as boolean | undefined,
+    opt_in_mlh_emails: data.opt_in_mlh_emails as boolean | undefined,
+  };
 }
 
 export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
@@ -192,7 +104,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<Application | null>(null);
-  const [questions, setQuestions] = useState<ShortAnswerQuestion[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
@@ -201,9 +112,66 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   const isResumeBusy = isUploadingResume || isDeletingResume;
 
+  // Schema from the loaded application
+  const schemaFields = useMemo(
+    () => application?.application_schema ?? [],
+    [application?.application_schema],
+  );
+
+  // Derive sections from the schema
+  const schemaSections = useMemo(
+    () => deriveSections(schemaFields),
+    [schemaFields],
+  );
+
+  // Group fields by section
+  const grouped = useMemo(
+    () => groupFieldsBySection(schemaFields),
+    [schemaFields],
+  );
+
+  // Build step definitions from schema sections (+ review step at end)
+  const steps = useMemo(() => {
+    const sectionSteps = schemaSections
+      .filter((s) => grouped[s.id] && grouped[s.id].length > 0)
+      .map((s) => ({ id: s.id, title: s.label }));
+    return [...sectionSteps, { id: "review" as const, title: "Review" }];
+  }, [schemaSections, grouped]);
+
+  // Section labels lookup
+  const sectionLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const s of schemaSections) labels[s.id] = s.label;
+    return labels;
+  }, [schemaSections]);
+
+  // Map section → step index for the review "Edit" buttons
+  const sectionStepMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    let idx = 0;
+    for (const section of schemaSections) {
+      if (grouped[section.id] && grouped[section.id].length > 0) {
+        map[section.id] = idx;
+        idx++;
+      }
+    }
+    return map;
+  }, [schemaSections, grouped]);
+
+  // Build Zod schema dynamically from application_schema
+  const formSchema = useMemo(
+    () => buildApplicationSchema(schemaFields),
+    [schemaFields],
+  );
+
   const form = useForm({
-    resolver: zodResolver(applicationSchema),
-    defaultValues,
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      ...buildDefaultValues(schemaFields),
+      ack_mlh_coc: false,
+      ack_mlh_privacy: false,
+      opt_in_mlh_emails: false,
+    },
     mode: "onTouched",
   });
 
@@ -219,12 +187,18 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       ]);
 
       if (appRes.status === 200 && appRes.data) {
-        setApplication(appRes.data);
-        if (appRes.data.short_answer_questions) {
-          setQuestions(appRes.data.short_answer_questions);
-        }
-        const formData = transformApplicationToFormData(appRes.data);
-        form.reset({ ...defaultValues, ...formData });
+        const app = appRes.data;
+        setApplication(app);
+        const schema = app.application_schema ?? [];
+        const formData = transformApplicationToFormData(app, schema);
+        const defaults = buildDefaultValues(schema);
+        form.reset({
+          ...defaults,
+          ack_mlh_coc: false,
+          ack_mlh_privacy: false,
+          opt_in_mlh_emails: false,
+          ...formData,
+        });
       }
 
       if (enabledRes.status === 200 && enabledRes.data) {
@@ -244,25 +218,34 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
   }, [saveSuccess]);
 
+  // Get field IDs for the current step (for partial validation)
+  const getCurrentStepFieldIds = (): string[] => {
+    const stepDef = steps[currentStep];
+    if (!stepDef || stepDef.id === "review") {
+      // Review step: validate ack fields
+      return ["ack_mlh_coc", "ack_mlh_privacy"];
+    }
+    const section = stepDef.id;
+    return (grouped[section] ?? []).map((f) => f.id);
+  };
+
   // Validate current step fields
   const validateCurrentStep = async (): Promise<boolean> => {
-    const fields = STEP_FIELDS[currentStep];
-    const result = await form.trigger(fields);
+    const fieldIds = getCurrentStepFieldIds();
+    const result = await form.trigger(fieldIds as (keyof typeof form.formState.errors)[]);
     return result;
   };
 
-  // Navigate to next step
   const goToNextStep = async () => {
     if (isResumeBusy) return;
     setApiError(null);
     const isValid = await validateCurrentStep();
     if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  // Navigate to previous step
   const goToPreviousStep = () => {
     if (isResumeBusy) return;
     setApiError(null);
@@ -270,7 +253,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Jump to specific step (from review page)
   const goToStep = (stepIndex: number) => {
     if (isResumeBusy) return;
     setApiError(null);
@@ -278,7 +260,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Save draft
   const saveDraft = async () => {
     if (isResumeBusy) return;
     setSaving(true);
@@ -286,8 +267,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     setSaveSuccess(false);
 
     const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData);
-
+    const payload = transformFormDataToPayload(formData, schemaFields);
     const res = await updateMyApplication(payload);
 
     if (res.status === 200 && res.data) {
@@ -300,13 +280,12 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     setSaving(false);
   };
 
-  // Submit application
   const submitApplication = async () => {
     if (isResumeBusy) return;
     setSubmitting(true);
     setApiError(null);
 
-    // First validate all fields
+    // Validate all fields
     const isValid = await form.trigger();
     if (!isValid) {
       setApiError("Please complete all required fields before submitting");
@@ -314,26 +293,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       return;
     }
 
-    // Validate required short answer questions
-    const responses = form.getValues("short_answer_responses") || {};
-    const missingQuestions: string[] = [];
-    for (const q of questions) {
-      if (q.required && (!responses[q.id] || !responses[q.id].trim())) {
-        missingQuestions.push(q.question);
-      }
-    }
-    if (missingQuestions.length > 0) {
-      setApiError(
-        `Please answer the following required questions: ${missingQuestions.join(", ")}`,
-      );
-      setSubmitting(false);
-      return;
-    }
-
     // Save current state first
     const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData);
-
+    const payload = transformFormDataToPayload(formData, schemaFields);
     const saveRes = await updateMyApplication(payload);
 
     if (saveRes.status !== 200) {
@@ -530,39 +492,58 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Render current step
   const renderStep = () => {
-    switch (currentStep) {
-      case 0:
-        return <PersonalInfoStep userEmail={userEmail} />;
-      case 1:
-        return <SchoolInfoStep />;
-      case 2:
-        return <ExperienceStep />;
-      case 3:
-        return <ShortAnswerStep questions={questions} />;
-      case 4:
-        return <EventInfoStep />;
-      case 5:
-        return (
-          <SponsorInfoStep
-            hasResume={Boolean(application?.resume_path)}
-            isUploadingResume={isUploadingResume}
-            isDeletingResume={isDeletingResume}
-            onResumeSelected={uploadResume}
-            onDeleteResume={removeResume}
-          />
-        );
-      case 6:
-        return (
-          <ReviewStep
-            onEditStep={goToStep}
-            userEmail={userEmail}
-            questions={questions}
-            hasResume={Boolean(application?.resume_path)}
-          />
-        );
-      default:
-        return null;
+    const stepDef = steps[currentStep];
+    if (!stepDef) return null;
+
+    // Last step is always Review
+    if (stepDef.id === "review") {
+      return (
+        <ReviewStep
+          onEditStep={goToStep}
+          userEmail={userEmail}
+          schema={schemaFields}
+          hasResume={Boolean(application?.resume_path)}
+          sectionStepMap={sectionStepMap}
+        />
+      );
     }
+
+    const section = stepDef.id;
+    const fields = grouped[section] ?? [];
+
+    // Links section gets special handling for resume upload
+    if (section === "links") {
+      return (
+        <SponsorInfoStep
+          fields={fields}
+          hasResume={Boolean(application?.resume_path)}
+          isUploadingResume={isUploadingResume}
+          isDeletingResume={isDeletingResume}
+          onResumeSelected={uploadResume}
+          onDeleteResume={removeResume}
+        />
+      );
+    }
+
+    // Personal section gets email display header
+    const header =
+      section === "personal" && userEmail ? (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Email</label>
+          <Input value={userEmail} disabled className="bg-muted" />
+          <p className="text-xs text-muted-foreground">
+            Email is from your account and cannot be changed here
+          </p>
+        </div>
+      ) : undefined;
+
+    return (
+      <SchemaStepRenderer
+        sectionLabel={sectionLabels[section] ?? section}
+        fields={fields}
+        header={header}
+      />
+    );
   };
 
   return (
@@ -574,7 +555,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         </CardDescription>
         <div className="pt-4">
           <StepIndicator
-            steps={STEPS}
+            steps={steps}
             currentStep={currentStep}
             onStepClick={goToStep}
           />
@@ -582,7 +563,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       </CardHeader>
 
       <CardContent>
-        {/* Error alert */}
         {apiError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -591,7 +571,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           </Alert>
         )}
 
-        {/* Success message */}
         {saveSuccess && (
           <Alert className="mb-6 border-green-500 text-green-700">
             <AlertTitle>Saved!</AlertTitle>
@@ -612,7 +591,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
               isSaving={saving}
               isSubmitting={submitting}
               isResumeBusy={isResumeBusy}
-              isLastStep={currentStep === STEPS.length - 1}
+              isLastStep={currentStep === steps.length - 1}
             />
           </form>
         </FormProvider>

@@ -34,6 +34,8 @@ type ApplicationSchemaField struct {
 	Label        string                 `json:"label"`
 	Required     bool                   `json:"required"`
 	Section      string                 `json:"section,omitempty"`
+	SectionLabel string                 `json:"section_label,omitempty"`
+	SectionOrder int                    `json:"section_order"`
 	DisplayOrder int                    `json:"display_order"`
 	Options      []string               `json:"options,omitempty"`
 	Validation   map[string]interface{} `json:"validation,omitempty"`

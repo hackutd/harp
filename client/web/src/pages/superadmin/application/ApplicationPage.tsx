@@ -25,7 +25,7 @@ import { SchemaEditor } from "./components/SchemaEditor";
 import { useApplicationSchemaStore } from "./store";
 
 export default function ApplicationPage() {
-  const { fields, loading, saving, fetchSchema, saveSchema } =
+  const { fields, sections, loading, saving, fetchSchema, saveSchema } =
     useApplicationSchemaStore();
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function ApplicationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-0">
-          <ApplicationPreview fields={fields} />
+          <ApplicationPreview fields={fields} sections={sections} />
         </CardContent>
       </Card>
 

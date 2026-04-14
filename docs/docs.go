@@ -4751,6 +4751,12 @@ const docTemplate = `{
                 "section": {
                     "type": "string"
                 },
+                "section_label": {
+                    "type": "string"
+                },
+                "section_order": {
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string"
                 },

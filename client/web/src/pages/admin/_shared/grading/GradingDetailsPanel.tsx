@@ -5,13 +5,8 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchApplicationResumeURL } from "@/pages/admin/all-applicants/api";
 import {
-  DemographicsSection,
-  EducationSection,
-  EventPreferencesSection,
-  ExperienceSection,
   LinksSection,
-  PersonalInfoSection,
-  ShortAnswersSection,
+  SchemaDetailRenderer,
   TimelineSection,
 } from "@/pages/admin/all-applicants/components/detail-sections";
 import { errorAlert } from "@/shared/lib/api";
@@ -72,12 +67,7 @@ export const GradingDetailsPanel = memo(function GradingDetailsPanel({
 
   return (
     <div className="space-y-8 p-8 pb-10 text-base">
-      <PersonalInfoSection application={application} />
-      <DemographicsSection application={application} />
-      <EducationSection application={application} />
-      <ExperienceSection application={application} />
-      <ShortAnswersSection application={application} />
-      <EventPreferencesSection application={application} />
+      <SchemaDetailRenderer application={application} />
       <LinksSection
         application={application}
         onViewResume={handleViewResume}

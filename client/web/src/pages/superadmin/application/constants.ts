@@ -1,22 +1,4 @@
-import type { FieldType, SectionName } from "@/types";
-
-export const SECTION_ORDER: SectionName[] = [
-  "personal",
-  "education",
-  "links",
-  "experience",
-  "short_answers",
-  "logistics",
-];
-
-export const SECTION_LABELS: Record<SectionName, string> = {
-  personal: "Personal Information",
-  education: "Education",
-  links: "Links & Profiles",
-  experience: "Experience",
-  short_answers: "Short Answer Questions",
-  logistics: "Event Logistics",
-};
+import type { FieldType } from "@/types";
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   text: "Text",

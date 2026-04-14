@@ -96,7 +96,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                 <TableCell>{review.university ?? "-"}</TableCell>
                 <TableCell>{review.major ?? "-"}</TableCell>
                 <TableCell>{review.country_of_residence ?? "-"}</TableCell>
-                <TableCell>{review.hackathons_attended_count ?? "-"}</TableCell>
+                <TableCell>{review.hackathons_attended ?? "-"}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {review[dateField]
                     ? new Date(review[dateField]!).toLocaleDateString()

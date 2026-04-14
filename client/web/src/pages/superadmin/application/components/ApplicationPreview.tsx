@@ -1,9 +1,9 @@
+import { groupFieldsBySection, type SectionDef } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
-
-import { SECTION_LABELS, SECTION_ORDER } from "../constants";
 
 interface ApplicationPreviewProps {
   fields: ApplicationSchemaField[];
+  sections: SectionDef[];
 }
 
 function PreviewSection({
@@ -138,13 +138,15 @@ function renderField(field: ApplicationSchemaField) {
   }
 }
 
-export function ApplicationPreview({ fields }: ApplicationPreviewProps) {
-  const sectionsWithFields = SECTION_ORDER.filter((section) =>
-    fields.some((f) => f.section === section),
+export function ApplicationPreview({ fields, sections }: ApplicationPreviewProps) {
+  const grouped = groupFieldsBySection(fields);
+
+  const sectionsWithFields = sections.filter(
+    (s) => grouped[s.id] && grouped[s.id].length > 0,
   );
 
   const stepPills = [
-    ...sectionsWithFields.map((s) => SECTION_LABELS[s]),
+    ...sectionsWithFields.map((s) => s.label),
     "Agreements",
   ];
 
@@ -164,12 +166,10 @@ export function ApplicationPreview({ fields }: ApplicationPreviewProps) {
 
       {/* Dynamic sections from schema */}
       {sectionsWithFields.map((section) => {
-        const sectionFields = fields
-          .filter((f) => f.section === section)
-          .sort((a, b) => a.display_order - b.display_order);
+        const sectionFields = grouped[section.id] ?? [];
 
         return (
-          <PreviewSection key={section} title={SECTION_LABELS[section]}>
+          <PreviewSection key={section.id} title={section.label}>
             {sectionFields.map(renderField)}
           </PreviewSection>
         );

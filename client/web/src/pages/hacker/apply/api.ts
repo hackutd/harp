@@ -1,6 +1,14 @@
 import { deleteRequest, patchRequest, postRequest } from "@/shared/lib/api";
 import type { ApiResponse, Application } from "@/types";
 
+export interface UpdateApplicationPayload {
+  responses?: Record<string, unknown>;
+  resume_path?: string;
+  ack_mlh_coc?: boolean;
+  ack_mlh_privacy?: boolean;
+  opt_in_mlh_emails?: boolean;
+}
+
 const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
 const UPLOAD_SIZE_RANGE_HEADER = `0,${MAX_RESUME_SIZE_BYTES}`;
 
@@ -24,7 +32,7 @@ function unwrapPatchedApplication(
 }
 
 export async function updateMyApplication(
-  payload: Record<string, unknown>,
+  payload: UpdateApplicationPayload,
 ): Promise<ApiResponse<Application>> {
   const res = await patchRequest<Application | DataEnvelope<Application>>(
     "/applications/me",

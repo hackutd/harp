@@ -9,30 +9,17 @@ export type FieldType =
   | "checkbox"
   | "phone";
 
-export type SectionName =
-  | "personal"
-  | "education"
-  | "links"
-  | "experience"
-  | "short_answers"
-  | "logistics";
-
 export interface ApplicationSchemaField {
   id: string;
   type: FieldType;
   label: string;
   required: boolean;
-  section: SectionName;
+  section: string;
+  section_label?: string;
+  section_order?: number;
   display_order: number;
   options?: string[];
   validation?: Record<string, unknown>;
-}
-
-export interface ShortAnswerQuestion {
-  id: string;
-  question: string;
-  required: boolean;
-  display_order: number;
 }
 
 export type ApplicationStatus =
@@ -61,7 +48,7 @@ export interface Review {
   university: string | null;
   major: string | null;
   country_of_residence: string | null;
-  hackathons_attended_count: number | null;
+  hackathons_attended: number | null;
 }
 
 export interface PendingReviewsResponse {
@@ -92,37 +79,21 @@ export interface Application {
   id: string;
   user_id: string;
   status: ApplicationStatus;
-  first_name: string | null;
-  last_name: string | null;
-  phone_e164: string | null;
-  age: number | null;
-  country_of_residence: string | null;
-  gender: string | null;
-  race: string | null;
-  ethnicity: string | null;
-  university: string | null;
-  major: string | null;
-  level_of_study: string | null;
-  short_answer_responses: Record<string, string> | null;
-  short_answer_questions: ShortAnswerQuestion[];
-  hackathons_attended_count: number | null;
-  software_experience_level: string | null;
-  heard_about: string | null;
-  shirt_size: string | null;
-  dietary_restrictions: string[];
-  accommodations: string | null;
-  github: string | null;
-  linkedin: string | null;
-  website: string | null;
+  responses: Record<string, unknown>;
+  application_schema: ApplicationSchemaField[];
   resume_path: string | null;
-  ack_application: boolean;
+  ai_percent: number | null;
   ack_mlh_coc: boolean;
   ack_mlh_privacy: boolean;
   opt_in_mlh_emails: boolean;
+  accept_votes: number;
+  reject_votes: number;
+  waitlist_votes: number;
+  reviews_assigned: number;
+  reviews_completed: number;
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
-  ai_percent: number | null;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -147,17 +118,24 @@ export interface ApplicationListItem {
   status: ApplicationStatus;
   first_name: string | null;
   last_name: string | null;
-  phone_e164: string | null;
+  phone: string | null;
   age: number | null;
   country_of_residence: string | null;
   gender: string | null;
   university: string | null;
   major: string | null;
   level_of_study: string | null;
-  hackathons_attended_count: number | null;
+  hackathons_attended: number | null;
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  accept_votes: number;
+  reject_votes: number;
+  waitlist_votes: number;
+  reviews_assigned: number;
+  reviews_completed: number;
+  ai_percent: number | null;
+  has_resume: boolean;
 }
 
 // Paginated response from admin applications endpoint
