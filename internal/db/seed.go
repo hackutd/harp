@@ -153,9 +153,8 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 	query := `
 		INSERT INTO applications (
 			user_id, status, responses,
-			ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 			submitted_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		) VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
 
@@ -194,6 +193,9 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 			"saq_2":                "I have attended 2 hackathons and learned a lot about teamwork.",
 			"saq_3":                "I hope to learn new technologies and frameworks.",
 			"saq_4":                "I am looking forward to the workshops and networking.",
+			"ack_mlh_coc":          submitted,
+			"ack_mlh_privacy":      submitted,
+			"opt_in_mlh_emails":    rng.Intn(2) == 0,
 		}
 
 		responsesJSON, err := json.Marshal(responses)
@@ -204,7 +206,6 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 		var id string
 		err = tx.QueryRow(query,
 			userID, status, responsesJSON,
-			submitted, submitted, rng.Intn(2) == 0,
 			submittedAt,
 		).Scan(&id)
 		if err != nil {

@@ -143,10 +143,6 @@ type Application struct {
 	ResumePath *string         `json:"resume_path"`
 	AIPercent  *int16          `json:"ai_percent"`
 
-	AckMLHCOC      bool `json:"ack_mlh_coc"`
-	AckMLHPrivacy  bool `json:"ack_mlh_privacy"`
-	OptInMLHEmails bool `json:"opt_in_mlh_emails"`
-
 	AcceptVotes      int `json:"accept_votes"`
 	RejectVotes      int `json:"reject_votes"`
 	WaitlistVotes    int `json:"waitlist_votes"`
@@ -165,7 +161,6 @@ type ApplicationsStore struct {
 // applicationSelectCols is the standard SELECT for loading a full Application
 const applicationSelectCols = `
 	id, user_id, status, responses, resume_path, ai_percent,
-	ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
 	submitted_at, created_at, updated_at`
 
@@ -173,7 +168,6 @@ const applicationSelectCols = `
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
 	return row.Scan(
 		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
-		&app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
 	)
@@ -222,14 +216,11 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 	query := `
 		INSERT INTO applications (user_id)
 		VALUES ($1)
-		RETURNING id, status, responses,
-				  ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-				  created_at, updated_at
+		RETURNING id, status, responses, created_at, updated_at
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.UserID).Scan(
 		&app.ID, &app.Status, &app.Responses,
-		&app.AckMLHCOC, &app.AckMLHPrivacy, &app.OptInMLHEmails,
 		&app.CreatedAt, &app.UpdatedAt,
 	)
 	if err != nil {
@@ -249,10 +240,7 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 	query := `
 		UPDATE applications SET
 			responses = $2,
-			resume_path = $3,
-			ack_mlh_coc = $4,
-			ack_mlh_privacy = $5,
-			opt_in_mlh_emails = $6
+			resume_path = $3
 		WHERE id = $1
 		RETURNING updated_at
 	`
@@ -260,7 +248,6 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 	err := s.db.QueryRowContext(ctx, query,
 		app.ID,
 		app.Responses, app.ResumePath,
-		app.AckMLHCOC, app.AckMLHPrivacy, app.OptInMLHEmails,
 	).Scan(&app.UpdatedAt)
 
 	if err != nil {

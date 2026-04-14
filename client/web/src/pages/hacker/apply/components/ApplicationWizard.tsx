@@ -64,17 +64,11 @@ function transformApplicationToFormData(
     }
   }
 
-  // Ack fields live outside responses
-  data.ack_mlh_coc = app.ack_mlh_coc ?? false;
-  data.ack_mlh_privacy = app.ack_mlh_privacy ?? false;
-  data.opt_in_mlh_emails = app.opt_in_mlh_emails ?? false;
-
   return data;
 }
 
 /**
- * Transform form data into the API payload shape:
- * { responses: {...}, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails }
+ * Transform form data into the API payload shape: { responses: {...} }
  */
 function transformFormDataToPayload(
   data: Record<string, unknown>,
@@ -89,12 +83,7 @@ function transformFormDataToPayload(
     }
   }
 
-  return {
-    responses,
-    ack_mlh_coc: data.ack_mlh_coc as boolean | undefined,
-    ack_mlh_privacy: data.ack_mlh_privacy as boolean | undefined,
-    opt_in_mlh_emails: data.opt_in_mlh_emails as boolean | undefined,
-  };
+  return { responses };
 }
 
 export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
@@ -166,12 +155,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   const form = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      ...buildDefaultValues(schemaFields),
-      ack_mlh_coc: false,
-      ack_mlh_privacy: false,
-      opt_in_mlh_emails: false,
-    },
+    defaultValues: buildDefaultValues(schemaFields),
     mode: "onTouched",
   });
 
@@ -192,13 +176,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         const schema = app.application_schema ?? [];
         const formData = transformApplicationToFormData(app, schema);
         const defaults = buildDefaultValues(schema);
-        form.reset({
-          ...defaults,
-          ack_mlh_coc: false,
-          ack_mlh_privacy: false,
-          opt_in_mlh_emails: false,
-          ...formData,
-        });
+        form.reset({ ...defaults, ...formData });
       }
 
       if (enabledRes.status === 200 && enabledRes.data) {
@@ -222,8 +200,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const getCurrentStepFieldIds = (): string[] => {
     const stepDef = steps[currentStep];
     if (!stepDef || stepDef.id === "review") {
-      // Review step: validate ack fields
-      return ["ack_mlh_coc", "ack_mlh_privacy"];
+      return [];
     }
     const section = stepDef.id;
     return (grouped[section] ?? []).map((f) => f.id);

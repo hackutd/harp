@@ -1,3 +1,4 @@
+import { createElement, type ReactNode } from "react";
 import { z } from "zod";
 
 import type { ApplicationSchemaField } from "@/types";
@@ -10,6 +11,7 @@ const DEFAULT_SECTION_LABELS: Record<string, string> = {
   experience: "Experience",
   short_answers: "Short Answer Questions",
   logistics: "Event Logistics",
+  agreements: "Agreements",
 };
 
 export interface SectionDef {
@@ -137,6 +139,11 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
     case "multi_select":
       return z.array(z.string()).optional().default([]);
     case "checkbox":
+      if (field.required) {
+        return z.literal(true, {
+          message: `${stripLabelLinks(field.label)} is required`,
+        });
+      }
       return z.boolean().optional().default(false);
     default:
       return z.string().optional().default("");
@@ -195,4 +202,49 @@ export function formatResponseValue(
     return String(value);
   }
   return String(value);
+}
+
+const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+
+/** Strip markdown-style links from a label, keeping only the text. */
+export function stripLabelLinks(label: string): string {
+  return label.replace(LINK_RE, "$1");
+}
+
+/** Parse markdown-style [text](url) links in a label and return React nodes. */
+export function renderLabel(label: string): ReactNode {
+  if (!label.includes("[")) return label;
+
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  const re = new RegExp(LINK_RE.source, LINK_RE.flags);
+  while ((match = re.exec(label)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(label.slice(lastIndex, match.index));
+    }
+    parts.push(
+      createElement(
+        "a",
+        {
+          key: key++,
+          href: match[2],
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className:
+            "underline underline-offset-4 text-blue-600 hover:text-blue-800",
+        },
+        match[1],
+      ),
+    );
+    lastIndex = re.lastIndex;
+  }
+
+  if (lastIndex < label.length) {
+    parts.push(label.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : label;
 }

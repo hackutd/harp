@@ -1,26 +1,11 @@
-import { z } from "zod";
-
 import { buildZodSchema } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
 
-// Acknowledgment fields — top-level on Application, not in responses JSONB
-export const acknowledgmentsSchema = z.object({
-  ack_mlh_coc: z.boolean().refine((val) => val === true, {
-    message: "You must agree to the MLH Code of Conduct",
-  }),
-  ack_mlh_privacy: z.boolean().refine((val) => val === true, {
-    message: "You must authorize data sharing with MLH",
-  }),
-  opt_in_mlh_emails: z.boolean().optional().default(false),
-});
-
 /**
- * Build the full application form schema from the dynamic application_schema
- * plus the static acknowledgment fields.
+ * Build the full application form schema from the dynamic application_schema.
  */
 export function buildApplicationSchema(fields: ApplicationSchemaField[]) {
-  const responsesSchema = buildZodSchema(fields);
-  return responsesSchema.merge(acknowledgmentsSchema);
+  return buildZodSchema(fields);
 }
 
 // Select options — provide human-readable labels for field values

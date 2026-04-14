@@ -13,11 +13,8 @@ import (
 )
 
 type UpdateApplicationPayload struct {
-	Responses      json.RawMessage `json:"responses"`
-	ResumePath     *string         `json:"resume_path"`
-	AckMLHCOC      *bool           `json:"ack_mlh_coc"`
-	AckMLHPrivacy  *bool           `json:"ack_mlh_privacy"`
-	OptInMLHEmails *bool           `json:"opt_in_mlh_emails"`
+	Responses  json.RawMessage `json:"responses"`
+	ResumePath *string         `json:"resume_path"`
 }
 
 // ApplicationWithSchema embeds the schema in the response for the hacker
@@ -136,15 +133,6 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	if req.ResumePath != nil {
 		application.ResumePath = req.ResumePath
 	}
-	if req.AckMLHCOC != nil {
-		application.AckMLHCOC = *req.AckMLHCOC
-	}
-	if req.AckMLHPrivacy != nil {
-		application.AckMLHPrivacy = *req.AckMLHPrivacy
-	}
-	if req.OptInMLHEmails != nil {
-		application.OptInMLHEmails = *req.OptInMLHEmails
-	}
 
 	if err := app.store.Application.Update(r.Context(), application); err != nil {
 		app.internalServerError(w, r, err)
@@ -210,14 +198,6 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 
 	// Validate responses against schema
 	validationErrors := validateResponses(schema, responses)
-
-	// Validate acknowledgments
-	if !application.AckMLHCOC {
-		validationErrors = append(validationErrors, "ack_mlh_coc is required")
-	}
-	if !application.AckMLHPrivacy {
-		validationErrors = append(validationErrors, "ack_mlh_privacy is required")
-	}
 
 	if len(validationErrors) > 0 {
 		app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
@@ -313,8 +293,11 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 			}
 
 		case "checkbox":
-			if _, ok := val.(bool); !ok {
+			b, ok := val.(bool)
+			if !ok {
 				errs = append(errs, field.ID+" must be a boolean")
+			} else if field.Required && !b {
+				errs = append(errs, field.ID+" must be checked")
 			}
 		}
 	}

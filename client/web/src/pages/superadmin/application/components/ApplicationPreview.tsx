@@ -1,4 +1,4 @@
-import { groupFieldsBySection, type SectionDef } from "@/shared/lib/schema-utils";
+import { groupFieldsBySection, renderLabel, type SectionDef } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
 
 interface ApplicationPreviewProps {
@@ -72,7 +72,7 @@ function PreviewCheckbox({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="size-4 rounded border border-gray-300 bg-white shrink-0" />
-      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-gray-500">{renderLabel(label)}</span>
     </div>
   );
 }
@@ -145,10 +145,7 @@ export function ApplicationPreview({ fields, sections }: ApplicationPreviewProps
     (s) => grouped[s.id] && grouped[s.id].length > 0,
   );
 
-  const stepPills = [
-    ...sectionsWithFields.map((s) => s.label),
-    "Agreements",
-  ];
+  const stepPills = sectionsWithFields.map((s) => s.label);
 
   return (
     <div className="p-6 space-y-8">
@@ -175,15 +172,6 @@ export function ApplicationPreview({ fields, sections }: ApplicationPreviewProps
         );
       })}
 
-      {/* Hardcoded Agreements section (not part of configurable schema) */}
-      <PreviewSection title="Agreements">
-        <div className="space-y-3">
-          <PreviewCheckbox label="I understand that this is an application and does not guarantee admission. *" />
-          <PreviewCheckbox label="I have read and agree to the MLH Code of Conduct. *" />
-          <PreviewCheckbox label="I authorize sharing my information with MLH per their Privacy Policy. *" />
-          <PreviewCheckbox label="I authorize MLH to send me occasional emails about events and opportunities." />
-        </div>
-      </PreviewSection>
     </div>
   );
 }

@@ -18,11 +18,6 @@ CREATE TABLE IF NOT EXISTS applications (
     -- AI detection percentage (set by admin tooling, not by the applicant)
     ai_percent SMALLINT,
 
-    -- MLH acknowledgements (always required for submission, not configurable)
-    ack_mlh_coc BOOLEAN NOT NULL DEFAULT FALSE,
-    ack_mlh_privacy BOOLEAN NOT NULL DEFAULT FALSE,
-    opt_in_mlh_emails BOOLEAN NOT NULL DEFAULT FALSE,
-
     -- Review vote counts (denormalized, maintained by trigger on application_reviews)
     accept_votes INT NOT NULL DEFAULT 0,
     reject_votes INT NOT NULL DEFAULT 0,
@@ -37,7 +32,7 @@ CREATE TABLE IF NOT EXISTS applications (
     CONSTRAINT applications_ai_percent_check CHECK (ai_percent IS NULL OR (ai_percent >= 0 AND ai_percent <= 100)),
     CONSTRAINT applications_submitted_check CHECK (
         status <> 'submitted'
-        OR (submitted_at IS NOT NULL AND ack_mlh_coc AND ack_mlh_privacy)
+        OR submitted_at IS NOT NULL
     )
 );
 

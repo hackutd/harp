@@ -27,10 +27,9 @@ func newCompleteApplication(userID string) *store.Application {
 			"ethnicity":"Not Hispanic","university":"UT Dallas","major":"CS",
 			"level_of_study":"Undergraduate","hackathons_attended":2,
 			"experience_level":"Intermediate","heard_about":"Friend",
-			"shirt_size":"M"
+			"shirt_size":"M",
+			"ack_mlh_coc":true,"ack_mlh_privacy":true
 		}`),
-		AckMLHCOC:     true,
-		AckMLHPrivacy: true,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}

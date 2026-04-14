@@ -83,9 +83,6 @@ export interface Application {
   application_schema: ApplicationSchemaField[];
   resume_path: string | null;
   ai_percent: number | null;
-  ack_mlh_coc: boolean;
-  ack_mlh_privacy: boolean;
-  opt_in_mlh_emails: boolean;
   accept_votes: number;
   reject_votes: number;
   waitlist_votes: number;

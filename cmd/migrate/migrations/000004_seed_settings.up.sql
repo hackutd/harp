@@ -30,7 +30,11 @@ INSERT INTO settings (key, value) VALUES ('application_schema', '[
 
     {"id": "shirt_size",             "type": "select",       "label": "Shirt Size",              "required": false, "section": "logistics",  "display_order": 50, "options": ["XS", "S", "M", "L", "XL", "XXL"]},
     {"id": "dietary_restrictions",   "type": "multi_select", "label": "Dietary Restrictions",    "required": false, "section": "logistics",  "display_order": 51, "options": ["Vegan", "Vegetarian", "Halal", "Nuts", "Fish", "Wheat", "Dairy", "Eggs", "No Beef", "No Pork"]},
-    {"id": "accommodations",         "type": "textarea",     "label": "Accommodations",          "required": false, "section": "logistics",  "display_order": 52}
+    {"id": "accommodations",         "type": "textarea",     "label": "Accommodations",          "required": false, "section": "logistics",  "display_order": 52},
+
+    {"id": "ack_mlh_coc",           "type": "checkbox",     "label": "I have read and agree to the [MLH Code of Conduct](https://mlh.io/code-of-conduct)",                                                                                                                                                                             "required": true,  "section": "agreements", "display_order": 60},
+    {"id": "ack_mlh_privacy",       "type": "checkbox",     "label": "I authorize sharing my application/registration information with Major League Hacking for event administration, ranking, and MLH administration in-line with the [MLH Privacy Policy](https://mlh.io/privacy). I further agree to the terms of both the [MLH Contest Terms and Conditions](https://github.com/MLH/mlh-policies/blob/main/contest-terms.md) and the [MLH Privacy Policy](https://mlh.io/privacy)", "required": true,  "section": "agreements", "display_order": 61},
+    {"id": "opt_in_mlh_emails",     "type": "checkbox",     "label": "I authorize MLH to send me occasional emails about relevant events, career opportunities, and community announcements",                                                                                                          "required": false, "section": "agreements", "display_order": 62}
 ]'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 

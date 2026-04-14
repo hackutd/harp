@@ -3872,12 +3872,6 @@ const docTemplate = `{
                 "accept_votes": {
                     "type": "integer"
                 },
-                "ack_mlh_coc": {
-                    "type": "boolean"
-                },
-                "ack_mlh_privacy": {
-                    "type": "boolean"
-                },
                 "ai_percent": {
                     "type": "integer"
                 },
@@ -3892,9 +3886,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
-                },
-                "opt_in_mlh_emails": {
-                    "type": "boolean"
                 },
                 "reject_votes": {
                     "type": "integer"
@@ -4488,12 +4479,6 @@ const docTemplate = `{
                 "accept_votes": {
                     "type": "integer"
                 },
-                "ack_mlh_coc": {
-                    "type": "boolean"
-                },
-                "ack_mlh_privacy": {
-                    "type": "boolean"
-                },
                 "ai_percent": {
                     "type": "integer"
                 },
@@ -4502,9 +4487,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
-                },
-                "opt_in_mlh_emails": {
-                    "type": "boolean"
                 },
                 "reject_votes": {
                     "type": "integer"

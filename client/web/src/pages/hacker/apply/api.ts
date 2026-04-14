@@ -4,9 +4,6 @@ import type { ApiResponse, Application } from "@/types";
 export interface UpdateApplicationPayload {
   responses?: Record<string, unknown>;
   resume_path?: string;
-  ack_mlh_coc?: boolean;
-  ack_mlh_privacy?: boolean;
-  opt_in_mlh_emails?: boolean;
 }
 
 const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;

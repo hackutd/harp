@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { renderLabel } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -286,7 +287,7 @@ function SchemaFormField({
               </FormControl>
               <div className="space-y-1 leading-none">
                 <FormLabel className="font-normal">
-                  {field.label}
+                  {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>
                 <FormMessage />

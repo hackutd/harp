@@ -2,14 +2,6 @@ import { Pencil } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import {
   deriveSections,
   formatResponseValue,
@@ -118,105 +110,6 @@ export function ReviewStep({
         );
       })}
 
-      {/* Acknowledgments */}
-      <div className="border rounded-lg p-4 space-y-4">
-        <h3 className="font-semibold">Agreements & Acknowledgments</h3>
-
-        <FormField
-          control={form.control}
-          name="ack_mlh_coc"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="font-normal">
-                  <span className="font-medium">Code of Conduct:</span> I have
-                  read and agree to the{" "}
-                  <a
-                    href="https://static.mlh.io/docs/mlh-code-of-conduct.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    MLH Code of Conduct
-                  </a>
-                  . *
-                </FormLabel>
-                <FormMessage />
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="ack_mlh_privacy"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="font-normal">
-                  <span className="font-medium">Privacy Policy:</span> I
-                  authorize you to share my application/registration information
-                  with Major League Hacking for event administration, ranking,
-                  and MLH administration in-line with the{" "}
-                  <a
-                    href="https://mlh.io/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    MLH Privacy Policy
-                  </a>
-                  . I further agree to the terms of both the{" "}
-                  <a
-                    href="https://github.com/MLH/mlh-policies/blob/main/contest-terms.md"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    MLH Contest Terms and Conditions
-                  </a>{" "}
-                  and the MLH Privacy Policy. *
-                </FormLabel>
-                <FormMessage />
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="opt_in_mlh_emails"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="font-normal">
-                  <span className="font-medium">Notifications (optional):</span>{" "}
-                  I authorize MLH to send me occasional emails about relevant
-                  events, career opportunities, and community announcements.
-                </FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-      </div>
     </div>
   );
 }
