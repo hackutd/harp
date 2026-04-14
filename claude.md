@@ -53,6 +53,17 @@ Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CL
 - **Pagination:** Cursor-based with base64-encoded JSON cursors
 - **Migrations:** SQL files in `cmd/migrate/migrations/`, managed with `golang-migrate`
 
+#### Migration Naming Convention
+
+Format: `{6-digit-number}_{action}_{subject}.{up|down}.sql`
+
+- `create` — foundational schema objects (infrastructure, core tables, initial types)
+- `add` — new features, tables, columns, or triggers added after initial setup
+- `alter` — modifications to existing schema objects
+- `seed` — initial/default data insertion
+
+Each migration must be isolated to one concern — one table, one type, or one logical operation. Triggers and indexes stay with their parent table. Enum types get their own migration, separate from the table that uses them.
+
 #### Go Handler Pattern
 
 Handlers are methods on `*application`:

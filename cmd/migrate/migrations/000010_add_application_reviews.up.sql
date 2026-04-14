@@ -1,9 +1,3 @@
-DO $$ BEGIN
-    CREATE TYPE review_vote AS ENUM ('accept', 'reject', 'waitlist');
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-END $$;
-
 CREATE TABLE IF NOT EXISTS application_reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
