@@ -1,5 +1,14 @@
-import { groupFieldsBySection, renderLabel, type SectionDef } from "@/shared/lib/schema-utils";
+import { Trash2, Upload } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  groupFieldsBySection,
+  renderLabel,
+  type SectionDef,
+} from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
+
+const RESUME_PREVIEW_MAX_MB = 5;
 
 interface ApplicationPreviewProps {
   fields: ApplicationSchemaField[];
@@ -77,6 +86,33 @@ function PreviewCheckbox({ label }: { label: string }) {
   );
 }
 
+function PreviewResumeCard() {
+  return (
+    <div className="rounded-lg border p-4 space-y-3">
+      <div>
+        <h3 className="font-medium">Resume (Optional)</h3>
+        <p className="text-sm text-muted-foreground">
+          Upload a PDF up to {RESUME_PREVIEW_MAX_MB} MB.
+        </p>
+      </div>
+
+      <p className="text-sm">No resume uploaded.</p>
+
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled>
+          <Upload className="w-4 h-4 mr-2" />
+          Upload Resume
+        </Button>
+
+        <Button type="button" variant="outline" disabled>
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete Resume
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function renderField(field: ApplicationSchemaField) {
   switch (field.type) {
     case "text":
@@ -132,20 +168,22 @@ function renderField(field: ApplicationSchemaField) {
         </div>
       );
     case "checkbox":
-      return (
-        <PreviewCheckbox key={field.id} label={field.label} />
-      );
+      return <PreviewCheckbox key={field.id} label={field.label} />;
   }
 }
 
-export function ApplicationPreview({ fields, sections }: ApplicationPreviewProps) {
+export function ApplicationPreview({
+  fields,
+  sections,
+}: ApplicationPreviewProps) {
   const grouped = groupFieldsBySection(fields);
 
-  const sectionsWithFields = sections.filter(
-    (s) => grouped[s.id] && grouped[s.id].length > 0,
+  const previewSections = sections.filter(
+    (section) =>
+      (grouped[section.id]?.length ?? 0) > 0 || section.id === "links",
   );
 
-  const stepPills = sectionsWithFields.map((s) => s.label);
+  const stepPills = previewSections.map((section) => section.label);
 
   return (
     <div className="p-6 space-y-8">
@@ -162,16 +200,16 @@ export function ApplicationPreview({ fields, sections }: ApplicationPreviewProps
       </div>
 
       {/* Dynamic sections from schema */}
-      {sectionsWithFields.map((section) => {
+      {previewSections.map((section) => {
         const sectionFields = grouped[section.id] ?? [];
 
         return (
           <PreviewSection key={section.id} title={section.label}>
             {sectionFields.map(renderField)}
+            {section.id === "links" && <PreviewResumeCard />}
           </PreviewSection>
         );
       })}
-
     </div>
   );
 }

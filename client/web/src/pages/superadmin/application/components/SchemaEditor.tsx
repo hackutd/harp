@@ -1,9 +1,4 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -62,17 +57,13 @@ export function SchemaEditor() {
         grouped by section.
       </p>
 
-      <Accordion
-        type="multiple"
-        defaultValue={sections.map((s) => s.id)}
-        className="space-y-2"
-      >
+      <Accordion type="multiple" className="space-y-2">
         {fieldsBySection.map(
           ({ section, label, fields: sectionFields }, sectionIdx) => (
             <AccordionItem
               key={section}
               value={section}
-              className="border rounded-md px-3"
+              className="border rounded-md px-3 last:border-b"
             >
               <AccordionTrigger className="py-3 hover:no-underline cursor-pointer">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
