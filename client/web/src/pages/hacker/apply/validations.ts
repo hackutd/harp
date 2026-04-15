@@ -1,138 +1,14 @@
-import { z } from "zod";
+import { buildZodSchema } from "@/shared/lib/schema-utils";
+import type { ApplicationSchemaField } from "@/types";
 
-// Step 1: Personal Info
-export const personalInfoSchema = z.object({
-  first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
-  phone_e164: z
-    .string()
-    .min(1, "Phone number is required")
-    .regex(
-      /^\+[1-9]\d{1,14}$/,
-      "Phone must be in E.164 format (e.g., +12025551234)",
-    ),
-  age: z.coerce
-    .number({ error: "Age is required" })
-    .int("Age must be a whole number")
-    .min(1, "Age is required")
-    .max(150, "Age must be 150 or less"),
-  country_of_residence: z.string().min(1, "Country is required"),
-  gender: z.string().min(1, "Gender is required"),
-  race: z.string().min(1, "Race is required"),
-  ethnicity: z.string().min(1, "Ethnicity is required"),
-});
+/**
+ * Build the full application form schema from the dynamic application_schema.
+ */
+export function buildApplicationSchema(fields: ApplicationSchemaField[]) {
+  return buildZodSchema(fields);
+}
 
-// Step 2: School Info
-export const schoolInfoSchema = z.object({
-  university: z.string().min(1, "University is required"),
-  major: z.string().min(1, "Major is required"),
-  level_of_study: z.string().min(1, "Level of study is required"),
-});
-
-// Step 3: Hackathon Experience
-export const experienceSchema = z.object({
-  hackathons_attended_count: z.coerce
-    .number({ error: "Number of hackathons is required" })
-    .int("Must be a whole number")
-    .min(0, "Must be 0 or more"),
-  software_experience_level: z.string().min(1, "Experience level is required"),
-  heard_about: z.string().min(1, "This field is required"),
-});
-
-// Step 4: Short Answers (dynamic questions - validation at submit time)
-export const shortAnswerSchema = z.object({
-  short_answer_responses: z.record(z.string(), z.string()).default({}),
-});
-
-// Step 5: Event Info
-export const eventInfoSchema = z.object({
-  shirt_size: z.string().min(1, "Shirt size is required"),
-  dietary_restrictions: z
-    .array(
-      z.enum([
-        "vegan",
-        "vegetarian",
-        "halal",
-        "nuts",
-        "fish",
-        "wheat",
-        "dairy",
-        "eggs",
-        "no_beef",
-        "no_pork",
-      ]),
-    )
-    .optional()
-    .default([]),
-  accommodations: z.string().optional().default(""),
-});
-
-// Step 6: Sponsor Info (all optional)
-export const sponsorInfoSchema = z.object({
-  github: z.url("Must be a valid URL").optional().or(z.literal("")),
-  linkedin: z.url("Must be a valid URL").optional().or(z.literal("")),
-  website: z.url("Must be a valid URL").optional().or(z.literal("")),
-});
-
-// Step 7: Review - Acknowledgments
-export const acknowledgmentsSchema = z.object({
-  ack_application: z.boolean().refine((val) => val === true, {
-    message: "You must acknowledge this disclaimer",
-  }),
-  ack_mlh_coc: z.boolean().refine((val) => val === true, {
-    message: "You must agree to the MLH Code of Conduct",
-  }),
-  ack_mlh_privacy: z.boolean().refine((val) => val === true, {
-    message: "You must authorize data sharing with MLH",
-  }),
-  opt_in_mlh_emails: z.boolean().optional().default(false),
-});
-
-// Combined schema for full form
-export const applicationSchema = z.object({
-  ...personalInfoSchema.shape,
-  ...schoolInfoSchema.shape,
-  ...experienceSchema.shape,
-  ...shortAnswerSchema.shape,
-  ...eventInfoSchema.shape,
-  ...sponsorInfoSchema.shape,
-  ...acknowledgmentsSchema.shape,
-});
-
-export type ApplicationFormData = z.infer<typeof applicationSchema>;
-
-// Step field mappings for partial validation
-export const STEP_FIELDS: Record<number, (keyof ApplicationFormData)[]> = {
-  0: [
-    "first_name",
-    "last_name",
-    "phone_e164",
-    "age",
-    "country_of_residence",
-    "gender",
-    "race",
-    "ethnicity",
-  ],
-  1: ["university", "major", "level_of_study"],
-  2: ["hackathons_attended_count", "software_experience_level", "heard_about"],
-  3: ["short_answer_responses"],
-  4: ["shirt_size", "dietary_restrictions", "accommodations"],
-  5: ["github", "linkedin", "website"],
-  6: ["ack_application", "ack_mlh_coc", "ack_mlh_privacy", "opt_in_mlh_emails"],
-};
-
-// Step schemas for per-step validation
-export const stepSchemas = [
-  personalInfoSchema,
-  schoolInfoSchema,
-  experienceSchema,
-  shortAnswerSchema,
-  eventInfoSchema,
-  sponsorInfoSchema,
-  acknowledgmentsSchema,
-];
-
-// Select options
+// Select options — provide human-readable labels for field values
 export const GENDER_OPTIONS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
@@ -209,7 +85,6 @@ export const HEARD_ABOUT_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
-// Country list (common countries at top)
 export const COUNTRY_OPTIONS = [
   { value: "US", label: "United States" },
   { value: "CA", label: "Canada" },

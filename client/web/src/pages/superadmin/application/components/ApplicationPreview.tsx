@@ -1,9 +1,18 @@
-import { useEffect, useRef } from "react";
+import { Trash2, Upload } from "lucide-react";
 
-import type { ShortAnswerQuestion } from "@/types";
+import { Button } from "@/components/ui/button";
+import {
+  groupFieldsBySection,
+  renderLabel,
+  type SectionDef,
+} from "@/shared/lib/schema-utils";
+import type { ApplicationSchemaField } from "@/types";
+
+const RESUME_PREVIEW_MAX_MB = 5;
 
 interface ApplicationPreviewProps {
-  questions: ShortAnswerQuestion[];
+  fields: ApplicationSchemaField[];
+  sections: SectionDef[];
 }
 
 function PreviewSection({
@@ -72,56 +81,115 @@ function PreviewCheckbox({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="size-4 rounded border border-gray-300 bg-white shrink-0" />
-      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-gray-500">{renderLabel(label)}</span>
     </div>
   );
 }
 
-const DIETARY_OPTIONS = [
-  "Vegan",
-  "Vegetarian",
-  "Halal",
-  "Nut Allergy",
-  "Fish Allergy",
-  "Wheat/Gluten",
-  "Dairy",
-  "Eggs",
-  "No Beef",
-  "No Pork",
-];
+function PreviewResumeCard() {
+  return (
+    <div className="rounded-lg border p-4 space-y-3">
+      <div>
+        <h3 className="font-medium">Resume (Optional)</h3>
+        <p className="text-sm text-muted-foreground">
+          Upload a PDF up to {RESUME_PREVIEW_MAX_MB} MB.
+        </p>
+      </div>
 
-export function ApplicationPreview({ questions }: ApplicationPreviewProps) {
-  const shortAnswersRef = useRef<HTMLDivElement>(null);
-  const hasScrolled = useRef(false);
+      <p className="text-sm">No resume uploaded.</p>
 
-  useEffect(() => {
-    if (
-      questions.length > 0 &&
-      !hasScrolled.current &&
-      shortAnswersRef.current
-    ) {
-      shortAnswersRef.current.scrollIntoView({ behavior: "smooth" });
-      hasScrolled.current = true;
-    }
-  }, [questions]);
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled>
+          <Upload className="w-4 h-4 mr-2" />
+          Upload Resume
+        </Button>
 
-  const sortedQuestions = [...questions].sort(
-    (a, b) => a.display_order - b.display_order,
+        <Button type="button" variant="outline" disabled>
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete Resume
+        </Button>
+      </div>
+    </div>
   );
+}
+
+function renderField(field: ApplicationSchemaField) {
+  switch (field.type) {
+    case "text":
+    case "phone":
+    case "number":
+      return (
+        <PreviewField
+          key={field.id}
+          label={field.label}
+          placeholder={
+            field.type === "phone"
+              ? "+1 (202) 555-1234"
+              : field.type === "number"
+                ? "0"
+                : "Enter..."
+          }
+          required={field.required}
+        />
+      );
+    case "textarea":
+      return (
+        <PreviewTextarea
+          key={field.id}
+          label={field.label}
+          placeholder="Your answer..."
+          required={field.required}
+        />
+      );
+    case "select":
+      return (
+        <PreviewField
+          key={field.id}
+          label={field.label}
+          placeholder="Select..."
+          required={field.required}
+        />
+      );
+    case "multi_select":
+      return (
+        <div key={field.id} className="space-y-1.5">
+          <label className="text-xs font-medium text-gray-700">
+            {field.label}
+            {field.required && <span className="text-gray-400 ml-1">*</span>}
+            <span className="text-gray-400 ml-1 font-normal">
+              — select all that apply
+            </span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(field.options ?? []).map((option) => (
+              <PreviewCheckbox key={option} label={option} />
+            ))}
+          </div>
+        </div>
+      );
+    case "checkbox":
+      return <PreviewCheckbox key={field.id} label={field.label} />;
+  }
+}
+
+export function ApplicationPreview({
+  fields,
+  sections,
+}: ApplicationPreviewProps) {
+  const grouped = groupFieldsBySection(fields);
+
+  const previewSections = sections.filter(
+    (section) =>
+      (grouped[section.id]?.length ?? 0) > 0 || section.id === "links",
+  );
+
+  const stepPills = previewSections.map((section) => section.label);
 
   return (
     <div className="p-6 space-y-8">
       {/* Step pills */}
       <div className="flex gap-1.5 flex-wrap">
-        {[
-          "Personal Info",
-          "School",
-          "Experience",
-          "Short Answers",
-          "Event",
-          "Sponsor",
-          "Agreements",
-        ].map((label) => (
+        {stepPills.map((label) => (
           <span
             key={label}
             className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
@@ -131,128 +199,17 @@ export function ApplicationPreview({ questions }: ApplicationPreviewProps) {
         ))}
       </div>
 
-      {/* 1. Personal Info */}
-      <PreviewSection title="Personal Information">
-        <div className="grid grid-cols-2 gap-3">
-          <PreviewField label="First Name" placeholder="John" required />
-          <PreviewField label="Last Name" placeholder="Doe" required />
-        </div>
-        <PreviewField
-          label="Email"
-          placeholder="From your account — read only"
-        />
-        <PreviewField
-          label="Phone Number"
-          placeholder="+1 (202) 555-1234"
-          required
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <PreviewField label="Age" placeholder="18" required />
-          <PreviewField
-            label="Country of Residence"
-            placeholder="Select..."
-            required
-          />
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <PreviewField label="Gender" placeholder="Select..." required />
-          <PreviewField label="Race" placeholder="Select..." required />
-          <PreviewField label="Ethnicity" placeholder="Select..." required />
-        </div>
-      </PreviewSection>
+      {/* Dynamic sections from schema */}
+      {previewSections.map((section) => {
+        const sectionFields = grouped[section.id] ?? [];
 
-      {/* 2. School Info */}
-      <PreviewSection title="School Information">
-        <PreviewField
-          label="University"
-          placeholder="University of Texas at Dallas"
-          required
-        />
-        <PreviewField label="Major" placeholder="Computer Science" required />
-        <PreviewField label="Level of Study" placeholder="Select..." required />
-      </PreviewSection>
-
-      {/* 3. Experience */}
-      <PreviewSection title="Hackathon Experience">
-        <PreviewField label="Hackathons Attended" placeholder="0" required />
-        <PreviewField
-          label="Software Experience Level"
-          placeholder="Select..."
-          required
-        />
-        <PreviewField
-          label="How did you hear about us?"
-          placeholder="Select..."
-          required
-        />
-      </PreviewSection>
-
-      {/* 4. Short Answers — live from props */}
-      <div ref={shortAnswersRef} />
-      <PreviewSection title="Short Answer Questions">
-        {sortedQuestions.length === 0 ? (
-          <p className="text-xs text-gray-400 italic">
-            No questions configured yet.
-          </p>
-        ) : (
-          sortedQuestions.map((q, i) => (
-            <PreviewTextarea
-              key={q.id}
-              label={q.question || `Question ${i + 1}`}
-              placeholder="Your answer..."
-              required={q.required}
-            />
-          ))
-        )}
-      </PreviewSection>
-
-      {/* 5. Event Info */}
-      <PreviewSection title="Event Information">
-        <PreviewField label="Shirt Size" placeholder="Select..." required />
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-700">
-            Dietary Restrictions
-            <span className="text-gray-400 ml-1 font-normal">
-              — select all that apply
-            </span>
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {DIETARY_OPTIONS.map((label) => (
-              <PreviewCheckbox key={label} label={label} />
-            ))}
-          </div>
-        </div>
-        <PreviewTextarea
-          label="Accommodations"
-          placeholder="List any accessibility needs..."
-        />
-      </PreviewSection>
-
-      {/* 6. Sponsor Info */}
-      <PreviewSection title="Sponsor Information">
-        <PreviewField
-          label="GitHub"
-          placeholder="https://github.com/username"
-        />
-        <PreviewField
-          label="LinkedIn"
-          placeholder="https://linkedin.com/in/username"
-        />
-        <PreviewField
-          label="Personal Website"
-          placeholder="https://yourwebsite.com"
-        />
-      </PreviewSection>
-
-      {/* 7. Agreements */}
-      <PreviewSection title="Agreements">
-        <div className="space-y-3">
-          <PreviewCheckbox label="I understand that this is an application and does not guarantee admission. *" />
-          <PreviewCheckbox label="I have read and agree to the MLH Code of Conduct. *" />
-          <PreviewCheckbox label="I authorize sharing my information with MLH per their Privacy Policy. *" />
-          <PreviewCheckbox label="I authorize MLH to send me occasional emails about events and opportunities." />
-        </div>
-      </PreviewSection>
+        return (
+          <PreviewSection key={section.id} title={section.label}>
+            {sectionFields.map(renderField)}
+            {section.id === "links" && <PreviewResumeCard />}
+          </PreviewSection>
+        );
+      })}
     </div>
   );
 }

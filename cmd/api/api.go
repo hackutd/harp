@@ -247,8 +247,8 @@ func (app *application) mount() http.Handler {
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
-						r.Get("/saquestions", app.getShortAnswerQuestions)
-						r.Put("/saquestions", app.updateShortAnswerQuestions)
+						r.Get("/application-schema", app.getApplicationSchema)
+						r.Put("/application-schema", app.updateApplicationSchema)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)

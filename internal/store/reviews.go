@@ -34,14 +34,14 @@ type ApplicationReview struct {
 type ApplicationReviewWithDetails struct {
 	ApplicationReview
 	// Application fields
-	FirstName               *string `json:"first_name"`
-	LastName                *string `json:"last_name"`
-	Email                   string  `json:"email"`
-	Age                     *int16  `json:"age"`
-	University              *string `json:"university"`
-	Major                   *string `json:"major"`
-	CountryOfResidence      *string `json:"country_of_residence"`
-	HackathonsAttendedCount *int16  `json:"hackathons_attended_count"`
+	FirstName          *string `json:"first_name"`
+	LastName           *string `json:"last_name"`
+	Email              string  `json:"email"`
+	Age                *int16  `json:"age"`
+	University         *string `json:"university"`
+	Major              *string `json:"major"`
+	CountryOfResidence *string `json:"country_of_residence"`
+	HackathonsAttended *int16  `json:"hackathons_attended"`
 }
 
 // ReviewNote represents a note from an admin review (without vote information)
@@ -96,8 +96,11 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 		SELECT
 			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
-			a.first_name, a.last_name, u.email, a.age,
-			a.university, a.major, a.country_of_residence, a.hackathons_attended_count
+			a.responses->>'first_name', a.responses->>'last_name', u.email,
+			NULLIF(a.responses->>'age', '')::smallint,
+			a.responses->>'university', a.responses->>'major',
+			a.responses->>'country_of_residence',
+			NULLIF(a.responses->>'hackathons_attended', '')::smallint
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
@@ -120,7 +123,7 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 			&review.AssignedAt, &review.ReviewedAt,
 			&review.CreatedAt, &review.UpdatedAt,
 			&review.FirstName, &review.LastName, &review.Email, &review.Age,
-			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttendedCount,
+			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttended,
 		); err != nil {
 			return nil, err
 		}
@@ -144,8 +147,11 @@ func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adm
 		SELECT
 			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
-			a.first_name, a.last_name, u.email, a.age,
-			a.university, a.major, a.country_of_residence, a.hackathons_attended_count
+			a.responses->>'first_name', a.responses->>'last_name', u.email,
+			NULLIF(a.responses->>'age', '')::smallint,
+			a.responses->>'university', a.responses->>'major',
+			a.responses->>'country_of_residence',
+			NULLIF(a.responses->>'hackathons_attended', '')::smallint
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
@@ -168,7 +174,7 @@ func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adm
 			&review.AssignedAt, &review.ReviewedAt,
 			&review.CreatedAt, &review.UpdatedAt,
 			&review.FirstName, &review.LastName, &review.Email, &review.Age,
-			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttendedCount,
+			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttended,
 		); err != nil {
 			return nil, err
 		}

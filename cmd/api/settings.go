@@ -8,35 +8,35 @@ import (
 	"github.com/hackutd/portal/internal/store"
 )
 
-type UpdateShortAnswerQuestionsPayload struct {
-	Questions []store.ShortAnswerQuestion `json:"questions" validate:"required,dive"`
+type UpdateApplicationSchemaPayload struct {
+	Fields []store.ApplicationSchemaField `json:"fields" validate:"required,dive"`
 }
 
-type ShortAnswerQuestionsResponse struct {
-	Questions []store.ShortAnswerQuestion `json:"questions"`
+type ApplicationSchemaResponse struct {
+	Fields []store.ApplicationSchemaField `json:"fields"`
 }
 
-// getShortAnswerQuestions returns all configurable short answer questions
+// getApplicationSchema returns the configurable application schema
 //
-//	@Summary		Get short answer questions (Super Admin)
-//	@Description	Returns all configurable short answer questions for hacker applications
+//	@Summary		Get application schema (Super Admin)
+//	@Description	Returns the configurable application schema fields for hacker applications
 //	@Tags			superadmin/settings
 //	@Produce		json
-//	@Success		200	{object}	ShortAnswerQuestionsResponse
+//	@Success		200	{object}	ApplicationSchemaResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/settings/saquestions [get]
-func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.Request) {
-	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+//	@Router			/superadmin/settings/application-schema [get]
+func (app *application) getApplicationSchema(w http.ResponseWriter, r *http.Request) {
+	fields, err := app.store.Settings.GetApplicationSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ShortAnswerQuestionsResponse{
-		Questions: questions,
+	response := ApplicationSchemaResponse{
+		Fields: fields,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -44,23 +44,23 @@ func (app *application) getShortAnswerQuestions(w http.ResponseWriter, r *http.R
 	}
 }
 
-// updateShortAnswerQuestions replaces all short answer questions
+// updateApplicationSchema replaces the application schema
 //
-//	@Summary		Update short answer questions (Super Admin)
-//	@Description	Replaces all short answer questions with the provided array
+//	@Summary		Update application schema (Super Admin)
+//	@Description	Replaces the application schema with the provided array of fields
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
-//	@Param			questions	body		UpdateShortAnswerQuestionsPayload	true	"Questions to set"
-//	@Success		200			{object}	ShortAnswerQuestionsResponse
-//	@Failure		400			{object}	object{error=string}
-//	@Failure		401			{object}	object{error=string}
-//	@Failure		403			{object}	object{error=string}
-//	@Failure		500			{object}	object{error=string}
+//	@Param			fields	body		UpdateApplicationSchemaPayload	true	"Schema fields to set"
+//	@Success		200		{object}	ApplicationSchemaResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/settings/saquestions [put]
-func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *http.Request) {
-	var req UpdateShortAnswerQuestionsPayload
+//	@Router			/superadmin/settings/application-schema [put]
+func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.Request) {
+	var req UpdateApplicationSchemaPayload
 	if err := readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -73,20 +73,20 @@ func (app *application) updateShortAnswerQuestions(w http.ResponseWriter, r *htt
 
 	// Validate unique IDs
 	idMap := make(map[string]bool)
-	for _, q := range req.Questions {
-		if idMap[q.ID] {
-			app.badRequestResponse(w, r, errors.New("duplicate question ID: "+q.ID))
+	for _, f := range req.Fields {
+		if idMap[f.ID] {
+			app.badRequestResponse(w, r, errors.New("duplicate field ID: "+f.ID))
 			return
 		}
-		idMap[q.ID] = true
+		idMap[f.ID] = true
 	}
 
-	if err := app.store.Settings.UpdateShortAnswerQuestions(r.Context(), req.Questions); err != nil {
+	if err := app.store.Settings.UpdateApplicationSchema(r.Context(), req.Fields); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	response := ShortAnswerQuestionsResponse(req)
+	response := ApplicationSchemaResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

@@ -39,8 +39,8 @@ type Storage struct {
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
 	}
 	Settings interface {
-		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
-		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
+		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)

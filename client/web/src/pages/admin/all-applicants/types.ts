@@ -12,14 +12,14 @@ export interface ApplicationListItem {
   status: ApplicationStatus;
   first_name: string | null;
   last_name: string | null;
-  phone_e164: string | null;
+  phone: string | null;
   age: number | null;
   country_of_residence: string | null;
   gender: string | null;
   university: string | null;
   major: string | null;
   level_of_study: string | null;
-  hackathons_attended_count: number | null;
+  hackathons_attended: number | null;
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -29,6 +29,7 @@ export interface ApplicationListItem {
   waitlist_votes: number;
   reviews_assigned: number;
   reviews_completed: number;
+  has_resume: boolean;
 }
 
 export interface ApplicationListResult {
