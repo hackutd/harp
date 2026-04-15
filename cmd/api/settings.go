@@ -86,9 +86,7 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	response := ApplicationSchemaResponse{
-		Fields: req.Fields,
-	}
+	response := ApplicationSchemaResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

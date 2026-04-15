@@ -43,9 +43,7 @@ export function SponsorInfoStep({
         <SchemaStepRenderer sectionLabel="Links & Profiles" fields={fields} />
       ) : (
         <div>
-          <h2 className="text-xl font-semibold">
-            Links & Profiles
-          </h2>
+          <h2 className="text-xl font-semibold">Links & Profiles</h2>
           <p className="text-sm text-muted-foreground">
             Share your profiles with our sponsors (all optional)
           </p>

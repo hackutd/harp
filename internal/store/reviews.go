@@ -34,14 +34,14 @@ type ApplicationReview struct {
 type ApplicationReviewWithDetails struct {
 	ApplicationReview
 	// Application fields
-	FirstName               *string `json:"first_name"`
-	LastName                *string `json:"last_name"`
-	Email                   string  `json:"email"`
-	Age                     *int16  `json:"age"`
-	University              *string `json:"university"`
-	Major                   *string `json:"major"`
-	CountryOfResidence      *string `json:"country_of_residence"`
-	HackathonsAttended      *int16  `json:"hackathons_attended"`
+	FirstName          *string `json:"first_name"`
+	LastName           *string `json:"last_name"`
+	Email              string  `json:"email"`
+	Age                *int16  `json:"age"`
+	University         *string `json:"university"`
+	Major              *string `json:"major"`
+	CountryOfResidence *string `json:"country_of_residence"`
+	HackathonsAttended *int16  `json:"hackathons_attended"`
 }
 
 // ReviewNote represents a note from an admin review (without vote information)

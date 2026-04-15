@@ -77,7 +77,9 @@ export default function ApplicationPage() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Save application schema?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      Save application schema?
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
                       This will affect <strong>all</strong> hacker applications.
                       Are you sure you want to save these changes?

@@ -209,7 +209,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Validate current step fields
   const validateCurrentStep = async (): Promise<boolean> => {
     const fieldIds = getCurrentStepFieldIds();
-    const result = await form.trigger(fieldIds as (keyof typeof form.formState.errors)[]);
+    const result = await form.trigger(
+      fieldIds as (keyof typeof form.formState.errors)[],
+    );
     return result;
   };
 

@@ -55,30 +55,30 @@ type ApplicationListFilters struct {
 
 // ApplicationListItem is a lightweight view for admin listing
 type ApplicationListItem struct {
-	ID                      string            `json:"id"`
-	UserID                  string            `json:"user_id"`
-	Email                   string            `json:"email"`
-	Status                  ApplicationStatus `json:"status"`
-	FirstName               *string           `json:"first_name"`
-	LastName                *string           `json:"last_name"`
-	Phone                   *string           `json:"phone"`
-	Age                     *int16            `json:"age"`
-	CountryOfResidence      *string           `json:"country_of_residence"`
-	Gender                  *string           `json:"gender"`
-	University              *string           `json:"university"`
-	Major                   *string           `json:"major"`
-	LevelOfStudy            *string           `json:"level_of_study"`
-	HackathonsAttended      *int16            `json:"hackathons_attended"`
-	SubmittedAt             *time.Time        `json:"submitted_at"`
-	CreatedAt               time.Time         `json:"created_at"`
-	UpdatedAt               time.Time         `json:"updated_at"`
-	AcceptVotes             int               `json:"accept_votes"`
-	RejectVotes             int               `json:"reject_votes"`
-	WaitlistVotes           int               `json:"waitlist_votes"`
-	ReviewsAssigned         int               `json:"reviews_assigned"`
-	ReviewsCompleted        int               `json:"reviews_completed"`
-	AIPercent               *int              `json:"ai_percent"`
-	HasResume               bool              `json:"has_resume"`
+	ID                 string            `json:"id"`
+	UserID             string            `json:"user_id"`
+	Email              string            `json:"email"`
+	Status             ApplicationStatus `json:"status"`
+	FirstName          *string           `json:"first_name"`
+	LastName           *string           `json:"last_name"`
+	Phone              *string           `json:"phone"`
+	Age                *int16            `json:"age"`
+	CountryOfResidence *string           `json:"country_of_residence"`
+	Gender             *string           `json:"gender"`
+	University         *string           `json:"university"`
+	Major              *string           `json:"major"`
+	LevelOfStudy       *string           `json:"level_of_study"`
+	HackathonsAttended *int16            `json:"hackathons_attended"`
+	SubmittedAt        *time.Time        `json:"submitted_at"`
+	CreatedAt          time.Time         `json:"created_at"`
+	UpdatedAt          time.Time         `json:"updated_at"`
+	AcceptVotes        int               `json:"accept_votes"`
+	RejectVotes        int               `json:"reject_votes"`
+	WaitlistVotes      int               `json:"waitlist_votes"`
+	ReviewsAssigned    int               `json:"reviews_assigned"`
+	ReviewsCompleted   int               `json:"reviews_completed"`
+	AIPercent          *int              `json:"ai_percent"`
+	HasResume          bool              `json:"has_resume"`
 }
 
 // ApplicationListResult contains paginated results

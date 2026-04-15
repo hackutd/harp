@@ -120,7 +120,11 @@ export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 {sections.map((s) => (
-                  <SelectItem key={s.id} value={s.id} className="cursor-pointer">
+                  <SelectItem
+                    key={s.id}
+                    value={s.id}
+                    className="cursor-pointer"
+                  >
                     {s.label}
                   </SelectItem>
                 ))}
@@ -131,10 +135,7 @@ export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
           {/* Type */}
           <div className="space-y-1.5">
             <Label className="text-sm">Field Type</Label>
-            <Select
-              value={type}
-              onValueChange={(v: FieldType) => setType(v)}
-            >
+            <Select value={type} onValueChange={(v: FieldType) => setType(v)}>
               <SelectTrigger className="cursor-pointer">
                 <SelectValue />
               </SelectTrigger>

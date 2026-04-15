@@ -44,12 +44,12 @@ var (
 		"Data Science", "Mathematics", "Information Technology", "Cybersecurity",
 		"Mechanical Engineering", "Physics", "Business Analytics",
 	}
-	levels     = []string{"Freshman", "Sophomore", "Junior", "Senior", "Masters", "PhD"}
-	genders    = []string{"Male", "Female", "Non-binary", "Prefer not to say"}
-	shirtSizes = []string{"XS", "S", "M", "L", "XL", "XXL"}
-	expLevels  = []string{"Beginner", "Intermediate", "Advanced", "Expert"}
-	heardFrom  = []string{"Social Media", "Friend", "Professor", "Career Fair", "Website", "Email"}
-	countries  = []string{"United States", "India", "Canada", "Mexico", "United Kingdom"}
+	levels         = []string{"Freshman", "Sophomore", "Junior", "Senior", "Masters", "PhD"}
+	genders        = []string{"Male", "Female", "Non-binary", "Prefer not to say"}
+	shirtSizes     = []string{"XS", "S", "M", "L", "XL", "XXL"}
+	expLevels      = []string{"Beginner", "Intermediate", "Advanced", "Expert"}
+	heardFrom      = []string{"Social Media", "Friend", "Professor", "Career Fair", "Website", "Email"}
+	countries      = []string{"United States", "India", "Canada", "Mexico", "United Kingdom"}
 	dietaryOptions = []string{"Vegan", "Vegetarian", "Halal", "Nuts", "Fish", "Wheat", "Dairy", "Eggs", "No Beef", "No Pork"}
 
 	reviewNotePool = []string{

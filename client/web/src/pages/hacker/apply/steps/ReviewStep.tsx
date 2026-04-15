@@ -109,7 +109,6 @@ export function ReviewStep({
           </ReviewSection>
         );
       })}
-
     </div>
   );
 }

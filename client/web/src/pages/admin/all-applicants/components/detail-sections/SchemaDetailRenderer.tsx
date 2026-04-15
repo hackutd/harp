@@ -32,9 +32,7 @@ export function SchemaDetailRenderer({
 
           return (
             <div key={section.id}>
-              <h4 className="text-sm font-semibold mb-2">
-                {section.label}
-              </h4>
+              <h4 className="text-sm font-semibold mb-2">{section.label}</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {fields.map((field) => {
                   const value = getResponseValue(responses, field.id, null);

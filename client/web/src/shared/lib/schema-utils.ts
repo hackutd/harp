@@ -119,8 +119,7 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
         n = n.min(validation.min as number);
       if (typeof validation.max === "number")
         n = n.max(validation.max as number);
-      if (field.required && typeof validation.min !== "number")
-        n = n.min(0);
+      if (field.required && typeof validation.min !== "number") n = n.min(0);
       return n;
     }
     case "textarea": {
@@ -190,7 +189,8 @@ export function formatResponseValue(
   value: unknown,
   field: ApplicationSchemaField,
 ): string {
-  if (value === null || value === undefined || value === "") return "Not provided";
+  if (value === null || value === undefined || value === "")
+    return "Not provided";
 
   if (field.type === "multi_select" && Array.isArray(value)) {
     return value.length > 0 ? value.join(", ") : "None";

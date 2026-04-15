@@ -97,9 +97,7 @@ export const useApplicationSchemaStore = create<ApplicationSchemaState>(
           (!f.options || f.options.length === 0),
       );
       if (missingOptions) {
-        toast.error(
-          `"${missingOptions.label}" needs at least one option`,
-        );
+        toast.error(`"${missingOptions.label}" needs at least one option`);
         return;
       }
 

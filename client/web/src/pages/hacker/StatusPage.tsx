@@ -155,7 +155,9 @@ export default function Status() {
 
                   <p className="text-gray-600">University:</p>
                   <p className="font-medium">
-                    {String(application.responses?.university || "Not provided")}
+                    {String(
+                      application.responses?.university || "Not provided",
+                    )}
                   </p>
 
                   <p className="text-gray-600">Major:</p>

@@ -30,8 +30,8 @@ func newCompleteApplication(userID string) *store.Application {
 			"shirt_size":"M",
 			"ack_mlh_coc":true,"ack_mlh_privacy":true
 		}`),
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 }
 

@@ -1,17 +1,9 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  Settings2,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -224,9 +216,7 @@ export function FieldCard({
                 </label>
                 <Input
                   type="number"
-                  value={
-                    (field.validation?.min as number | undefined) ?? ""
-                  }
+                  value={(field.validation?.min as number | undefined) ?? ""}
                   onChange={(e) => {
                     const val = e.target.value
                       ? parseInt(e.target.value, 10)
@@ -246,9 +236,7 @@ export function FieldCard({
                 </label>
                 <Input
                   type="number"
-                  value={
-                    (field.validation?.max as number | undefined) ?? ""
-                  }
+                  value={(field.validation?.max as number | undefined) ?? ""}
                   onChange={(e) => {
                     const val = e.target.value
                       ? parseInt(e.target.value, 10)

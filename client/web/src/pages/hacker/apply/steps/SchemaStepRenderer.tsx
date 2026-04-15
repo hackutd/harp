@@ -21,8 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { renderLabel } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FormContext = ReturnType<typeof useFormContext<FieldValues & Record<string, any>>>;
+type ApplicationFormValues = FieldValues & Record<string, unknown>;
+type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
 
 interface SchemaStepRendererProps {
   sectionLabel: string;
@@ -36,16 +36,13 @@ export function SchemaStepRenderer({
   fields,
   header,
 }: SchemaStepRendererProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const form = useFormContext() as any as FormContext;
+  const form = useFormContext<ApplicationFormValues>();
 
   if (fields.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold">
-            {sectionLabel}
-          </h2>
+          <h2 className="text-xl font-semibold">{sectionLabel}</h2>
         </div>
         <p className="text-muted-foreground">No fields configured.</p>
       </div>
@@ -55,9 +52,7 @@ export function SchemaStepRenderer({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">
-          {sectionLabel}
-        </h2>
+        <h2 className="text-xl font-semibold">{sectionLabel}</h2>
       </div>
 
       {header}
@@ -94,9 +89,7 @@ function SchemaFormField({
               <FormControl>
                 <Input {...formField} value={formField.value ?? ""} />
               </FormControl>
-              {!field.required && (
-                <FormDescription>Optional</FormDescription>
-              )}
+              {!field.required && <FormDescription>Optional</FormDescription>}
               <FormMessage />
             </FormItem>
           )}
@@ -144,8 +137,16 @@ function SchemaFormField({
               <FormControl>
                 <Input
                   type="number"
-                  min={typeof validation.min === "number" ? validation.min : undefined}
-                  max={typeof validation.max === "number" ? validation.max : undefined}
+                  min={
+                    typeof validation.min === "number"
+                      ? validation.min
+                      : undefined
+                  }
+                  max={
+                    typeof validation.max === "number"
+                      ? validation.max
+                      : undefined
+                  }
                   {...formField}
                   onChange={(e) =>
                     formField.onChange(e.target.valueAsNumber || 0)
@@ -207,7 +208,9 @@ function SchemaFormField({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                    <SelectValue
+                      placeholder={`Select ${field.label.toLowerCase()}`}
+                    />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
