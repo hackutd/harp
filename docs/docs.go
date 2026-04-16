@@ -859,7 +859,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/store.Scan"
+                            "$ref": "#/definitions/main.CreateScanResponse"
                         }
                     },
                     "400": {
@@ -3097,7 +3097,204 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings/applications-enabled": {
+        "/superadmin/settings/meal-groups": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configured list of meal group names",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get meal groups (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.MealGroupsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Replaces the available meal group names with the provided array",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Update meal groups (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Groups to set",
+                        "name": "groups",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateMealGroupsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.MealGroupsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/meal-groups/stats": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns assignment counts for each configured meal group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get meal group stats (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.MealGroupStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/review-assignment-toggle": {
             "put": {
                 "security": [
                     {
@@ -3887,6 +4084,34 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "last_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "level_of_study": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "linkedin": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "meal_group": {
+                    "type": "string"
+                },
+                "opt_in_mlh_emails": {
+                    "type": "boolean"
+                },
+                "phone_e164": {
+                    "type": "string"
+                },
+                "race": {
+                    "type": "string",
+                    "minLength": 1
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -3967,6 +4192,32 @@ const docTemplate = `{
                 }
             }
         },
+        "main.CreateScanResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "meal_group": {
+                    "type": "string"
+                },
+                "scan_type": {
+                    "type": "string"
+                },
+                "scanned_at": {
+                    "type": "string"
+                },
+                "scanned_by": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "main.CreateSchedulePayload": {
             "type": "object",
             "required": [
@@ -4025,6 +4276,28 @@ const docTemplate = `{
                 },
                 "start_date": {
                     "type": "string"
+                }
+            }
+        },
+        "main.MealGroupStatsResponse": {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "main.MealGroupsResponse": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -4355,6 +4628,21 @@ const docTemplate = `{
         "main.UpdateApplicationPayload": {
             "type": "object"
         },
+        "main.UpdateMealGroupsPayload": {
+            "type": "object",
+            "required": [
+                "groups"
+            ],
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "main.UpdateApplicationSchemaPayload": {
             "type": "object",
             "required": [
@@ -4488,6 +4776,34 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "last_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "level_of_study": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "linkedin": {
+                    "type": "string"
+                },
+                "major": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "meal_group": {
+                    "type": "string"
+                },
+                "opt_in_mlh_emails": {
+                    "type": "boolean"
+                },
+                "phone_e164": {
+                    "type": "string"
+                },
+                "race": {
+                    "type": "string",
+                    "minLength": 1
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -4566,6 +4882,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "major": {
+                    "type": "string"
+                },
+                "meal_group": {
                     "type": "string"
                 },
                 "phone": {

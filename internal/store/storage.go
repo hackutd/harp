@@ -37,6 +37,8 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		SetMealGroup(ctx context.Context, id string, mealGroup string) error
+		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {
 		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
@@ -53,6 +55,9 @@ type Storage struct {
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
+		GetMealGroups(ctx context.Context) ([]string, error)
+		SetMealGroups(ctx context.Context, groups []string) error
+		GetMealGroupStats(ctx context.Context) (map[string]int, error)
 		GetApplicationsEnabled(ctx context.Context) (bool, error)
 		SetApplicationsEnabled(ctx context.Context, enabled bool) error
 	}

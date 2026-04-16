@@ -257,6 +257,9 @@ func (app *application) mount() http.Handler {
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
+						r.Get("/meal-groups", app.getMealGroups)
+						r.Put("/meal-groups", app.updateMealGroups)
+						r.Get("/meal-groups/stats", app.getMealGroupStats)
 						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})
 
