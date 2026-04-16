@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { PaginationControls } from "@/pages/admin/all-applicants/components/PaginationControls";
 
 import { RoleChangeDialog } from "./components/RoleChangeDialog";
@@ -76,12 +75,10 @@ export default function UserManagementPage() {
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
-      <div className="shrink-0 flex items-center justify-between">
-        <div className="relative bg-muted rounded-md border p-[2px] w-80">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
-          <Input
+      <div className="shrink-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:w-[18rem]">
+          <SearchField
             placeholder="Search by name or email..."
-            className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />

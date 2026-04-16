@@ -96,33 +96,37 @@ export default function AllApplicantsPage() {
         <SectionCards stats={stats} loading={statsLoading || isInitialLoad} />
       </div>
 
-      <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
-        <div className="col-span-2">
-          {isInitialLoad ? (
-            <div className="flex gap-2">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-8 w-20 rounded-md" />
-              ))}
+      <div className="shrink-0 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 xl:flex-1">
+          <div className="min-w-0 lg:flex-[0_1_auto]">
+            {isInitialLoad ? (
+              <div className="flex gap-2">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-20 rounded-md" />
+                ))}
+              </div>
+            ) : (
+              <StatusFilterTabs
+                stats={stats}
+                loading={loading}
+                currentStatus={currentStatus}
+                onStatusChange={handleStatusFilter}
+              />
+            )}
+          </div>
+          <div className="w-full lg:w-[18rem] lg:flex-none lg:border-l lg:border-gray-300 lg:pl-3">
+            <div className="group relative w-full after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-center after:scale-x-0 after:bg-foreground after:opacity-0 after:transition-all after:duration-300 after:ease-out focus-within:after:scale-x-100 focus-within:after:opacity-100">
+              <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 transition-colors duration-300 ease-out group-focus-within:text-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                className="h-9 w-full rounded-none border-0 bg-transparent px-0 py-0 pl-7 text-[15px] shadow-none transition-[color,opacity] duration-300 ease-out placeholder:font-light placeholder:text-gray-500 focus-visible:ring-0 focus-visible:outline-none group-focus-within:placeholder:text-gray-400"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
             </div>
-          ) : (
-            <StatusFilterTabs
-              stats={stats}
-              loading={loading}
-              currentStatus={currentStatus}
-              onStatusChange={handleStatusFilter}
-            />
-          )}
+          </div>
         </div>
-        <div className="relative bg-muted rounded-md border p-[2px]">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
-          <Input
-            placeholder="Search by name or email..."
-            className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-        </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end xl:shrink-0">
           <PaginationControls
             prevCursor={prevCursor}
             nextCursor={nextCursor}

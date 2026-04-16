@@ -3,7 +3,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/satoshi/Satoshi-Variable.woff2") format("woff2-variations");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/satoshi/Satoshi-VariableItalic.woff2") format("woff2-variations");
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 @theme inline {
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -11,6 +29,53 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Nike palette — Gray */
+  --color-gray-100: #f6f6f6;
+  --color-gray-200: #e4e4e4;
+  --color-gray-300: #cdcdcd;
+  --color-gray-400: #bababa;
+  --color-gray-500: #8c8c8c;
+  --color-gray-600: #767676;
+  --color-gray-700: #57595b;
+  --color-gray-800: #28292a;
+
+  /* Nike palette — Success */
+  --color-success-100: #cff2d8;
+  --color-success-200: #9de5b0;
+  --color-success-300: #6ed989;
+  --color-success-400: #35c75a;
+  --color-success-500: #2aa147;
+  --color-success-600: #32862b;
+  --color-success-700: #19612b;
+  --color-success-800: #11401d;
+
+  /* Nike palette — Warning (Nike Orange family) */
+  --color-warning-100: #ffe1c8;
+  --color-warning-200: #ffbf8c;
+  --color-warning-300: #ff9e4f;
+  --color-warning-400: #ff821d;
+  --color-warning-500: #fc5100;
+  --color-warning-600: #d94601;
+  --color-warning-700: #a33501;
+  --color-warning-800: #622001;
+
+  /* Nike palette — Error */
+  --color-error-100: #f8e2dd;
+  --color-error-200: #edb7aa;
+  --color-error-300: #e79a88;
+  --color-error-400: #dc6e57;
+  --color-error-500: #ca462a;
+  --color-error-600: #99351f;
+  --color-error-700: #662415;
+  --color-error-800: #44180e;
+
+  /* Nike palette — Overlay (black with alpha) */
+  --color-overlay-200: rgb(0 0 0 / 20%);
+  --color-overlay-500: rgb(0 0 0 / 50%);
+  --color-overlay-800: rgb(0 0 0 / 80%);
+
+  /* Shadcn semantic tokens (mapped to Nike palette via :root / .dark) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -42,75 +107,94 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Nike shadow scale */
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-sm:
+    0 1px 3px 0 rgb(16 24 40 / 0.1), 0 1px 2px 0 rgb(16 24 40 / 0.06);
+  --shadow-md:
+    0 4px 8px 0 rgb(16 24 40 / 0.1), 0 2px 4px 0 rgb(16 24 40 / 0.06);
+  --shadow-lg:
+    0 4px 4px 0 rgb(0 0 0 / 0.25), 0 12px 16px 0 rgb(16 24 40 / 0.08),
+    0 4px 6px 0 rgb(16 24 40 / 0.03);
+  --shadow-xl:
+    0 20px 24px 0 rgb(16 24 40 / 0.08), 0 8px 8px 0 rgb(16 24 40 / 0.03);
+  --shadow-2xl: 0 24px 48px 0 rgb(16 24 40 / 0.18);
+  --shadow-3xl: 0 32px 64px 0 rgb(16 24 40 / 0.14);
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  --background: #ffffff;
+  --foreground: #28292a; /* gray-800 */
+  --card: #ffffff;
+  --card-foreground: #28292a;
+  --popover: #ffffff;
+  --popover-foreground: #28292a;
+  --primary: #000000; /* Nike black */
+  --primary-foreground: #ffffff;
+  --secondary: #f6f6f6; /* gray-100 */
+  --secondary-foreground: #28292a;
+  --muted: #f6f6f6;
+  --muted-foreground: #767676; /* gray-600 */
+  --accent: #f6f6f6;
+  --accent-foreground: #28292a;
+  --destructive: #ca462a; /* error-500 */
+  --border: #e4e4e4; /* gray-200 */
+  --input: #e4e4e4;
+  --ring: #767676; /* gray-600 */
+
+  --chart-1: #fc5100; /* warning-500 — Nike orange */
+  --chart-2: #2aa147; /* success-500 */
+  --chart-3: #ca462a; /* error-500 */
+  --chart-4: #57595b; /* gray-700 */
+  --chart-5: #bababa; /* gray-400 */
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #28292a;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6f6f6;
+  --sidebar-accent-foreground: #28292a;
+  --sidebar-border: #e4e4e4;
+  --sidebar-ring: #767676;
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #28292a; /* gray-800 */
+  --card-foreground: #ffffff;
+  --popover: #28292a;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #28292a;
+  --secondary-foreground: #ffffff;
+  --muted: #28292a;
+  --muted-foreground: #bababa; /* gray-400 */
+  --accent: #57595b; /* gray-700 */
+  --accent-foreground: #ffffff;
+  --destructive: #dc6e57; /* error-400 — lifted for dark bg */
+  --border: #57595b; /* gray-700 */
+  --input: #57595b;
+  --ring: #8c8c8c; /* gray-500 */
+
+  --chart-1: #ff821d; /* warning-400 */
+  --chart-2: #6ed989; /* success-300 */
+  --chart-3: #e79a88; /* error-300 */
+  --chart-4: #cdcdcd; /* gray-300 */
+  --chart-5: #767676; /* gray-600 */
+
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #28292a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #57595b;
+  --sidebar-ring: #8c8c8c;
 }
 
 @layer base {
@@ -118,7 +202,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
 

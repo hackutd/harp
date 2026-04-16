@@ -20,7 +20,7 @@ export const ReviewsTabToggle = memo(function ReviewsTabToggle({
       value={activeTab}
       onValueChange={(value) => !disabled && onTabChange(value as ReviewTab)}
     >
-      <TabsList className="h-9 rounded-md border gap-0 p-0.5">
+      <TabsList className="rounded-md border">
         <TabsTrigger
           value="assigned"
           disabled={disabled}

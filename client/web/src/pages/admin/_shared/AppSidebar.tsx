@@ -4,6 +4,7 @@ import {
   Calendar,
   ClipboardList,
   Handshake,
+  LayoutGrid,
   ScanLine,
   Settings,
   Star,
@@ -59,6 +60,14 @@ const eventNav = [
   },
 ];
 
+const designNav = [
+  {
+    name: "UI Showcase",
+    url: "/admin/ui-showcase",
+    icon: LayoutGrid,
+  },
+];
+
 const superAdminNav = [
   {
     name: "Reviews",
@@ -104,6 +113,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSection
           label="Event"
           items={eventNav}
+          currentPath={location.pathname}
+        />
+        <NavSection
+          label="Design"
+          items={designNav}
           currentPath={location.pathname}
         />
 

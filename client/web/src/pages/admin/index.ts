@@ -3,3 +3,4 @@ export { default as ReviewsPage } from "./reviews/ReviewsPage";
 export { default as ScansPage } from "./scans/ScansPage";
 export { default as SchedulePage } from "./schedule/SchedulePage";
 export { default as SponsorsPage } from "./sponsors/SponsorsPage";
+export { default as UiShowcasePage } from "./ui-showcase/UiShowcasePage";

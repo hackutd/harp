@@ -6,18 +6,17 @@ import * as React from "react";
 import { cn } from "@/shared/lib/utils";
 
 const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none transition-[color,box-shadow] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap",
+  "inline-flex items-center justify-center gap-2 rounded-[4px] text-[14px] tracking-[-0.14px] font-medium border border-gray-200 transition-colors hover:bg-gray-100 disabled:pointer-events-none disabled:text-gray-400 disabled:border-gray-200 data-[state=on]:border-foreground data-[state=on]:bg-background [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 outline-none aria-invalid:border-destructive whitespace-nowrap",
   {
     variants: {
       variant: {
         default: "bg-transparent",
-        outline:
-          "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground",
+        outline: "bg-transparent",
       },
       size: {
-        default: "h-9 px-2 min-w-9",
-        sm: "h-8 px-1.5 min-w-8",
-        lg: "h-10 px-2.5 min-w-10",
+        default: "px-[14px] py-[10px] min-w-9",
+        sm: "px-[10px] py-[8px] min-w-8 text-[12px] tracking-[-0.3px]",
+        lg: "px-[18px] py-[14px] min-w-10 text-[16px] tracking-[-0.4px]",
       },
     },
     defaultVariants: {

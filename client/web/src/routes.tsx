@@ -43,6 +43,9 @@ const AdminGradingPage = lazy(
   () => import("@/pages/admin/reviews/grading/GradingPage"),
 );
 const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
+const UiShowcasePage = lazy(
+  () => import("@/pages/admin/ui-showcase/UiShowcasePage"),
+);
 
 export const router = createBrowserRouter([
   // Public routes
@@ -155,6 +158,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <SponsorsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "ui-showcase",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <UiShowcasePage />
           </Suspense>
         ),
       },

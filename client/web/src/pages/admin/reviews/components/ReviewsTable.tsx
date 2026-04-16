@@ -21,6 +21,7 @@ interface ReviewsTableProps {
   selectedId: string | null;
   onSelectReview: (id: string) => void;
   variant: ReviewTab;
+  emptyText?: string;
 }
 
 const CONFIG = {
@@ -44,8 +45,14 @@ export const ReviewsTable = memo(function ReviewsTable({
   selectedId,
   onSelectReview,
   variant,
+  emptyText,
 }: ReviewsTableProps) {
-  const { voteHeader, dateHeader, dateField, emptyText } = CONFIG[variant];
+  const {
+    voteHeader,
+    dateHeader,
+    dateField,
+    emptyText: defaultEmptyText,
+  } = CONFIG[variant];
 
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
@@ -70,7 +77,7 @@ export const ReviewsTable = memo(function ReviewsTable({
           {reviews.length === 0 ? (
             <TableRow>
               <TableCell colSpan={9} className="text-center text-gray-500">
-                {emptyText}
+                {emptyText ?? defaultEmptyText}
               </TableCell>
             </TableRow>
           ) : (

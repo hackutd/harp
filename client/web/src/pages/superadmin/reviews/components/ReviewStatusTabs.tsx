@@ -33,7 +33,7 @@ export const ReviewStatusTabs = memo(function ReviewStatusTabs({
       onValueChange={(value) => onStatusChange(value as ApplicationStatus)}
       className="min-w-0"
     >
-      <TabsList className="h-auto w-auto inline-flex rounded-md border justify-start gap-1 p-1 lg:h-9 lg:gap-0 lg:p-0.5">
+      <TabsList className="w-auto rounded-md border justify-start">
         {STATUSES.map(({ value, label }) => {
           const count = stats?.[value] ?? 0;
           return (

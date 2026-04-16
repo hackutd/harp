@@ -6,14 +6,13 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/shared/lib/utils";
 
 const buttonGroupVariants = cva(
-  "flex w-fit items-stretch [&>*]:focus-visible:z-10 [&>*]:focus-visible:relative [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md has-[>[data-slot=button-group]]:gap-2",
+  "flex w-fit items-stretch [&>*]:focus-visible:z-10 [&>*]:focus-visible:relative [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-[6px] has-[>[data-slot=button-group]]:gap-2 [&>*]:rounded-none [&>*:first-child]:rounded-l-[6px] [&>*:last-child]:rounded-r-[6px]",
   {
     variants: {
       orientation: {
-        horizontal:
-          "[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none",
+        horizontal: "[&>*:not(:first-child)]:border-l-0",
         vertical:
-          "flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none",
+          "flex-col [&>*:first-child]:rounded-l-none [&>*:first-child]:rounded-t-[6px] [&>*:last-child]:rounded-r-none [&>*:last-child]:rounded-b-[6px] [&>*:not(:first-child)]:border-t-0",
       },
     },
     defaultVariants: {
@@ -50,7 +49,7 @@ function ButtonGroupText({
   return (
     <Comp
       className={cn(
-        "bg-muted flex items-center gap-2 rounded-md border px-4 text-sm font-medium shadow-xs [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4",
+        "bg-gray-100 flex items-center gap-2 rounded-[6px] border border-gray-200 px-4 text-[14px] tracking-[-0.14px] font-medium [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -68,7 +67,7 @@ function ButtonGroupSeparator({
       data-slot="button-group-separator"
       orientation={orientation}
       className={cn(
-        "bg-input relative !m-0 self-stretch data-[orientation=vertical]:h-auto",
+        "bg-gray-200 relative !m-0 self-stretch data-[orientation=vertical]:h-auto",
         className,
       )}
       {...props}

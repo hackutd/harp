@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -37,10 +38,26 @@ export default function ReviewsPage() {
   const { tab, reviews, loading, setTab, fetchReviews } = useReviewsStore();
   const refreshKey = refreshAssignedPage((state) => state.refreshKey);
 
+  const [searchInput, setSearchInput] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const normalizedSearch = searchInput.trim().toLowerCase();
+  const filteredReviews =
+    normalizedSearch.length === 0
+      ? reviews
+      : reviews.filter((review) => {
+          const fullName = formatName(
+            review.first_name,
+            review.last_name,
+          ).toLowerCase();
+          return (
+            fullName.includes(normalizedSearch) ||
+            review.email.toLowerCase().includes(normalizedSearch)
+          );
+        });
 
   // Single derived selected review (fixes redundant .find() calls)
-  const selectedReview = reviews.find((r) => r.id === selectedId) ?? null;
+  const selectedReview =
+    filteredReviews.find((review) => review.id === selectedId) ?? null;
   const selectedApplicationId = selectedReview?.application_id ?? null;
 
   // --- Assigned tab detail (via existing hook) ---
@@ -80,6 +97,12 @@ export default function ReviewsPage() {
     setCompletedDetailLoading(false);
     setOtherReviewerNotes([]);
   }, [clearAssignedDetail]);
+
+  useEffect(() => {
+    if (selectedId && !selectedReview) {
+      clearSelection();
+    }
+  }, [selectedId, selectedReview, clearSelection]);
 
   const handleTabChange = useCallback(
     (newTab: ReviewTab) => {
@@ -124,10 +147,10 @@ export default function ReviewsPage() {
   }, [completedApplicationId]);
 
   // Keyboard navigation for completed tab (use ref to avoid re-registering on reviews change)
-  const reviewsRef = useRef(reviews);
+  const reviewsRef = useRef(filteredReviews);
   useEffect(() => {
-    reviewsRef.current = reviews;
-  }, [reviews]);
+    reviewsRef.current = filteredReviews;
+  }, [filteredReviews]);
 
   useEffect(() => {
     if (tab !== "completed") return;
@@ -169,14 +192,20 @@ export default function ReviewsPage() {
   // --- Descriptions ---
   const description =
     tab === "assigned" ? (
-      <>{reviews.length} review(s) assigned to you</>
+      <>
+        <span>{filteredReviews.length} review(s) assigned to you</span>
+        {normalizedSearch && <span>matching &quot;{searchInput}&quot;</span>}
+      </>
     ) : (
-      <>{reviews.length} completed review(s)</>
+      <>
+        <span>{filteredReviews.length} completed review(s)</span>
+        {normalizedSearch && <span>matching &quot;{searchInput}&quot;</span>}
+      </>
     );
 
   // --- Header actions ---
   const headerActions =
-    reviews.length > 0 ? (
+    filteredReviews.length > 0 ? (
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -190,7 +219,11 @@ export default function ReviewsPage() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          Grade {formatName(reviews[0].first_name, reviews[0].last_name)}
+          Grade{" "}
+          {formatName(
+            filteredReviews[0].first_name,
+            filteredReviews[0].last_name,
+          )}
         </TooltipContent>
       </Tooltip>
     ) : undefined;
@@ -198,11 +231,16 @@ export default function ReviewsPage() {
   // --- Table ---
   const table = (
     <ReviewsTable
-      reviews={reviews}
+      reviews={filteredReviews}
       loading={loading}
       selectedId={selectedId}
       onSelectReview={setSelectedId}
       variant={tab}
+      emptyText={
+        normalizedSearch
+          ? `No ${tab === "assigned" ? "assigned" : "completed"} reviews match "${searchInput}"`
+          : undefined
+      }
     />
   );
 
@@ -282,18 +320,29 @@ export default function ReviewsPage() {
       <Card
         className={`overflow-hidden flex flex-col h-full ${selectedId ? "w-1/2 rounded-r-none" : "w-full"}`}
       >
-        <CardHeader className="shrink-0 flex flex-row items-center pb-2 justify-between">
-          <div className="flex items-center gap-4">
-            <ReviewsTabToggle
-              activeTab={tab}
-              onTabChange={handleTabChange}
-              disabled={loading}
-            />
-            <CardDescription className="font-light">
-              {description}
-            </CardDescription>
+        <CardHeader className="shrink-0 flex flex-col gap-4 pb-2">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex min-w-0 flex-col gap-3">
+              <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3">
+                <ReviewsTabToggle
+                  activeTab={tab}
+                  onTabChange={handleTabChange}
+                  disabled={loading}
+                />
+                <div className="w-full lg:w-[18rem] lg:flex-none lg:border-l lg:border-gray-300 lg:pl-3">
+                  <SearchField
+                    placeholder="Search by name or email..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                  />
+                </div>
+              </div>
+              <CardDescription className="font-light flex flex-wrap items-center gap-1.5">
+                {description}
+              </CardDescription>
+            </div>
+            {headerActions}
           </div>
-          {headerActions}
         </CardHeader>
         <hr className="border-border -mb-2" />
         <CardContent className="p-0 flex-1 overflow-hidden">

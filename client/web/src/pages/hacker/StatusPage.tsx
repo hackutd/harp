@@ -17,6 +17,7 @@ export default function Status() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<Application | null>(null);
+  const statusBadgeSize = "px-[10px] py-[4px] text-[13px]";
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,17 +39,17 @@ export default function Status() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "accepted":
-        return "bg-green-100 text-green-800";
+        return `${statusBadgeSize} bg-green-100 text-green-800`;
       case "rejected":
-        return "bg-red-100 text-red-800";
+        return `${statusBadgeSize} bg-red-100 text-red-800`;
       case "waitlisted":
-        return "bg-yellow-100 text-yellow-800";
+        return `${statusBadgeSize} bg-yellow-100 text-yellow-800`;
       case "submitted":
-        return "bg-blue-100 text-blue-800";
+        return `${statusBadgeSize} bg-blue-100 text-blue-800`;
       case "draft":
-        return "bg-gray-100 text-gray-800";
+        return `${statusBadgeSize} bg-gray-100 text-gray-800`;
       default:
-        return "bg-gray-100 text-gray-800";
+        return `${statusBadgeSize} bg-gray-100 text-gray-800`;
     }
   };
 

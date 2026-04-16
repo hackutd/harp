@@ -410,7 +410,7 @@ export default function ReviewsPage() {
             onStatusChange={handleStatusFilter}
           />
         </div>
-        <div className="relative bg-muted rounded-md border p-[2px] w-80">
+        <div className="relative bg-background rounded-md border p-[2px] w-80">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
           <Input
             placeholder="Search by name or email..."

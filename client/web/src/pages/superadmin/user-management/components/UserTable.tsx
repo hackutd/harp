@@ -175,7 +175,7 @@ export function UserTable({
                             <button
                               key={role}
                               disabled={updatingRoleId === user.id}
-                              className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded-sm cursor-pointer transition-opacity ${roleActiveStyles[role]} ${
+                              className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded-full cursor-pointer transition-opacity ${roleActiveStyles[role]} ${
                                 isSelected
                                   ? "opacity-100 ring-1 ring-current"
                                   : "opacity-40 hover:opacity-70"
