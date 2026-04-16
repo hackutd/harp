@@ -20,7 +20,7 @@ export interface Review {
   university: string | null;
   major: string | null;
   country_of_residence: string | null;
-  hackathons_attended_count: number | null;
+  hackathons_attended: number | null;
 }
 
 export interface ReviewNote {

@@ -41,8 +41,8 @@ type Storage struct {
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {
-		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
-		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
+		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
@@ -58,6 +58,11 @@ type Storage struct {
 		GetMealGroups(ctx context.Context) ([]string, error)
 		SetMealGroups(ctx context.Context, groups []string) error
 		GetMealGroupStats(ctx context.Context) (map[string]int, error)
+		GetApplicationsEnabled(ctx context.Context) (bool, error)
+		SetApplicationsEnabled(ctx context.Context, enabled bool) error
+	}
+	Hackathon interface {
+		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
@@ -80,6 +85,14 @@ type Storage struct {
 		Update(ctx context.Context, item *ScheduleItem) error
 		Delete(ctx context.Context, id string) error
 	}
+	Sponsors interface {
+		List(ctx context.Context) ([]Sponsor, error)
+		Create(ctx context.Context, sponsor *Sponsor) error
+		Update(ctx context.Context, sponsor *Sponsor) error
+		Delete(ctx context.Context, id string) error
+		GetByID(ctx context.Context, id string) (*Sponsor, error)
+		UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -87,8 +100,10 @@ func NewStorage(db *sql.DB) Storage {
 		Users:              &UsersStore{db: db},
 		Application:        &ApplicationsStore{db: db},
 		Settings:           &SettingsStore{db: db},
+		Hackathon:          &HackathonStore{db: db},
 		ApplicationReviews: &ApplicationReviewsStore{db: db},
 		Scans:              &ScansStore{db: db},
 		Schedule:           &ScheduleStore{db: db},
+		Sponsors:           &SponsorsStore{db: db},
 	}
 }

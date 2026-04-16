@@ -261,8 +261,8 @@ func (s *UsersStore) Search(ctx context.Context, query string, limit int, offset
 		FROM users u
 		LEFT JOIN applications a ON a.user_id = u.id
 		WHERE u.email ILIKE '%' || $1 || '%'
-		   OR a.first_name ILIKE '%' || $1 || '%'
-		   OR a.last_name ILIKE '%' || $1 || '%'
+		   OR a.responses->>'first_name' ILIKE '%' || $1 || '%'
+		   OR a.responses->>'last_name' ILIKE '%' || $1 || '%'
 	`
 
 	var totalCount int
@@ -271,12 +271,12 @@ func (s *UsersStore) Search(ctx context.Context, query string, limit int, offset
 	}
 
 	searchQuery := `
-		SELECT u.id, u.email, u.role, a.first_name, a.last_name, u.profile_picture_url, u.created_at
+		SELECT u.id, u.email, u.role, a.responses->>'first_name', a.responses->>'last_name', u.profile_picture_url, u.created_at
 		FROM users u
 		LEFT JOIN applications a ON a.user_id = u.id
 		WHERE u.email ILIKE '%' || $1 || '%'
-		   OR a.first_name ILIKE '%' || $1 || '%'
-		   OR a.last_name ILIKE '%' || $1 || '%'
+		   OR a.responses->>'first_name' ILIKE '%' || $1 || '%'
+		   OR a.responses->>'last_name' ILIKE '%' || $1 || '%'
 		ORDER BY u.created_at DESC
 		LIMIT $2 OFFSET $3
 	`
@@ -446,7 +446,7 @@ func (s *UsersStore) ListUsers(ctx context.Context, filters UserListFilters, cur
 	if filters.Search != "" {
 		searchParam := "%" + filters.Search + "%"
 		conditions = append(conditions, fmt.Sprintf(
-			"(u.email ILIKE $%d OR a.first_name ILIKE $%d OR a.last_name ILIKE $%d)",
+			"(u.email ILIKE $%d OR a.responses->>'first_name' ILIKE $%d OR a.responses->>'last_name' ILIKE $%d)",
 			paramIdx, paramIdx, paramIdx,
 		))
 		args = append(args, searchParam)
@@ -490,7 +490,7 @@ func (s *UsersStore) ListUsers(ctx context.Context, filters UserListFilters, cur
 	}
 
 	query := fmt.Sprintf(`
-		SELECT u.id, u.email, u.role, a.first_name, a.last_name, u.profile_picture_url, u.created_at
+		SELECT u.id, u.email, u.role, a.responses->>'first_name', a.responses->>'last_name', u.profile_picture_url, u.created_at
 		FROM users u
 		LEFT JOIN applications a ON a.user_id = u.id
 		%s

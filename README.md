@@ -12,12 +12,31 @@ Hackathon management system with Go backend and React frontend.
 
 ### Setup
 
+There are two ways to run the dev environment, depending on how you want to handle SuperTokens auth:
+
+#### Option 1: Cloud SuperTokens (default)
+
+Uses a managed SuperTokens instance. Requires `SUPERTOKENS_CONNECTION_URI` and `SUPERTOKENS_API_KEY` in your `.env` file.
+
 ```bash
-# Start all services (database, auth, backend, frontend)
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-This starts:
+| Service      | URL                                 |
+| ------------ | ----------------------------------- |
+| Frontend     | `http://localhost:3000`               |
+| Backend API  | `http://localhost:8080/v1`            |
+| PostgreSQL   | `localhost:5432`                      |
+| Swagger Docs | `http://localhost:8080/v1/swagger/`   |
+| Debug Vars   | `http://localhost:8080/v1/debug/vars` |
+
+#### Option 2: Local SuperTokens
+
+Runs a self-hosted SuperTokens instance in Docker. No API key needed.
+
+```bash
+docker compose -f docker-compose.local-st.yml up --build
+```
 
 | Service      | URL                                 |
 | ------------ | ----------------------------------- |

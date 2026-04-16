@@ -2,16 +2,65 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
-const apiTarget = process.env.API_PROXY_TARGET || 'http://localhost:8080';
+const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:8080";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: "autoUpdate",
+      manifest: {
+        name: "HARP - HackUTD Portal",
+        short_name: "HARP",
+        description: "Hacker Applications & Review Platform for HackUTD",
+        theme_color: "#ffffff",
+        background_color: "#ffffff",
+        display: "standalone",
+        id: "/",
+        start_url: "/",
+        icons: [
+          {
+            src: "pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,webp,woff,woff2}"],
+        navigateFallbackDenylist: [/^\/v1\//, /^\/auth\//],
+        runtimeCaching: [
+          {
+            urlPattern: /\/v1\//,
+            handler: "NetworkOnly",
+          },
+          {
+            urlPattern: /\/auth\//,
+            handler: "NetworkOnly",
+          },
+        ],
+      },
+    }),
+  ],
   server: {
     port: 3000,
     proxy: {
-      '/auth': {
+      "/auth": {
         target: apiTarget,
         changeOrigin: true,
         bypass: (req) => {
@@ -40,7 +89,7 @@ export default defineConfig({
           }
         },
       },
-      '/v1': {
+      "/v1": {
         target: apiTarget,
         changeOrigin: true,
       },

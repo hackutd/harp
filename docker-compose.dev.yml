@@ -18,18 +18,6 @@ services:
       timeout: 3s
       retries: 5
 
-  supertokens:
-    image: registry.supertokens.io/supertokens/supertokens-postgresql
-    container_name: harp-dev-supertokens
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      POSTGRESQL_CONNECTION_URI: "postgresql://admin:adminpassword@db:5432/supertokens"
-      API_KEYS: "dev-api-key-that-is-long-enough"
-    ports:
-      - "3567:3567"
-
   go-dev:
     container_name: harp-dev-backend
     build:
@@ -38,17 +26,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      supertokens:
-        condition: service_started
     environment:
       - DB_ADDR=postgres://admin:adminpassword@db:5432/portal?sslmode=disable
-      - SUPERTOKENS_CONNECTION_URI=http://supertokens:3567
-      - SUPERTOKENS_API_KEY=dev-api-key-that-is-long-enough
+      - SUPERTOKENS_CONNECTION_URI=${SUPERTOKENS_CONNECTION_URI}
+      - SUPERTOKENS_API_KEY=${SUPERTOKENS_API_KEY}
       - AUTH_BASIC_USER=admin
       - AUTH_BASIC_PASS=admin
       - APP_URL=http://localhost:8080
       - FRONTEND_URL=http://localhost:3000
       - ENV=development
+      - GOOGLE_CLIENT_ID=your-google-client-id
+      - GOOGLE_CLIENT_SECRET=your-google-client-secret
     ports:
       - "8080:8080"
     volumes:

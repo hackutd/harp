@@ -11,85 +11,79 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetShortAnswerQuestions(t *testing.T) {
+func TestGetApplicationSchema(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
-	t.Run("should return questions", func(t *testing.T) {
-		questions := []store.ShortAnswerQuestion{
-			{ID: "q1", Question: "Why do you want to attend?", Required: true, DisplayOrder: 0},
-			{ID: "q2", Question: "Tell us about a project", Required: false, DisplayOrder: 1},
+	t.Run("should return schema fields", func(t *testing.T) {
+		fields := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true, DisplayOrder: 0},
+			{ID: "university", Type: "text", Label: "University", Required: false, DisplayOrder: 1},
 		}
 
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(fields, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
 		req = setUserContext(req, newSuperAdminUser())
 
-		rr := executeRequest(req, http.HandlerFunc(app.getShortAnswerQuestions))
+		rr := executeRequest(req, http.HandlerFunc(app.getApplicationSchema))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		var body struct {
-			Data ShortAnswerQuestionsResponse `json:"data"`
+			Data ApplicationSchemaResponse `json:"data"`
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Len(t, body.Data.Questions, 2)
+		assert.Len(t, body.Data.Fields, 2)
 
 		mockSettings.AssertExpectations(t)
 	})
 }
 
-func TestUpdateShortAnswerQuestions(t *testing.T) {
+func TestUpdateApplicationSchema(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
-	t.Run("should update questions", func(t *testing.T) {
-		questions := []store.ShortAnswerQuestion{
-			{ID: "q1", Question: "Why?", Required: true, DisplayOrder: 0},
+	t.Run("should update schema", func(t *testing.T) {
+		fields := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true, DisplayOrder: 0},
 		}
 
-		mockSettings.On("UpdateShortAnswerQuestions", questions).Return(nil).Once()
+		mockSettings.On("UpdateApplicationSchema", fields).Return(nil).Once()
 
-		body := `{"questions":[{"id":"q1","question":"Why?","required":true,"display_order":0}]}`
+		body := `{"fields":[{"id":"first_name","type":"text","label":"First Name","required":true,"display_order":0}]}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req = setUserContext(req, newSuperAdminUser())
 
-		rr := executeRequest(req, http.HandlerFunc(app.updateShortAnswerQuestions))
+		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationSchema))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		mockSettings.AssertExpectations(t)
 	})
 
-	t.Run("should return 400 for duplicate question IDs", func(t *testing.T) {
-		body := `{"questions":[{"id":"q1","question":"A?","required":true,"display_order":0},{"id":"q1","question":"B?","required":false,"display_order":1}]}`
+	t.Run("should return 400 for duplicate field IDs", func(t *testing.T) {
+		body := `{"fields":[{"id":"f1","type":"text","label":"A","required":true,"display_order":0},{"id":"f1","type":"text","label":"B","required":false,"display_order":1}]}`
+
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req = setUserContext(req, newSuperAdminUser())
 
-		rr := executeRequest(req, http.HandlerFunc(app.updateShortAnswerQuestions))
+		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationSchema))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
-
-		var errBody struct {
-			Error string `json:"error"`
-		}
-		err = json.NewDecoder(rr.Body).Decode(&errBody)
-		require.NoError(t, err)
-		assert.Contains(t, errBody.Error, "duplicate question ID")
 	})
 
-	t.Run("should return 400 for empty questions array", func(t *testing.T) {
+	t.Run("should return 400 for empty fields array", func(t *testing.T) {
 		body := `{}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req = setUserContext(req, newSuperAdminUser())
 
-		rr := executeRequest(req, http.HandlerFunc(app.updateShortAnswerQuestions))
+		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationSchema))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 }

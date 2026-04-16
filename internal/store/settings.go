@@ -7,20 +7,12 @@ import (
 	"errors"
 )
 
-// ShortAnswerQuestion represents a single configurable question
-type ShortAnswerQuestion struct {
-	ID           string `json:"id" validate:"required,min=1,max=50"`
-	Question     string `json:"question" validate:"required,min=1,max=500"`
-	Required     bool   `json:"required"`
-	DisplayOrder int    `json:"display_order" validate:"min=0"`
-}
-
-// SettingsStore handles database operations for hackathon settings (e.g., short answer questions)
+// SettingsStore handles database operations for hackathon settings
 type SettingsStore struct {
 	db *sql.DB
 }
 
-const SettingsKeyShortAnswerQuestions = "short_answer_questions"
+const SettingsKeyApplicationSchema = "application_schema"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
@@ -28,10 +20,26 @@ const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
 const SettingsKeyMealGroups = "meal_groups"
+const SettingsKeyApplicationsEnabled = "applications_enabled"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
 	EndDate   *string `json:"end_date"`
+}
+
+// ApplicationSchemaField defines a single field in the configurable application form.
+// The full schema is stored as a JSON array in the settings table under key "application_schema".
+type ApplicationSchemaField struct {
+	ID           string                 `json:"id"`
+	Type         string                 `json:"type"`
+	Label        string                 `json:"label"`
+	Required     bool                   `json:"required"`
+	Section      string                 `json:"section,omitempty"`
+	SectionLabel string                 `json:"section_label,omitempty"`
+	SectionOrder int                    `json:"section_order"`
+	DisplayOrder int                    `json:"display_order"`
+	Options      []string               `json:"options,omitempty"`
+	Validation   map[string]interface{} `json:"validation,omitempty"`
 }
 
 // ReviewAssignmentEntry represents a single admin's review assignment toggle state.
@@ -41,8 +49,8 @@ type ReviewAssignmentEntry struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// GetShortAnswerQuestions returns the parsed questions array
-func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error) {
+// GetApplicationSchema returns the parsed application form schema fields
+func (s *SettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
@@ -53,20 +61,40 @@ func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAns
 	`
 
 	var value []byte
-	err := s.db.QueryRowContext(ctx, query, SettingsKeyShortAnswerQuestions).Scan(&value)
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationSchema).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return []ShortAnswerQuestion{}, nil
+			return []ApplicationSchemaField{}, nil
 		}
 		return nil, err
 	}
 
-	var questions []ShortAnswerQuestion
-	if err := json.Unmarshal(value, &questions); err != nil {
+	var fields []ApplicationSchemaField
+	if err := json.Unmarshal(value, &fields); err != nil {
 		return nil, err
 	}
 
-	return questions, nil
+	return fields, nil
+}
+
+// UpdateApplicationSchema replaces the application form schema with the provided fields
+func (s *SettingsStore) UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationSchema, string(value))
+	return err
 }
 
 // GetReviewsPerApplication returns the configured number of reviews per application
@@ -158,7 +186,7 @@ func (s *SettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []ScanTyp
 	query := `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyScanTypes, value)
@@ -216,23 +244,17 @@ func incrementScanStat(ctx context.Context, tx *sql.Tx, scanType string) error {
 	return err
 }
 
-// UpdateShortAnswerQuestions replaces all questions with the provided array
-func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
+// resetScanStats resets the scan stats within an existing transaction.
+func resetScanStats(ctx context.Context, tx *sql.Tx) error {
+	query := `UPDATE settings SET value = '{}', updated_at = NOW() WHERE key = $1`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyScanStats)
+	return err
+}
 
-	value, err := json.Marshal(questions)
-	if err != nil {
-		return err
-	}
-
-	query := `
-		INSERT INTO settings (key, value)
-		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-	`
-
-	_, err = s.db.ExecContext(ctx, query, SettingsKeyShortAnswerQuestions, string(value))
+// resetReviewAssignmentToggle resets review assignment toggles within an existing transaction.
+func resetReviewAssignmentToggle(ctx context.Context, tx *sql.Tx) error {
+	query := `UPDATE settings SET value = '[]', updated_at = NOW() WHERE key = $1`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyReviewAssignmentToggle)
 	return err
 }
 
@@ -565,4 +587,50 @@ func (s *SettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, 
 	}
 
 	return stats, nil
+}
+
+func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationsEnabled, string(jsonValue))
+	return err
 }

@@ -1,21 +1,16 @@
 import { Loader2, Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useRef } from "react";
-import { useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import type { ApplicationSchemaField } from "@/types";
 
-import type { ApplicationFormData } from "../validations";
+import { MAX_RESUME_SIZE_BYTES as MAX_RESUME_UPLOAD_SIZE_BYTES } from "../api";
+import { SchemaStepRenderer } from "./SchemaStepRenderer";
+
+const MAX_RESUME_SIZE_MB = MAX_RESUME_UPLOAD_SIZE_BYTES / (1024 * 1024);
 
 interface SponsorInfoStepProps {
+  fields: ApplicationSchemaField[];
   hasResume: boolean;
   isUploadingResume: boolean;
   isDeletingResume: boolean;
@@ -24,15 +19,14 @@ interface SponsorInfoStepProps {
 }
 
 export function SponsorInfoStep({
+  fields,
   hasResume,
   isUploadingResume,
   isDeletingResume,
   onResumeSelected,
   onDeleteResume,
 }: SponsorInfoStepProps) {
-  const form = useFormContext<ApplicationFormData>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const isResumeBusy = isUploadingResume || isDeletingResume;
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -40,73 +34,27 @@ export function SponsorInfoStep({
     if (file) {
       onResumeSelected(file);
     }
-
-    // Reset so selecting the same file again still triggers onChange.
     event.target.value = "";
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Sponsor Information</h2>
-        <p className="text-sm text-muted-foreground">
-          Share your profiles with our sponsors (all optional)
-        </p>
-      </div>
-
-      <FormField
-        control={form.control}
-        name="github"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>GitHub</FormLabel>
-            <FormControl>
-              <Input placeholder="https://github.com/username" {...field} />
-            </FormControl>
-            <FormDescription>Optional</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="linkedin"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>LinkedIn</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="https://linkedin.com/in/username"
-                {...field}
-              />
-            </FormControl>
-            <FormDescription>Optional</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="website"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Personal Website</FormLabel>
-            <FormControl>
-              <Input placeholder="https://yourwebsite.com" {...field} />
-            </FormControl>
-            <FormDescription>Optional</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {fields.length > 0 ? (
+        <SchemaStepRenderer sectionLabel="Links & Profiles" fields={fields} />
+      ) : (
+        <div>
+          <h2 className="text-xl font-semibold">Links & Profiles</h2>
+          <p className="text-sm text-muted-foreground">
+            Share your profiles with our sponsors (all optional)
+          </p>
+        </div>
+      )}
 
       <div className="rounded-lg border p-4 space-y-3">
         <div>
           <h3 className="font-medium">Resume (Optional)</h3>
           <p className="text-sm text-muted-foreground">
-            Upload a PDF up to 5 MB.
+            Upload a PDF up to {MAX_RESUME_SIZE_MB} MB.
           </p>
         </div>
 

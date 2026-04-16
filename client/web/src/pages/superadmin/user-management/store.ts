@@ -10,7 +10,7 @@ import {
   updateUserRole as apiUpdateUserRole,
 } from "./api";
 import type { AdminUser, FetchUsersParams } from "./types";
-import { MIN_SEARCH_LENGTH, roleLabels } from "./utils";
+import { allRoles, MIN_SEARCH_LENGTH, roleLabels } from "./utils";
 
 interface UserManagementState {
   users: AdminUser[];
@@ -35,19 +35,16 @@ export const useUserManagementStore = create<UserManagementState>(
     loading: true,
     nextCursor: null,
     prevCursor: null,
-    activeRoles: ["admin", "super_admin"],
+    activeRoles: [],
     searchInput: "",
     togglingId: null,
     updatingRoleId: null,
 
     fetchUsers: async (params?: FetchUsersParams) => {
       const state = get();
-      const roles = params?.roles ?? state.activeRoles;
-
-      if (roles.length === 0) {
-        set({ users: [], nextCursor: null, prevCursor: null, loading: false });
-        return;
-      }
+      const activeRoles = params?.roles ?? state.activeRoles;
+      // No filter selected = fetch all roles
+      const roles = activeRoles.length === 0 ? [...allRoles] : activeRoles;
 
       set({ loading: true });
       try {

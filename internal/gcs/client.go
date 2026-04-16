@@ -12,11 +12,20 @@ const (
 	signedURLExpiry    = 15 * time.Minute
 	resumeContentType  = "application/pdf"
 	maxResumeSizeBytes = 5 * 1024 * 1024
+	maxImageSizeBytes  = 2 * 1024 * 1024
 )
 
+var AllowedImageContentTypes = map[string]bool{
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
 type GCSClient struct {
-	client *storage.Client
-	bucket *storage.BucketHandle
+	client     *storage.Client
+	bucket     *storage.BucketHandle
+	bucketName string
 }
 
 func New(ctx context.Context, bucketName string) (*GCSClient, error) {
@@ -26,8 +35,9 @@ func New(ctx context.Context, bucketName string) (*GCSClient, error) {
 	}
 
 	return &GCSClient{
-		client: client,
-		bucket: client.Bucket(bucketName),
+		client:     client,
+		bucket:     client.Bucket(bucketName),
+		bucketName: bucketName,
 	}, nil
 }
 
@@ -38,6 +48,23 @@ func (c *GCSClient) GenerateUploadURL(_ context.Context, objectPath string) (str
 		ContentType: resumeContentType,
 		Headers: []string{
 			fmt.Sprintf("x-goog-content-length-range:0,%d", maxResumeSizeBytes),
+		},
+		Scheme: storage.SigningSchemeV4,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+func (c *GCSClient) GenerateImageUploadURL(_ context.Context, objectPath string, contentType string) (string, error) {
+	url, err := c.bucket.SignedURL(objectPath, &storage.SignedURLOptions{
+		Method:      "PUT",
+		Expires:     time.Now().Add(signedURLExpiry),
+		ContentType: contentType,
+		Headers: []string{
+			fmt.Sprintf("x-goog-content-length-range:0,%d", maxImageSizeBytes),
 		},
 		Scheme: storage.SigningSchemeV4,
 	})
@@ -67,4 +94,8 @@ func (c *GCSClient) DeleteObject(ctx context.Context, objectPath string) error {
 
 func (c *GCSClient) Close() error {
 	return c.client.Close()
+}
+
+func (c *GCSClient) GeneratePublicURL(objectPath string) string {
+	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", c.bucketName, objectPath)
 }

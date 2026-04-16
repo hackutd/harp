@@ -94,6 +94,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/reviews",
 		"admin/scans",
 		"admin/schedule",
+		"admin/sponsors",
 		"superadmin/applications",
 		"superadmin/settings",
 		"superadmin/users"
@@ -144,6 +145,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)
 			r.Get("/schedule", app.getPublicScheduleHandler)
+			r.Get("/sponsors", app.getPublicSponsorsHandler)
 		})
 
 		// Auth endpoints not handled by SuperTokens
@@ -167,10 +169,15 @@ func (app *application) mount() http.Handler {
 			// Hacker Routes
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
-				r.Patch("/me", app.updateApplicationHandler)
-				r.Post("/me/submit", app.submitApplicationHandler)
-				r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
-				r.Delete("/me/resume", app.deleteResumeHandler)
+				r.Get("/enabled", app.getApplicationsEnabled)
+
+				r.Group(func(r chi.Router) {
+					r.Use(app.ApplicationsEnabledMiddleware)
+					r.Patch("/me", app.updateApplicationHandler)
+					r.Post("/me/submit", app.submitApplicationHandler)
+					r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
+					r.Delete("/me/resume", app.deleteResumeHandler)
+				})
 			})
 
 			r.Group(func(r chi.Router) {
@@ -218,6 +225,17 @@ func (app *application) mount() http.Handler {
 							r.Delete("/{scheduleID}", app.deleteScheduleHandler)
 						})
 					})
+
+					// Sponsors
+					r.Route("/sponsors", func(r chi.Router) {
+						r.Get("/", app.listSponsorsHandler)
+
+						// TODO: Protect Under a AdminSponsorEditPermissionMiddleware
+						r.Post("/", app.createSponsorHandler)
+						r.Put("/{sponsorID}", app.updateSponsorHandler)
+						r.Delete("/{sponsorID}", app.deleteSponsorHandler)
+						r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+					})
 				})
 			})
 
@@ -225,11 +243,12 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
+					r.Post("/reset-hackathon", app.resetHackathonHandler)
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
-						r.Get("/saquestions", app.getShortAnswerQuestions)
-						r.Put("/saquestions", app.updateShortAnswerQuestions)
+						r.Get("/application-schema", app.getApplicationSchema)
+						r.Put("/application-schema", app.updateApplicationSchema)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
@@ -241,6 +260,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/meal-groups", app.getMealGroups)
 						r.Put("/meal-groups", app.updateMealGroups)
 						r.Get("/meal-groups/stats", app.getMealGroupStats)
+						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})
 
 					r.Route("/applications", func(r chi.Router) {
@@ -254,7 +274,6 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
-
 				})
 			})
 		})

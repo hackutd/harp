@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -43,20 +44,13 @@ var (
 		"Data Science", "Mathematics", "Information Technology", "Cybersecurity",
 		"Mechanical Engineering", "Physics", "Business Analytics",
 	}
-	levels     = []string{"Freshman", "Sophomore", "Junior", "Senior", "Masters", "PhD"}
-	genders    = []string{"Male", "Female", "Non-binary", "Prefer not to say"}
-	shirtSizes = []string{"XS", "S", "M", "L", "XL", "XXL"}
-	expLevels  = []string{"Beginner", "Intermediate", "Advanced", "Expert"}
-	heardFrom  = []string{"Social Media", "Friend", "Professor", "Career Fair", "Website", "Email"}
-	countries  = []string{"United States", "India", "Canada", "Mexico", "United Kingdom"}
-	dietaries  = []string{"{}", "{}", "{}", "{halal}", "{vegetarian}", "{vegan}", "{nuts}", "{dairy}"}
-
-	saqResponses = `{
-		"saq_1": "I love building things and meeting new people!",
-		"saq_2": "I have attended 2 hackathons and learned a lot about teamwork.",
-		"saq_3": "I hope to learn new technologies and frameworks.",
-		"saq_4": "I am looking forward to the workshops and networking."
-	}`
+	levels         = []string{"Freshman", "Sophomore", "Junior", "Senior", "Masters", "PhD"}
+	genders        = []string{"Male", "Female", "Non-binary", "Prefer not to say"}
+	shirtSizes     = []string{"XS", "S", "M", "L", "XL", "XXL"}
+	expLevels      = []string{"Beginner", "Intermediate", "Advanced", "Expert"}
+	heardFrom      = []string{"Social Media", "Friend", "Professor", "Career Fair", "Website", "Email"}
+	countries      = []string{"United States", "India", "Canada", "Mexico", "United Kingdom"}
+	dietaryOptions = []string{"Vegan", "Vegetarian", "Halal", "Nuts", "Fish", "Wheat", "Dairy", "Eggs", "No Beef", "No Pork"}
 
 	reviewNotePool = []string{
 		"Strong technical background, good fit.",
@@ -139,32 +133,29 @@ func seedUsers(db *sql.DB, hackerCount int) (adminIDs, hackerIDs []string) {
 	return adminIDs, hackerIDs
 }
 
+func pickDietaryRestrictions() []string {
+	// ~40% chance of no restrictions
+	if rng.Intn(5) < 2 {
+		return []string{}
+	}
+	// Pick 1-2 random restrictions
+	n := 1 + rng.Intn(2)
+	perm := rng.Perm(len(dietaryOptions))
+	result := make([]string, n)
+	for i := 0; i < n; i++ {
+		result[i] = dietaryOptions[perm[i]]
+	}
+	return result
+}
+
 func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []string) {
 	tx := mustBegin(db)
 	query := `
 		INSERT INTO applications (
-			user_id, status,
-			first_name, last_name, phone_e164, age,
-			country_of_residence, gender, race, ethnicity,
-			university, major, level_of_study,
-			short_answer_responses,
-			hackathons_attended_count, software_experience_level, heard_about,
-			shirt_size, dietary_restrictions, accommodations,
-			github, linkedin,
-			ack_application, ack_mlh_coc, ack_mlh_privacy, opt_in_mlh_emails,
-			submitted_at, ai_percent
-		) VALUES (
-			$1,  $2,
-			$3,  $4,  $5,  $6,
-			$7,  $8,  $9,  $10,
-			$11, $12, $13,
-			$14,
-			$15, $16, $17,
-			$18, $19, $20,
-			$21, $22,
-			$23, $24, $25, $26,
-			$27, NULL
-		) RETURNING id
+			user_id, status, responses,
+			submitted_at
+		) VALUES ($1, $2, $3, $4)
+		RETURNING id
 	`
 
 	for i, userID := range hackerIDs {
@@ -179,18 +170,42 @@ func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []str
 			submittedAt = ptr(randomPastTime(30))
 		}
 
+		responses := map[string]any{
+			"first_name":           first,
+			"last_name":            last,
+			"phone":                fmt.Sprintf("+1214555%04d", i%10000),
+			"age":                  18 + rng.Intn(10),
+			"country_of_residence": pick(countries),
+			"gender":               pick(genders),
+			"race":                 "Asian",
+			"ethnicity":            "Hispanic",
+			"university":           pick(universities),
+			"major":                pick(majors),
+			"level_of_study":       pick(levels),
+			"hackathons_attended":  rng.Intn(6),
+			"experience_level":     pick(expLevels),
+			"heard_about":          pick(heardFrom),
+			"shirt_size":           pick(shirtSizes),
+			"dietary_restrictions": pickDietaryRestrictions(),
+			"github":               fmt.Sprintf("https://github.com/%s%s%d", first, last, i),
+			"linkedin":             fmt.Sprintf("https://linkedin.com/in/%s%s%d", first, last, i),
+			"saq_1":                "I love building things and meeting new people!",
+			"saq_2":                "I have attended 2 hackathons and learned a lot about teamwork.",
+			"saq_3":                "I hope to learn new technologies and frameworks.",
+			"saq_4":                "I am looking forward to the workshops and networking.",
+			"ack_mlh_coc":          submitted,
+			"ack_mlh_privacy":      submitted,
+			"opt_in_mlh_emails":    rng.Intn(2) == 0,
+		}
+
+		responsesJSON, err := json.Marshal(responses)
+		if err != nil {
+			log.Fatalf("failed to marshal responses for application %d: %v", i, err)
+		}
+
 		var id string
-		err := tx.QueryRow(query,
-			userID, status,
-			first, last, fmt.Sprintf("+1214555%04d", i%10000), int16(18+rng.Intn(10)),
-			pick(countries), pick(genders), "Asian", "Hispanic",
-			pick(universities), pick(majors), pick(levels),
-			saqResponses,
-			int16(rng.Intn(6)), pick(expLevels), pick(heardFrom),
-			pick(shirtSizes), pick(dietaries), nil,
-			fmt.Sprintf("https://github.com/%s%s%d", first, last, i),
-			fmt.Sprintf("https://linkedin.com/in/%s%s%d", first, last, i),
-			submitted, submitted, submitted, rng.Intn(2) == 0,
+		err = tx.QueryRow(query,
+			userID, status, responsesJSON,
 			submittedAt,
 		).Scan(&id)
 		if err != nil {

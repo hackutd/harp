@@ -16,16 +16,9 @@ import type { Application } from "@/types";
 
 import { fetchApplicationResumeURL } from "../api";
 import { formatName, getStatusColor } from "../utils";
-import {
-  DemographicsSection,
-  EducationSection,
-  EventPreferencesSection,
-  ExperienceSection,
-  LinksSection,
-  PersonalInfoSection,
-  ShortAnswersSection,
-  TimelineSection,
-} from "./detail-sections";
+import { LinksSection } from "./detail-sections";
+import { SchemaDetailRenderer } from "./detail-sections/SchemaDetailRenderer";
+import { TimelineSection } from "./detail-sections/TimelineSection";
 
 interface ApplicationDetailPanelProps {
   application: Application | null;
@@ -75,7 +68,10 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
           ) : application ? (
             <>
               <p className="font-semibold">
-                {formatName(application.first_name, application.last_name)}
+                {formatName(
+                  application.responses?.first_name as string | null,
+                  application.responses?.last_name as string | null,
+                )}
               </p>
               <Badge className={getStatusColor(application.status)}>
                 {application.status}
@@ -122,12 +118,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
           </div>
         ) : application ? (
           <div className="space-y-6 pb-2">
-            <PersonalInfoSection application={application} />
-            <DemographicsSection application={application} />
-            <EducationSection application={application} />
-            <ExperienceSection application={application} />
-            <ShortAnswersSection application={application} />
-            <EventPreferencesSection application={application} />
+            <SchemaDetailRenderer application={application} />
             <LinksSection
               application={application}
               onViewResume={handleViewResume}

@@ -85,14 +85,14 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                   </div>
                 </TableCell>
                 <TableCell>{app.email}</TableCell>
-                <TableCell>{app.phone_e164 ?? "-"}</TableCell>
+                <TableCell>{app.phone ?? "-"}</TableCell>
                 <TableCell>{app.age ?? "-"}</TableCell>
                 <TableCell>{app.country_of_residence ?? "-"}</TableCell>
                 <TableCell>{app.gender ?? "-"}</TableCell>
                 <TableCell>{app.university ?? "-"}</TableCell>
                 <TableCell>{app.major ?? "-"}</TableCell>
                 <TableCell>{app.level_of_study ?? "-"}</TableCell>
-                <TableCell>{app.hackathons_attended_count ?? "-"}</TableCell>
+                <TableCell>{app.hackathons_attended ?? "-"}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {app.submitted_at
                     ? new Date(app.submitted_at).toLocaleDateString()
