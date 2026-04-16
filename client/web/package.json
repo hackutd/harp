@@ -83,11 +83,15 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^0.19.8"
   },
   "overrides": {
     "postcss": "^8.4.38",
     "semver": "^7.5.2",
-    "minimatch": "^10.2.1"
+    "minimatch": "^10.2.1",
+    "serialize-javascript": "^7.0.5",
+    "vite-plugin-pwa": {
+      "vite": "$vite"
+    }
   }
 }

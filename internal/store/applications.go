@@ -79,7 +79,7 @@ type ApplicationListItem struct {
 	ReviewsCompleted   int               `json:"reviews_completed"`
 	AIPercent          *int              `json:"ai_percent"`
 	HasResume          bool              `json:"has_resume"`
-	MealGroup               *string           `json:"meal_group"`
+	MealGroup          *string           `json:"meal_group"`
 }
 
 // ApplicationListResult contains paginated results
@@ -151,9 +151,9 @@ type Application struct {
 	ReviewsCompleted int `json:"reviews_completed"`
 
 	SubmittedAt *time.Time `json:"submitted_at"`
-	CreatedAt   time.Time   `json:"created_at"`
+	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
-	MealGroup *string `json:"meal_group"`
+	MealGroup   *string    `json:"meal_group"`
 }
 
 type ApplicationsStore struct {
