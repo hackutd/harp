@@ -437,21 +437,18 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		return &BatchAssignmentResult{}, nil
 	}
 
-	// Round-robin assignment with workload balancing
-	insertQuery := `
-		INSERT INTO application_reviews (application_id, admin_id)
-		VALUES ($1, $2)
-		ON CONFLICT (application_id, admin_id) DO NOTHING
-	`
-
-	reviewsCreated := 0
+	// Round-robin assignment with workload balancing.
+	// Build the full list of (application_id, admin_id) pairs in Go, then
+	// issue a single bulk INSERT to avoid N network roundtrips to the DB.
+	var pairAppIDs []string
+	var pairAdminIDs []string
 	adminIndex := 0
 
 	for _, app := range apps {
 		needed := reviewsPerApp - app.ReviewsAssigned
 
-		for i := 0; i < needed; i++ {
-			for attempts := 0; attempts < len(adminIDs); attempts++ {
+		for range needed {
+			for range adminIDs {
 				adminID := adminIDs[adminIndex]
 				adminIndex = (adminIndex + 1) % len(adminIDs)
 
@@ -460,22 +457,31 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 					continue
 				}
 
-				result, err := tx.ExecContext(ctx, insertQuery, app.ID, adminID)
-				if err != nil {
-					return nil, err
-				}
-
-				rowsAffected, err := result.RowsAffected()
-				if err != nil {
-					return nil, err
-				}
-
-				if rowsAffected > 0 {
-					reviewsCreated++
-				}
+				pairAppIDs = append(pairAppIDs, app.ID)
+				pairAdminIDs = append(pairAdminIDs, adminID)
 				break
 			}
 		}
+	}
+
+	reviewsCreated := 0
+	if len(pairAppIDs) > 0 {
+		insertQuery := `
+			INSERT INTO application_reviews (application_id, admin_id)
+			SELECT * FROM unnest($1::uuid[], $2::uuid[])
+			ON CONFLICT (application_id, admin_id) DO NOTHING
+		`
+
+		result, err := tx.ExecContext(ctx, insertQuery, pairAppIDs, pairAdminIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		reviewsCreated = int(rowsAffected)
 	}
 
 	if err := tx.Commit(); err != nil {
