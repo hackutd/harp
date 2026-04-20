@@ -66,7 +66,6 @@ func TestCreateScan(t *testing.T) {
 		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
 		mockApps.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).Return(nil).Once()
-		mockApps.On("GetMealGroupByUserID", "user-1").Return(&groups[0], nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
@@ -84,7 +83,7 @@ func TestCreateScan(t *testing.T) {
 		err = json.NewDecoder(rr.Body).Decode(&resp)
 		require.NoError(t, err)
 		assert.NotNil(t, resp.Data.MealGroup)
-		assert.Equal(t, groups[0], *resp.Data.MealGroup)
+		assert.Contains(t, groups, *resp.Data.MealGroup)
 
 		mockSettings.AssertExpectations(t)
 		mockScans.AssertExpectations(t)
@@ -100,7 +99,6 @@ func TestCreateScan(t *testing.T) {
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
 		// Simulate error in meal group fetching
 		mockSettings.On("GetMealGroups").Return(nil, errors.New("db error")).Once()
-		mockApps.On("GetMealGroupByUserID", "user-1").Return(nil, store.ErrNotFound).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
