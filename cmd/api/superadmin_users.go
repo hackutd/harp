@@ -103,6 +103,7 @@ func (app *application) searchUsersHandler(w http.ResponseWriter, r *http.Reques
 
 	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -200,6 +201,7 @@ func (app *application) listUsersByRole(w http.ResponseWriter, r *http.Request, 
 	}
 	if err := app.jsonResponse(w, http.StatusOK, resp); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -250,5 +252,6 @@ func (app *application) updateUserRoleHandler(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, UpdateRoleResponse{User: user}); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }

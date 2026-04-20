@@ -41,6 +41,7 @@ func (app *application) getApplicationSchema(w http.ResponseWriter, r *http.Requ
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -90,6 +91,7 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -126,6 +128,7 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -165,6 +168,7 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -258,6 +262,7 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -286,6 +291,7 @@ func (app *application) getAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -320,6 +326,7 @@ func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -350,6 +357,7 @@ func (app *application) getHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -420,6 +428,117 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
+	}
+}
+
+type UpdateMealGroupsPayload struct {
+	Groups []string `json:"groups" validate:"max=50,dive,required,min=1,max=50"`
+}
+
+type MealGroupsResponse struct {
+	Groups []string `json:"groups"`
+}
+
+type MealGroupStatsResponse struct {
+	Stats map[string]int `json:"stats"`
+}
+
+// getMealGroups returns the configured meal group names
+//
+//	@Summary		Get meal groups (Super Admin)
+//	@Description	Returns the configured list of meal group names
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	MealGroupsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/meal-groups [get]
+func (app *application) getMealGroups(w http.ResponseWriter, r *http.Request) {
+	groups, err := app.store.Settings.GetMealGroups(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse{Groups: groups}); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+}
+
+// updateMealGroups replaces all meal group names
+//
+//	@Summary		Update meal groups (Super Admin)
+//	@Description	Replaces the available meal group names with the provided array
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			groups	body		UpdateMealGroupsPayload	true	"Groups to set"
+//	@Success		200		{object}	MealGroupsResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/meal-groups [put]
+func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request) {
+	var req UpdateMealGroupsPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// Validate unique names
+	nameMap := make(map[string]bool)
+	for _, name := range req.Groups {
+		if nameMap[name] {
+			app.badRequestResponse(w, r, errors.New("duplicate meal group name: "+name))
+			return
+		}
+		nameMap[name] = true
+	}
+
+	if err := app.store.Settings.SetMealGroups(r.Context(), req.Groups); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+}
+
+// getMealGroupStats returns the number of hackers assigned to each meal group
+//
+//	@Summary		Get meal group stats (Super Admin)
+//	@Description	Returns assignment counts for each configured meal group
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	MealGroupStatsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/meal-groups/stats [get]
+func (app *application) getMealGroupStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := app.store.Settings.GetMealGroupStats(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, MealGroupStatsResponse{Stats: stats}); err != nil {
+		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -482,5 +601,6 @@ func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Re
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }

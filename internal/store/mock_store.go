@@ -145,6 +145,19 @@ func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status App
 	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
+func (m *MockApplicationStore) SetMealGroup(ctx context.Context, id string, mealGroup string) error {
+	args := m.Called(id, mealGroup)
+	return args.Error(0)
+}
+
+func (m *MockApplicationStore) GetMealGroupByUserID(ctx context.Context, userID string) (*string, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*string), args.Error(1)
+}
+
 // mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock
@@ -228,6 +241,27 @@ func (m *MockSettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []Sca
 }
 
 func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
+func (m *MockSettingsStore) GetMealGroups(ctx context.Context) ([]string, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetMealGroups(ctx context.Context, groups []string) error {
+	args := m.Called(groups)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

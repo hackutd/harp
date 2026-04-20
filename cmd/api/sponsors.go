@@ -57,6 +57,7 @@ func (app *application) listSponsorsHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, SponsorListResponse{Sponsors: sponsors}); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -102,6 +103,7 @@ func (app *application) createSponsorHandler(w http.ResponseWriter, r *http.Requ
 
 	if err := app.jsonResponse(w, http.StatusCreated, sponsor); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -160,6 +162,7 @@ func (app *application) updateSponsorHandler(w http.ResponseWriter, r *http.Requ
 
 	if err := app.jsonResponse(w, http.StatusOK, sponsor); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -272,5 +275,6 @@ func (app *application) uploadLogoHandler(w http.ResponseWriter, r *http.Request
 
 	if err := app.jsonResponse(w, http.StatusOK, sponsor); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
