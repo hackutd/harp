@@ -136,3 +136,12 @@
   animation: spin-fast 0.5s linear infinite;
   transform-origin: center center;
 }
+
+@keyframes underline-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

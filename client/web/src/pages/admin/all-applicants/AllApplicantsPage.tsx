@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +7,8 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SearchBar } from "@/pages/admin/_shared";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
 import { ApplicationsTable } from "./components/ApplicationsTable";
@@ -113,14 +112,9 @@ export default function AllApplicantsPage() {
             />
           )}
         </div>
-        <div className="relative bg-muted rounded-md border p-[2px]">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
-          <Input
-            placeholder="Search by name or email..."
-            className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-px bg-border shrink-0" />
+          <SearchBar value={searchInput} onChange={setSearchInput} />
         </div>
         <div className="flex justify-end">
           <PaginationControls

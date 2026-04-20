@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
+import { ErrorPage } from "@/components/ErrorPage";
 import { PageLoader } from "@/components/PageLoader";
 // Auth pages stay eager (critical path)
 import {
@@ -45,169 +46,179 @@ const AdminGradingPage = lazy(
 const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
 
 export const router = createBrowserRouter([
-  // Public routes
   {
-    path: "/",
-    element: <LoginPage />,
-  },
-  {
-    path: "/auth/callback",
-    element: <AuthCallbackPage />,
-  },
-  {
-    path: "/auth/verify",
-    element: <AuthVerifyPage />,
-  },
-  {
-    path: "/auth/callback/google",
-    element: <AuthOAuthCallbackPage />,
-  },
-
-  // Hacker routes
-  {
-    path: "/app",
-    element: (
-      <RequireAuth>
-        <Suspense fallback={<PageLoader />}>
-          <DashboardPage />
-        </Suspense>
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/app/apply",
-    element: (
-      <RequireAuth>
-        <Suspense fallback={<PageLoader />}>
-          <ApplyPage />
-        </Suspense>
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/app/status",
-    element: (
-      <RequireAuth>
-        <Suspense fallback={<PageLoader />}>
-          <StatusPage />
-        </Suspense>
-      </RequireAuth>
-    ),
-  },
-
-  // Admin routes with shared sidebar layout
-  {
-    path: "/admin",
-    element: (
-      <RequireAdmin>
-        <Suspense fallback={<PageLoader />}>
-          <AdminLayout />
-        </Suspense>
-      </RequireAdmin>
-    ),
+    element: <Outlet />,
+    errorElement: <ErrorPage />,
     children: [
+      // Public routes
       {
-        index: true,
-        element: <Navigate to="/admin/all-applicants" replace />,
+        path: "/",
+        element: <LoginPage />,
       },
       {
-        path: "all-applicants",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <AllApplicantsPage />
-          </Suspense>
-        ),
+        path: "/auth/callback",
+        element: <AuthCallbackPage />,
       },
       {
-        path: "scans",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ScansPage />
-          </Suspense>
-        ),
+        path: "/auth/verify",
+        element: <AuthVerifyPage />,
       },
       {
-        path: "reviews",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ReviewsPage />
-          </Suspense>
-        ),
+        path: "/auth/callback/google",
+        element: <AuthOAuthCallbackPage />,
       },
+
+      // Hacker routes
       {
-        path: "reviews/grade",
+        path: "/app",
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <AdminGradingPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "schedule",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <SchedulePage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "sponsors",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <SponsorsPage />
-          </Suspense>
-        ),
-      },
-      // Super Admin routes (nested under admin layout, guarded individually)
-      {
-        path: "sa/user-management",
-        element: (
-          <RequireSuperAdmin>
+          <RequireAuth>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminUserManagementPage />
+              <DashboardPage />
             </Suspense>
-          </RequireSuperAdmin>
+          </RequireAuth>
         ),
       },
       {
-        path: "sa/application",
+        path: "/app/apply",
         element: (
-          <RequireSuperAdmin>
+          <RequireAuth>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminApplicationPage />
+              <ApplyPage />
             </Suspense>
-          </RequireSuperAdmin>
+          </RequireAuth>
         ),
       },
       {
-        path: "sa/reviews",
+        path: "/app/status",
         element: (
-          <RequireSuperAdmin>
+          <RequireAuth>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminReviewsPage />
+              <StatusPage />
             </Suspense>
-          </RequireSuperAdmin>
+          </RequireAuth>
         ),
       },
+
+      // Admin routes with shared sidebar layout
       {
-        path: "sa/reviews/grade",
+        path: "/admin",
         element: (
-          <RequireSuperAdmin>
+          <RequireAdmin>
             <Suspense fallback={<PageLoader />}>
-              <SuperAdminGradingPage />
+              <AdminLayout />
             </Suspense>
-          </RequireSuperAdmin>
+          </RequireAdmin>
         ),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/admin/all-applicants" replace />,
+          },
+          {
+            path: "all-applicants",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <AllApplicantsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "scans",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <ScansPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "reviews",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <ReviewsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "reviews/grade",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <AdminGradingPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "schedule",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <SchedulePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "sponsors",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <SponsorsPage />
+              </Suspense>
+            ),
+          },
+          // Super Admin routes (nested under admin layout, guarded individually)
+          {
+            path: "sa/user-management",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminUserManagementPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/application",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminApplicationPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/reviews",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminReviewsPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/reviews/grade",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminGradingPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/scans",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminScansPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+        ],
       },
       {
-        path: "sa/scans",
-        element: (
-          <RequireSuperAdmin>
-            <Suspense fallback={<PageLoader />}>
-              <SuperAdminScansPage />
-            </Suspense>
-          </RequireSuperAdmin>
-        ),
+        path: "*",
+        element: <ErrorPage />,
       },
     ],
   },
