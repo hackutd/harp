@@ -231,10 +231,13 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.listSponsorsHandler)
 
 						// TODO: Protect Under a AdminSponsorEditPermissionMiddleware
-						r.Post("/", app.createSponsorHandler)
-						r.Put("/{sponsorID}", app.updateSponsorHandler)
-						r.Delete("/{sponsorID}", app.deleteSponsorHandler)
-						r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminSponsorEditPermissionMiddleware)
+							r.Post("/", app.createSponsorHandler)
+							r.Put("/{sponsorID}", app.updateSponsorHandler)
+							r.Delete("/{sponsorID}", app.deleteSponsorHandler)
+							r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+						})
 					})
 				})
 			})
