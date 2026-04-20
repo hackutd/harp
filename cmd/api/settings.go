@@ -41,6 +41,7 @@ func (app *application) getApplicationSchema(w http.ResponseWriter, r *http.Requ
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -90,6 +91,7 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -126,6 +128,7 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -165,6 +168,7 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -258,6 +262,7 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -286,6 +291,7 @@ func (app *application) getAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -320,6 +326,7 @@ func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -350,6 +357,7 @@ func (app *application) getHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -420,11 +428,12 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
 type UpdateMealGroupsPayload struct {
-	Groups []string `json:"groups" validate:"required,min=1,dive,required,min=1,max=50"`
+	Groups []string `json:"groups" validate:"max=50,dive,required,min=1,max=50"`
 }
 
 type MealGroupsResponse struct {
@@ -456,6 +465,7 @@ func (app *application) getMealGroups(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse{Groups: groups}); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -503,6 +513,7 @@ func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse(req)); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -527,6 +538,7 @@ func (app *application) getMealGroupStats(w http.ResponseWriter, r *http.Request
 
 	if err := app.jsonResponse(w, http.StatusOK, MealGroupStatsResponse{Stats: stats}); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
 
@@ -589,5 +601,6 @@ func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Re
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
+		return
 	}
 }
