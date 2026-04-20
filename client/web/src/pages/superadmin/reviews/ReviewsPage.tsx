@@ -7,7 +7,6 @@ import {
   Mail,
   Minus,
   Plus,
-  Search,
   Shuffle,
   ToggleRight,
   TriangleAlert,
@@ -35,7 +34,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -43,6 +41,7 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { SearchBar } from "@/pages/admin/_shared";
 import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
 import { PaginationControls } from "@/pages/admin/all-applicants/components/PaginationControls";
 import { useApplicationDetail } from "@/pages/admin/all-applicants/hooks/useApplicationDetail";
@@ -410,14 +409,9 @@ export default function ReviewsPage() {
             onStatusChange={handleStatusFilter}
           />
         </div>
-        <div className="relative bg-muted rounded-md border p-[2px] w-80">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
-          <Input
-            placeholder="Search by name or email..."
-            className="h-7.5 w-full pl-8 border-none bg-transparent shadow-none placeholder:font-light focus-visible:ring-0 placeholder:text-foreground"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-px bg-border shrink-0" />
+          <SearchBar value={searchInput} onChange={setSearchInput} />
         </div>
         <div className="ml-auto flex">
           <PaginationControls

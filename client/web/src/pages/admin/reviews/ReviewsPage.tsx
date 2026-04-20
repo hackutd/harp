@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SearchBar } from "@/pages/admin/_shared";
 import { ReviewerNotesList } from "@/pages/admin/_shared/grading";
 import { fetchApplicationById } from "@/pages/admin/all-applicants/api";
 import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
@@ -38,6 +39,24 @@ export default function ReviewsPage() {
   const refreshKey = refreshAssignedPage((state) => state.refreshKey);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+
+  const filteredReviews = (() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return reviews;
+    return reviews.filter((r) => {
+      const first = r.first_name?.toLowerCase() ?? "";
+      const last = r.last_name?.toLowerCase() ?? "";
+      const full = `${first} ${last}`.trim();
+      const email = r.email.toLowerCase();
+      return (
+        first.includes(q) ||
+        last.includes(q) ||
+        full.includes(q) ||
+        email.includes(q)
+      );
+    });
+  })();
 
   // Single derived selected review (fixes redundant .find() calls)
   const selectedReview = reviews.find((r) => r.id === selectedId) ?? null;
@@ -169,9 +188,9 @@ export default function ReviewsPage() {
   // --- Descriptions ---
   const description =
     tab === "assigned" ? (
-      <>{reviews.length} review(s) assigned to you</>
+      <>{filteredReviews.length} review(s) assigned to you</>
     ) : (
-      <>{reviews.length} completed review(s)</>
+      <>{filteredReviews.length} completed review(s)</>
     );
 
   // --- Header actions ---
@@ -198,7 +217,7 @@ export default function ReviewsPage() {
   // --- Table ---
   const table = (
     <ReviewsTable
-      reviews={reviews}
+      reviews={filteredReviews}
       loading={loading}
       selectedId={selectedId}
       onSelectReview={setSelectedId}
@@ -293,7 +312,10 @@ export default function ReviewsPage() {
               {description}
             </CardDescription>
           </div>
-          {headerActions}
+          <div className="flex items-center gap-3">
+            <SearchBar value={searchInput} onChange={setSearchInput} />
+            {headerActions}
+          </div>
         </CardHeader>
         <hr className="border-border -mb-2" />
         <CardContent className="p-0 flex-1 overflow-hidden">
