@@ -230,7 +230,6 @@ func (app *application) mount() http.Handler {
 					r.Route("/sponsors", func(r chi.Router) {
 						r.Get("/", app.listSponsorsHandler)
 
-						// TODO: Protect Under a AdminSponsorEditPermissionMiddleware
 						r.Group(func(r chi.Router) {
 							r.Use(app.AdminSponsorEditPermissionMiddleware)
 							r.Post("/", app.createSponsorHandler)
@@ -257,6 +256,8 @@ func (app *application) mount() http.Handler {
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
 						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
 						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
+						r.Get("/admin-sponsor-edit-toggle", app.getAdminSponsorEditToggle)
+						r.Post("/admin-sponsor-edit-toggle", app.setAdminSponsorEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
