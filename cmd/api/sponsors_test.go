@@ -331,3 +331,123 @@ func TestUploadLogo(t *testing.T) {
 		mockSponsors.AssertExpectations(t)
 	})
 }
+
+func protectedSponsorMutationRouter(app *application) chi.Router {
+	r := chi.NewRouter()
+	r.With(app.AdminSponsorEditPermissionMiddleware).Post("/", app.createSponsorHandler)
+	r.With(app.AdminSponsorEditPermissionMiddleware).Put("/{sponsorID}", app.updateSponsorHandler)
+	r.With(app.AdminSponsorEditPermissionMiddleware).Delete("/{sponsorID}", app.deleteSponsorHandler)
+	r.With(app.AdminSponsorEditPermissionMiddleware).Put("/{sponsorID}/logo", app.uploadLogoHandler)
+	return r
+}
+
+func TestSponsorMutationPermission(t *testing.T) {
+	t.Run("admin receives 403 for create when admin sponsor edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedSponsorMutationRouter(app)
+
+		mockSettings.On("GetAdminSponsorEditEnabled").Return(false, nil).Once()
+
+		body := `{"name":"Acme Corp","tier":"Gold","website_url":"https://acme.com","description":"A sponsor."}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin receives 403 for update when admin sponsor edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedSponsorMutationRouter(app)
+
+		mockSettings.On("GetAdminSponsorEditEnabled").Return(false, nil).Once()
+
+		body := `{"name":"Updated Corp","tier":"Silver"}`
+		req, err := http.NewRequest(http.MethodPut, "/sponsor-1", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin receives 403 for delete when admin sponsor edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedSponsorMutationRouter(app)
+
+		mockSettings.On("GetAdminSponsorEditEnabled").Return(false, nil).Once()
+
+		req, err := http.NewRequest(http.MethodDelete, "/sponsor-1", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin receives 403 for logo upload when admin sponsor edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedSponsorMutationRouter(app)
+
+		mockSettings.On("GetAdminSponsorEditEnabled").Return(false, nil).Once()
+
+		body := `{"logo_data":"aGVsbG8=","content_type":"image/png"}`
+		req, err := http.NewRequest(http.MethodPut, "/sponsor-1/logo", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("admin can create when admin sponsor edits are enabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSponsors := app.store.Sponsors.(*store.MockSponsorsStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		r := protectedSponsorMutationRouter(app)
+
+		mockSettings.On("GetAdminSponsorEditEnabled").Return(true, nil).Once()
+		mockSponsors.On("Create", mock.AnythingOfType("*store.Sponsor")).Return(nil).Once()
+
+		body := `{"name":"Acme Corp","tier":"Gold","website_url":"https://acme.com","description":"A sponsor."}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+		mockSettings.AssertExpectations(t)
+		mockSponsors.AssertExpectations(t)
+	})
+
+	t.Run("super admin can create when admin sponsor edits are disabled", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSponsors := app.store.Sponsors.(*store.MockSponsorsStore)
+		r := protectedSponsorMutationRouter(app)
+
+		mockSponsors.On("Create", mock.AnythingOfType("*store.Sponsor")).Return(nil).Once()
+
+		body := `{"name":"Acme Corp","tier":"Gold","website_url":"https://acme.com","description":"A sponsor."}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, r)
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+		mockSponsors.AssertExpectations(t)
+	})
+}

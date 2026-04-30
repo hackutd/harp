@@ -18,6 +18,7 @@ const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
+const SettingsKeyAdminSponsorEditEnabled = "admin_sponsor_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
 
@@ -562,11 +563,11 @@ func (s *SettingsStore) GetAdminSponsorEditEnabled(ctx context.Context) (bool, e
 	query := `
 		SELECT value
 		FROM settings
-		WHERE key = 'admin_sponsor_edit_enabled'
+		WHERE key = $1
 	`
 
 	var value []byte
-	err := s.db.QueryRowContext(ctx, query).Scan(&value)
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyAdminSponsorEditEnabled).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return true, nil
@@ -597,6 +598,6 @@ func (s *SettingsStore) SetAdminSponsorEditEnabled(ctx context.Context, enabled 
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
-	_, err = s.db.ExecContext(ctx, query, "admin_sponsor_edit_enabled", string(jsonValue))
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminSponsorEditEnabled, string(jsonValue))
 	return err
 }
