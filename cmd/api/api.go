@@ -23,12 +23,13 @@ import (
 )
 
 type application struct {
-	config      config
-	store       store.Storage
-	logger      *zap.SugaredLogger
-	mailer      mailer.Client
-	gcsClient   gcs.Client
-	rateLimiter ratelimiter.Limiter
+	config           config
+	store            store.Storage
+	logger           *zap.SugaredLogger
+	mailer           mailer.Client
+	gcsClient        gcs.Client
+	rateLimiter      ratelimiter.Limiter
+	dispatcherCancel context.CancelFunc
 }
 
 type config struct {
@@ -44,6 +45,13 @@ type config struct {
 	rateLimiter       ratelimiter.Config
 	supertokens       supertokensConfig
 	publicCORSOrigin  string
+	vapid             vapidConfig
+}
+
+type vapidConfig struct {
+	publicKey  string
+	privateKey string
+	subject    string
 }
 
 type supertokensConfig struct {
@@ -166,6 +174,13 @@ func (app *application) mount() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
 
+			// Push notifications (any authenticated user)
+			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/vapid-public-key", app.getVapidPublicKeyHandler)
+				r.Post("/subscribe", app.subscribePushHandler)
+				r.Delete("/subscribe", app.unsubscribePushHandler)
+			})
+
 			// Hacker Routes
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
@@ -271,6 +286,14 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
+
+					// Scheduled push notifications
+					r.Route("/notifications", func(r chi.Router) {
+						r.Get("/", app.listScheduledNotificationsHandler)
+						r.Post("/", app.createScheduledNotificationHandler)
+						r.Patch("/{notificationID}", app.updateScheduledNotificationHandler)
+						r.Delete("/{notificationID}", app.deleteScheduledNotificationHandler)
+					})
 				})
 			})
 		})
@@ -305,6 +328,10 @@ func (app *application) run(mux http.Handler) error {
 		defer cancel()
 
 		app.logger.Infow("server caught", "signal", s.String())
+
+		if app.dispatcherCancel != nil {
+			app.dispatcherCancel()
+		}
 
 		shutdown <- server.Shutdown(ctx)
 	}()

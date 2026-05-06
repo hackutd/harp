@@ -89,6 +89,11 @@ func main() {
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
 			googleClientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
 		},
+		vapid: vapidConfig{
+			publicKey:  env.GetString("VAPID_PUBLIC_KEY", ""),
+			privateKey: env.GetString("VAPID_PRIVATE_KEY", ""),
+			subject:    env.GetString("VAPID_SUBJECT", "mailto:noreply@hackportal.com"),
+		},
 	}
 
 	if _, err := time.LoadLocation(cfg.hackathonTimeZone); err != nil {
@@ -174,6 +179,10 @@ func main() {
 	}))
 
 	mux := app.mount()
+
+	dispatcherCtx, cancelDispatcher := context.WithCancel(context.Background())
+	app.dispatcherCancel = cancelDispatcher
+	go app.runNotificationDispatcher(dispatcherCtx)
 
 	log.Fatal(app.run(mux))
 }

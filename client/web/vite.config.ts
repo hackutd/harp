@@ -13,6 +13,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,webp,woff,woff2}"],
+      },
       manifest: {
         name: "HARP - HackUTD Portal",
         short_name: "HARP",
@@ -38,20 +44,6 @@ export default defineConfig({
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
-          },
-        ],
-      },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,webp,woff,woff2}"],
-        navigateFallbackDenylist: [/^\/v1\//, /^\/auth\//],
-        runtimeCaching: [
-          {
-            urlPattern: /\/v1\//,
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: /\/auth\//,
-            handler: "NetworkOnly",
           },
         ],
       },
