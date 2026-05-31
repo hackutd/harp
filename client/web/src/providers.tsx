@@ -1,5 +1,6 @@
 import { SuperTokensWrapper } from "supertokens-auth-react";
 
+import { PushPromptHost } from "@/components/PushPromptHost";
 import { Toaster } from "@/components/ui/sonner";
 
 interface ProvidersProps {
@@ -11,6 +12,7 @@ export function Providers({ children }: ProvidersProps) {
     <SuperTokensWrapper>
       {children}
       <Toaster />
+      <PushPromptHost />
     </SuperTokensWrapper>
   );
 }

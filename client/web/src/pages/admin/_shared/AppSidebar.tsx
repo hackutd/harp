@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bell,
   Calendar,
   ClipboardList,
   Handshake,
@@ -74,6 +75,11 @@ const superAdminNav = [
     name: "Application",
     url: "/admin/sa/application",
     icon: ClipboardList,
+  },
+  {
+    name: "Notifications",
+    url: "/admin/sa/notifications",
+    icon: Bell,
   },
 ];
 
