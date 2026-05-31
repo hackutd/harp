@@ -92,7 +92,7 @@ func main() {
 		vapid: vapidConfig{
 			publicKey:  env.GetString("VAPID_PUBLIC_KEY", ""),
 			privateKey: env.GetString("VAPID_PRIVATE_KEY", ""),
-			subject:    env.GetString("VAPID_SUBJECT", "mailto:noreply@hackportal.com"),
+			subject:    env.GetString("VAPID_SUBJECT", "noreply@example.com"),
 		},
 	}
 
