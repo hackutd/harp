@@ -56,6 +56,8 @@ func (app *application) dispatchDueNotifications(ctx context.Context) {
 		return
 	}
 
+	app.logger.Infow("dispatching due notifications", "count", len(due))
+
 	options := &webpush.Options{
 		VAPIDPublicKey:  app.config.vapid.publicKey,
 		VAPIDPrivateKey: app.config.vapid.privateKey,
@@ -65,6 +67,7 @@ func (app *application) dispatchDueNotifications(ctx context.Context) {
 
 	for _, n := range due {
 		count := app.deliverNotification(ctx, n, options)
+		app.logger.Infow("notification dispatched", "id", n.ID, "title", n.Title, "recipients", count)
 		if err := app.store.ScheduledNotifications.MarkSent(ctx, n.ID, count); err != nil {
 			app.logger.Errorw("failed to record recipient count", "id", n.ID, "error", err)
 		}

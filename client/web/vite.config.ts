@@ -19,6 +19,12 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,png,svg,ico,webp,woff,woff2}"],
       },
+      // Serve the service worker during `vite dev` so push notifications can be
+      // tested without a production build. Has no effect on prod builds.
+      devOptions: {
+        enabled: true,
+        type: "module",
+      },
       manifest: {
         name: "HARP - HackUTD Portal",
         short_name: "HARP",
