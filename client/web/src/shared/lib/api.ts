@@ -152,7 +152,7 @@ export async function patchRequest<T>(
 
     return {
       status: response.status,
-      data: response.ok ? json : undefined,
+      data: response.ok ? json?.data : undefined,
       error: !response.ok
         ? json?.error || `Failed to update ${errorContext || endpoint}`
         : undefined,

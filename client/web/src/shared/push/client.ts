@@ -25,14 +25,40 @@ export async function getCurrentSubscription(): Promise<PushSubscription | null>
   return reg.pushManager.getSubscription();
 }
 
+function applicationServerKeyMatches(
+  existing: ArrayBuffer | null,
+  desired: Uint8Array,
+): boolean {
+  if (!existing) return false; // unreadable -> caller decides (treated as "keep")
+  const current = new Uint8Array(existing);
+  if (current.length !== desired.length) return false;
+  for (let i = 0; i < current.length; i++) {
+    if (current[i] !== desired[i]) return false;
+  }
+  return true;
+}
+
 export async function subscribeToPush(
   vapidPublicKey: string,
 ): Promise<PushSubscription> {
   const reg = await navigator.serviceWorker.ready;
-  const existing = await reg.pushManager.getSubscription();
-  if (existing) return existing;
-
   const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+
+  const existing = await reg.pushManager.getSubscription();
+  if (existing) {
+    const existingKey = existing.options.applicationServerKey;
+    // Keep the subscription if it matches the current key, OR if the browser
+    // doesn't expose the key (e.g. Safari returns null) — avoids needless
+    // endpoint churn. Only rotate when we can prove the key changed.
+    if (
+      existingKey === null ||
+      applicationServerKeyMatches(existingKey, applicationServerKey)
+    ) {
+      return existing;
+    }
+    await existing.unsubscribe();
+  }
+
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: applicationServerKey as BufferSource,

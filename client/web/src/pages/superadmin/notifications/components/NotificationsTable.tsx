@@ -86,7 +86,11 @@ export function NotificationsTable({
             Schedule push notifications to be delivered at a specific time.
           </CardDescription>
         </div>
-        <Button onClick={openCreate} className="cursor-pointer">
+        <Button
+          onClick={openCreate}
+          disabled={saving}
+          className="cursor-pointer"
+        >
           <Plus className="mr-1 size-4" />
           Schedule
         </Button>
@@ -137,7 +141,7 @@ export function NotificationsTable({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          disabled={sent}
+                          disabled={saving || sent}
                           onClick={() => openEdit(n)}
                           className="cursor-pointer"
                           aria-label="Edit"
@@ -147,7 +151,7 @@ export function NotificationsTable({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          disabled={sent}
+                          disabled={saving || sent}
                           onClick={() => setDeleteTarget(n)}
                           className="cursor-pointer text-destructive hover:text-destructive"
                           aria-label="Delete"
@@ -195,8 +199,9 @@ export function NotificationsTable({
             </AlertDialogCancel>
             <AlertDialogAction
               className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={saving}
               onClick={async () => {
-                if (deleteTarget) {
+                if (deleteTarget && !saving) {
                   await onDelete(deleteTarget.id);
                 }
                 setDeleteTarget(null);

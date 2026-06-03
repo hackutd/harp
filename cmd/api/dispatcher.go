@@ -98,6 +98,9 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 	}
 
 	delivered := 0
+	authFailures := 0
+	var toPrune []string
+
 	for _, sub := range subs {
 		webpushSub := &webpush.Subscription{
 			Endpoint: sub.Endpoint,
@@ -120,11 +123,27 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 		case resp.StatusCode >= 200 && resp.StatusCode < 300:
 			delivered++
 		case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone:
-			if err := app.store.PushSubscriptions.DeleteByEndpointAdmin(ctx, sub.Endpoint); err != nil {
-				app.logger.Warnw("failed to delete dead subscription", "endpoint", sub.Endpoint, "error", err)
-			}
+			toPrune = append(toPrune, sub.Endpoint)
+		case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+			authFailures++
+			app.logger.Warnw("push auth rejected (stale VAPID key?)", "endpoint", sub.Endpoint, "status", resp.StatusCode)
+			toPrune = append(toPrune, sub.Endpoint)
 		default:
 			app.logger.Warnw("push send returned unexpected status", "endpoint", sub.Endpoint, "status", resp.StatusCode)
+		}
+	}
+
+	// Mass-delete guard: if every sub failed VAPID auth and none delivered, this is almost
+	// certainly a server-side VAPID misconfig, not individually stale subs — don't nuke the
+	// whole table; log loudly and leave the rows for the next tick / operator.
+	if delivered == 0 && authFailures > 0 && authFailures == len(subs) {
+		app.logger.Warnw("all push sends failed VAPID auth; skipping prune (check VAPID config)", "id", n.ID, "count", len(subs))
+		return delivered
+	}
+
+	for _, endpoint := range toPrune {
+		if err := app.store.PushSubscriptions.DeleteByEndpointAdmin(ctx, endpoint); err != nil {
+			app.logger.Warnw("failed to delete dead subscription", "endpoint", endpoint, "error", err)
 		}
 	}
 

@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -12,10 +14,12 @@ import (
 type ScheduledNotificationPayload struct {
 	Title       string    `json:"title" validate:"required,min=1,max=100"`
 	Body        string    `json:"body" validate:"required,min=1,max=300"`
-	URL         *string   `json:"url" validate:"omitempty,url"`
+	URL         *string   `json:"url"`
 	TargetRole  *string   `json:"target_role" validate:"omitempty,oneof=hacker admin super_admin"`
 	ScheduledAt time.Time `json:"scheduled_at" validate:"required"`
 }
+
+const scheduledNotificationMinLead = time.Minute
 
 type ScheduledNotificationListResponse struct {
 	Notifications []store.ScheduledNotification `json:"notifications"`
@@ -73,7 +77,7 @@ func (app *application) createScheduledNotificationHandler(w http.ResponseWriter
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
+	if err := prepareScheduledNotificationPayload(&payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -128,7 +132,7 @@ func (app *application) updateScheduledNotificationHandler(w http.ResponseWriter
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
+	if err := prepareScheduledNotificationPayload(&payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -203,4 +207,53 @@ func toUserRolePtr(s *string) *store.UserRole {
 	}
 	r := store.UserRole(*s)
 	return &r
+}
+
+func prepareScheduledNotificationPayload(payload *ScheduledNotificationPayload) error {
+	payload.Title = strings.TrimSpace(payload.Title)
+	payload.Body = strings.TrimSpace(payload.Body)
+
+	normalizedURL, err := normalizeScheduledNotificationURL(payload.URL)
+	if err != nil {
+		return err
+	}
+	payload.URL = normalizedURL
+
+	if err := Validate.Struct(*payload); err != nil {
+		return err
+	}
+
+	if payload.ScheduledAt.Before(time.Now().Add(scheduledNotificationMinLead)) {
+		return errors.New("scheduled_at must be at least 1 minute in the future")
+	}
+
+	return nil
+}
+
+func normalizeScheduledNotificationURL(raw *string) (*string, error) {
+	if raw == nil {
+		return nil, nil
+	}
+
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	if strings.Contains(trimmed, "\\") ||
+		strings.HasPrefix(trimmed, "//") {
+		return nil, errors.New("url must be a same-origin path")
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return nil, errors.New("url must be a valid same-origin path")
+	}
+
+	if parsed.IsAbs() || parsed.Host != "" || parsed.Path == "" || !strings.HasPrefix(parsed.Path, "/") {
+		return nil, errors.New("url must be a same-origin path")
+	}
+
+	normalized := parsed.String()
+	return &normalized, nil
 }

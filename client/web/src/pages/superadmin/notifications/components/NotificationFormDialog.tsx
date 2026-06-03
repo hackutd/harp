@@ -25,6 +25,13 @@ import type {
   ScheduledNotification,
   ScheduledNotificationPayload,
 } from "../types";
+import {
+  defaultScheduledLocal,
+  getScheduledAtError,
+  minimumScheduledLocal,
+  normalizeNotificationUrlInput,
+  toLocalInputValue,
+} from "../utils";
 
 const TARGET_ALL = "__all";
 type TargetOption = UserRole | typeof TARGET_ALL;
@@ -35,19 +42,6 @@ const ROLE_OPTIONS: { value: TargetOption; label: string }[] = [
   { value: "admin", label: "Admins" },
   { value: "super_admin", label: "Super Admins" },
 ];
-
-function defaultScheduledLocal(): string {
-  const now = new Date(Date.now() + 5 * 60 * 1000);
-  now.setSeconds(0, 0);
-  return toLocalInputValue(now.toISOString());
-}
-
-function toLocalInputValue(iso: string): string {
-  const d = new Date(iso);
-  const tzOffsetMs = d.getTimezoneOffset() * 60_000;
-  const local = new Date(d.getTime() - tzOffsetMs);
-  return local.toISOString().slice(0, 16);
-}
 
 interface NotificationFormProps {
   notification: ScheduledNotification | null;
@@ -73,18 +67,30 @@ function NotificationForm({
       ? toLocalInputValue(notification.scheduled_at)
       : defaultScheduledLocal(),
   );
+  const [minimumScheduledAt] = useState(() => minimumScheduledLocal());
+
+  const urlValidation = normalizeNotificationUrlInput(url);
+  const scheduledAtError = getScheduledAtError(scheduledAt);
+  const canSubmit =
+    !saving &&
+    !!title.trim() &&
+    !!body.trim() &&
+    !urlValidation.error &&
+    !scheduledAtError;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !body.trim() || !scheduledAt) return;
+    if (!canSubmit) return;
 
-    const isoScheduled = new Date(scheduledAt).toISOString();
+    const scheduled = new Date(scheduledAt);
+    if (Number.isNaN(scheduled.getTime())) return;
+
     const ok = await onSubmit({
       title: title.trim(),
       body: body.trim(),
-      url: url.trim() === "" ? null : url.trim(),
+      url: urlValidation.url,
       target_role: target === TARGET_ALL ? null : (target as UserRole),
-      scheduled_at: isoScheduled,
+      scheduled_at: scheduled.toISOString(),
     });
     if (ok) {
       onCancel();
@@ -120,11 +126,22 @@ function NotificationForm({
         <Label htmlFor="notif-url">Click-through URL (optional)</Label>
         <Input
           id="notif-url"
-          type="url"
+          inputMode="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://harp.hackutd.co/app"
+          placeholder="/app"
+          aria-describedby="notif-url-error"
+          aria-invalid={!!urlValidation.error}
         />
+        {urlValidation.error && (
+          <p
+            id="notif-url-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {urlValidation.error}
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
@@ -152,8 +169,20 @@ function NotificationForm({
             type="datetime-local"
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
+            min={minimumScheduledAt}
+            aria-describedby="notif-time-error"
+            aria-invalid={!!scheduledAtError}
             required
           />
+          {scheduledAtError && (
+            <p
+              id="notif-time-error"
+              role="alert"
+              className="text-sm text-destructive"
+            >
+              {scheduledAtError}
+            </p>
+          )}
         </div>
       </div>
       <DialogFooter>
@@ -161,15 +190,12 @@ function NotificationForm({
           type="button"
           variant="outline"
           onClick={onCancel}
+          disabled={saving}
           className="cursor-pointer"
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          disabled={saving || !title.trim() || !body.trim()}
-          className="cursor-pointer"
-        >
+        <Button type="submit" disabled={!canSubmit} className="cursor-pointer">
           {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
           {notification ? "Save" : "Schedule"}
         </Button>

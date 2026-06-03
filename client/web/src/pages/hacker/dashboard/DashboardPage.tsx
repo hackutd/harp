@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/card";
 import { useUserStore } from "@/shared/stores";
 
+import { NotificationsCard } from "./components/NotificationsCard";
+
 export default function DashboardPage() {
   const { user, clearUser } = useUserStore();
   const navigate = useNavigate();
@@ -74,6 +76,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <NotificationsCard />
 
           <Card className="mt-6">
             <CardHeader>

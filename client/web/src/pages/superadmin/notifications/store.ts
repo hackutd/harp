@@ -13,13 +13,19 @@ import type {
   ScheduledNotification,
   ScheduledNotificationPayload,
 } from "./types";
+import { sortScheduledNotifications } from "./utils";
+
+interface FetchNotificationsOptions {
+  signal?: AbortSignal;
+  silent?: boolean;
+}
 
 export interface NotificationsState {
   notifications: ScheduledNotification[];
   loading: boolean;
   saving: boolean;
 
-  fetch: (signal?: AbortSignal) => Promise<void>;
+  fetch: (options?: FetchNotificationsOptions) => Promise<void>;
   create: (payload: ScheduledNotificationPayload) => Promise<boolean>;
   update: (
     id: string,
@@ -28,21 +34,44 @@ export interface NotificationsState {
   remove: (id: string) => Promise<boolean>;
 }
 
-export const useNotificationsStore = create<NotificationsState>((set) => ({
+let fetchSeq = 0;
+
+export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   notifications: [],
   loading: false,
   saving: false,
 
-  fetch: async (signal?: AbortSignal) => {
-    set({ loading: true });
+  fetch: async (options = {}) => {
+    const { signal, silent = false } = options;
+    const requestId = ++fetchSeq;
+
+    if (!silent) {
+      set({ loading: true });
+    }
+
     const res = await fetchScheduledNotifications(signal);
-    if (signal?.aborted) return;
+    const isLatest = requestId === fetchSeq;
+
+    if (signal?.aborted) {
+      if (!silent) set({ loading: false });
+      return;
+    }
+
+    if (!isLatest) {
+      if (!silent) set({ loading: false });
+      return;
+    }
 
     if (res.status === 200 && res.data) {
-      set({ notifications: res.data.notifications, loading: false });
+      set({
+        notifications: sortScheduledNotifications(res.data.notifications),
+        loading: false,
+      });
     } else {
-      set({ loading: false });
-      if (res.status !== 0) errorAlert(res, "Failed to load notifications");
+      if (!silent) {
+        set({ loading: false });
+        if (res.status !== 0) errorAlert(res, "Failed to load notifications");
+      }
     }
   },
 
@@ -52,7 +81,10 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
     if (res.status === 201 && res.data) {
       const created = res.data;
       set((state) => ({
-        notifications: [created, ...state.notifications],
+        notifications: sortScheduledNotifications([
+          created,
+          ...state.notifications,
+        ]),
         saving: false,
       }));
       toast.success("Notification scheduled");
@@ -67,14 +99,10 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
     set({ saving: true });
     const res = await updateScheduledNotification(id, payload);
     if (res.status === 200 && res.data) {
-      // patchRequest returns the raw envelope; unwrap if present.
-      const raw = res.data as
-        | ScheduledNotification
-        | { data: ScheduledNotification };
-      const updated = "data" in raw ? raw.data : (raw as ScheduledNotification);
+      const updated = res.data;
       set((state) => ({
-        notifications: state.notifications.map((n) =>
-          n.id === id ? updated : n,
+        notifications: sortScheduledNotifications(
+          state.notifications.map((n) => (n.id === id ? updated : n)),
         ),
         saving: false,
       }));
@@ -83,6 +111,9 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
     }
     set({ saving: false });
     errorAlert(res, "Failed to update notification");
+    if (res.status === 409) {
+      await get().fetch({ silent: true });
+    }
     return false;
   },
 
@@ -99,6 +130,9 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
     }
     set({ saving: false });
     errorAlert(res, "Failed to delete notification");
+    if (res.status === 409) {
+      await get().fetch({ silent: true });
+    }
     return false;
   },
 }));

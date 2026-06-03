@@ -19,8 +19,26 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchNotifications(controller.signal);
+    fetchNotifications({ signal: controller.signal });
     return () => controller.abort();
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const refreshSilently = () => {
+      if (document.visibilityState === "visible") {
+        void fetchNotifications({ silent: true });
+      }
+    };
+
+    const interval = window.setInterval(refreshSilently, 30_000);
+    window.addEventListener("focus", refreshSilently);
+    document.addEventListener("visibilitychange", refreshSilently);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshSilently);
+      document.removeEventListener("visibilitychange", refreshSilently);
+    };
   }, [fetchNotifications]);
 
   if (loading && notifications.length === 0) {

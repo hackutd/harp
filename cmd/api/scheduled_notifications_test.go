@@ -94,6 +94,32 @@ func TestCreateScheduledNotification(t *testing.T) {
 		mockNotifs.AssertExpectations(t)
 	})
 
+	t.Run("normalizes app-relative URL and trims text", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		mockNotifs.On("Create", mock.AnythingOfType("*store.ScheduledNotification")).Run(func(args mock.Arguments) {
+			n := args.Get(0).(*store.ScheduledNotification)
+			n.ID = "new-notif"
+			assert.Equal(t, "Trimmed title", n.Title)
+			assert.Equal(t, "Trimmed body", n.Body)
+			require.NotNil(t, n.URL)
+			assert.Equal(t, "/app/status?tab=next#review", *n.URL)
+		}).Return(nil).Once()
+
+		scheduledAt := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339Nano)
+		body := `{"title":"  Trimmed title  ","body":"  Trimmed body  ","scheduled_at":"` + scheduledAt + `","url":"  /app/status?tab=next#review  "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		mockNotifs.AssertExpectations(t)
+	})
+
 	t.Run("rejects invalid target_role", func(t *testing.T) {
 		app := newTestApplication(t)
 
@@ -111,6 +137,48 @@ func TestCreateScheduledNotification(t *testing.T) {
 		app := newTestApplication(t)
 
 		body := `{"title":"Test","body":"Hello"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("rejects external URL", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		scheduledAt := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339Nano)
+		body := `{"title":"Test","body":"Hello","scheduled_at":"` + scheduledAt + `","url":"https://example.com/app"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("rejects protocol-relative URL", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		scheduledAt := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339Nano)
+		body := `{"title":"Test","body":"Hello","scheduled_at":"` + scheduledAt + `","url":"//example.com/app"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("rejects schedules too close to now", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		scheduledAt := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339Nano)
+		body := `{"title":"Test","body":"Hello","scheduled_at":"` + scheduledAt + `"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -177,6 +245,21 @@ func TestUpdateScheduledNotification(t *testing.T) {
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
 		mockNotifs.AssertExpectations(t)
+	})
+
+	t.Run("rejects schedules too close to now", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		scheduledAt := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339Nano)
+		body := `{"title":"Updated","body":"New body","scheduled_at":"` + scheduledAt + `"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		req = withNotificationRouteParam(req, "n-1")
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 }
 

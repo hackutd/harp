@@ -20,6 +20,23 @@ interface PushPayload {
   url?: string;
 }
 
+const DEFAULT_NOTIFICATION_URL = "/app";
+
+function resolveSameOriginNotificationUrl(value?: string): string {
+  if (!value) return DEFAULT_NOTIFICATION_URL;
+
+  try {
+    const resolved = new URL(value, self.location.origin);
+    if (resolved.origin !== self.location.origin) {
+      return DEFAULT_NOTIFICATION_URL;
+    }
+
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return DEFAULT_NOTIFICATION_URL;
+  }
+}
+
 self.addEventListener("push", (event) => {
   let data: PushPayload = {};
   if (event.data) {
@@ -33,7 +50,7 @@ self.addEventListener("push", (event) => {
   const title = data.title ?? "HARP";
   const options: NotificationOptions = {
     body: data.body ?? "",
-    data: { url: data.url ?? "/app", id: data.id },
+    data: { url: resolveSameOriginNotificationUrl(data.url), id: data.id },
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
   };
@@ -44,7 +61,7 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data = event.notification.data as { url?: string } | undefined;
-  const url = data?.url ?? "/app";
+  const url = resolveSameOriginNotificationUrl(data?.url);
 
   event.waitUntil(
     (async () => {
