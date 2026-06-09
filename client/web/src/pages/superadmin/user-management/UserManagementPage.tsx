@@ -75,32 +75,9 @@ export default function UserManagementPage() {
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
-      <div className="shrink-0 flex items-center justify-between">
-        <SearchBar value={searchInput} onChange={setSearchInput} />
-        <PaginationControls
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          loading={loading}
-          onPrevPage={() =>
-            fetchUsers({
-              search,
-              cursor: prevCursor!,
-              direction: "backward",
-            })
-          }
-          onNextPage={() =>
-            fetchUsers({
-              search,
-              cursor: nextCursor!,
-              direction: "forward",
-            })
-          }
-        />
-      </div>
-
       <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <CardHeader className="shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <CardDescription className="font-light flex items-center gap-1.5">
               <span>{users.length} user(s) on this page</span>
               {searchInput.length >= MIN_SEARCH_LENGTH && (
@@ -123,6 +100,28 @@ export default function UserManagementPage() {
                 );
               })}
             </CardDescription>
+            <div className="flex items-center gap-2">
+              <SearchBar value={searchInput} onChange={setSearchInput} />
+              <PaginationControls
+                prevCursor={prevCursor}
+                nextCursor={nextCursor}
+                loading={loading}
+                onPrevPage={() =>
+                  fetchUsers({
+                    search,
+                    cursor: prevCursor!,
+                    direction: "backward",
+                  })
+                }
+                onNextPage={() =>
+                  fetchUsers({
+                    search,
+                    cursor: nextCursor!,
+                    direction: "forward",
+                  })
+                }
+              />
+            </div>
           </div>
         </CardHeader>
         <hr className="border-border -mb-2" />
