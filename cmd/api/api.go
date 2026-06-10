@@ -291,6 +291,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/notifications", func(r chi.Router) {
 						r.Get("/", app.listScheduledNotificationsHandler)
 						r.Post("/", app.createScheduledNotificationHandler)
+						r.Post("/from-schedule", app.generateScheduleNotificationsHandler)
 						r.Patch("/{notificationID}", app.updateScheduledNotificationHandler)
 						r.Delete("/{notificationID}", app.deleteScheduledNotificationHandler)
 					})

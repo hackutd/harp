@@ -7,9 +7,12 @@ import {
 import type { ApiResponse } from "@/types";
 
 import type {
+  GenerateScheduleNotificationsPayload,
   ScheduledNotification,
   ScheduledNotificationListResponse,
   ScheduledNotificationPayload,
+  ScheduleListResponse,
+  ScheduleNotificationGenerationResult,
 } from "./types";
 
 export async function fetchScheduledNotifications(
@@ -43,6 +46,28 @@ export async function updateScheduledNotification(
     `/superadmin/notifications/${id}`,
     payload,
     "scheduled notification",
+    signal,
+  );
+}
+
+export async function fetchScheduleForNotifications(
+  signal?: AbortSignal,
+): Promise<ApiResponse<ScheduleListResponse>> {
+  return getRequest<ScheduleListResponse>(
+    "/admin/schedule",
+    "schedule",
+    signal,
+  );
+}
+
+export async function generateNotificationsFromSchedule(
+  payload: GenerateScheduleNotificationsPayload,
+  signal?: AbortSignal,
+): Promise<ApiResponse<ScheduleNotificationGenerationResult>> {
+  return postRequest<ScheduleNotificationGenerationResult>(
+    "/superadmin/notifications/from-schedule",
+    payload,
+    "schedule notifications",
     signal,
   );
 }

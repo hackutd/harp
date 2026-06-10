@@ -15,6 +15,7 @@ export default function NotificationsPage() {
     create,
     update,
     remove,
+    generateFromSchedule,
   } = useNotificationsStore();
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function NotificationsPage() {
         onCreate={create}
         onUpdate={update}
         onDelete={remove}
+        onGenerateFromSchedule={generateFromSchedule}
       />
     </div>
   );

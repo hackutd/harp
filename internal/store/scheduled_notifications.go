@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -16,9 +17,16 @@ type ScheduledNotification struct {
 	ScheduledAt    time.Time  `json:"scheduled_at"`
 	SentAt         *time.Time `json:"sent_at"`
 	RecipientCount int        `json:"recipient_count"`
+	ScheduleID     *string    `json:"schedule_id"`
 	CreatedBy      string     `json:"created_by"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+// ScheduleNotificationGenerationResult summarizes a bulk generation run.
+type ScheduleNotificationGenerationResult struct {
+	Created int `json:"created"`
+	Skipped int `json:"skipped"`
 }
 
 type ScheduledNotificationsStore struct {
@@ -45,7 +53,7 @@ func (s *ScheduledNotificationsStore) GetByID(ctx context.Context, id string) (*
 	defer cancel()
 
 	query := `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
 		FROM scheduled_notifications
 		WHERE id = $1
 	`
@@ -53,7 +61,7 @@ func (s *ScheduledNotificationsStore) GetByID(ctx context.Context, id string) (*
 	var n ScheduledNotification
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
-		&n.SentAt, &n.RecipientCount, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+		&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -70,7 +78,7 @@ func (s *ScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNoti
 	defer cancel()
 
 	query := `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
 		FROM scheduled_notifications
 		ORDER BY scheduled_at DESC
 	`
@@ -86,7 +94,7 @@ func (s *ScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNoti
 		var n ScheduledNotification
 		if err := rows.Scan(
 			&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
-			&n.SentAt, &n.RecipientCount, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+			&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -104,12 +112,12 @@ func (s *ScheduledNotificationsStore) Update(ctx context.Context, n *ScheduledNo
 		UPDATE scheduled_notifications
 		SET title = $1, body = $2, url = $3, target_role = $4, scheduled_at = $5
 		WHERE id = $6 AND sent_at IS NULL
-		RETURNING sent_at, recipient_count, created_by, created_at, updated_at
+		RETURNING sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
 	`
 
 	err := s.db.QueryRowContext(ctx, query,
 		n.Title, n.Body, n.URL, n.TargetRole, n.ScheduledAt, n.ID,
-	).Scan(&n.SentAt, &n.RecipientCount, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt)
+	).Scan(&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Could be not found or already sent — distinguish
@@ -167,7 +175,7 @@ func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Tim
 	defer tx.Rollback()
 
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
 		FROM scheduled_notifications
 		WHERE scheduled_at <= $1 AND sent_at IS NULL
 		ORDER BY scheduled_at
@@ -184,7 +192,7 @@ func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Tim
 		var n ScheduledNotification
 		if err := rows.Scan(
 			&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
-			&n.SentAt, &n.RecipientCount, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+			&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
 		); err != nil {
 			rows.Close()
 			return nil, err
@@ -217,6 +225,94 @@ func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Tim
 	}
 
 	return claimed, nil
+}
+
+// GenerateFromSchedule (re)builds reminder notifications from the current schedule.
+//
+// For every schedule item it derives a reminder scheduled `lead` before the event's
+// start time. Pending (unsent) schedule-sourced notifications are cleared first so that
+// repeated runs are idempotent and reflect the latest schedule and lead time. Already-sent
+// notifications and manually-created ones (schedule_id IS NULL) are left untouched.
+// Reminders whose computed send time has already passed are skipped.
+func (s *ScheduledNotificationsStore) GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
+	defer cancel()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Clear pending schedule-sourced reminders so a re-run reflects the latest schedule.
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM scheduled_notifications
+		WHERE schedule_id IS NOT NULL AND sent_at IS NULL
+	`); err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		SELECT id, event_name, location, start_time
+		FROM schedule
+		ORDER BY start_time ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	type scheduleRow struct {
+		id        string
+		eventName string
+		location  string
+		startTime time.Time
+	}
+
+	var events []scheduleRow
+	for rows.Next() {
+		var e scheduleRow
+		if err := rows.Scan(&e.id, &e.eventName, &e.location, &e.startTime); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	reminderURL := "/schedule"
+	leadMinutes := int(lead.Minutes())
+
+	result := &ScheduleNotificationGenerationResult{}
+	for _, e := range events {
+		scheduledAt := e.startTime.Add(-lead)
+		if !scheduledAt.After(now) {
+			result.Skipped++
+			continue
+		}
+
+		body := fmt.Sprintf("Starting in %d minutes", leadMinutes)
+		if e.location != "" {
+			body = fmt.Sprintf("%s at %s", body, e.location)
+		}
+
+		scheduleID := e.id
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO scheduled_notifications (title, body, url, target_role, scheduled_at, created_by, schedule_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, e.eventName, body, reminderURL, targetRole, scheduledAt, createdBy, scheduleID); err != nil {
+			return nil, err
+		}
+		result.Created++
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (s *ScheduledNotificationsStore) MarkSent(ctx context.Context, id string, recipientCount int) error {

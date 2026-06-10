@@ -494,6 +494,14 @@ func (m *MockScheduledNotificationsStore) MarkSent(ctx context.Context, id strin
 	return args.Error(0)
 }
 
+func (m *MockScheduledNotificationsStore) GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error) {
+	args := m.Called(lead, targetRole, createdBy, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ScheduleNotificationGenerationResult), args.Error(1)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{

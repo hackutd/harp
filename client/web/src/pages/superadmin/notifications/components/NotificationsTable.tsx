@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -25,9 +25,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import type {
+  GenerateScheduleNotificationsPayload,
   ScheduledNotification,
   ScheduledNotificationPayload,
 } from "../types";
+import { GenerateFromScheduleDialog } from "./GenerateFromScheduleDialog";
 import { NotificationFormDialog } from "./NotificationFormDialog";
 
 interface NotificationsTableProps {
@@ -39,6 +41,9 @@ interface NotificationsTableProps {
     payload: ScheduledNotificationPayload,
   ) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onGenerateFromSchedule: (
+    payload: GenerateScheduleNotificationsPayload,
+  ) => Promise<boolean>;
 }
 
 function formatTarget(role: string | null): string {
@@ -60,8 +65,10 @@ export function NotificationsTable({
   onCreate,
   onUpdate,
   onDelete,
+  onGenerateFromSchedule,
 }: NotificationsTableProps) {
   const [formOpen, setFormOpen] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const [editing, setEditing] = useState<ScheduledNotification | null>(null);
   const [deleteTarget, setDeleteTarget] =
     useState<ScheduledNotification | null>(null);
@@ -117,14 +124,25 @@ export function NotificationsTable({
                 Schedule push notifications to be delivered at a specific time.
               </CardDescription>
             </div>
-            <Button
-              onClick={openCreate}
-              disabled={saving}
-              className="cursor-pointer"
-            >
-              <Plus className="mr-1 size-4" />
-              Schedule
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setGenerateOpen(true)}
+                disabled={saving}
+                className="cursor-pointer"
+              >
+                <CalendarClock className="mr-1 size-4" />
+                From schedule
+              </Button>
+              <Button
+                onClick={openCreate}
+                disabled={saving}
+                className="cursor-pointer"
+              >
+                <Plus className="mr-1 size-4" />
+                Create
+              </Button>
+            </div>
           </div>
 
           <TabsContent value="scheduled" className="min-h-0 overflow-auto">
@@ -244,6 +262,13 @@ export function NotificationsTable({
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      <GenerateFromScheduleDialog
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+        saving={saving}
+        onGenerate={onGenerateFromSchedule}
+      />
 
       <NotificationFormDialog
         open={formOpen}

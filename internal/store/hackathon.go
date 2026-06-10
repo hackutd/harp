@@ -55,7 +55,7 @@ func (s *HackathonStore) Reset(ctx context.Context, resetApplications, resetScan
 	}
 
 	if resetSchedule {
-		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE schedule"); err != nil {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM schedule"); err != nil {
 			return nil, err
 		}
 	}

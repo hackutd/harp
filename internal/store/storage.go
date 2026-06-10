@@ -102,6 +102,7 @@ type Storage struct {
 		Delete(ctx context.Context, id string) error
 		ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error)
 		MarkSent(ctx context.Context, id string, recipientCount int) error
+		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -294,6 +295,87 @@ func TestDeleteScheduledNotification(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.deleteScheduledNotificationHandler))
 		checkResponseCode(t, http.StatusConflict, rr.Code)
+
+		mockNotifs.AssertExpectations(t)
+	})
+}
+
+func TestGenerateScheduleNotifications(t *testing.T) {
+	t.Run("generates reminders from schedule", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		result := &store.ScheduleNotificationGenerationResult{Created: 3, Skipped: 1}
+		mockNotifs.On("GenerateFromSchedule",
+			10*time.Minute,
+			mock.MatchedBy(func(role *store.UserRole) bool {
+				return role != nil && *role == store.RoleHacker
+			}),
+			"superadmin-1",
+			mock.AnythingOfType("time.Time"),
+		).Return(result, nil).Once()
+
+		body := `{"lead_minutes":10,"target_role":"hacker"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.generateScheduleNotificationsHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		var respBody struct {
+			Data store.ScheduleNotificationGenerationResult `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&respBody))
+		assert.Equal(t, 3, respBody.Data.Created)
+		assert.Equal(t, 1, respBody.Data.Skipped)
+
+		mockNotifs.AssertExpectations(t)
+	})
+
+	t.Run("rejects missing lead_minutes", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{}`))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.generateScheduleNotificationsHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("rejects out-of-range lead_minutes", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"lead_minutes":5000}`))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.generateScheduleNotificationsHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("returns 500 on store error", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		mockNotifs.On("GenerateFromSchedule",
+			5*time.Minute,
+			mock.Anything,
+			"superadmin-1",
+			mock.AnythingOfType("time.Time"),
+		).Return(nil, errors.New("db down")).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"lead_minutes":5}`))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.generateScheduleNotificationsHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 
 		mockNotifs.AssertExpectations(t)
 	})

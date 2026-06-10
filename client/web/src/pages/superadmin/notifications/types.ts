@@ -25,3 +25,27 @@ export interface ScheduledNotificationPayload {
 export interface ScheduledNotificationListResponse {
   notifications: ScheduledNotification[];
 }
+
+export interface GenerateScheduleNotificationsPayload {
+  lead_minutes: number;
+  target_role: UserRole | null;
+}
+
+export interface ScheduleNotificationGenerationResult {
+  created: number;
+  skipped: number;
+}
+
+export interface ScheduleEventItem {
+  id: string;
+  event_name: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  tags: string[];
+}
+
+export interface ScheduleListResponse {
+  schedule: ScheduleEventItem[];
+}

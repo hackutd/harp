@@ -3055,6 +3055,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/notifications/from-schedule": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; reminders whose send time has already passed are skipped.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/notifications"
+                ],
+                "summary": "Generate notifications from schedule (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Reminder generation config",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.GenerateScheduleNotificationsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.ScheduleNotificationGenerationResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/notifications/{notificationID}": {
             "delete": {
                 "security": [
@@ -4526,6 +4609,28 @@ const docTemplate = `{
                 }
             }
         },
+        "main.GenerateScheduleNotificationsPayload": {
+            "type": "object",
+            "required": [
+                "lead_minutes"
+            ],
+            "properties": {
+                "lead_minutes": {
+                    "description": "LeadMinutes is how many minutes before each event the reminder should fire.",
+                    "type": "integer",
+                    "maximum": 1440,
+                    "minimum": 1
+                },
+                "target_role": {
+                    "type": "string",
+                    "enum": [
+                        "hacker",
+                        "admin",
+                        "super_admin"
+                    ]
+                }
+            }
+        },
         "main.HackathonDateRangeResponse": {
             "type": "object",
             "properties": {
@@ -5558,6 +5663,17 @@ const docTemplate = `{
                 }
             }
         },
+        "store.ScheduleNotificationGenerationResult": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                }
+            }
+        },
         "store.ScheduledNotification": {
             "type": "object",
             "properties": {
@@ -5575,6 +5691,9 @@ const docTemplate = `{
                 },
                 "recipient_count": {
                     "type": "integer"
+                },
+                "schedule_id": {
+                    "type": "string"
                 },
                 "scheduled_at": {
                     "type": "string"

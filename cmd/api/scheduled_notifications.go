@@ -21,6 +21,13 @@ type ScheduledNotificationPayload struct {
 
 const scheduledNotificationMinLead = time.Minute
 
+// GenerateScheduleNotificationsPayload configures reminder generation from the schedule.
+type GenerateScheduleNotificationsPayload struct {
+	// LeadMinutes is how many minutes before each event the reminder should fire.
+	LeadMinutes int     `json:"lead_minutes" validate:"required,min=1,max=1440"`
+	TargetRole  *string `json:"target_role" validate:"omitempty,oneof=hacker admin super_admin"`
+}
+
 type ScheduledNotificationListResponse struct {
 	Notifications []store.ScheduledNotification `json:"notifications"`
 }
@@ -97,6 +104,54 @@ func (app *application) createScheduledNotificationHandler(w http.ResponseWriter
 	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, n); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// generateScheduleNotificationsHandler builds reminder notifications from the schedule.
+//
+//	@Summary		Generate notifications from schedule (Super Admin)
+//	@Description	Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; reminders whose send time has already passed are skipped.
+//	@Tags			superadmin/notifications
+//	@Accept			json
+//	@Produce		json
+//	@Param			config	body		GenerateScheduleNotificationsPayload	true	"Reminder generation config"
+//	@Success		201		{object}	store.ScheduleNotificationGenerationResult
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/notifications/from-schedule [post]
+func (app *application) generateScheduleNotificationsHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("user not in context"))
+		return
+	}
+
+	var payload GenerateScheduleNotificationsPayload
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	lead := time.Duration(payload.LeadMinutes) * time.Minute
+
+	result, err := app.store.ScheduledNotifications.GenerateFromSchedule(
+		r.Context(), lead, toUserRolePtr(payload.TargetRole), user.ID, time.Now(),
+	)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusCreated, result); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

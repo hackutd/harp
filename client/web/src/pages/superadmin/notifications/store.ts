@@ -7,9 +7,11 @@ import {
   createScheduledNotification,
   deleteScheduledNotification,
   fetchScheduledNotifications,
+  generateNotificationsFromSchedule,
   updateScheduledNotification,
 } from "./api";
 import type {
+  GenerateScheduleNotificationsPayload,
   ScheduledNotification,
   ScheduledNotificationPayload,
 } from "./types";
@@ -32,6 +34,9 @@ export interface NotificationsState {
     payload: ScheduledNotificationPayload,
   ) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
+  generateFromSchedule: (
+    payload: GenerateScheduleNotificationsPayload,
+  ) => Promise<boolean>;
 }
 
 let fetchSeq = 0;
@@ -133,6 +138,32 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     if (res.status === 409) {
       await get().fetch({ silent: true });
     }
+    return false;
+  },
+
+  generateFromSchedule: async (payload) => {
+    set({ saving: true });
+    const res = await generateNotificationsFromSchedule(payload);
+    if (res.status === 201 && res.data) {
+      const { created, skipped } = res.data;
+      await get().fetch({ silent: true });
+      set({ saving: false });
+      if (created === 0) {
+        toast.info(
+          skipped > 0
+            ? "No reminders added — all events are too soon or already started."
+            : "No reminders added — the schedule is empty.",
+        );
+      } else {
+        toast.success(
+          `Scheduled ${created} reminder${created === 1 ? "" : "s"}` +
+            (skipped > 0 ? ` (${skipped} skipped)` : ""),
+        );
+      }
+      return true;
+    }
+    set({ saving: false });
+    errorAlert(res, "Failed to generate reminders");
     return false;
   },
 }));
