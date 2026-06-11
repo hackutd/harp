@@ -6,6 +6,7 @@ toolchain go1.24.11
 
 require (
 	cloud.google.com/go/storage v1.60.0
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/cors v1.2.2
 	github.com/go-playground/validator/v10 v10.30.1

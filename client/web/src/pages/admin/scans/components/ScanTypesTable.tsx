@@ -292,7 +292,7 @@ export function ScanTypesTable({
                     >
                       <TableCell>
                         <Button
-                          className="bg-indigo-400 hover:bg-indigo-700 cursor-pointer"
+                          className="cursor-pointer"
                           size="sm"
                           disabled={!scanType.is_active}
                           onClick={() => onSelect(scanType)}
@@ -407,7 +407,7 @@ export function ScanTypesTable({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button
-                          className="bg-indigo-400 hover:bg-indigo-700 text-white cursor-pointer"
+                          className="cursor-pointer"
                           size="sm"
                           disabled={!scanType.is_active}
                           onClick={(e) => {

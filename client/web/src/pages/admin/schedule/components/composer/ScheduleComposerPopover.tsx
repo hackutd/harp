@@ -186,7 +186,6 @@ export function ScheduleComposerPopover({
             size="sm"
             onClick={() => onSave(values)}
             disabled={!values.title.trim() || creatingItem || deletingItem}
-            className="bg-indigo-400 hover:bg-indigo-500 text-white"
           >
             {creatingItem
               ? isEditing
