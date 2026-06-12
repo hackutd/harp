@@ -402,7 +402,7 @@ export function SponsorsTable({
             <Button
               size="sm"
               onClick={() => setFormOpen(true)}
-              className="cursor-pointer bg-indigo-400"
+              className="cursor-pointer"
             >
               <Plus className="mr-1 size-4" />
               Add Sponsor

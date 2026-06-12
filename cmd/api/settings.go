@@ -192,6 +192,14 @@ type AdminScheduleEditToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetAdminSponsorEditTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminSponsorEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 type SetHackathonDateRangePayload struct {
 	StartDate string `json:"start_date" validate:"required"`
 	EndDate   string `json:"end_date" validate:"required"`
@@ -327,6 +335,68 @@ func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 		return
+	}
+}
+
+// getAdminSponsorEditToggle returns whether admins can edit sponsors
+//
+//	@Summary		Get admin sponsor edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete sponsors
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminSponsorEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-sponsor-edit-toggle [get]
+func (app *application) getAdminSponsorEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminSponsorEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminSponsorEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminSponsorEditToggle updates whether admins can edit sponsors
+//
+//	@Summary		Set admin sponsor edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete sponsors
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminSponsorEditTogglePayload	true	"Admin sponsor editing enabled state"
+//	@Success		200		{object}	AdminSponsorEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-sponsor-edit-toggle [post]
+func (app *application) setAdminSponsorEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminSponsorEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminSponsorEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminSponsorEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
 	}
 }
 

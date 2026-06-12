@@ -39,6 +39,11 @@ tasks:
       - git config core.hooksPath .github/hooks
       - echo "Git hooks configured successfully."
 
+  gen-vapid:
+    desc: Generate a VAPID keypair for push notifications (prints to stdout; copy into .env)
+    cmds:
+      - go run ./cmd/genvapid
+
   test:
     desc: Run all Go tests
     cmds:

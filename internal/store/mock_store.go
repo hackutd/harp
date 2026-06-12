@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -214,6 +215,16 @@ func (m *MockSettingsStore) SetAdminScheduleEditEnabled(ctx context.Context, ena
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetAdminSponsorEditEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -284,8 +295,8 @@ type MockHackathonStore struct {
 	mock.Mock
 }
 
-func (m *MockHackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error) {
-	args := m.Called(resetApplications, resetScans, resetSchedule, resetSettings)
+func (m *MockHackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error) {
+	args := m.Called(resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -450,16 +461,103 @@ func (m *MockSponsorsStore) UpdateLogo(ctx context.Context, id string, logoData 
 	return args.Error(0)
 }
 
+// MockPushSubscriptionsStore is a mock implementation of the PushSubscriptions interface
+type MockPushSubscriptionsStore struct {
+	mock.Mock
+}
+
+func (m *MockPushSubscriptionsStore) Upsert(ctx context.Context, sub *PushSubscription) error {
+	args := m.Called(sub)
+	return args.Error(0)
+}
+
+func (m *MockPushSubscriptionsStore) DeleteByEndpoint(ctx context.Context, userID, endpoint string) error {
+	args := m.Called(userID, endpoint)
+	return args.Error(0)
+}
+
+func (m *MockPushSubscriptionsStore) DeleteByEndpointAdmin(ctx context.Context, endpoint string) error {
+	args := m.Called(endpoint)
+	return args.Error(0)
+}
+
+func (m *MockPushSubscriptionsStore) ListByRole(ctx context.Context, role *UserRole) ([]PushSubscription, error) {
+	args := m.Called(role)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]PushSubscription), args.Error(1)
+}
+
+// MockScheduledNotificationsStore is a mock implementation of the ScheduledNotifications interface
+type MockScheduledNotificationsStore struct {
+	mock.Mock
+}
+
+func (m *MockScheduledNotificationsStore) Create(ctx context.Context, n *ScheduledNotification) error {
+	args := m.Called(n)
+	return args.Error(0)
+}
+
+func (m *MockScheduledNotificationsStore) GetByID(ctx context.Context, id string) (*ScheduledNotification, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ScheduledNotification), args.Error(1)
+}
+
+func (m *MockScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNotification, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScheduledNotification), args.Error(1)
+}
+
+func (m *MockScheduledNotificationsStore) Update(ctx context.Context, n *ScheduledNotification) error {
+	args := m.Called(n)
+	return args.Error(0)
+}
+
+func (m *MockScheduledNotificationsStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error) {
+	args := m.Called(now, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScheduledNotification), args.Error(1)
+}
+
+func (m *MockScheduledNotificationsStore) MarkSent(ctx context.Context, id string, recipientCount int) error {
+	args := m.Called(id, recipientCount)
+	return args.Error(0)
+}
+
+func (m *MockScheduledNotificationsStore) GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error) {
+	args := m.Called(lead, targetRole, createdBy, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ScheduleNotificationGenerationResult), args.Error(1)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
-		Users:              &MockUsersStore{},
-		Application:        &MockApplicationStore{},
-		Settings:           &MockSettingsStore{},
-		Hackathon:          &MockHackathonStore{},
-		ApplicationReviews: &MockApplicationReviewsStore{},
-		Scans:              &MockScansStore{},
-		Schedule:           &MockScheduleStore{},
-		Sponsors:           &MockSponsorsStore{},
+		Users:                  &MockUsersStore{},
+		Application:            &MockApplicationStore{},
+		Settings:               &MockSettingsStore{},
+		Hackathon:              &MockHackathonStore{},
+		ApplicationReviews:     &MockApplicationReviewsStore{},
+		Scans:                  &MockScansStore{},
+		Schedule:               &MockScheduleStore{},
+		Sponsors:               &MockSponsorsStore{},
+		PushSubscriptions:      &MockPushSubscriptionsStore{},
+		ScheduledNotifications: &MockScheduledNotificationsStore{},
 	}
 }

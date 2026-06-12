@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
+import { AdminPortalButton } from "@/components/AdminPortalButton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useUserStore } from "@/shared/stores";
+
+import { NotificationsCard } from "./components/NotificationsCard";
 
 export default function DashboardPage() {
   const { user, clearUser } = useUserStore();
@@ -34,9 +37,12 @@ export default function DashboardPage() {
                 Manage your hackathon journey from here
               </p>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2">
+              <AdminPortalButton />
+              <Button variant="outline" onClick={handleLogout}>
+                Sign Out
+              </Button>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -74,6 +80,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <NotificationsCard />
 
           <Card className="mt-6">
             <CardHeader>

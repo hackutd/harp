@@ -7,18 +7,20 @@ import (
 )
 
 type ResetHackathonPayload struct {
-	ResetApplications bool `json:"reset_applications"`
-	ResetScans        bool `json:"reset_scans"`
-	ResetSchedule     bool `json:"reset_schedule"`
-	ResetSettings     bool `json:"reset_settings"`
+	ResetApplications  bool `json:"reset_applications"`
+	ResetScans         bool `json:"reset_scans"`
+	ResetSchedule      bool `json:"reset_schedule"`
+	ResetSettings      bool `json:"reset_settings"`
+	ResetNotifications bool `json:"reset_notifications"`
 }
 
 type ResetHackathonResponse struct {
-	ResetApplications bool `json:"reset_applications"`
-	ResetScans        bool `json:"reset_scans"`
-	ResetSchedule     bool `json:"reset_schedule"`
-	ResetSettings     bool `json:"reset_settings"`
-	ResumesDeleted    int  `json:"resumes_deleted"`
+	ResetApplications  bool `json:"reset_applications"`
+	ResetScans         bool `json:"reset_scans"`
+	ResetSchedule      bool `json:"reset_schedule"`
+	ResetSettings      bool `json:"reset_settings"`
+	ResetNotifications bool `json:"reset_notifications"`
+	ResumesDeleted     int  `json:"resumes_deleted"`
 }
 
 // resetHackathonHandler resets hackathon data based on options
@@ -48,12 +50,12 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if !req.ResetApplications && !req.ResetScans && !req.ResetSchedule && !req.ResetSettings {
+	if !req.ResetApplications && !req.ResetScans && !req.ResetSchedule && !req.ResetSettings && !req.ResetNotifications {
 		app.badRequestResponse(w, r, errors.New("at least one reset option must be selected"))
 		return
 	}
 
-	resumePaths, err := app.store.Hackathon.Reset(r.Context(), req.ResetApplications, req.ResetScans, req.ResetSchedule, req.ResetSettings)
+	resumePaths, err := app.store.Hackathon.Reset(r.Context(), req.ResetApplications, req.ResetScans, req.ResetSchedule, req.ResetSettings, req.ResetNotifications)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -69,11 +71,12 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	response := ResetHackathonResponse{
-		ResetApplications: req.ResetApplications,
-		ResetScans:        req.ResetScans,
-		ResetSchedule:     req.ResetSchedule,
-		ResetSettings:     req.ResetSettings,
-		ResumesDeleted:    len(resumePaths),
+		ResetApplications:  req.ResetApplications,
+		ResetScans:         req.ResetScans,
+		ResetSchedule:      req.ResetSchedule,
+		ResetSettings:      req.ResetSettings,
+		ResetNotifications: req.ResetNotifications,
+		ResumesDeleted:     len(resumePaths),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

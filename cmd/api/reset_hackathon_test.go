@@ -17,15 +17,16 @@ func TestResetHackathon(t *testing.T) {
 		app.gcsClient = nil // Ensure GCS client is nil to skip file deletion logic
 
 		payload := ResetHackathonPayload{
-			ResetApplications: true,
-			ResetScans:        true,
-			ResetSchedule:     true,
-			ResetSettings:     true,
+			ResetApplications:  true,
+			ResetScans:         true,
+			ResetSchedule:      true,
+			ResetSettings:      true,
+			ResetNotifications: true,
 		}
 
 		// Mock successful reset
 		app.store.Hackathon.(*store.MockHackathonStore).
-			On("Reset", true, true, true, true).
+			On("Reset", true, true, true, true, true).
 			Return([]string{"resume1.pdf", "resume2.pdf"}, nil)
 
 		reqBody, _ := json.Marshal(payload)
@@ -56,7 +57,7 @@ func TestResetHackathon(t *testing.T) {
 
 		// Simulate partial failure/rollback by returning error from store
 		app.store.Hackathon.(*store.MockHackathonStore).
-			On("Reset", true, false, false, false).
+			On("Reset", true, false, false, false, false).
 			Return([]string(nil), errors.New("db transaction failed"))
 
 		reqBody, _ := json.Marshal(payload)

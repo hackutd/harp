@@ -34,6 +34,7 @@ export function ResetHackathonCard() {
     reset_scans: false,
     reset_schedule: false,
     reset_settings: false,
+    reset_notifications: false,
   });
 
   const handleReset = async () => {
@@ -62,6 +63,7 @@ export function ResetHackathonCard() {
         reset_scans: false,
         reset_schedule: false,
         reset_settings: false,
+        reset_notifications: false,
       });
     } catch (err) {
       toast.error(
@@ -121,6 +123,11 @@ export function ResetHackathonCard() {
                     id: "reset_schedule",
                     label: "Schedule",
                     desc: "Deletes all schedule events.",
+                  },
+                  {
+                    id: "reset_notifications",
+                    label: "Notifications",
+                    desc: "Deletes all scheduled and sent notifications.",
                   },
                   {
                     id: "reset_settings",

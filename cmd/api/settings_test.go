@@ -318,6 +318,80 @@ func TestSetAdminScheduleEditToggle(t *testing.T) {
 	})
 }
 
+func TestGetAdminSponsorEditToggle(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return current value", func(t *testing.T) {
+		mockSettings.On("GetAdminSponsorEditEnabled").Return(true, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getAdminSponsorEditToggle))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data AdminSponsorEditToggleResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.True(t, body.Data.Enabled)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestSetAdminSponsorEditToggle(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should set enabled=true", func(t *testing.T) {
+		mockSettings.On("SetAdminSponsorEditEnabled", true).Return(nil).Once()
+
+		body := `{"enabled":true}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setAdminSponsorEditToggle))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data AdminSponsorEditToggleResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.True(t, respBody.Data.Enabled)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should set enabled=false", func(t *testing.T) {
+		mockSettings.On("SetAdminSponsorEditEnabled", false).Return(nil).Once()
+
+		body := `{"enabled":false}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setAdminSponsorEditToggle))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data AdminSponsorEditToggleResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.False(t, respBody.Data.Enabled)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
 func TestGetHackathonDateRange(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)

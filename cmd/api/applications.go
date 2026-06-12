@@ -129,6 +129,26 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 
 	// Only update if field is present in the request
 	if req.Responses != nil {
+		// Validate types against the schema before persisting. Required fields are
+		// not enforced here so incomplete drafts can still be saved, but wrong types
+		// (e.g. a non-numeric age) are rejected to keep downstream queries safe.
+		var responses map[string]interface{}
+		if err := json.Unmarshal(req.Responses, &responses); err != nil {
+			app.badRequestResponse(w, r, errors.New("responses must be a JSON object"))
+			return
+		}
+
+		schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if validationErrors := validateResponses(schema, responses, false); len(validationErrors) > 0 {
+			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+			return
+		}
+
 		application.Responses = req.Responses
 	}
 	if req.ResumePath != nil {
@@ -199,7 +219,7 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Validate responses against schema
-	validationErrors := validateResponses(schema, responses)
+	validationErrors := validateResponses(schema, responses, true)
 
 	if len(validationErrors) > 0 {
 		app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
@@ -219,15 +239,17 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 }
 
 // validateResponses checks each response value against its schema field definition.
-// Returns a list of human-readable validation error strings.
-func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}) []string {
+// Returns a list of human-readable validation error strings. When enforceRequired
+// is false, missing/empty required fields are allowed (used for draft saves) while
+// type checks on present values still apply.
+func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, enforceRequired bool) []string {
 	var errs []string
 
 	for _, field := range schema {
 		val, exists := responses[field.ID]
 
 		// Required check
-		if field.Required && (!exists || isEmpty(val)) {
+		if enforceRequired && field.Required && (!exists || isEmpty(val)) {
 			errs = append(errs, field.ID+" is required")
 			continue
 		}
@@ -299,7 +321,7 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 			b, ok := val.(bool)
 			if !ok {
 				errs = append(errs, field.ID+" must be a boolean")
-			} else if field.Required && !b {
+			} else if enforceRequired && field.Required && !b {
 				errs = append(errs, field.ID+" must be checked")
 			}
 		}

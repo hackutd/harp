@@ -103,12 +103,18 @@ func TestGetOrCreateApplication(t *testing.T) {
 func TestUpdateApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
 	t.Run("should update draft application responses", func(t *testing.T) {
 		user := newTestUser()
 		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name"},
+			{ID: "age", Type: "number", Label: "Age"},
+		}
 
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 		mockApps.On("Update", mock.AnythingOfType("*store.Application")).Return(nil).Once()
 
 		body := `{"responses": {"first_name": "Jane", "last_name": "Doe"}}`
@@ -121,6 +127,32 @@ func TestUpdateApplication(t *testing.T) {
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject wrong-typed value without enforcing required fields", func(t *testing.T) {
+		user := newTestUser()
+		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "age", Type: "number", Label: "Age"},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		// age is a non-numeric string; required first_name is omitted but must not error
+		body := `{"responses": {"age": "abc"}}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
 	})
 
 	t.Run("should return 409 when application is already submitted", func(t *testing.T) {
