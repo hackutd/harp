@@ -57,7 +57,7 @@ type Storage struct {
 		SetApplicationsEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
-		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error)
+		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error

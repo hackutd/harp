@@ -4688,6 +4688,9 @@ const docTemplate = `{
                 "reset_applications": {
                     "type": "boolean"
                 },
+                "reset_notifications": {
+                    "type": "boolean"
+                },
                 "reset_scans": {
                     "type": "boolean"
                 },
@@ -4703,6 +4706,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "reset_applications": {
+                    "type": "boolean"
+                },
+                "reset_notifications": {
                     "type": "boolean"
                 },
                 "reset_scans": {

@@ -11,7 +11,7 @@ type HackathonStore struct {
 
 // Reset resets the selected domains of hackathon data in a single transaction.
 // Returns a list of resume paths that should be deleted from storage if applications were reset.
-func (s *HackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error) {
+func (s *HackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2) // Longer timeout for bulk operations
 	defer cancel()
 
@@ -56,6 +56,12 @@ func (s *HackathonStore) Reset(ctx context.Context, resetApplications, resetScan
 
 	if resetSchedule {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM schedule"); err != nil {
+			return nil, err
+		}
+	}
+
+	if resetNotifications {
+		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE scheduled_notifications"); err != nil {
 			return nil, err
 		}
 	}

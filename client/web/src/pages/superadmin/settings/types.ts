@@ -3,6 +3,7 @@ export interface ResetHackathonOptions {
   reset_scans: boolean;
   reset_schedule: boolean;
   reset_settings: boolean;
+  reset_notifications: boolean;
 }
 
 export interface ResetHackathonResult {
@@ -10,5 +11,6 @@ export interface ResetHackathonResult {
   reset_scans: boolean;
   reset_schedule: boolean;
   reset_settings: boolean;
+  reset_notifications: boolean;
   resumes_deleted: number;
 }

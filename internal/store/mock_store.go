@@ -251,8 +251,8 @@ type MockHackathonStore struct {
 	mock.Mock
 }
 
-func (m *MockHackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error) {
-	args := m.Called(resetApplications, resetScans, resetSchedule, resetSettings)
+func (m *MockHackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error) {
+	args := m.Called(resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
