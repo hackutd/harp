@@ -164,14 +164,14 @@ type ApplicationsStore struct {
 const applicationSelectCols = `
 	id, user_id, status, responses, resume_path, ai_percent,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
-	submitted_at, created_at, updated_at`
+	submitted_at, created_at, updated_at, meal_group`
 
 // scanApplication scans a row into an Application struct
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
 	return row.Scan(
 		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
 	)
 }
 

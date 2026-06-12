@@ -90,6 +90,45 @@ func TestCreateScan(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 
+	t.Run("check_in keeps existing meal group", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		groups := []string{"A", "B"}
+		existing := "B"
+		hackerApp := &store.Application{ID: "app-1", UserID: "user-1", MealGroup: &existing}
+
+		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
+		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
+		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		var resp struct {
+			Data CreateScanResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&resp)
+		require.NoError(t, err)
+		require.NotNil(t, resp.Data.MealGroup)
+		assert.Equal(t, existing, *resp.Data.MealGroup)
+
+		// A hacker re-scanning at check-in must NOT be reassigned to a new group.
+		mockApps.AssertNotCalled(t, "SetMealGroup", mock.Anything, mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockApps.AssertExpectations(t)
+	})
+
 	t.Run("check_in success - meal group assignment failure is non-fatal", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)

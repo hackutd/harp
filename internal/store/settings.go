@@ -587,7 +587,7 @@ func (s *SettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, 
 		stats[group] = count
 	}
 
-	return stats, nil
+	return stats, rows.Err()
 }
 
 func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
