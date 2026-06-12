@@ -19,7 +19,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import { cn } from "@/shared/lib/utils";
 
@@ -65,11 +64,6 @@ export default function ScheduleTab() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clearSchedule, setClearSchedule] = useState(false);
 
-  const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
-    useState(true);
-  const [toggleLoading, setToggleLoading] = useState(true);
-  const [toggleSaving, setToggleSaving] = useState(false);
-
   const parsedStart = useMemo(() => parseDate(startDate), [startDate]);
   const parsedEnd = useMemo(() => parseDate(endDate), [endDate]);
 
@@ -103,17 +97,11 @@ export default function ScheduleTab() {
 
   useEffect(() => {
     async function fetchSettings() {
-      const [rangeRes, toggleRes] = await Promise.all([
-        getRequest<{
-          start_date: string | null;
-          end_date: string | null;
-          configured: boolean;
-        }>("/superadmin/settings/hackathon-date-range", "hackathon date range"),
-        getRequest<{ enabled: boolean }>(
-          "/superadmin/settings/admin-schedule-edit-toggle",
-          "admin schedule edit toggle",
-        ),
-      ]);
+      const rangeRes = await getRequest<{
+        start_date: string | null;
+        end_date: string | null;
+        configured: boolean;
+      }>("/superadmin/settings/hackathon-date-range", "hackathon date range");
 
       if (rangeRes.status === 200 && rangeRes.data) {
         if (rangeRes.data.start_date) {
@@ -126,14 +114,7 @@ export default function ScheduleTab() {
         errorAlert(rangeRes);
       }
 
-      if (toggleRes.status === 200 && toggleRes.data) {
-        setAdminScheduleEditEnabled(toggleRes.data.enabled);
-      } else {
-        errorAlert(toggleRes);
-      }
-
       setLoading(false);
-      setToggleLoading(false);
     }
 
     fetchSettings();
@@ -200,33 +181,11 @@ export default function ScheduleTab() {
     setSaving(false);
   }
 
-  async function handleToggle(nextValue: boolean) {
-    setToggleSaving(true);
-    const res = await postRequest<{ enabled: boolean }>(
-      "/superadmin/settings/admin-schedule-edit-toggle",
-      { enabled: nextValue },
-      "admin schedule edit toggle",
-    );
-
-    if (res.status === 200 && res.data) {
-      setAdminScheduleEditEnabled(res.data.enabled);
-      toast.success(
-        res.data.enabled
-          ? "Admins can now edit schedule."
-          : "Admins are now blocked from editing schedule.",
-      );
-    } else {
-      errorAlert(res);
-    }
-
-    setToggleSaving(false);
-  }
-
   return (
     <div className="space-y-4">
       <h3 className="text-lg text-zinc-100">Schedule</h3>
       <p className="text-sm text-zinc-400">
-        Configure the hackathon date range and schedule editing permissions.
+        Configure the hackathon date range.
       </p>
 
       <div className="bg-zinc-900 rounded-md p-4 space-y-4">
@@ -388,30 +347,6 @@ export default function ScheduleTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <div className="bg-zinc-900 rounded-md p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <Label
-              htmlFor="admin-schedule-edit-toggle"
-              className="text-sm font-medium text-zinc-100 cursor-pointer"
-            >
-              Admin Schedule Editing
-            </Label>
-            <p className="text-xs text-zinc-500">
-              When disabled, only super admins can create, update, or delete
-              schedule entries.
-            </p>
-          </div>
-          <Switch
-            checked={adminScheduleEditEnabled}
-            className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
-            disabled={toggleLoading || toggleSaving}
-            id="admin-schedule-edit-toggle"
-            onCheckedChange={handleToggle}
-          />
-        </div>
-      </div>
     </div>
   );
 }
