@@ -37,6 +37,7 @@ tmp/
 client/web/node_modules/
 client/web/dist/
 client/web/dist-ssr/
+client/web/dev-dist/
 client/web/.vite/
 logs/
 *.log
