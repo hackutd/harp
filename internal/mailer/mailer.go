@@ -14,6 +14,8 @@ var FS embed.FS
 
 type Client interface {
 	SendQREmail(toEmail, toName, userID string) error
+	SendWalkInQueuedEmail(toEmail string, position int) error
+	SendWalkInAcceptedEmail(toEmail, userID string) error
 }
 
 type Config struct {

@@ -30,6 +30,7 @@ type Storage struct {
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
 		GetByID(ctx context.Context, id string) (*Application, error)
+		GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error
@@ -112,6 +113,12 @@ type Storage struct {
 		MarkSent(ctx context.Context, id string, recipientCount int) error
 		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
 	}
+	WalkIns interface {
+		Enqueue(ctx context.Context, userID string) (inserted bool, position int, err error)
+		PromoteNext(ctx context.Context, count int, promotedBy string) ([]User, error)
+		QueueDepth(ctx context.Context) (pending int, total int, err error)
+		List(ctx context.Context) ([]WalkIn, error)
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -126,5 +133,6 @@ func NewStorage(db *sql.DB) Storage {
 		Sponsors:               &SponsorsStore{db: db},
 		PushSubscriptions:      &PushSubscriptionsStore{db: db},
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
+		WalkIns:                &WalkInsStore{db: db},
 	}
 }
