@@ -991,11 +991,10 @@ cannot be meaningfully tested with mocks. Required cases:
 
 | File | Type | Change |
 |---|---|---|
-| `cmd/migrate/migrations/000016_add_walk_ins.up.sql` | New | `walk_ins` table + FIFO index |
-| `cmd/migrate/migrations/000016_add_walk_ins.down.sql` | New | `DROP TABLE walk_ins` |
-| `cmd/migrate/migrations/000017_add_walkin_scan_type.up.sql` | New | Upsert `walk_in` into `scan_types` setting |
-| `cmd/migrate/migrations/000017_add_walkin_scan_type.down.sql` | New | Remove `walk_in` from `scan_types` setting |
-| `cmd/migrate/migrations/000006_seed_settings.up.sql` | Edit | Add `walk_in` to default `scan_types` seed array |
+| `cmd/migrate/migrations/000015_add_walk_ins.up.sql` | New | `walk_ins` table + FIFO index |
+| `cmd/migrate/migrations/000015_add_walk_ins.down.sql` | New | `DROP TABLE walk_ins` |
+| `cmd/migrate/migrations/000016_add_walkin_scan_type.up.sql` | New | Upsert `walk_in` into `scan_types` setting |
+| `cmd/migrate/migrations/000016_add_walkin_scan_type.down.sql` | New | Remove `walk_in` from `scan_types` setting |
 | `internal/store/scans.go` | Edit | Add `ScanCategoryWalkIn` constant, extend validate tag |
 | `internal/store/walkins.go` | New | `WalkInsStore` — `Enqueue`, `PromoteNext`, `QueueDepth`, `List` |
 | `internal/store/storage.go` | Edit | Add `WalkIns WalkInsStore` to `Storage` struct; add `GetStatusByUserID` to `ApplicationsStore` interface |
@@ -1012,6 +1011,259 @@ cannot be meaningfully tested with mocks. Required cases:
 | `cmd/api/scans_test.go` | Edit | Walk-in scan test cases |
 | `cmd/api/walkins_test.go` | New | Handler tests for both walk-in endpoints |
 | `internal/store/walkins_test.go` | New | Store tests for `PromoteNext` transaction logic |
+
+---
+
+## Frontend Implementation
+
+> **Status:** Backend complete. Frontend work below is the remaining scope.
+> **Tech stack:** React 19 + TypeScript, Tailwind CSS v4, shadcn/ui, Zustand, React Hook Form + Zod.
+
+---
+
+### FE-1 — Update scan type definitions (`pages/admin/scans/`)
+
+Three files need touching before the walk-in category renders correctly in the existing
+scan management UI.
+
+#### `pages/admin/scans/types.ts`
+
+Add `"walk_in"` to the `ScanTypeCategory` union:
+
+```typescript
+export type ScanTypeCategory = "check_in" | "meal" | "swag" | "other" | "walk_in";
+```
+
+#### `pages/admin/scans/utils.ts`
+
+Two sub-changes:
+
+**a) Add walk_in to the category lookup tables.**
+The file already has `categoryIcons`, `categoryColors`, and `categoryOptions` keyed by
+`ScanTypeCategory`. Add a `walk_in` entry to each:
+
+```typescript
+categoryIcons = {
+  // ...existing...
+  walk_in: UserPlus,  // or a suitable Lucide icon (e.g. DoorOpen, LogIn)
+}
+
+categoryColors = {
+  // ...existing...
+  walk_in: "bg-violet-100 text-violet-700",
+}
+
+categoryOptions = [
+  // ...existing...
+  { label: "Walk-In", value: "walk_in" },
+]
+```
+
+**b) Update the scan-type validation.**
+The current validator enforces exactly one `check_in` type. The backend now also requires at
+least one active `walk_in`. Match the frontend validation:
+
+```typescript
+// Before
+const checkInCount = scanTypes.filter(t => t.category === "check_in").length;
+if (checkInCount !== 1) return "Exactly one scan type must have the check_in category";
+
+// After
+const hasCheckIn = scanTypes.some(t => t.is_active && t.category === "check_in");
+const hasWalkIn  = scanTypes.some(t => t.is_active && t.category === "walk_in");
+if (!hasCheckIn) return "At least one active check_in scan type is required";
+if (!hasWalkIn)  return "At least one active walk_in scan type is required";
+```
+
+#### `pages/admin/scans/components/ScanTypesTable.tsx`
+
+No structural changes required. The component already uses `categoryIcons` and
+`categoryColors` by key — adding the keys in utils.ts is enough. The fallback
+`?? UserCheck` on line 431 catches any unknown category anyway.
+
+---
+
+### FE-2 — ScannerDialog (`pages/admin/scans/components/ScannerDialog.tsx`)
+
+**No code changes required.**
+
+The ScannerDialog is category-agnostic — it uses `activeScanType.display_name` as
+the title and passes `activeScanType.name` to `performScan()`. Walk-in will appear
+in the scan type selector exactly like meal or swag.
+
+The backend handles all walk-in-specific logic (enqueue, email, check-in guard).
+The scanner just POSTs `{ user_id, scan_type }` and shows the result. A 403 "user is
+not accepted" (from the check-in guard) and a 201 (from a walk-in scan) both render
+through the existing success/error path with no frontend changes.
+
+**One thing to verify at implementation time:** confirm the scan type selector (wherever
+`activeScanType` is set) pulls from `GET /v1/admin/scans/types`. Walk-in will appear
+automatically once migration 000016 runs. If the selector filters by category, ensure
+`walk_in` is not accidentally excluded.
+
+---
+
+### FE-3 — Walk-In Queue page (`pages/superadmin/walk-in-queue/`)
+
+A dedicated super-admin page for viewing the live queue and promoting walk-ins.
+Co-located per the project convention.
+
+#### File structure
+
+```
+pages/superadmin/walk-in-queue/
+  ├── index.ts              (barrel export)
+  ├── WalkInQueuePage.tsx   (page component)
+  ├── api.ts                (getWalkInQueue, promoteWalkIns)
+  ├── types.ts              (WalkIn, WalkInsResponse, PromoteResponse)
+  └── components/
+      ├── WalkInQueueTable.tsx   (queue depth stats + ranked list)
+      └── PromoteDialog.tsx      (count input + confirm → POST promote)
+```
+
+#### `types.ts`
+
+```typescript
+export interface WalkIn {
+  id: string;
+  user_id: string;
+  email: string;
+  queued_at: string;
+  position: number;
+}
+
+export interface WalkInsResponse {
+  pending: number;
+  total: number;
+  queue: WalkIn[];
+}
+
+export interface PromoteResponse {
+  promoted_count: number;
+  promoted: { id: string; email: string }[];
+}
+```
+
+#### `api.ts`
+
+```typescript
+import { getRequest, postRequest } from "@/shared/lib/api";
+import type { ApiResponse } from "@/shared/lib/api";
+import type { WalkInsResponse, PromoteResponse } from "./types";
+
+export function getWalkInQueue(signal?: AbortSignal): Promise<ApiResponse<WalkInsResponse>> {
+  return getRequest<WalkInsResponse>("/v1/superadmin/walk-ins", "fetch walk-in queue", signal);
+}
+
+export function promoteWalkIns(count: number): Promise<ApiResponse<PromoteResponse>> {
+  return postRequest<PromoteResponse>("/v1/superadmin/walk-ins/promote", { count }, "promote walk-ins");
+}
+```
+
+#### `WalkInQueuePage.tsx` — structure
+
+- On mount, calls `getWalkInQueue()` and stores result in local state (no Zustand store
+  needed — this is a live operational view that's always fresh).
+- Shows a stats bar: `{pending} waiting · {total} total walk-ins`.
+- Renders `<WalkInQueueTable queue={queue} />` below the stats.
+- Renders `<PromoteDialog onSuccess={refetch} />` as a button that opens a dialog.
+- Auto-refreshes the queue every 30 seconds while the page is open (setInterval with
+  cleanup in useEffect), or after a successful promotion.
+
+#### `WalkInQueueTable.tsx`
+
+| Col | Value |
+|---|---|
+| # | `position` |
+| Email | `email` |
+| Arrived | `queued_at` formatted as local time |
+
+No pagination needed — the queue is bounded by venue capacity and will not grow large.
+Empty state: "No walk-ins in queue."
+
+#### `PromoteDialog.tsx`
+
+- Button label: **"Promote next N walk-ins"**
+- On click, opens a shadcn/ui `<Dialog>`.
+- Dialog body: a numeric input (min 1, no max enforced) labelled "Number to promote".
+  Pre-populated with `Math.min(pending, 20)` as a sensible default.
+- Confirm button: "Promote & send emails" — calls `promoteWalkIns(count)`.
+- Loading state on the confirm button while the request is in flight.
+- On success: toast `"Promoted {n} walk-ins and sent acceptance emails"`, close dialog,
+  call `onSuccess()` to trigger queue refresh.
+- On error: toast the error message, keep dialog open so the operator can retry.
+
+```typescript
+// Zod schema for the form
+const schema = z.object({ count: z.coerce.number().int().min(1) });
+```
+
+React Hook Form + Zod for the input; no need for a separate page-level Zustand store.
+
+---
+
+### FE-4 — Router wiring (`routes.tsx`)
+
+Inside the super-admin route group (where `/admin/sa/*` routes live), add:
+
+```tsx
+<Route
+  path="walk-in-queue"
+  element={
+    <RequireSuperAdmin>
+      <WalkInQueuePage />
+    </RequireSuperAdmin>
+  }
+/>
+```
+
+Full path: `/admin/sa/walk-in-queue`.
+
+---
+
+### FE-5 — Sidebar nav (`pages/admin/_shared/AppSidebar.tsx`)
+
+In the Super Admin section (currently has Reviews, User Management, Application), add:
+
+```tsx
+{
+  title: "Walk-In Queue",
+  url: "/admin/sa/walk-in-queue",
+  icon: DoorOpen,   // Lucide icon; matches the walk_in category icon chosen in FE-1
+}
+```
+
+The section is already conditionally rendered for `user?.role === "super_admin"` — no
+additional guard needed.
+
+---
+
+### Frontend File Change Summary
+
+| File | Type | Change |
+|---|---|---|
+| `pages/admin/scans/types.ts` | Edit | Add `"walk_in"` to `ScanTypeCategory` |
+| `pages/admin/scans/utils.ts` | Edit | Add walk_in to icon/color/options tables; update validation |
+| `pages/admin/scans/components/ScanTypesTable.tsx` | No change | Picks up walk_in from utils automatically |
+| `pages/admin/scans/components/ScannerDialog.tsx` | No change | Category-agnostic; walk_in works automatically |
+| `pages/superadmin/walk-in-queue/types.ts` | New | `WalkIn`, `WalkInsResponse`, `PromoteResponse` |
+| `pages/superadmin/walk-in-queue/api.ts` | New | `getWalkInQueue`, `promoteWalkIns` |
+| `pages/superadmin/walk-in-queue/WalkInQueuePage.tsx` | New | Page component with auto-refresh |
+| `pages/superadmin/walk-in-queue/components/WalkInQueueTable.tsx` | New | Ranked queue table |
+| `pages/superadmin/walk-in-queue/components/PromoteDialog.tsx` | New | Count input + confirm dialog |
+| `pages/superadmin/walk-in-queue/index.ts` | New | Barrel export |
+| `routes.tsx` | Edit | Add `/admin/sa/walk-in-queue` route |
+| `pages/admin/_shared/AppSidebar.tsx` | Edit | Add Walk-In Queue nav item to super admin section |
+
+---
+
+### Frontend Open Items
+
+| # | Item | Blocking |
+|---|---|---|
+| FE-1 | Choose the Lucide icon for walk_in category (suggestion: `DoorOpen` or `LogIn`) | FE-1 utils + FE-5 sidebar |
+| FE-2 | Confirm auto-refresh interval is acceptable (30s) or switch to manual refresh button | FE-3 page |
+| FE-3 | Confirm PromoteDialog default count (`Math.min(pending, 20)`) or a fixed default | FE-3 PromoteDialog |
 
 ---
 
