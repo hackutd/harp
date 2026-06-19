@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -283,6 +284,77 @@ func TestGetScanStats(t *testing.T) {
 		assert.Equal(t, 50, body.Data.Stats[0].Count)
 
 		mockScans.AssertExpectations(t)
+	})
+}
+
+func TestRebalanceScanStats(t *testing.T) {
+	t.Run("super admin recomputes stats", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		stats := []store.ScanStat{
+			{ScanType: "check_in", Count: 42},
+			{ScanType: "lunch", Count: 17},
+		}
+
+		mockScans.On("RebalanceStats").Return(stats, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.rebalanceScanStatsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ScanStatsResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Len(t, body.Data.Stats, 2)
+		assert.Equal(t, "check_in", body.Data.Stats[0].ScanType)
+		assert.Equal(t, 42, body.Data.Stats[0].Count)
+
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("500 on store error", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		mockScans.On("RebalanceStats").Return(nil, errors.New("db error")).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.rebalanceScanStatsHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("403 when admin (non-super-admin)", func(t *testing.T) {
+		app := newTestApplication(t)
+		handler := app.RequireRoleMiddleware(store.RoleSuperAdmin)(http.HandlerFunc(app.rebalanceScanStatsHandler))
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+	})
+
+	t.Run("401 when unauthenticated", func(t *testing.T) {
+		app := newTestApplication(t)
+		handler := app.RequireRoleMiddleware(store.RoleSuperAdmin)(http.HandlerFunc(app.rebalanceScanStatsHandler))
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusUnauthorized, rr.Code)
 	})
 }
 

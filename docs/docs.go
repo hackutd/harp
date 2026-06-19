@@ -2819,6 +2819,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/scans/rebalance-stats": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Recomputes the scan_stats counter cache from the authoritative scans table and returns the recomputed stats",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/scans"
+                ],
+                "summary": "Rebalance scan statistics (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ScanStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/admin-schedule-edit-toggle": {
             "get": {
                 "security": [
