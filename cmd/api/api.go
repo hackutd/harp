@@ -39,7 +39,7 @@ type config struct {
 	appURL            string
 	frontendURL       string
 	hackathonTimeZone string
-	mail              mailConfig
+	mail              mailer.Config
 	gcs               gcsConfig
 	auth              authConfig
 	rateLimiter       ratelimiter.Config
@@ -71,16 +71,6 @@ type basicConfig struct {
 	user string
 	pass string
 }
-
-type mailConfig struct {
-	sendGrid  sendGridConfig
-	fromEmail string
-}
-
-type sendGridConfig struct {
-	apiKey string
-}
-
 type gcsConfig struct {
 	bucketName string
 }

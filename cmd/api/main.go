@@ -57,11 +57,18 @@ func main() {
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
 		env: env.GetString("ENV", "development"),
-		mail: mailConfig{
-			sendGrid: sendGridConfig{
-				apiKey: env.GetString("SENDGRID_API_KEY", ""),
+		mail: mailer.Config{
+			SendGrid: mailer.SendGridConfig{
+				APIKey: env.GetString("SENDGRID_API_KEY", ""),
 			},
-			fromEmail: env.GetString("MAIL_FROM", "noreply@hackportal.com"),
+			SMTP: mailer.SMTPConfig{
+				Host:     env.GetString("EMAIL_HOST", ""),
+				Port:     env.GetInt("EMAIL_PORT", 587),
+				Username: env.GetString("EMAIL_USERNAME", ""),
+				Password: env.GetString("EMAIL_PASSWORD", ""),
+			},
+			FromEmail: env.GetString("EMAIL_FROM", "noreply@example.com"),
+			FromName:  env.GetString("EMAIL_FROM_NAME", mailer.FromName),
 		},
 		gcs: gcsConfig{
 			bucketName: env.GetString("GCS_BUCKET_NAME", ""),
@@ -137,8 +144,11 @@ func main() {
 	}
 	logger.Info("supertokens initialized")
 
-	// Init mailer
-	mailClient := mailer.NewSendGrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
+	// Init mailer — picks provider from .env SMTP or SendGrid, at least one is required
+	mailClient, err := mailer.New(cfg.mail)
+	if err != nil {
+		logger.Fatal("failed to initialize mailer", zap.Error(err))
+	}
 
 	// Init GCS (optional in local/dev)
 	var gcsClient gcs.Client

@@ -13,16 +13,20 @@ import (
 
 type SendGridMailer struct {
 	fromEmail string
-	apiKey    string
+	fromName  string
 	client    *sendgrid.Client
 }
 
-func NewSendGrid(apiKey, fromEmail string) *SendGridMailer {
+func NewSendGrid(apiKey, fromEmail, fromName string) *SendGridMailer {
 	client := sendgrid.NewSendClient(apiKey)
+
+	if fromName == "" {
+		fromName = FromName
+	}
 
 	return &SendGridMailer{
 		fromEmail: fromEmail,
-		apiKey:    apiKey,
+		fromName:  fromName,
 		client:    client,
 	}
 }
@@ -51,7 +55,7 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 		return fmt.Errorf("executing email template: %w", err)
 	}
 
-	from := mail.NewEmail(FromName, m.fromEmail)
+	from := mail.NewEmail(m.fromName, m.fromEmail)
 	to := mail.NewEmail(toName, toEmail)
 
 	message := mail.NewV3Mail()
