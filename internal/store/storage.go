@@ -37,6 +37,8 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
+		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {
 		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
@@ -53,11 +55,16 @@ type Storage struct {
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
+		GetMealGroups(ctx context.Context) ([]string, error)
+		SetMealGroups(ctx context.Context, groups []string) error
+		GetMealGroupStats(ctx context.Context) (map[string]int, error)
 		GetApplicationsEnabled(ctx context.Context) (bool, error)
 		SetApplicationsEnabled(ctx context.Context, enabled bool) error
+		GetAdminSponsorEditEnabled(ctx context.Context) (bool, error)
+		SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
-		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings bool) ([]string, error)
+		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
@@ -89,17 +96,35 @@ type Storage struct {
 		GetByID(ctx context.Context, id string) (*Sponsor, error)
 		UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error
 	}
+	PushSubscriptions interface {
+		Upsert(ctx context.Context, sub *PushSubscription) error
+		DeleteByEndpoint(ctx context.Context, userID, endpoint string) error
+		DeleteByEndpointAdmin(ctx context.Context, endpoint string) error
+		ListByRole(ctx context.Context, role *UserRole) ([]PushSubscription, error)
+	}
+	ScheduledNotifications interface {
+		Create(ctx context.Context, n *ScheduledNotification) error
+		GetByID(ctx context.Context, id string) (*ScheduledNotification, error)
+		List(ctx context.Context) ([]ScheduledNotification, error)
+		Update(ctx context.Context, n *ScheduledNotification) error
+		Delete(ctx context.Context, id string) error
+		ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error)
+		MarkSent(ctx context.Context, id string, recipientCount int) error
+		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
 	return Storage{
-		Users:              &UsersStore{db: db},
-		Application:        &ApplicationsStore{db: db},
-		Settings:           &SettingsStore{db: db},
-		Hackathon:          &HackathonStore{db: db},
-		ApplicationReviews: &ApplicationReviewsStore{db: db},
-		Scans:              &ScansStore{db: db},
-		Schedule:           &ScheduleStore{db: db},
-		Sponsors:           &SponsorsStore{db: db},
+		Users:                  &UsersStore{db: db},
+		Application:            &ApplicationsStore{db: db},
+		Settings:               &SettingsStore{db: db},
+		Hackathon:              &HackathonStore{db: db},
+		ApplicationReviews:     &ApplicationReviewsStore{db: db},
+		Scans:                  &ScansStore{db: db},
+		Schedule:               &ScheduleStore{db: db},
+		Sponsors:               &SponsorsStore{db: db},
+		PushSubscriptions:      &PushSubscriptionsStore{db: db},
+		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
 	}
 }

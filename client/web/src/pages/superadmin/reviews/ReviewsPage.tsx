@@ -380,7 +380,7 @@ export default function ReviewsPage() {
             <Button
               onClick={() => setConfirmOpen(true)}
               disabled={assigning}
-              className="w-full cursor-pointer bg-indigo-400"
+              className="w-full cursor-pointer"
               size="sm"
             >
               {assigning ? (
@@ -590,7 +590,7 @@ export default function ReviewsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchAssign}
-              className="cursor-pointer bg-indigo-400"
+              className="cursor-pointer"
             >
               Yes, Assign Reviews
             </AlertDialogAction>

@@ -1,6 +1,11 @@
 "use client";
 
-import { AlertTriangle, CalendarRange, UsersRound } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarRange,
+  ShieldCheck,
+  UtensilsCrossed,
+} from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,15 +21,17 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
-import ApplicationsTab from "../tabs/ApplicationsTab";
+import MealGroupsTab from "../tabs/MealGroupsTab";
+import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
 import ScheduleTab from "../tabs/ScheduleTab";
 
-type SettingsTab = "applications" | "schedule" | "reset";
+type SettingsTab = "permissions" | "schedule" | "meal-groups" | "reset";
 
 const settingsTabs = [
-  { id: "applications" as const, label: "Applications", icon: UsersRound },
+  { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
   { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
+  { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];
 
@@ -34,7 +41,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>("applications");
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>("permissions");
 
   const handleClose = () => {
     setOpen(false);
@@ -79,8 +86,9 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
             <ScrollArea className="flex-1 min-h-0">
               <div className="p-8">
-                {activeTab === "applications" && <ApplicationsTab />}
+                {activeTab === "permissions" && <PermissionsTab />}
                 {activeTab === "schedule" && <ScheduleTab />}
+                {activeTab === "meal-groups" && <MealGroupsTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>
             </ScrollArea>

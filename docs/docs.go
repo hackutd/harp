@@ -859,7 +859,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/store.Scan"
+                            "$ref": "#/definitions/main.CreateScanResponse"
                         }
                     },
                     "400": {
@@ -2397,6 +2397,186 @@ const docTemplate = `{
                 }
             }
         },
+        "/notifications/subscribe": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Stores a Web Push subscription for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Subscribe to push notifications",
+                "parameters": [
+                    {
+                        "description": "Push subscription",
+                        "name": "subscription",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SubscribePushPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Removes the given Web Push subscription for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Unsubscribe from push notifications",
+                "parameters": [
+                    {
+                        "description": "Subscription to remove",
+                        "name": "subscription",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UnsubscribePushPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/vapid-public-key": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the server's VAPID public key for push notification subscription",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get VAPID public key",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.VapidPublicKeyResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/public/schedule": {
             "get": {
                 "description": "Returns the full event schedule, ordered by start time ascending",
@@ -2736,6 +2916,421 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns all scheduled notifications ordered by scheduled time descending",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/notifications"
+                ],
+                "summary": "List scheduled notifications (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduledNotificationListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Schedules a push notification for delivery at the specified time",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/notifications"
+                ],
+                "summary": "Create scheduled notification (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Notification to schedule",
+                        "name": "notification",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduledNotificationPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.ScheduledNotification"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/notifications/from-schedule": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; reminders whose send time has already passed are skipped.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/notifications"
+                ],
+                "summary": "Generate notifications from schedule (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Reminder generation config",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.GenerateScheduleNotificationsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.ScheduleNotificationGenerationResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/notifications/{notificationID}": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Deletes a pending notification. Returns 409 if already sent.",
+                "tags": [
+                    "superadmin/notifications"
+                ],
+                "summary": "Delete scheduled notification (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "notificationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates a pending notification. Returns 409 if already sent.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/notifications"
+                ],
+                "summary": "Update scheduled notification (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "notificationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notification updates",
+                        "name": "notification",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.ScheduledNotificationPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.ScheduledNotification"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/reset-hackathon": {
             "post": {
                 "security": [
@@ -2967,6 +3562,145 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.AdminScheduleEditToggleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/admin-sponsor-edit-toggle": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether users with admin role can create, update, and delete sponsors",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get admin sponsor edit state (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.AdminSponsorEditToggleResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates whether users with admin role can create, update, and delete sponsors",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set admin sponsor edit state (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Admin sponsor editing enabled state",
+                        "name": "enabled",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetAdminSponsorEditTogglePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.AdminSponsorEditToggleResponse"
                         }
                     },
                     "400": {
@@ -3339,6 +4073,203 @@ const docTemplate = `{
                                     "type": "string"
                                 }
                             }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/meal-groups": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configured list of meal group names",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get meal groups (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.MealGroupsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Replaces the available meal group names with the provided array",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Update meal groups (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Groups to set",
+                        "name": "groups",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateMealGroupsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.MealGroupsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/meal-groups/stats": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns assignment counts for each configured meal group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get meal group stats (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.MealGroupStatsResponse"
                         }
                     },
                     "401": {
@@ -3891,6 +4822,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.AdminSponsorEditToggleResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.ApplicantInfo": {
             "type": "object",
             "properties": {
@@ -3943,6 +4882,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "meal_group": {
                     "type": "string"
                 },
                 "reject_votes": {
@@ -4025,6 +4967,32 @@ const docTemplate = `{
                 }
             }
         },
+        "main.CreateScanResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "meal_group": {
+                    "type": "string"
+                },
+                "scan_type": {
+                    "type": "string"
+                },
+                "scanned_at": {
+                    "type": "string"
+                },
+                "scanned_by": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "main.CreateSchedulePayload": {
             "type": "object",
             "required": [
@@ -4072,6 +5040,28 @@ const docTemplate = `{
                 }
             }
         },
+        "main.GenerateScheduleNotificationsPayload": {
+            "type": "object",
+            "required": [
+                "lead_minutes"
+            ],
+            "properties": {
+                "lead_minutes": {
+                    "description": "LeadMinutes is how many minutes before each event the reminder should fire.",
+                    "type": "integer",
+                    "maximum": 1440,
+                    "minimum": 1
+                },
+                "target_role": {
+                    "type": "string",
+                    "enum": [
+                        "hacker",
+                        "admin",
+                        "super_admin"
+                    ]
+                }
+            }
+        },
         "main.HackathonDateRangeResponse": {
             "type": "object",
             "properties": {
@@ -4098,6 +5088,28 @@ const docTemplate = `{
                 },
                 "logo_data": {
                     "type": "string"
+                }
+            }
+        },
+        "main.MealGroupStatsResponse": {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "main.MealGroupsResponse": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -4129,6 +5141,9 @@ const docTemplate = `{
                 "reset_applications": {
                     "type": "boolean"
                 },
+                "reset_notifications": {
+                    "type": "boolean"
+                },
                 "reset_scans": {
                     "type": "boolean"
                 },
@@ -4144,6 +5159,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "reset_applications": {
+                    "type": "boolean"
+                },
+                "reset_notifications": {
                     "type": "boolean"
                 },
                 "reset_scans": {
@@ -4258,6 +5276,51 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ScheduledNotificationListResponse": {
+            "type": "object",
+            "properties": {
+                "notifications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ScheduledNotification"
+                    }
+                }
+            }
+        },
+        "main.ScheduledNotificationPayload": {
+            "type": "object",
+            "required": [
+                "body",
+                "scheduled_at",
+                "title"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "minLength": 1
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "target_role": {
+                    "type": "string",
+                    "enum": [
+                        "hacker",
+                        "admin",
+                        "super_admin"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "main.SetAIPercentPayload": {
             "type": "object",
             "properties": {
@@ -4269,6 +5332,14 @@ const docTemplate = `{
             }
         },
         "main.SetAdminScheduleEditTogglePayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.SetAdminSponsorEditTogglePayload": {
             "type": "object",
             "properties": {
                 "enabled": {
@@ -4410,6 +5481,39 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SubscribePushPayload": {
+            "type": "object",
+            "required": [
+                "auth",
+                "endpoint",
+                "p256dh"
+            ],
+            "properties": {
+                "auth": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "p256dh": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.UnsubscribePushPayload": {
+            "type": "object",
+            "required": [
+                "endpoint"
+            ],
+            "properties": {
+                "endpoint": {
+                    "type": "string"
+                }
+            }
+        },
         "main.UpdateApplicationPayload": {
             "type": "object"
         },
@@ -4423,6 +5527,21 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                }
+            }
+        },
+        "main.UpdateMealGroupsPayload": {
+            "type": "object",
+            "required": [
+                "groups"
+            ],
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                        "type": "string"
                     }
                 }
             }
@@ -4531,6 +5650,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.VapidPublicKeyResponse": {
+            "type": "object",
+            "properties": {
+                "public_key": {
+                    "type": "string"
+                }
+            }
+        },
         "store.Application": {
             "type": "object",
             "properties": {
@@ -4544,6 +5671,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "meal_group": {
                     "type": "string"
                 },
                 "reject_votes": {
@@ -4624,6 +5754,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "major": {
+                    "type": "string"
+                },
+                "meal_group": {
                     "type": "string"
                 },
                 "phone": {
@@ -5014,6 +6147,58 @@ const docTemplate = `{
                     }
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.ScheduleNotificationGenerationResult": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.ScheduledNotification": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "recipient_count": {
+                    "type": "integer"
+                },
+                "schedule_id": {
+                    "type": "string"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "sent_at": {
+                    "type": "string"
+                },
+                "target_role": {
+                    "$ref": "#/definitions/store.UserRole"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "url": {
                     "type": "string"
                 }
             }

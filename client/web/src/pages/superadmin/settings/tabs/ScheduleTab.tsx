@@ -1,18 +1,28 @@
-import { CalendarDays, CalendarRange } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarRange } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import { cn } from "@/shared/lib/utils";
+
+import { resetHackathon } from "../api";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -51,11 +61,8 @@ export default function ScheduleTab() {
   const [saving, setSaving] = useState(false);
   const [startPickerOpen, setStartPickerOpen] = useState(false);
   const [endPickerOpen, setEndPickerOpen] = useState(false);
-
-  const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
-    useState(true);
-  const [toggleLoading, setToggleLoading] = useState(true);
-  const [toggleSaving, setToggleSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [clearSchedule, setClearSchedule] = useState(false);
 
   const parsedStart = useMemo(() => parseDate(startDate), [startDate]);
   const parsedEnd = useMemo(() => parseDate(endDate), [endDate]);
@@ -90,17 +97,11 @@ export default function ScheduleTab() {
 
   useEffect(() => {
     async function fetchSettings() {
-      const [rangeRes, toggleRes] = await Promise.all([
-        getRequest<{
-          start_date: string | null;
-          end_date: string | null;
-          configured: boolean;
-        }>("/superadmin/settings/hackathon-date-range", "hackathon date range"),
-        getRequest<{ enabled: boolean }>(
-          "/superadmin/settings/admin-schedule-edit-toggle",
-          "admin schedule edit toggle",
-        ),
-      ]);
+      const rangeRes = await getRequest<{
+        start_date: string | null;
+        end_date: string | null;
+        configured: boolean;
+      }>("/superadmin/settings/hackathon-date-range", "hackathon date range");
 
       if (rangeRes.status === 200 && rangeRes.data) {
         if (rangeRes.data.start_date) {
@@ -113,18 +114,20 @@ export default function ScheduleTab() {
         errorAlert(rangeRes);
       }
 
-      if (toggleRes.status === 200 && toggleRes.data) {
-        setAdminScheduleEditEnabled(toggleRes.data.enabled);
-      } else {
-        errorAlert(toggleRes);
-      }
-
       setLoading(false);
-      setToggleLoading(false);
     }
 
     fetchSettings();
   }, []);
+
+  function openConfirm() {
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+    setClearSchedule(false);
+    setConfirmOpen(true);
+  }
 
   async function saveDateRange() {
     if (validationError) {
@@ -149,7 +152,28 @@ export default function ScheduleTab() {
     if (res.status === 200 && res.data) {
       setStartDate(res.data.start_date);
       setEndDate(res.data.end_date);
-      toast.success("Hackathon date range saved.");
+
+      if (clearSchedule) {
+        const clearRes = await resetHackathon({
+          reset_applications: false,
+          reset_scans: false,
+          reset_schedule: true,
+          reset_settings: false,
+          reset_notifications: false,
+        });
+
+        if (clearRes.error) {
+          toast.error(
+            `Date range saved, but clearing the schedule failed: ${clearRes.error}`,
+          );
+        } else {
+          toast.success("Hackathon date range saved and schedule cleared.");
+        }
+      } else {
+        toast.success("Hackathon date range saved.");
+      }
+
+      setConfirmOpen(false);
     } else {
       errorAlert(res);
     }
@@ -157,33 +181,11 @@ export default function ScheduleTab() {
     setSaving(false);
   }
 
-  async function handleToggle(nextValue: boolean) {
-    setToggleSaving(true);
-    const res = await postRequest<{ enabled: boolean }>(
-      "/superadmin/settings/admin-schedule-edit-toggle",
-      { enabled: nextValue },
-      "admin schedule edit toggle",
-    );
-
-    if (res.status === 200 && res.data) {
-      setAdminScheduleEditEnabled(res.data.enabled);
-      toast.success(
-        res.data.enabled
-          ? "Admins can now edit schedule."
-          : "Admins are now blocked from editing schedule.",
-      );
-    } else {
-      errorAlert(res);
-    }
-
-    setToggleSaving(false);
-  }
-
   return (
     <div className="space-y-4">
       <h3 className="text-lg text-zinc-100">Schedule</h3>
       <p className="text-sm text-zinc-400">
-        Configure the hackathon date range and schedule editing permissions.
+        Configure the hackathon date range.
       </p>
 
       <div className="bg-zinc-900 rounded-md p-4 space-y-4">
@@ -280,7 +282,7 @@ export default function ScheduleTab() {
         ) : null}
 
         <Button
-          onClick={saveDateRange}
+          onClick={openConfirm}
           disabled={loading || saving || !!validationError}
           className="cursor-pointer bg-white text-black hover:bg-zinc-200"
         >
@@ -288,29 +290,63 @@ export default function ScheduleTab() {
         </Button>
       </div>
 
-      <div className="bg-zinc-900 rounded-md p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <Label
-              htmlFor="admin-schedule-edit-toggle"
-              className="text-sm font-medium text-zinc-100 cursor-pointer"
-            >
-              Admin Schedule Editing
-            </Label>
-            <p className="text-xs text-zinc-500">
-              When disabled, only super admins can create, update, or delete
-              schedule entries.
-            </p>
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-zinc-100">
+              <AlertTriangle className="size-5 text-amber-400" />
+              Change hackathon dates?
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              You're about to update the hackathon date range. Any schedule
+              events created for the previous dates will fall outside the new
+              range and stay hidden in the admin calendar, but they will still
+              be returned by the public schedule. Clean them up if you no longer
+              need them.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-start space-x-3 border border-zinc-800 rounded-md p-4 bg-zinc-950/50">
+            <Checkbox
+              id="clear-schedule"
+              checked={clearSchedule}
+              onCheckedChange={(c) => setClearSchedule(!!c)}
+              disabled={saving}
+              className="border-zinc-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label
+                htmlFor="clear-schedule"
+                className="text-sm font-medium leading-none text-zinc-100"
+              >
+                Clear existing schedule events
+              </Label>
+              <p className="text-xs text-zinc-500">
+                Permanently deletes all current schedule events. This cannot be
+                undone.
+              </p>
+            </div>
           </div>
-          <Switch
-            checked={adminScheduleEditEnabled}
-            className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
-            disabled={toggleLoading || toggleSaving}
-            id="admin-schedule-edit-toggle"
-            onCheckedChange={handleToggle}
-          />
-        </div>
-      </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={saving}
+              className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={saveDateRange}
+              disabled={saving}
+              className="cursor-pointer bg-white text-black hover:bg-zinc-200"
+            >
+              {saving ? "Saving..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

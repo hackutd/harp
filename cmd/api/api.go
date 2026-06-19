@@ -23,12 +23,13 @@ import (
 )
 
 type application struct {
-	config      config
-	store       store.Storage
-	logger      *zap.SugaredLogger
-	mailer      mailer.Client
-	gcsClient   gcs.Client
-	rateLimiter ratelimiter.Limiter
+	config           config
+	store            store.Storage
+	logger           *zap.SugaredLogger
+	mailer           mailer.Client
+	gcsClient        gcs.Client
+	rateLimiter      ratelimiter.Limiter
+	dispatcherCancel context.CancelFunc
 }
 
 type config struct {
@@ -44,6 +45,13 @@ type config struct {
 	rateLimiter       ratelimiter.Config
 	supertokens       supertokensConfig
 	publicCORSOrigin  string
+	vapid             vapidConfig
+}
+
+type vapidConfig struct {
+	publicKey  string
+	privateKey string
+	subject    string
 }
 
 type supertokensConfig struct {
@@ -167,6 +175,13 @@ func (app *application) mount() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
 
+			// Push notifications (any authenticated user)
+			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/vapid-public-key", app.getVapidPublicKeyHandler)
+				r.Post("/subscribe", app.subscribePushHandler)
+				r.Delete("/subscribe", app.unsubscribePushHandler)
+			})
+
 			// Hacker Routes
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
@@ -231,11 +246,13 @@ func (app *application) mount() http.Handler {
 					r.Route("/sponsors", func(r chi.Router) {
 						r.Get("/", app.listSponsorsHandler)
 
-						// TODO: Protect Under a AdminSponsorEditPermissionMiddleware
-						r.Post("/", app.createSponsorHandler)
-						r.Put("/{sponsorID}", app.updateSponsorHandler)
-						r.Delete("/{sponsorID}", app.deleteSponsorHandler)
-						r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminSponsorEditPermissionMiddleware)
+							r.Post("/", app.createSponsorHandler)
+							r.Put("/{sponsorID}", app.updateSponsorHandler)
+							r.Delete("/{sponsorID}", app.deleteSponsorHandler)
+							r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+						})
 					})
 				})
 			})
@@ -255,9 +272,14 @@ func (app *application) mount() http.Handler {
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
 						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
 						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
+						r.Get("/admin-sponsor-edit-toggle", app.getAdminSponsorEditToggle)
+						r.Post("/admin-sponsor-edit-toggle", app.setAdminSponsorEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
+						r.Get("/meal-groups", app.getMealGroups)
+						r.Put("/meal-groups", app.updateMealGroups)
+						r.Get("/meal-groups/stats", app.getMealGroupStats)
 						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})
 
@@ -275,6 +297,15 @@ func (app *application) mount() http.Handler {
 
 					r.Route("/scans", func(r chi.Router) {
 						r.Post("/rebalance-stats", app.rebalanceScanStatsHandler)
+					})
+
+					// Scheduled push notifications
+					r.Route("/notifications", func(r chi.Router) {
+						r.Get("/", app.listScheduledNotificationsHandler)
+						r.Post("/", app.createScheduledNotificationHandler)
+						r.Post("/from-schedule", app.generateScheduleNotificationsHandler)
+						r.Patch("/{notificationID}", app.updateScheduledNotificationHandler)
+						r.Delete("/{notificationID}", app.deleteScheduledNotificationHandler)
 					})
 				})
 			})
@@ -310,6 +341,10 @@ func (app *application) run(mux http.Handler) error {
 		defer cancel()
 
 		app.logger.Infow("server caught", "signal", s.String())
+
+		if app.dispatcherCancel != nil {
+			app.dispatcherCancel()
+		}
 
 		shutdown <- server.Shutdown(ctx)
 	}()

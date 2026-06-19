@@ -79,6 +79,7 @@ type ApplicationListItem struct {
 	ReviewsCompleted   int               `json:"reviews_completed"`
 	AIPercent          *int              `json:"ai_percent"`
 	HasResume          bool              `json:"has_resume"`
+	MealGroup          *string           `json:"meal_group"`
 }
 
 // ApplicationListResult contains paginated results
@@ -152,6 +153,7 @@ type Application struct {
 	SubmittedAt *time.Time `json:"submitted_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
+	MealGroup   *string    `json:"meal_group"`
 }
 
 type ApplicationsStore struct {
@@ -162,14 +164,14 @@ type ApplicationsStore struct {
 const applicationSelectCols = `
 	id, user_id, status, responses, resume_path, ai_percent,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
-	submitted_at, created_at, updated_at`
+	submitted_at, created_at, updated_at, meal_group`
 
 // scanApplication scans a row into an Application struct
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
 	return row.Scan(
 		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
-		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt,
+		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
 	)
 }
 
@@ -366,7 +368,7 @@ func (s *ApplicationsStore) List(
 		       NULLIF(a.responses->>'hackathons_attended', '')::smallint AS hackathons_attended,
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
-		       a.resume_path IS NOT NULL AS has_resume
+		       a.resume_path IS NOT NULL AS has_resume, a.meal_group
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -461,7 +463,7 @@ func (s *ApplicationsStore) List(
 			&item.HackathonsAttended,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
-			&item.HasResume,
+			&item.HasResume, &item.MealGroup,
 		); err != nil {
 			return nil, err
 		}
@@ -622,4 +624,42 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 	}
 
 	return users, rows.Err()
+}
+
+// SetMealGroup assigns a meal group to an application only if one is not already set
+func (s *ApplicationsStore) SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET meal_group = COALESCE(meal_group, $2),
+		    updated_at = CASE WHEN meal_group IS NULL THEN NOW() ELSE updated_at END
+		WHERE id = $1
+		RETURNING meal_group
+	`
+
+	var assigned *string
+	err := s.db.QueryRowContext(ctx, query, id, mealGroup).Scan(&assigned)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return assigned, nil
+}
+
+// GetMealGroupByUserID returns the assigned meal group for a user
+func (s *ApplicationsStore) GetMealGroupByUserID(ctx context.Context, userID string) (*string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var mealGroup *string
+	err := s.db.QueryRowContext(ctx, "SELECT meal_group FROM applications WHERE user_id = $1", userID).Scan(&mealGroup)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return mealGroup, err
 }

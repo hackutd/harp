@@ -40,6 +40,9 @@ const SuperAdminGradingPage = lazy(
 const SuperAdminScansPage = lazy(
   () => import("@/pages/superadmin/scans/ScansPage"),
 );
+const SuperAdminNotificationsPage = lazy(
+  () => import("@/pages/superadmin/notifications/NotificationsPage"),
+);
 const AdminGradingPage = lazy(
   () => import("@/pages/admin/reviews/grading/GradingPage"),
 );
@@ -210,6 +213,16 @@ export const router = createBrowserRouter([
               <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
                   <SuperAdminScansPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/notifications",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminNotificationsPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hackutd/portal/internal/store"
@@ -188,6 +189,14 @@ type AdminScheduleEditToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetAdminSponsorEditTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminSponsorEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 type SetHackathonDateRangePayload struct {
 	StartDate string `json:"start_date" validate:"required"`
 	EndDate   string `json:"end_date" validate:"required"`
@@ -323,6 +332,68 @@ func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 	}
 }
 
+// getAdminSponsorEditToggle returns whether admins can edit sponsors
+//
+//	@Summary		Get admin sponsor edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete sponsors
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminSponsorEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-sponsor-edit-toggle [get]
+func (app *application) getAdminSponsorEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminSponsorEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminSponsorEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminSponsorEditToggle updates whether admins can edit sponsors
+//
+//	@Summary		Set admin sponsor edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete sponsors
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminSponsorEditTogglePayload	true	"Admin sponsor editing enabled state"
+//	@Success		200		{object}	AdminSponsorEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-sponsor-edit-toggle [post]
+func (app *application) setAdminSponsorEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminSponsorEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminSponsorEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminSponsorEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // getHackathonDateRange returns hackathon start/end dates
 //
 //	@Summary		Get hackathon date range (Super Admin)
@@ -419,6 +490,117 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type UpdateMealGroupsPayload struct {
+	Groups []string `json:"groups" validate:"max=50,dive,required,min=1,max=50"`
+}
+
+type MealGroupsResponse struct {
+	Groups []string `json:"groups"`
+}
+
+type MealGroupStatsResponse struct {
+	Stats map[string]int `json:"stats"`
+}
+
+// getMealGroups returns the configured meal group names
+//
+//	@Summary		Get meal groups (Super Admin)
+//	@Description	Returns the configured list of meal group names
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	MealGroupsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/meal-groups [get]
+func (app *application) getMealGroups(w http.ResponseWriter, r *http.Request) {
+	groups, err := app.store.Settings.GetMealGroups(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse{Groups: groups}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// updateMealGroups replaces all meal group names
+//
+//	@Summary		Update meal groups (Super Admin)
+//	@Description	Replaces the available meal group names with the provided array
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			groups	body		UpdateMealGroupsPayload	true	"Groups to set"
+//	@Success		200		{object}	MealGroupsResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/meal-groups [put]
+func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request) {
+	var req UpdateMealGroupsPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	for i := range req.Groups {
+		req.Groups[i] = strings.TrimSpace(req.Groups[i])
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// Validate unique names
+	nameMap := make(map[string]bool)
+	for _, name := range req.Groups {
+		if nameMap[name] {
+			app.badRequestResponse(w, r, errors.New("duplicate meal group name: "+name))
+			return
+		}
+		nameMap[name] = true
+	}
+
+	if err := app.store.Settings.SetMealGroups(r.Context(), req.Groups); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getMealGroupStats returns the number of hackers assigned to each meal group
+//
+//	@Summary		Get meal group stats (Super Admin)
+//	@Description	Returns assignment counts for each configured meal group
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	MealGroupStatsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/meal-groups/stats [get]
+func (app *application) getMealGroupStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := app.store.Settings.GetMealGroupStats(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, MealGroupStatsResponse{Stats: stats}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
