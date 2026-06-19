@@ -171,3 +171,65 @@ func (s *ScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes
 
 	return exists, nil
 }
+
+// RebalanceStats recomputes the scan_stats counter cache from the authoritative
+// scans table and returns the recomputed stats (sorted by scan_type, matching
+// GetStats). The settings row is locked FOR UPDATE to serialize against
+// concurrent incrementScanStat calls.
+func (s *ScansStore) RebalanceStats(ctx context.Context) ([]ScanStat, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `SELECT value FROM settings WHERE key = $1 FOR UPDATE`, SettingsKeyScanStats); err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.QueryContext(ctx, `SELECT scan_type, COUNT(*) FROM scans GROUP BY scan_type`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	statsMap := make(map[string]int)
+	for rows.Next() {
+		var scanType string
+		var count int
+		if err := rows.Scan(&scanType, &count); err != nil {
+			return nil, err
+		}
+		statsMap[scanType] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	value, err := json.Marshal(statsMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `UPDATE settings SET value = $1, updated_at = NOW() WHERE key = $2`, value, SettingsKeyScanStats); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	stats := make([]ScanStat, 0, len(statsMap))
+	for scanType, count := range statsMap {
+		stats = append(stats, ScanStat{ScanType: scanType, Count: count})
+	}
+
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].ScanType < stats[j].ScanType
+	})
+
+	return stats, nil
+}
