@@ -65,7 +65,9 @@ func TestCreateScan(t *testing.T) {
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
 		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
-		mockApps.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).Return(nil).Once()
+		// SetMealGroup returns the persisted group.
+		mockApps.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).
+			Return(&groups[0], nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`

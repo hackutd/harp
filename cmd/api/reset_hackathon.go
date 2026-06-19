@@ -81,6 +81,5 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }

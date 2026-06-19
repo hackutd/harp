@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hackutd/portal/internal/store"
@@ -41,7 +42,6 @@ func (app *application) getApplicationSchema(w http.ResponseWriter, r *http.Requ
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -91,7 +91,6 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -128,7 +127,6 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -168,7 +166,6 @@ func (app *application) setReviewsPerApp(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -270,7 +267,6 @@ func (app *application) setReviewAssignmentToggle(w http.ResponseWriter, r *http
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -299,7 +295,6 @@ func (app *application) getAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -334,7 +329,6 @@ func (app *application) setAdminScheduleEditToggle(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -427,7 +421,6 @@ func (app *application) getHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -498,7 +491,6 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -535,7 +527,6 @@ func (app *application) getMealGroups(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse{Groups: groups}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -561,6 +552,12 @@ func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Normalize names before validating so whitespace-only names are rejected
+	// and the duplicate check is consistent with how the names are stored.
+	for i := range req.Groups {
+		req.Groups[i] = strings.TrimSpace(req.Groups[i])
+	}
+
 	if err := Validate.Struct(req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -583,7 +580,6 @@ func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request)
 
 	if err := app.jsonResponse(w, http.StatusOK, MealGroupsResponse(req)); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -608,7 +604,6 @@ func (app *application) getMealGroupStats(w http.ResponseWriter, r *http.Request
 
 	if err := app.jsonResponse(w, http.StatusOK, MealGroupStatsResponse{Stats: stats}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -671,6 +666,5 @@ func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Re
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }

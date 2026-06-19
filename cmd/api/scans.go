@@ -57,7 +57,6 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, ScanTypesResponse{ScanTypes: scanTypes}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -176,8 +175,48 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 
 	if err := app.jsonResponse(w, http.StatusCreated, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
+}
+
+// assignMealGroup assigns a meal group to the user's application if one is not
+// already set, returning the resulting group. Assignment is best-effort: any
+// failure is logged and results in a nil meal group rather than failing the scan.
+func (app *application) assignMealGroup(ctx context.Context, userID string) *string {
+	groups, err := app.store.Settings.GetMealGroups(ctx)
+	if err != nil {
+		app.logger.Warnw("failed to fetch meal groups for assignment", "error", err)
+		return nil
+	}
+
+	if len(groups) == 0 {
+		return nil
+	}
+
+	hackerApp, err := app.store.Application.GetByUserID(ctx, userID)
+	if err != nil {
+		// If the user doesn't have an application, we can't assign a group.
+		if !errors.Is(err, store.ErrNotFound) {
+			app.logger.Warnw("failed to fetch application for meal group assignment", "user_id", userID, "error", err)
+		}
+		return nil
+	}
+
+	if hackerApp.MealGroup != nil {
+		return hackerApp.MealGroup // Already assigned
+	}
+
+	selectedGroup := groups[rand.Intn(len(groups))]
+
+	// SetMealGroup only assigns if the application is still unassigned, and
+	// returns the value that ended up persisted. This closes the race where two
+	// concurrent check-in scans could otherwise both assign a group.
+	assigned, err := app.store.Application.SetMealGroup(ctx, hackerApp.ID, selectedGroup)
+	if err != nil {
+		app.logger.Warnw("failed to set meal group on application", "app_id", hackerApp.ID, "error", err)
+		return nil
+	}
+
+	return assigned
 }
 
 // getUserScansHandler returns all scan records for a specified user
@@ -209,41 +248,7 @@ func (app *application) getUserScansHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, ScansResponse{Scans: scans}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
-}
-
-func (app *application) assignMealGroup(ctx context.Context, userID string) *string {
-	groups, err := app.store.Settings.GetMealGroups(ctx)
-	if err != nil {
-		app.logger.Warnw("failed to fetch meal groups for assignment", "error", err)
-		return nil
-	}
-
-	if len(groups) == 0 {
-		return nil
-	}
-
-	hackerApp, err := app.store.Application.GetByUserID(ctx, userID)
-	if err != nil {
-		// If the user doesn't have an application, we can't assign a group.
-		if !errors.Is(err, store.ErrNotFound) {
-			app.logger.Warnw("failed to fetch application for meal group assignment", "user_id", userID, "error", err)
-		}
-		return nil
-	}
-
-	if hackerApp.MealGroup != nil {
-		return hackerApp.MealGroup // Already assigned
-	}
-
-	selectedGroup := groups[rand.Intn(len(groups))]
-	if err := app.store.Application.SetMealGroup(ctx, hackerApp.ID, selectedGroup); err != nil {
-		app.logger.Warnw("failed to set meal group on application", "app_id", hackerApp.ID, "error", err)
-		return nil
-	}
-
-	return &selectedGroup
 }
 
 // getScanStatsHandler returns aggregate scan counts grouped by scan type
@@ -267,7 +272,6 @@ func (app *application) getScanStatsHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, ScanStatsResponse{Stats: stats}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -327,6 +331,5 @@ func (app *application) updateScanTypesHandler(w http.ResponseWriter, r *http.Re
 
 	if err := app.jsonResponse(w, http.StatusOK, ScanTypesResponse(req)); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }

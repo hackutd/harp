@@ -46,7 +46,6 @@ func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -80,7 +79,6 @@ func (app *application) checkEmailAuthMethodHandler(w http.ResponseWriter, r *ht
 			// Email not registered
 			if err := app.jsonResponse(w, http.StatusOK, CheckEmailResponse{Exists: false}); err != nil {
 				app.internalServerError(w, r, err)
-				return
 			}
 			return
 		}
@@ -94,6 +92,5 @@ func (app *application) checkEmailAuthMethodHandler(w http.ResponseWriter, r *ht
 		AuthMethod: &user.AuthMethod,
 	}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }

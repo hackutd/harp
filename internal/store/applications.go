@@ -626,31 +626,32 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 	return users, rows.Err()
 }
 
-// SetMealGroup updates the meal group for a specific application
-func (s *ApplicationsStore) SetMealGroup(ctx context.Context, id string, mealGroup string) error {
+// SetMealGroup assigns a meal group to an application only if one is not already
+// set, and returns the persisted meal group. Doing the "assign if unassigned"
+// check in a single statement keeps it atomic, so concurrent check-in scans for
+// the same user can't each assign a different group.
+func (s *ApplicationsStore) SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		UPDATE applications
-		SET meal_group = $2, updated_at = NOW()
+		SET meal_group = COALESCE(meal_group, $2),
+		    updated_at = CASE WHEN meal_group IS NULL THEN NOW() ELSE updated_at END
 		WHERE id = $1
+		RETURNING meal_group
 	`
 
-	result, err := s.db.ExecContext(ctx, query, id, mealGroup)
+	var assigned *string
+	err := s.db.QueryRowContext(ctx, query, id, mealGroup).Scan(&assigned)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return ErrNotFound
-	}
-
-	return nil
+	return assigned, nil
 }
 
 // GetMealGroupByUserID returns the assigned meal group for a user

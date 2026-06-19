@@ -37,7 +37,7 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
-		SetMealGroup(ctx context.Context, id string, mealGroup string) error
+		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {

@@ -58,7 +58,6 @@ func (app *application) getAdminScheduleDateRange(w http.ResponseWriter, r *http
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -83,7 +82,6 @@ func (app *application) listScheduleHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, ScheduleListResponse{Schedule: items}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -140,7 +138,6 @@ func (app *application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusCreated, ScheduleItemResponse{Schedule: *item}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -206,7 +203,6 @@ func (app *application) updateScheduleHandler(w http.ResponseWriter, r *http.Req
 
 	if err := app.jsonResponse(w, http.StatusOK, ScheduleItemResponse{Schedule: *item}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 

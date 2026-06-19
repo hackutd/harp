@@ -83,7 +83,6 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 		ResumePath: objectPath,
 	}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -143,7 +142,6 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -201,7 +199,6 @@ func (app *application) getResumeDownloadURLHandler(w http.ResponseWriter, r *ht
 		DownloadURL: downloadURL,
 	}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 

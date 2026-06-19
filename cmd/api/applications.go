@@ -80,7 +80,6 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -162,7 +161,6 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 
 	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -234,7 +232,6 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 
 	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -376,7 +373,6 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 
 	if err := app.jsonResponse(w, http.StatusOK, stats); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -482,7 +478,6 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 
 	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -552,7 +547,6 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 
 	if err := app.jsonResponse(w, http.StatusOK, ApplicationResponse{Application: application}); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -601,7 +595,6 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -656,6 +649,5 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 
 	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }

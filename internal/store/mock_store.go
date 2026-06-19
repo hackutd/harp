@@ -146,9 +146,12 @@ func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status App
 	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
-func (m *MockApplicationStore) SetMealGroup(ctx context.Context, id string, mealGroup string) error {
+func (m *MockApplicationStore) SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error) {
 	args := m.Called(id, mealGroup)
-	return args.Error(0)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*string), args.Error(1)
 }
 
 func (m *MockApplicationStore) GetMealGroupByUserID(ctx context.Context, userID string) (*string, error) {

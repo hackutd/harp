@@ -64,7 +64,6 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -95,7 +94,6 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -132,7 +130,6 @@ func (app *application) getApplicationNotes(w http.ResponseWriter, r *http.Reque
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -163,7 +160,6 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 
 	if err := app.jsonResponse(w, http.StatusOK, result); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -206,7 +202,6 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -264,7 +259,6 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
 
@@ -323,6 +317,5 @@ func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
-		return
 	}
 }
