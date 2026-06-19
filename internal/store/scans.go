@@ -176,6 +176,10 @@ func (s *ScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes
 // scans table and returns the recomputed stats (sorted by scan_type, matching
 // GetStats). The settings row is locked FOR UPDATE to serialize against
 // concurrent incrementScanStat calls.
+//
+// Concurrency caveat: a scan insert that commits between the COUNT(*) query and
+// the FOR UPDATE lock acquisition could be missed. This is acceptable for a
+// manually triggered rebalance.
 func (s *ScansStore) RebalanceStats(ctx context.Context) ([]ScanStat, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
