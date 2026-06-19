@@ -1,6 +1,11 @@
 "use client";
 
-import { AlertTriangle, CalendarRange, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarRange,
+  ShieldCheck,
+  UtensilsCrossed,
+} from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,15 +21,17 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
+import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
 import ScheduleTab from "../tabs/ScheduleTab";
 
-type SettingsTab = "permissions" | "schedule" | "reset";
+type SettingsTab = "permissions" | "schedule" | "meal-groups" | "reset";
 
 const settingsTabs = [
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
   { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
+  { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];
 
@@ -81,6 +88,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
               <div className="p-8">
                 {activeTab === "permissions" && <PermissionsTab />}
                 {activeTab === "schedule" && <ScheduleTab />}
+                {activeTab === "meal-groups" && <MealGroupsTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>
             </ScrollArea>

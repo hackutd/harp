@@ -14,3 +14,11 @@ export interface ResetHackathonResult {
   reset_notifications: boolean;
   resumes_deleted: number;
 }
+
+export interface MealGroupsResult {
+  groups: string[];
+}
+
+export interface MealGroupStatsResult {
+  stats: Record<string, number>;
+}
