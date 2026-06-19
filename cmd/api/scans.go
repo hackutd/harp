@@ -159,11 +159,8 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	if found.Category == store.ScanCategoryCheckIn {
 		mealGroup = app.assignMealGroup(r.Context(), req.UserID)
 	} else {
-		// Fetch meal group for response (non-fatal)
-		var err error
 		mealGroup, err = app.store.Application.GetMealGroupByUserID(r.Context(), req.UserID)
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
-			// We don't want to fail the scan if we can't get the meal group info
 			app.logger.Warnw("failed to fetch meal group for scan response", "user_id", req.UserID, "error", err)
 		}
 	}
@@ -178,9 +175,6 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// assignMealGroup assigns a meal group to the user's application if one is not
-// already set, returning the resulting group. Assignment is best-effort: any
-// failure is logged and results in a nil meal group rather than failing the scan.
 func (app *application) assignMealGroup(ctx context.Context, userID string) *string {
 	groups, err := app.store.Settings.GetMealGroups(ctx)
 	if err != nil {
@@ -194,7 +188,7 @@ func (app *application) assignMealGroup(ctx context.Context, userID string) *str
 
 	hackerApp, err := app.store.Application.GetByUserID(ctx, userID)
 	if err != nil {
-		// If the user doesn't have an application, we can't assign a group.
+		// If the user doesn't have an application, we can't assign a group
 		if !errors.Is(err, store.ErrNotFound) {
 			app.logger.Warnw("failed to fetch application for meal group assignment", "user_id", userID, "error", err)
 		}
@@ -207,9 +201,6 @@ func (app *application) assignMealGroup(ctx context.Context, userID string) *str
 
 	selectedGroup := groups[rand.Intn(len(groups))]
 
-	// SetMealGroup only assigns if the application is still unassigned, and
-	// returns the value that ended up persisted. This closes the race where two
-	// concurrent check-in scans could otherwise both assign a group.
 	assigned, err := app.store.Application.SetMealGroup(ctx, hackerApp.ID, selectedGroup)
 	if err != nil {
 		app.logger.Warnw("failed to set meal group on application", "app_id", hackerApp.ID, "error", err)

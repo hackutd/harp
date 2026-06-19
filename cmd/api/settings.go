@@ -552,8 +552,6 @@ func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Normalize names before validating so whitespace-only names are rejected
-	// and the duplicate check is consistent with how the names are stored.
 	for i := range req.Groups {
 		req.Groups[i] = strings.TrimSpace(req.Groups[i])
 	}

@@ -626,10 +626,7 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 	return users, rows.Err()
 }
 
-// SetMealGroup assigns a meal group to an application only if one is not already
-// set, and returns the persisted meal group. Doing the "assign if unassigned"
-// check in a single statement keeps it atomic, so concurrent check-in scans for
-// the same user can't each assign a different group.
+// SetMealGroup assigns a meal group to an application only if one is not already set
 func (s *ApplicationsStore) SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
