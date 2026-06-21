@@ -157,6 +157,8 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 - **Commit messages:** Use [Conventional Commits] format (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`)
 - Keep commit messages short (subject line under 72 characters)
 - **Never** include `Co-Authored-By` lines in commit messages
+- Run `task setup-hooks` once after cloning to enable the local `commit-msg` hook that validates Conventional Commits
+- PR titles are validated in CI (`.github/workflows/conventional-commits.yaml`) and must follow Conventional Commits, since the squash-merge commit (and release-please) uses the PR title
 
 ## API Routes
 
