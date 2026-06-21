@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const version = "1.2.0"
+var version = "dev"
 
 // @title						HackPortal API
 // @version					1.0

@@ -395,6 +395,14 @@ func (m *MockScansStore) HasCheckIn(ctx context.Context, userID string, checkInT
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *MockScansStore) RebalanceStats(ctx context.Context) ([]ScanStat, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScanStat), args.Error(1)
+}
+
 // MockScheduleStore is a mock implementation of the Schedule interface
 type MockScheduleStore struct {
 	mock.Mock

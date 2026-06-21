@@ -17,9 +17,11 @@ export default function ScansPage() {
     typesLoading,
     statsLoading,
     saving,
+    rebalancing,
     fetchTypes,
     fetchStats,
     saveScanTypes,
+    rebalanceStats,
     setActiveScanType,
   } = useScansStore();
 
@@ -77,8 +79,10 @@ export default function ScansPage() {
         stats={stats}
         isSuperAdmin={isSuperAdmin}
         saving={saving}
+        rebalancing={rebalancing}
         onSelect={setActiveScanType}
         onSave={saveScanTypes}
+        onRebalance={rebalanceStats}
       />
       <ScannerDialog />
     </div>

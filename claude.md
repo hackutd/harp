@@ -157,11 +157,13 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 - **Commit messages:** Use [Conventional Commits] format (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`)
 - Keep commit messages short (subject line under 72 characters)
 - **Never** include `Co-Authored-By` lines in commit messages
+- Run `task setup-hooks` once after cloning to enable the local `commit-msg` hook that validates Conventional Commits
+- PR titles are validated in CI (`.github/workflows/conventional-commits.yaml`) and must follow Conventional Commits, since the squash-merge commit (and release-please) uses the PR title
 
 ## API Routes
 
 **Auth:** `GET /v1/auth/check-email`, `GET /v1/auth/me`
 **Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`
-**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`
-**Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/emails/qr`
+**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
+**Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/scans/rebalance-stats`, `POST /v1/superadmin/emails/qr`
 **Infra (Basic Auth):** `GET /v1/health`, `GET /v1/debug/vars`, `GET /v1/swagger/*`
