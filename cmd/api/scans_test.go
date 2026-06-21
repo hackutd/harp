@@ -380,7 +380,7 @@ func TestGetScanStats(t *testing.T) {
 }
 
 func TestRebalanceScanStats(t *testing.T) {
-	t.Run("super admin recomputes stats", func(t *testing.T) {
+	t.Run("admin recomputes stats", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockScans := app.store.Scans.(*store.MockScansStore)
 
@@ -393,7 +393,7 @@ func TestRebalanceScanStats(t *testing.T) {
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
-		req = setUserContext(req, newSuperAdminUser())
+		req = setUserContext(req, newAdminUser())
 
 		rr := executeRequest(req, http.HandlerFunc(app.rebalanceScanStatsHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
@@ -426,13 +426,13 @@ func TestRebalanceScanStats(t *testing.T) {
 		mockScans.AssertExpectations(t)
 	})
 
-	t.Run("403 when admin (non-super-admin)", func(t *testing.T) {
+	t.Run("403 when hacker (non-admin)", func(t *testing.T) {
 		app := newTestApplication(t)
-		handler := app.RequireRoleMiddleware(store.RoleSuperAdmin)(http.HandlerFunc(app.rebalanceScanStatsHandler))
+		handler := app.RequireRoleMiddleware(store.RoleAdmin)(http.HandlerFunc(app.rebalanceScanStatsHandler))
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
-		req = setUserContext(req, newAdminUser())
+		req = setUserContext(req, newTestUser())
 
 		rr := executeRequest(req, handler)
 		checkResponseCode(t, http.StatusForbidden, rr.Code)
@@ -440,7 +440,7 @@ func TestRebalanceScanStats(t *testing.T) {
 
 	t.Run("401 when unauthenticated", func(t *testing.T) {
 		app := newTestApplication(t)
-		handler := app.RequireRoleMiddleware(store.RoleSuperAdmin)(http.HandlerFunc(app.rebalanceScanStatsHandler))
+		handler := app.RequireRoleMiddleware(store.RoleAdmin)(http.HandlerFunc(app.rebalanceScanStatsHandler))
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)

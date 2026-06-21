@@ -2,6 +2,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RefreshCw,
   ScanLine,
   Trash2,
   UserCheck,
@@ -51,10 +52,12 @@ interface ScanTypesTableProps {
   stats: ScanStat[];
   isSuperAdmin: boolean;
   saving: boolean;
+  rebalancing: boolean;
   onSelect: (scanType: ScanType) => void;
   onSave: (
     scanTypes: ScanType[],
   ) => Promise<{ success: boolean; error?: string }>;
+  onRebalance: () => void;
 }
 
 export function ScanTypesTable({
@@ -62,13 +65,16 @@ export function ScanTypesTable({
   stats,
   isSuperAdmin,
   saving,
+  rebalancing,
   onSelect,
   onSave,
+  onRebalance,
 }: ScanTypesTableProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editDisplayName, setEditDisplayName] = useState("");
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [pendingNew, setPendingNew] = useState<ScanType | null>(null);
+  const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const editRowRef = useRef<HTMLTableRowElement>(null);
 
   // When there's a pending new row, append it so it renders in the table
@@ -256,14 +262,30 @@ export function ScanTypesTable({
 
   return (
     <Card className="overflow-hidden flex flex-col">
-      <CardHeader className="shrink-0 flex flex-row items-center justify-between">
+      <CardHeader className="shrink-0 flex flex-row items-center justify-between gap-2">
         <CardDescription className="font-light">
           {displayTypes.length} scan type(s){" "}
           {isSuperAdmin ? "configured" : "available"}
         </CardDescription>
-        {saving && (
-          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-        )}
+        <div className="flex items-center gap-2">
+          {saving && (
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            disabled={rebalancing}
+            onClick={() => setRebalanceOpen(true)}
+          >
+            {rebalancing ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="size-3.5" />
+            )}
+            Rebalance
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0 flex-1 overflow-hidden">
         <div className="relative overflow-auto h-full p-6 pt-0 pb-3">
@@ -505,6 +527,30 @@ export function ScanTypesTable({
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rebalanceOpen} onOpenChange={setRebalanceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rebalance scan counts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This recomputes every scan count from scratch against the
+              database. It&apos;s an expensive operation and should only be used
+              when you need to verify the actual counts are accurate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer"
+              onClick={() => onRebalance()}
+            >
+              Rebalance
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

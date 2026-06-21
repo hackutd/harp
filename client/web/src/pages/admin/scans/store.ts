@@ -1,9 +1,13 @@
+import { toast } from "sonner";
 import { create } from "zustand";
+
+import { errorAlert } from "@/shared/lib/api";
 
 import {
   createScan as apiCreateScan,
   fetchScanStats,
   fetchScanTypes,
+  rebalanceScanStats as apiRebalanceScanStats,
   saveScanTypes as apiSaveScanTypes,
 } from "./api";
 import type { Scan, ScanStat, ScanType } from "./types";
@@ -21,12 +25,14 @@ export interface ScansState {
   statsLoading: boolean;
   scanning: boolean;
   saving: boolean;
+  rebalancing: boolean;
   activeScanType: ScanType | null;
   lastScanResult: ScanResult | null;
 
   fetchTypes: (signal?: AbortSignal) => Promise<void>;
   fetchStats: (signal?: AbortSignal) => Promise<void>;
   performScan: (userId: string) => Promise<void>;
+  rebalanceStats: () => Promise<void>;
   saveScanTypes: (
     scanTypes: ScanType[],
   ) => Promise<{ success: boolean; error?: string }>;
@@ -41,6 +47,7 @@ export const useScansStore = create<ScansState>((set, get) => ({
   statsLoading: false,
   scanning: false,
   saving: false,
+  rebalancing: false,
   activeScanType: null,
   lastScanResult: null,
 
@@ -105,6 +112,22 @@ export const useScansStore = create<ScansState>((set, get) => ({
         scanning: false,
         lastScanResult: { success: false, message },
       });
+    }
+  },
+
+  rebalanceStats: async () => {
+    if (get().rebalancing) return;
+
+    set({ rebalancing: true });
+
+    const res = await apiRebalanceScanStats();
+
+    if (res.status === 200 && res.data) {
+      set({ stats: res.data.stats, rebalancing: false });
+      toast.success("Scan counts rebalanced");
+    } else {
+      set({ rebalancing: false });
+      errorAlert(res, "Failed to rebalance scan counts");
     }
   },
 

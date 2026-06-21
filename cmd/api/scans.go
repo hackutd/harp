@@ -268,16 +268,16 @@ func (app *application) getScanStatsHandler(w http.ResponseWriter, r *http.Reque
 
 // rebalanceScanStatsHandler recomputes the scan_stats counter cache from the scans table
 //
-//	@Summary		Rebalance scan statistics (Super Admin)
+//	@Summary		Rebalance scan statistics (Admin)
 //	@Description	Recomputes the scan_stats counter cache from the authoritative scans table and returns the recomputed stats
-//	@Tags			superadmin/scans
+//	@Tags			admin/scans
 //	@Produce		json
 //	@Success		200	{object}	ScanStatsResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/superadmin/scans/rebalance-stats [post]
+//	@Router			/admin/scans/rebalance-stats [post]
 func (app *application) rebalanceScanStatsHandler(w http.ResponseWriter, r *http.Request) {
 	stats, err := app.store.Scans.RebalanceStats(r.Context())
 	if err != nil {

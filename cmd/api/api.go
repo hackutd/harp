@@ -104,7 +104,6 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/schedule",
 		"admin/sponsors",
 		"superadmin/applications",
-		"superadmin/scans",
 		"superadmin/settings",
 		"superadmin/users"
 	];
@@ -227,6 +226,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/types", app.getScanTypesHandler)
 						r.Get("/user/{userID}", app.getUserScansHandler)
 						r.Get("/stats", app.getScanStatsHandler)
+						r.Post("/rebalance-stats", app.rebalanceScanStatsHandler)
 					})
 
 					// Schedule
@@ -293,10 +293,6 @@ func (app *application) mount() http.Handler {
 					r.Route("/users", func(r chi.Router) {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
-					})
-
-					r.Route("/scans", func(r chi.Router) {
-						r.Post("/rebalance-stats", app.rebalanceScanStatsHandler)
 					})
 
 					// Scheduled push notifications
