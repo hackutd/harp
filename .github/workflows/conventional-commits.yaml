@@ -1,4 +1,4 @@
-name: Conventional Commits
+name: Commits
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  validate-pr-title:
+  conventional:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR title is a Conventional Commit
