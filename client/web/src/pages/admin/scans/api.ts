@@ -41,6 +41,17 @@ export async function fetchScanStats(
   );
 }
 
+export async function rebalanceScanStats(
+  signal?: AbortSignal,
+): Promise<ApiResponse<ScanStatsResponse>> {
+  return postRequest<ScanStatsResponse>(
+    "/admin/scans/rebalance-stats",
+    undefined,
+    "scan stats",
+    signal,
+  );
+}
+
 export async function saveScanTypes(
   scanTypes: ScanType[],
 ): Promise<ApiResponse<ScanTypesResponse>> {

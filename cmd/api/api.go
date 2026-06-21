@@ -226,6 +226,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/types", app.getScanTypesHandler)
 						r.Get("/user/{userID}", app.getUserScansHandler)
 						r.Get("/stats", app.getScanStatsHandler)
+						r.Post("/rebalance-stats", app.rebalanceScanStatsHandler)
 					})
 
 					// Schedule

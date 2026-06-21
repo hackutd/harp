@@ -71,6 +71,7 @@ type Storage struct {
 		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
 		GetStats(ctx context.Context) ([]ScanStat, error)
 		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)
+		RebalanceStats(ctx context.Context) ([]ScanStat, error)
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
