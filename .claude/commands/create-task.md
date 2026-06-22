@@ -1,3 +1,8 @@
+---
+description: Create a new task in both ClickUp (Tech list) and GitHub Issues, then link them together.
+model: opus
+---
+
 # Create Task
 
 Create a new task in both ClickUp (Tech list) and GitHub Issues, then link them together.
