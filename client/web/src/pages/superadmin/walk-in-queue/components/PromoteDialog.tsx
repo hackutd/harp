@@ -100,10 +100,7 @@ export function PromoteDialog({ pending, onSuccess }: PromoteDialogProps) {
               )}
             />
             <DialogFooter>
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-              >
+              <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 )}

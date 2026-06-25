@@ -1,4 +1,10 @@
-import { DoorOpen, Gift, MoreHorizontal, UserCheck, Utensils } from "lucide-react";
+import {
+  DoorOpen,
+  Gift,
+  MoreHorizontal,
+  UserCheck,
+  Utensils,
+} from "lucide-react";
 
 import {
   Card,

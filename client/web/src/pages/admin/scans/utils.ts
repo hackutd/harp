@@ -1,4 +1,10 @@
-import { DoorOpen, Gift, MoreHorizontal, UserCheck, Utensils } from "lucide-react";
+import {
+  DoorOpen,
+  Gift,
+  MoreHorizontal,
+  UserCheck,
+  Utensils,
+} from "lucide-react";
 
 import type { ScanType, ScanTypeCategory } from "./types";
 
@@ -18,11 +24,15 @@ export function validate(types: ScanType[]): string | null {
   if (new Set(names).size !== names.length) {
     return "Scan type names must be unique";
   }
-  const hasCheckIn = types.some((st) => st.is_active && st.category === "check_in");
+  const hasCheckIn = types.some(
+    (st) => st.is_active && st.category === "check_in",
+  );
   if (!hasCheckIn) {
     return "At least one active check_in scan type is required";
   }
-  const hasWalkIn = types.some((st) => st.is_active && st.category === "walk_in");
+  const hasWalkIn = types.some(
+    (st) => st.is_active && st.category === "walk_in",
+  );
   if (!hasWalkIn) {
     return "At least one active walk_in scan type is required";
   }

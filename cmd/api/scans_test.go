@@ -300,11 +300,14 @@ func TestCreateScan(t *testing.T) {
 		mockWalkIns := app.store.WalkIns.(*store.MockWalkInsStore)
 		mockMailer := app.mailer.(*mailer.MockClient)
 
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
 		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
 		mockUsers.On("GetByID", "user-1").Return(&store.User{ID: "user-1", Email: "hacker@test.com"}, nil).Once()
 		mockWalkIns.On("Enqueue", "user-1").Return(true, 7, nil).Once()
 		mockMailer.On("SendWalkInQueuedEmail", "hacker@test.com", 7).Return(nil).Maybe()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return((*string)(nil), store.ErrNotFound).Once()
 
 		body := `{"user_id":"user-1","scan_type":"walk_in"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -329,10 +332,13 @@ func TestCreateScan(t *testing.T) {
 		mockWalkIns := app.store.WalkIns.(*store.MockWalkInsStore)
 		mockMailer := app.mailer.(*mailer.MockClient)
 
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
 		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
 		mockUsers.On("GetByID", "user-1").Return(&store.User{ID: "user-1", Email: "hacker@test.com"}, nil).Once()
 		mockWalkIns.On("Enqueue", "user-1").Return(false, 0, nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return((*string)(nil), store.ErrNotFound).Once()
 
 		body := `{"user_id":"user-1","scan_type":"walk_in"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -356,10 +362,13 @@ func TestCreateScan(t *testing.T) {
 		mockUsers := app.store.Users.(*store.MockUsersStore)
 		mockWalkIns := app.store.WalkIns.(*store.MockWalkInsStore)
 
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
 		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
 		mockUsers.On("GetByID", "user-1").Return(&store.User{ID: "user-1", Email: "hacker@test.com"}, nil).Once()
 		mockWalkIns.On("Enqueue", "user-1").Return(false, 0, nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return((*string)(nil), store.ErrNotFound).Once()
 
 		body := `{"user_id":"user-1","scan_type":"walk_in"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
