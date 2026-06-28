@@ -1,5 +1,5 @@
-import type { ApiResponse } from "@/types";
 import { getRequest, postRequest } from "@/shared/lib/api";
+import type { ApiResponse } from "@/types";
 
 import type { PromoteResponse, WalkInsResponse } from "./types";
 

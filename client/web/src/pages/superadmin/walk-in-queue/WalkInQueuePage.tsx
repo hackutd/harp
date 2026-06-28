@@ -20,26 +20,33 @@ export default function WalkInQueuePage() {
   const [loading, setLoading] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
 
-  const fetchQueue = useCallback(async () => {
+  // Used by PromoteDialog's onSuccess — never called directly in an effect body.
+  const refresh = useCallback(() => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
-    setLoading(true);
-    const res = await getWalkInQueue(controller.signal);
-    if (res.status === 0) return; // aborted
-    setData(res.data ?? null);
-    setLoading(false);
+    void getWalkInQueue(controller.signal).then((res) => {
+      if (res.status === 0) return;
+      setData(res.data ?? null);
+    });
   }, []);
 
   useEffect(() => {
-    fetchQueue();
-    const interval = setInterval(fetchQueue, REFRESH_INTERVAL_MS);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    void getWalkInQueue(controller.signal).then((res) => {
+      if (res.status === 0) return;
+      setData(res.data ?? null);
+      setLoading(false);
+    });
+
+    const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
     return () => {
       clearInterval(interval);
-      abortRef.current?.abort();
+      controller.abort();
     };
-  }, [fetchQueue]);
+  }, [refresh]);
 
   const pending = data?.pending ?? 0;
   const total = data?.total ?? 0;
@@ -51,11 +58,12 @@ export default function WalkInQueuePage() {
           <h1 className="text-xl font-semibold">Walk-In Queue</h1>
           {!loading && (
             <p className="text-sm text-muted-foreground">
-              {pending} waiting &middot; {total} total walk-ins
+              {pending} waiting &middot; {total - pending} promoted &middot;{" "}
+              {total} total walk-ins
             </p>
           )}
         </div>
-        <PromoteDialog pending={pending} onSuccess={fetchQueue} />
+        <PromoteDialog pending={pending} onSuccess={refresh} />
       </div>
 
       <Card>
