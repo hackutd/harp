@@ -43,8 +43,12 @@ export function WalkInQueueTable({ queue }: WalkInQueueTableProps) {
         <Table className="border-collapse">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="border-b">
-              <TableHead className="w-16 text-left px-4 py-3 border-r">#</TableHead>
-              <TableHead className="text-left px-4 py-3 border-r">Email</TableHead>
+              <TableHead className="w-16 text-left px-4 py-3 border-r">
+                #
+              </TableHead>
+              <TableHead className="text-left px-4 py-3 border-r">
+                Email
+              </TableHead>
               <TableHead className="text-left px-4 py-3">Arrived</TableHead>
             </TableRow>
           </TableHeader>
