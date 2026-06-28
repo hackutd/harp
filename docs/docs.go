@@ -4803,6 +4803,147 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/superadmin/walk-ins": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns pending count, total count, and ordered list of un-promoted walk-in entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/walk-ins"
+                ],
+                "summary": "Get walk-in queue (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.WalkInsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/walk-ins/promote": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Promotes the next N un-promoted walk-ins in FIFO order and sends acceptance emails",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/walk-ins"
+                ],
+                "summary": "Promote walk-ins (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Number of walk-ins to promote",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.PromoteWalkInsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PromoteWalkInsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -5132,6 +5273,32 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/store.ApplicationReviewWithDetails"
                     }
+                }
+            }
+        },
+        "main.PromoteWalkInsPayload": {
+            "type": "object",
+            "required": [
+                "count"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "main.PromoteWalkInsResponse": {
+            "type": "object",
+            "properties": {
+                "promoted": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.User"
+                    }
+                },
+                "promoted_count": {
+                    "type": "integer"
                 }
             }
         },
@@ -5658,6 +5825,23 @@ const docTemplate = `{
                 }
             }
         },
+        "main.WalkInsResponse": {
+            "type": "object",
+            "properties": {
+                "pending": {
+                    "type": "integer"
+                },
+                "queue": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.WalkIn"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "store.Application": {
             "type": "object",
             "properties": {
@@ -6078,7 +6262,8 @@ const docTemplate = `{
                         "check_in",
                         "meal",
                         "swag",
-                        "other"
+                        "other",
+                        "walk_in"
                     ],
                     "allOf": [
                         {
@@ -6107,13 +6292,15 @@ const docTemplate = `{
                 "check_in",
                 "meal",
                 "swag",
-                "other"
+                "other",
+                "walk_in"
             ],
             "x-enum-varnames": [
                 "ScanCategoryCheckIn",
                 "ScanCategoryMeal",
                 "ScanCategorySwag",
-                "ScanCategoryOther"
+                "ScanCategoryOther",
+                "ScanCategoryWalkIn"
             ]
         },
         "store.ScheduleItem": {
@@ -6238,6 +6425,58 @@ const docTemplate = `{
                 }
             }
         },
+        "store.User": {
+            "type": "object",
+            "required": [
+                "auth_method",
+                "email",
+                "role",
+                "supertokens_user_id"
+            ],
+            "properties": {
+                "auth_method": {
+                    "enum": [
+                        "passwordless",
+                        "google"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.AuthMethod"
+                        }
+                    ]
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "profile_picture_url": {
+                    "type": "string"
+                },
+                "role": {
+                    "enum": [
+                        "hacker",
+                        "admin",
+                        "super_admin"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.UserRole"
+                        }
+                    ]
+                },
+                "supertokens_user_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "store.UserListItem": {
             "type": "object",
             "properties": {
@@ -6276,6 +6515,32 @@ const docTemplate = `{
                 "RoleAdmin",
                 "RoleSuperAdmin"
             ]
+        },
+        "store.WalkIn": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "promoted_at": {
+                    "type": "string"
+                },
+                "promoted_by": {
+                    "type": "string"
+                },
+                "queued_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {

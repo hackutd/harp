@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/hackutd/portal/internal/mailer"
 	"github.com/hackutd/portal/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -63,6 +64,7 @@ func TestCreateScan(t *testing.T) {
 		hackerApp := &store.Application{ID: "app-1", UserID: "user-1", MealGroup: nil}
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
+		mockApps.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
 		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
 		mockApps.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).
@@ -102,6 +104,7 @@ func TestCreateScan(t *testing.T) {
 		hackerApp := &store.Application{ID: "app-1", UserID: "user-1", MealGroup: &existing}
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
+		mockApps.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
 		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
@@ -137,6 +140,7 @@ func TestCreateScan(t *testing.T) {
 		mockApps := app.store.Application.(*store.MockApplicationStore)
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
+		mockApps.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
 		mockSettings.On("GetMealGroups").Return(nil, errors.New("db error")).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
 
@@ -213,8 +217,10 @@ func TestCreateScan(t *testing.T) {
 		app := newTestApplication(t)
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)
 		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
+		mockApp.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(store.ErrConflict).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
@@ -228,6 +234,7 @@ func TestCreateScan(t *testing.T) {
 
 		mockSettings.AssertExpectations(t)
 		mockScans.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
 	})
 
 	t.Run("400 invalid type", func(t *testing.T) {
@@ -277,6 +284,143 @@ func TestCreateScan(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	walkInScanTypes := []store.ScanType{
+		{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true},
+		{Name: "walk_in", DisplayName: "Walk-In", Category: store.ScanCategoryWalkIn, IsActive: true},
+		{Name: "lunch", DisplayName: "Lunch", Category: store.ScanCategoryMeal, IsActive: true},
+	}
+
+	t.Run("walk-in scan enqueues user and fires queued email", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockUsers := app.store.Users.(*store.MockUsersStore)
+		mockWalkIns := app.store.WalkIns.(*store.MockWalkInsStore)
+		mockMailer := app.mailer.(*mailer.MockClient)
+
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockUsers.On("GetByID", "user-1").Return(&store.User{ID: "user-1", Email: "hacker@test.com"}, nil).Once()
+		mockWalkIns.On("Enqueue", "user-1").Return(true, 7, nil).Once()
+		mockMailer.On("SendWalkInQueuedEmail", "hacker@test.com", 7).Return(nil).Maybe()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return((*string)(nil), store.ErrNotFound).Once()
+
+		body := `{"user_id":"user-1","scan_type":"walk_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockUsers.AssertExpectations(t)
+		mockWalkIns.AssertExpectations(t)
+	})
+
+	t.Run("walk-in re-scan is no-op, no second email", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockUsers := app.store.Users.(*store.MockUsersStore)
+		mockWalkIns := app.store.WalkIns.(*store.MockWalkInsStore)
+		mockMailer := app.mailer.(*mailer.MockClient)
+
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockUsers.On("GetByID", "user-1").Return(&store.User{ID: "user-1", Email: "hacker@test.com"}, nil).Once()
+		mockWalkIns.On("Enqueue", "user-1").Return(false, 0, nil).Once()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return((*string)(nil), store.ErrNotFound).Once()
+
+		body := `{"user_id":"user-1","scan_type":"walk_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		mockMailer.AssertNotCalled(t, "SendWalkInQueuedEmail", mock.Anything, mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockWalkIns.AssertExpectations(t)
+	})
+
+	t.Run("walk-in scan does not require prior check-in", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockUsers := app.store.Users.(*store.MockUsersStore)
+		mockWalkIns := app.store.WalkIns.(*store.MockWalkInsStore)
+
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockUsers.On("GetByID", "user-1").Return(&store.User{ID: "user-1", Email: "hacker@test.com"}, nil).Once()
+		mockWalkIns.On("Enqueue", "user-1").Return(false, 0, nil).Once()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return((*string)(nil), store.ErrNotFound).Once()
+
+		body := `{"user_id":"user-1","scan_type":"walk_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		// Should succeed without any HasCheckIn mock — walk-in bypasses that check
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+	})
+
+	t.Run("check-in scan of waitlisted user returns 403", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockApp.On("GetStatusByUserID", "user-1").Return(store.StatusWaitlisted, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
+	})
+
+	t.Run("check-in scan of user with no application returns 403", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockApp.On("GetStatusByUserID", "user-1").Return(store.ApplicationStatus(""), store.ErrNotFound).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
 	})
 }
 
@@ -457,12 +601,13 @@ func TestUpdateScanTypes(t *testing.T) {
 
 		types := []store.ScanType{
 			{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true},
+			{Name: "walk_in", DisplayName: "Walk-In", Category: store.ScanCategoryWalkIn, IsActive: true},
 			{Name: "lunch", DisplayName: "Lunch", Category: store.ScanCategoryMeal, IsActive: true},
 		}
 
 		mockSettings.On("UpdateScanTypes", types).Return(nil).Once()
 
-		body := `{"scan_types":[{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true},{"name":"lunch","display_name":"Lunch","category":"meal","is_active":true}]}`
+		body := `{"scan_types":[{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true},{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true},{"name":"lunch","display_name":"Lunch","category":"meal","is_active":true}]}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -497,7 +642,7 @@ func TestUpdateScanTypes(t *testing.T) {
 	t.Run("400 no check_in category", func(t *testing.T) {
 		app := newTestApplication(t)
 
-		body := `{"scan_types":[{"name":"lunch","display_name":"Lunch","category":"meal","is_active":true}]}`
+		body := `{"scan_types":[{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true}]}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -511,7 +656,27 @@ func TestUpdateScanTypes(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&errBody)
 		require.NoError(t, err)
-		assert.Contains(t, errBody.Error, "check_in category")
+		assert.Contains(t, errBody.Error, "check_in")
+	})
+
+	t.Run("400 no walk_in category", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		body := `{"scan_types":[{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true}]}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScanTypesHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var errBody struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&errBody)
+		require.NoError(t, err)
+		assert.Contains(t, errBody.Error, "walk_in")
 	})
 
 	t.Run("400 empty body", func(t *testing.T) {

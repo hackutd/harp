@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net/http"
 
@@ -114,7 +115,32 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if found.Category != store.ScanCategoryCheckIn {
+	// Walk-in scan: skip check-in prerequisite, enqueue user, send queued email.
+	if found.Category == store.ScanCategoryWalkIn {
+		scannedUser, err := app.store.Users.GetByID(r.Context(), req.UserID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				app.notFoundResponse(w, r, errors.New("user not found"))
+				return
+			}
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		inserted, position, err := app.store.WalkIns.Enqueue(r.Context(), req.UserID)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		if inserted {
+			go func() {
+				if err := app.mailer.SendWalkInQueuedEmail(scannedUser.Email, position); err != nil {
+					app.logger.Errorw("failed to send walk-in queued email", "error", err)
+				}
+			}()
+		}
+	} else if found.Category != store.ScanCategoryCheckIn {
+		// Non-walk-in, non-check-in scans require the user to have checked in first.
 		var checkInTypes []string
 		for _, st := range scanTypes {
 			if st.Category == store.ScanCategoryCheckIn {
@@ -130,6 +156,21 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 
 		if !hasCheckIn {
 			app.forbiddenResponse(w, r, errors.New("user must check in before claiming items"))
+			return
+		}
+	} else {
+		// Check-in scan: require accepted status.
+		status, err := app.store.Application.GetStatusByUserID(r.Context(), req.UserID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				app.forbiddenResponse(w, r, errors.New("user has no application"))
+				return
+			}
+			app.internalServerError(w, r, err)
+			return
+		}
+		if status != store.StatusAccepted {
+			app.forbiddenResponse(w, r, fmt.Errorf("user is not accepted (status: %s)", status))
 			return
 		}
 	}
@@ -330,15 +371,23 @@ func (app *application) updateScanTypesHandler(w http.ResponseWriter, r *http.Re
 		nameMap[st.Name] = true
 	}
 
-	// Validate exactly one check_in category type exists
-	checkInCount := 0
+	// Validate at least one active check_in and one active walk_in type exist.
+	hasCheckIn := false
+	hasWalkIn := false
 	for _, st := range req.ScanTypes {
-		if st.Category == store.ScanCategoryCheckIn {
-			checkInCount++
+		if st.IsActive && st.Category == store.ScanCategoryCheckIn {
+			hasCheckIn = true
+		}
+		if st.IsActive && st.Category == store.ScanCategoryWalkIn {
+			hasWalkIn = true
 		}
 	}
-	if checkInCount != 1 {
-		app.badRequestResponse(w, r, errors.New("exactly one scan type must have the check_in category"))
+	if !hasCheckIn {
+		app.badRequestResponse(w, r, errors.New("at least one active check_in scan type is required"))
+		return
+	}
+	if !hasWalkIn {
+		app.badRequestResponse(w, r, errors.New("at least one active walk_in scan type is required"))
 		return
 	}
 

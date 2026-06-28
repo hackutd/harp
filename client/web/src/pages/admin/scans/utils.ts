@@ -1,4 +1,10 @@
-import { Gift, MoreHorizontal, UserCheck, Utensils } from "lucide-react";
+import {
+  DoorOpen,
+  Gift,
+  MoreHorizontal,
+  UserCheck,
+  Utensils,
+} from "lucide-react";
 
 import type { ScanType, ScanTypeCategory } from "./types";
 
@@ -18,9 +24,17 @@ export function validate(types: ScanType[]): string | null {
   if (new Set(names).size !== names.length) {
     return "Scan type names must be unique";
   }
-  const checkInCount = types.filter((st) => st.category === "check_in").length;
-  if (checkInCount !== 1) {
-    return "Exactly one scan type must have the check_in category";
+  const hasCheckIn = types.some(
+    (st) => st.is_active && st.category === "check_in",
+  );
+  if (!hasCheckIn) {
+    return "At least one active check_in scan type is required";
+  }
+  const hasWalkIn = types.some(
+    (st) => st.is_active && st.category === "walk_in",
+  );
+  if (!hasWalkIn) {
+    return "At least one active walk_in scan type is required";
   }
   return null;
 }
@@ -30,6 +44,7 @@ export const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
   meal: Utensils,
   swag: Gift,
   other: MoreHorizontal,
+  walk_in: DoorOpen,
 };
 
 export const categoryColors: Record<ScanTypeCategory, string> = {
@@ -37,6 +52,7 @@ export const categoryColors: Record<ScanTypeCategory, string> = {
   meal: "bg-orange-100 text-orange-800",
   swag: "bg-purple-100 text-purple-800",
   other: "bg-gray-100 text-gray-800",
+  walk_in: "bg-violet-100 text-violet-700",
 };
 
 export const categoryOptions = [
@@ -44,4 +60,5 @@ export const categoryOptions = [
   { value: "meal", label: "Meal" },
   { value: "swag", label: "Swag" },
   { value: "other", label: "Other" },
+  { value: "walk_in", label: "Walk-In" },
 ] as const;
