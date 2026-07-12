@@ -25,6 +25,14 @@ const DashboardPage = lazy(
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
 const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
+const HackerLayout = lazy(() => import("@/layouts/HackerLayout"));
+const HackerScanPage = lazy(() => import("@/pages/hacker/scan/ScanPage"));
+const HackerSchedulePage = lazy(
+  () => import("@/pages/hacker/schedule/SchedulePage"),
+);
+const HackerProfilePage = lazy(
+  () => import("@/pages/hacker/profile/ProfilePage"),
+);
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
@@ -71,36 +79,66 @@ export const router = createBrowserRouter([
         element: <AuthOAuthCallbackPage />,
       },
 
-      // Hacker routes
+      // Hacker routes with shared layout (bottom nav mobile / sidebar desktop)
       {
         path: "/app",
         element: (
           <RequireAuth>
             <Suspense fallback={<PageLoader />}>
-              <DashboardPage />
+              <HackerLayout />
             </Suspense>
           </RequireAuth>
         ),
-      },
-      {
-        path: "/app/apply",
-        element: (
-          <RequireAuth>
-            <Suspense fallback={<PageLoader />}>
-              <ApplyPage />
-            </Suspense>
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "/app/status",
-        element: (
-          <RequireAuth>
-            <Suspense fallback={<PageLoader />}>
-              <StatusPage />
-            </Suspense>
-          </RequireAuth>
-        ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <DashboardPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "apply",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <ApplyPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "status",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <StatusPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "scan",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerScanPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "schedule",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerSchedulePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "profile",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerProfilePage />
+              </Suspense>
+            ),
+          },
+        ],
       },
 
       // Admin routes with shared sidebar layout
