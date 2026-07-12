@@ -4,22 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io"
 
 	qrcode "github.com/skip2/go-qrcode"
-	gomail "gopkg.in/gomail.v2"
+	mail "github.com/wneessen/go-mail"
 )
 
 type SMTPMailer struct {
-	host      string
-	port      int
-	username  string
-	password  string
 	fromEmail string
 	fromName  string
+	client    *mail.Client
 }
 
-func NewSMTP(host string, port int, username, password, fromEmail, fromName string) *SMTPMailer {
+func NewSMTP(host string, port int, username, password, fromEmail, fromName string) (*SMTPMailer, error) {
 	if port == 0 {
 		port = 587
 	}
@@ -30,14 +26,24 @@ func NewSMTP(host string, port int, username, password, fromEmail, fromName stri
 		fromName = FromName
 	}
 
+	// TLSMandatory covers real providers: STARTTLS on 587, implicit TLS on 465.
+	// A plaintext local catcher (e.g. Mailpit) would need TLSOpportunistic instead.
+	client, err := mail.NewClient(host,
+		mail.WithPort(port),
+		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover),
+		mail.WithUsername(username),
+		mail.WithPassword(password),
+		mail.WithTLSPortPolicy(mail.TLSMandatory),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating SMTP client: %w", err)
+	}
+
 	return &SMTPMailer{
-		host:      host,
-		port:      port,
-		username:  username,
-		password:  password,
 		fromEmail: fromEmail,
 		fromName:  fromName,
-	}
+		client:    client,
+	}, nil
 }
 
 func (m *SMTPMailer) SendQREmail(toEmail, toName, userID string) error {
@@ -61,22 +67,20 @@ func (m *SMTPMailer) SendQREmail(toEmail, toName, userID string) error {
 		return fmt.Errorf("executing email template: %w", err)
 	}
 
-	msg := gomail.NewMessage()
-	msg.SetAddressHeader("From", m.fromEmail, m.fromName)
-	msg.SetAddressHeader("To", toEmail, toName)
-	msg.SetHeader("Subject", "Your HackUTD QR Code")
-	msg.SetBody("text/html", htmlBody.String())
-	msg.Attach(
-		"hackutd-qrcode.png",
-		gomail.SetCopyFunc(func(w io.Writer) error {
-			_, err := w.Write(qrPNG)
-			return err
-		}),
-		gomail.SetHeader(map[string][]string{"Content-Type": {"image/png"}}),
-	)
+	msg := mail.NewMsg()
+	if err := msg.FromFormat(m.fromName, m.fromEmail); err != nil {
+		return fmt.Errorf("setting from address: %w", err)
+	}
+	if err := msg.AddToFormat(toName, toEmail); err != nil {
+		return fmt.Errorf("setting to address: %w", err)
+	}
+	msg.Subject("Your HackUTD QR Code")
+	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
+	if err := msg.AttachReader("hackutd-qrcode.png", bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
+		return fmt.Errorf("attaching QR code: %w", err)
+	}
 
-	dialer := gomail.NewDialer(m.host, m.port, m.username, m.password)
-	if err := dialer.DialAndSend(msg); err != nil {
+	if err := m.client.DialAndSend(msg); err != nil {
 		return fmt.Errorf("sending email: %w", err)
 	}
 
@@ -99,14 +103,17 @@ func (m *SMTPMailer) SendWalkInQueuedEmail(toEmail string, position int) error {
 		return fmt.Errorf("executing walk_in_queued template: %w", err)
 	}
 
-	msg := gomail.NewMessage()
-	msg.SetAddressHeader("From", m.fromEmail, m.fromName)
-	msg.SetAddressHeader("To", toEmail, toEmail)
-	msg.SetHeader("Subject", fmt.Sprintf("You're #%d in the HackUTD walk-in queue", position))
-	msg.SetBody("text/html", htmlBody.String())
+	msg := mail.NewMsg()
+	if err := msg.FromFormat(m.fromName, m.fromEmail); err != nil {
+		return fmt.Errorf("setting from address: %w", err)
+	}
+	if err := msg.AddToFormat(toEmail, toEmail); err != nil {
+		return fmt.Errorf("setting to address: %w", err)
+	}
+	msg.Subject(fmt.Sprintf("You're #%d in the HackUTD walk-in queue", position))
+	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
 
-	dialer := gomail.NewDialer(m.host, m.port, m.username, m.password)
-	if err := dialer.DialAndSend(msg); err != nil {
+	if err := m.client.DialAndSend(msg); err != nil {
 		return fmt.Errorf("sending walk-in queued email: %w", err)
 	}
 
@@ -134,22 +141,20 @@ func (m *SMTPMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 		return fmt.Errorf("executing walk_in_accepted template: %w", err)
 	}
 
-	msg := gomail.NewMessage()
-	msg.SetAddressHeader("From", m.fromEmail, m.fromName)
-	msg.SetAddressHeader("To", toEmail, toEmail)
-	msg.SetHeader("Subject", "You're in — HackUTD Walk-In Acceptance")
-	msg.SetBody("text/html", htmlBody.String())
-	msg.Attach(
-		"hackutd-qrcode.png",
-		gomail.SetCopyFunc(func(w io.Writer) error {
-			_, err := w.Write(qrPNG)
-			return err
-		}),
-		gomail.SetHeader(map[string][]string{"Content-Type": {"image/png"}}),
-	)
+	msg := mail.NewMsg()
+	if err := msg.FromFormat(m.fromName, m.fromEmail); err != nil {
+		return fmt.Errorf("setting from address: %w", err)
+	}
+	if err := msg.AddToFormat(toEmail, toEmail); err != nil {
+		return fmt.Errorf("setting to address: %w", err)
+	}
+	msg.Subject("You're in — HackUTD Walk-In Acceptance")
+	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
+	if err := msg.AttachReader("hackutd-qrcode.png", bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
+		return fmt.Errorf("attaching QR code: %w", err)
+	}
 
-	dialer := gomail.NewDialer(m.host, m.port, m.username, m.password)
-	if err := dialer.DialAndSend(msg); err != nil {
+	if err := m.client.DialAndSend(msg); err != nil {
 		return fmt.Errorf("sending walk-in accepted email: %w", err)
 	}
 

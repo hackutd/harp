@@ -51,7 +51,7 @@ func New(cfg Config) (Client, error) {
 			cfg.SMTP.Password,
 			cfg.FromEmail,
 			cfg.FromName,
-		), nil
+		)
 	case cfg.SendGrid.APIKey != "":
 		return NewSendGrid(cfg.SendGrid.APIKey, cfg.FromEmail, cfg.FromName), nil
 	default:
