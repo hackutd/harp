@@ -117,14 +117,14 @@ export default function HackerLayout() {
         className="fixed inset-x-4 bottom-4 z-40 md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <nav className="relative flex rounded-full bg-black/80 p-1 shadow-[0_2px_16px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+        <nav className="relative flex rounded-full bg-black/80 py-1.5 shadow-[0_2px_16px_rgba(0,0,0,0.18)] backdrop-blur-sm">
           {hasActive && (
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-y-1 rounded-full bg-white/15 transition-all duration-300 ease-out"
+              className="pointer-events-none absolute inset-y-1.5 rounded-full bg-white/15 transition-all duration-300 ease-out"
               style={{
-                left: `calc(${(index * 100) / NAV_ITEMS.length}% + 0.25rem)`,
-                width: `calc(${100 / NAV_ITEMS.length}% - 0.5rem)`,
+                left: `calc(${(index * 100) / NAV_ITEMS.length}% + 0.2rem)`,
+                width: `calc(${100 / NAV_ITEMS.length}% - 0.4rem)`,
               }}
             />
           )}
