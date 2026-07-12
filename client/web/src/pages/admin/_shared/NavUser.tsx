@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, Eye, LogOut } from "lucide-react";
+import { ChevronsUpDown, LogOut, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Session from "supertokens-auth-react/recipe/session";
 
@@ -32,7 +32,9 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
-  const { clearUser } = useUserStore();
+  const { user: currentUser, clearUser } = useUserStore();
+  const isAdmin =
+    currentUser?.role === "admin" || currentUser?.role === "super_admin";
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -48,8 +50,8 @@ export function NavUser({
     navigate("/");
   };
 
-  const handleHackerView = () => {
-    navigate("/app");
+  const handleAdminView = () => {
+    navigate("/admin");
   };
 
   return (
@@ -94,14 +96,18 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleHackerView}
-              className="cursor-pointer"
-            >
-              <Eye />
-              Hacker View
-            </DropdownMenuItem>
+            {isAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleAdminView}
+                  className="cursor-pointer"
+                >
+                  <ShieldCheck />
+                  Admin View
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut />

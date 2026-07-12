@@ -1,24 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  Bell,
-  CalendarDays,
-  House,
-  LogOut,
-  ScanLine,
-  User,
-} from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { signOut } from "supertokens-auth-react/recipe/session";
+import { Bell, CalendarDays, House, ScanLine, User } from "lucide-react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
 } from "@/components/ui/sidebar";
@@ -61,20 +49,13 @@ function activeIndex(pathname: string): number {
 }
 
 function HackerSidebar() {
-  const { user, clearUser } = useUserStore();
+  const { user } = useUserStore();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const userData = {
     name: "Hacker",
     email: user?.email || "",
     avatar: user?.profilePictureUrl || "",
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    clearUser();
-    navigate("/", { replace: true });
   };
 
   return (
@@ -89,19 +70,6 @@ function HackerSidebar() {
           currentPath={location.pathname}
         />
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleLogout}
-              className="cursor-pointer"
-            >
-              <LogOut />
-              <span>Sign out</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
