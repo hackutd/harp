@@ -1,11 +1,4 @@
-import {
-  Bell,
-  Calendar,
-  ChevronRight,
-  HelpCircle,
-  Mail,
-  MessageSquare,
-} from "lucide-react";
+import { ChevronRight, HelpCircle, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -120,27 +113,6 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
-      {/* Top icons */}
-      <div className="mb-3 flex items-center justify-end gap-4">
-        <Link
-          to="/app/schedule"
-          aria-label="Schedule"
-          className="text-black active:scale-[0.98]"
-        >
-          <Calendar className="size-5.5" strokeWidth={1.5} />
-        </Link>
-        <Link
-          to="/app/notifications"
-          aria-label="Notifications"
-          className="relative text-black active:scale-[0.98]"
-        >
-          <Bell className="size-5.5" strokeWidth={1.5} />
-          {feed.length > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500" />
-          )}
-        </Link>
-      </div>
-
       {/* Application status card */}
       <div className="rounded-xl bg-[#3A3A38] p-5 text-white">
         <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-widest uppercase">
