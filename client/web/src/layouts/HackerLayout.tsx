@@ -35,8 +35,10 @@ export default function HackerLayout() {
       {/* Desktop left sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-[#E5E5E5] bg-white md:flex">
         <div className="px-6 pt-8 pb-6">
-          <p className="text-xl font-bold tracking-tight text-black">HARP</p>
-          <p className="mt-0.5 text-xs text-[#6B6B6B]">HackUTD 2026</p>
+          <p className="text-xl font-medium tracking-tight text-black">HARP</p>
+          <p className="mt-0.5 text-xs font-light text-[#6B6B6B]">
+            HackUTD 2026
+          </p>
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3">
           {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
@@ -46,14 +48,14 @@ export default function HackerLayout() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-normal transition-colors",
                   isActive
                     ? "bg-black text-white"
                     : "text-[#6B6B6B] hover:bg-[#F5F5F3] hover:text-black",
                 )
               }
             >
-              <Icon className="size-4.5" strokeWidth={1.75} />
+              <Icon className="size-4.5" strokeWidth={1.5} />
               {label}
             </NavLink>
           ))}
@@ -61,9 +63,9 @@ export default function HackerLayout() {
         <div className="px-3 pb-6">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#6B6B6B] transition-colors hover:bg-[#F5F5F3] hover:text-black"
+            className="flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-sm font-normal text-[#6B6B6B] transition-colors hover:bg-[#F5F5F3] hover:text-black"
           >
-            <LogOut className="size-4.5" strokeWidth={1.75} />
+            <LogOut className="size-4.5" strokeWidth={1.5} />
             Sign out
           </button>
         </div>
@@ -76,7 +78,7 @@ export default function HackerLayout() {
 
       {/* Mobile bottom tab bar */}
       <nav
-        className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-2xl bg-[#3A3A38] px-3 py-2 md:hidden"
+        className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-full bg-[#3A3A38] px-3 py-2 md:hidden"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       >
         {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
@@ -86,13 +88,13 @@ export default function HackerLayout() {
             end={end}
             className={({ isActive }) =>
               cn(
-                "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 transition-colors active:scale-[0.98]",
+                "flex min-w-14 flex-col items-center gap-1 rounded-full px-2 py-1.5 transition-colors active:scale-[0.98]",
                 isActive ? "text-white" : "text-white/45",
               )
             }
           >
-            <Icon className="size-5" strokeWidth={1.75} />
-            <span className="text-[10px] font-medium">{label}</span>
+            <Icon className="size-5" strokeWidth={1.5} />
+            <span className="text-[10px] font-light">{label}</span>
           </NavLink>
         ))}
       </nav>

@@ -112,21 +112,23 @@ export default function DashboardPage() {
           aria-label="Schedule"
           className="text-black active:scale-[0.98]"
         >
-          <Calendar className="size-5.5" strokeWidth={1.75} />
+          <Calendar className="size-5.5" strokeWidth={1.5} />
         </Link>
         <button aria-label="Notifications" className="relative text-black">
-          <Bell className="size-5.5" strokeWidth={1.75} />
+          <Bell className="size-5.5" strokeWidth={1.5} />
           <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500" />
         </button>
       </div>
 
       {/* Application status card */}
       <div className="rounded-xl bg-[#3A3A38] p-6 text-white">
-        <span className="inline-block rounded-md bg-white/15 px-3 py-1 text-[11px] font-semibold tracking-widest uppercase">
+        <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-widest uppercase">
           {badge}
         </span>
-        <h1 className="mt-4 text-2xl font-bold tracking-tight">HackUTD 2026</h1>
-        <p className="mt-1 text-sm text-white/70">
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+          HackUTD 2026
+        </h1>
+        <p className="mt-1 text-sm font-light text-white/70">
           Application {percent}% complete
         </p>
         <div className="mt-3 h-1 w-full rounded-full bg-white/20">
@@ -137,20 +139,20 @@ export default function DashboardPage() {
         </div>
         <Link
           to={isDraft ? "/app/apply" : "/app/status"}
-          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black active:scale-[0.98]"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-medium text-black active:scale-[0.98]"
         >
           {isDraft ? "Continue" : "View status"}
-          <ChevronRight className="size-4" strokeWidth={2} />
+          <ChevronRight className="size-4" strokeWidth={1.75} />
         </Link>
       </div>
 
       {/* Important dates */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-black">Important dates</h2>
+          <h2 className="text-lg font-medium text-black">Important dates</h2>
           <Link
             to="/app/schedule"
-            className="text-sm text-[#6B6B6B] hover:text-black"
+            className="text-sm font-light text-[#6B6B6B] hover:text-black"
           >
             See all
           </Link>
@@ -161,11 +163,13 @@ export default function DashboardPage() {
               key={d.label}
               className="rounded-lg border border-[#E5E5E5] bg-white p-4"
             >
-              <p className="text-[11px] font-semibold tracking-widest text-[#6B6B6B] uppercase">
+              <p className="text-[11px] font-medium tracking-widest text-[#6B6B6B] uppercase">
                 {d.month}
               </p>
-              <p className="mt-1 text-2xl font-bold text-black">{d.day}</p>
-              <p className="mt-1 text-xs text-[#6B6B6B]">{d.label}</p>
+              <p className="mt-1 text-2xl font-semibold text-black">{d.day}</p>
+              <p className="mt-1 text-xs font-light text-[#6B6B6B]">
+                {d.label}
+              </p>
             </div>
           ))}
         </div>
@@ -173,7 +177,7 @@ export default function DashboardPage() {
 
       {/* Notifications */}
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-bold text-black">Notifications</h2>
+        <h2 className="mb-3 text-lg font-medium text-black">Notifications</h2>
         <div className="space-y-3">
           {notifications.map((n) => (
             <div
@@ -186,8 +190,10 @@ export default function DashboardPage() {
                 }`}
               />
               <div>
-                <p className="text-sm font-semibold text-black">{n.title}</p>
-                <p className="mt-0.5 text-xs text-[#6B6B6B]">{n.body}</p>
+                <p className="text-sm font-normal text-black">{n.title}</p>
+                <p className="mt-0.5 text-xs font-light text-[#6B6B6B]">
+                  {n.body}
+                </p>
               </div>
             </div>
           ))}
@@ -202,8 +208,8 @@ export default function DashboardPage() {
             href={href}
             className="flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]"
           >
-            <Icon className="size-5 text-black" strokeWidth={1.75} />
-            <span className="text-sm font-medium text-black">{label}</span>
+            <Icon className="size-5 text-black" strokeWidth={1.5} />
+            <span className="text-sm font-normal text-black">{label}</span>
           </a>
         ))}
       </section>

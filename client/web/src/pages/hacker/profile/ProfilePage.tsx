@@ -17,9 +17,9 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-10 md:px-10">
-      <h1 className="text-2xl font-bold text-black">Profile</h1>
+      <h1 className="text-2xl font-semibold text-black">Profile</h1>
       {user?.email && (
-        <p className="mt-2 text-sm text-[#6B6B6B]">{user.email}</p>
+        <p className="mt-2 text-sm font-light text-[#6B6B6B]">{user.email}</p>
       )}
       <div className="mt-6 flex items-center gap-2">
         <AdminPortalButton />
