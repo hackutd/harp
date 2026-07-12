@@ -34,7 +34,9 @@ export function WalkInQueueTable({ queue }: WalkInQueueTableProps) {
   }
 
   const totalPages = Math.ceil(queue.length / PAGE_SIZE);
-  const start = page * PAGE_SIZE;
+  // Clamp in case the queue shrank (auto-refresh) while on a later page.
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * PAGE_SIZE;
   const paginated = queue.slice(start, start + PAGE_SIZE);
 
   return (
@@ -79,16 +81,16 @@ export function WalkInQueueTable({ queue }: WalkInQueueTableProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p - 1)}
-            disabled={page === 0}
+            onClick={() => setPage(safePage - 1)}
+            disabled={safePage === 0}
           >
             Previous
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= totalPages - 1}
+            onClick={() => setPage(safePage + 1)}
+            disabled={safePage >= totalPages - 1}
           >
             Next
           </Button>

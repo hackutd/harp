@@ -111,7 +111,7 @@ func (m *SendGridMailer) SendWalkInQueuedEmail(toEmail string, position int) err
 		return fmt.Errorf("executing walk_in_queued template: %w", err)
 	}
 
-	from := mail.NewEmail(FromName, m.fromEmail)
+	from := mail.NewEmail(m.fromName, m.fromEmail)
 	to := mail.NewEmail(toEmail, toEmail)
 
 	message := mail.NewV3Mail()
@@ -156,7 +156,7 @@ func (m *SendGridMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 		return fmt.Errorf("executing walk_in_accepted template: %w", err)
 	}
 
-	from := mail.NewEmail(FromName, m.fromEmail)
+	from := mail.NewEmail(m.fromName, m.fromEmail)
 	to := mail.NewEmail(toEmail, toEmail)
 
 	message := mail.NewV3Mail()

@@ -96,7 +96,6 @@ func (app *application) promoteWalkInsHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	for _, u := range promoted {
-		u := u
 		go func() {
 			if err := app.mailer.SendWalkInAcceptedEmail(u.Email, u.ID); err != nil {
 				app.logger.Errorw("failed to send walk-in accepted email", "error", err, "user_id", u.ID)

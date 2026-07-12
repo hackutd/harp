@@ -4537,7 +4537,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Replaces all scan types with the provided array. Must include at least one check_in category type. Names must be unique.",
+                "description": "Replaces all scan types with the provided array. Must include at least one active check_in category type and at least one active walk_in category type. Names must be unique.",
                 "consumes": [
                     "application/json"
                 ],

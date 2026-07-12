@@ -88,9 +88,9 @@ func (s *WalkInsStore) Enqueue(ctx context.Context, userID string) (bool, int, e
 }
 
 // PromoteNext promotes the next count un-promoted walk-ins in FIFO order.
-// Returns the promoted users (with name and email) so the caller can send emails.
+// Returns the promoted users (ID and email) so the caller can send emails.
 func (s *WalkInsStore) PromoteNext(ctx context.Context, count int, promotedBy string) ([]User, error) {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	ctx, cancel := context.WithTimeout(ctx, 2*QueryTimeoutDuration)
 	defer cancel()
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -153,27 +153,17 @@ func (s *WalkInsStore) PromoteNext(ctx context.Context, count int, promotedBy st
 		return nil, err
 	}
 
-	// Bulk flip application status to accepted (happy path — Enqueue always pre-creates rows).
+	// Flip application status to accepted, creating rows for any user without one.
 	_, err = tx.ExecContext(ctx, `
-		UPDATE applications SET status = 'accepted', updated_at = NOW()
-		WHERE user_id = ANY($1::uuid[])
+		INSERT INTO applications (user_id, status, submitted_at, responses)
+		SELECT uid, 'accepted', NOW(), '{}'
+		FROM unnest($1::uuid[]) AS uid
+		ON CONFLICT (user_id) DO UPDATE
+		SET status = 'accepted',
+		    submitted_at = COALESCE(applications.submitted_at, EXCLUDED.submitted_at)
 	`, userIDs)
 	if err != nil {
 		return nil, err
-	}
-
-	// Defensive fallback: upsert for any user_id not covered by the bulk UPDATE.
-	for _, uid := range userIDs {
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO applications (user_id, status, submitted_at, responses)
-			VALUES ($1, 'accepted', NOW(), '{}')
-			ON CONFLICT (user_id) DO UPDATE
-			SET status = 'accepted',
-			    submitted_at = COALESCE(applications.submitted_at, EXCLUDED.submitted_at)
-		`, uid)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if err := tx.Commit(); err != nil {

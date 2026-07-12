@@ -337,7 +337,7 @@ func (app *application) rebalanceScanStatsHandler(w http.ResponseWriter, r *http
 // updateScanTypesHandler replaces all scan types with the provided array
 //
 //	@Summary		Update scan types (Super Admin)
-//	@Description	Replaces all scan types with the provided array. Must include at least one check_in category type. Names must be unique.
+//	@Description	Replaces all scan types with the provided array. Must include at least one active check_in category type and at least one active walk_in category type. Names must be unique.
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
