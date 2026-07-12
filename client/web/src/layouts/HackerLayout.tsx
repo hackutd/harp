@@ -31,6 +31,11 @@ const NAV_ITEMS: NavItem[] = [
 // Vertical item height (h-10 = 40px) plus gap (gap-1 = 4px).
 const SIDEBAR_STEP_PX = 44;
 
+// Uniform inset (rem) applied on every side of the bottom-nav bubble so the
+// gap around the active bubble is identical top/bottom/left/right. Matches the
+// bar's padding (p-[BOTTOM_NAV_PAD]) and the bubble's inset-y.
+const BOTTOM_NAV_PAD = 0.625;
+
 function activeIndex(pathname: string): number {
   return NAV_ITEMS.findIndex((item) =>
     item.end
@@ -117,14 +122,19 @@ export default function HackerLayout() {
         className="fixed inset-x-4 bottom-4 z-40 md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <nav className="relative flex rounded-full bg-black/80 py-1.5 shadow-[0_2px_16px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+        <nav
+          className="relative flex rounded-full bg-black/80 shadow-[0_2px_16px_rgba(0,0,0,0.18)] backdrop-blur-sm"
+          style={{ padding: `${BOTTOM_NAV_PAD}rem` }}
+        >
           {hasActive && (
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-y-1.5 rounded-full bg-white/15 transition-all duration-300 ease-out"
+              className="pointer-events-none absolute rounded-full bg-white/15 transition-all duration-300 ease-out"
               style={{
-                left: `calc(${(index * 100) / NAV_ITEMS.length}% + 0.2rem)`,
-                width: `calc(${100 / NAV_ITEMS.length}% - 0.4rem)`,
+                top: `${BOTTOM_NAV_PAD}rem`,
+                bottom: `${BOTTOM_NAV_PAD}rem`,
+                left: `calc(${BOTTOM_NAV_PAD}rem + ${index} * (100% - ${2 * BOTTOM_NAV_PAD}rem) / ${NAV_ITEMS.length})`,
+                width: `calc((100% - ${2 * BOTTOM_NAV_PAD}rem) / ${NAV_ITEMS.length})`,
               }}
             />
           )}
@@ -135,7 +145,7 @@ export default function HackerLayout() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 transition-colors active:scale-[0.98]",
+                  "relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2.5 transition-colors active:scale-[0.98]",
                   isActive ? "text-white" : "text-white/60",
                 )
               }
