@@ -119,7 +119,7 @@ export default function DashboardPage() {
         ];
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:px-8 md:pt-6">
+    <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
       {/* Top icons */}
       <div className="mb-3 flex items-center justify-end gap-4">
         <Link

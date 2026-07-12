@@ -63,7 +63,7 @@ export default function StatusPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-md space-y-4 px-5 pt-10">
+      <div className="mx-auto max-w-md space-y-4 px-5 pt-10 md:max-w-3xl">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-56 w-full rounded-xl" />
@@ -73,7 +73,7 @@ export default function StatusPage() {
 
   if (!application) {
     return (
-      <div className="mx-auto max-w-md px-5 pt-10">
+      <div className="mx-auto max-w-md px-5 pt-10 md:max-w-3xl">
         <h1 className="text-3xl font-light tracking-tight text-black">
           No application yet
         </h1>
@@ -98,7 +98,7 @@ export default function StatusPage() {
     .join(" ");
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-4 pb-8">
+    <div className="mx-auto max-w-md px-5 pt-4 pb-8 md:max-w-3xl">
       <button
         type="button"
         onClick={() => navigate("/app")}

@@ -191,7 +191,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:px-10 md:pt-10">
+    <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:max-w-5xl md:px-8 md:pt-10">
       <h1 className="text-2xl font-light tracking-tight text-black">Profile</h1>
 
       {/* Identity */}

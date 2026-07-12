@@ -129,7 +129,7 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:px-10 md:pt-10">
+    <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:max-w-5xl md:px-8 md:pt-10">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

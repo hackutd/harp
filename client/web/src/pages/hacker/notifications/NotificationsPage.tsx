@@ -52,7 +52,7 @@ export default function NotificationsPage() {
   }, [items]);
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:px-8 md:pt-6">
+    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8 md:pt-6">
       <h1 className="text-2xl font-light tracking-tight text-black">
         Notifications
       </h1>
