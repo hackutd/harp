@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronsUpDown, LogOut, ShieldCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ChevronsUpDown, Eye, LogOut, ShieldCheck } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Session from "supertokens-auth-react/recipe/session";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,9 +32,11 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user: currentUser, clearUser } = useUserStore();
   const isAdmin =
     currentUser?.role === "admin" || currentUser?.role === "super_admin";
+  const inAdminView = location.pathname.startsWith("/admin");
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -50,8 +52,8 @@ export function NavUser({
     navigate("/");
   };
 
-  const handleAdminView = () => {
-    navigate("/admin");
+  const handleSwitchView = () => {
+    navigate(inAdminView ? "/app" : "/admin");
   };
 
   return (
@@ -100,11 +102,11 @@ export function NavUser({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={handleAdminView}
+                  onClick={handleSwitchView}
                   className="cursor-pointer"
                 >
-                  <ShieldCheck />
-                  Admin View
+                  {inAdminView ? <Eye /> : <ShieldCheck />}
+                  {inAdminView ? "Hacker View" : "Admin View"}
                 </DropdownMenuItem>
               </>
             )}
