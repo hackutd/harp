@@ -5,9 +5,7 @@ import {
   isYesterday,
   parseISO,
 } from "date-fns";
-import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { NotificationFeedItem } from "@/types";
@@ -25,7 +23,6 @@ function itemDate(item: NotificationFeedItem): Date {
 }
 
 export default function NotificationsPage() {
-  const navigate = useNavigate();
   const [items, setItems] = useState<NotificationFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,19 +53,9 @@ export default function NotificationsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:px-8 md:pt-6">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          aria-label="Back"
-          className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-colors hover:bg-[#F0F0F0]"
-        >
-          <ChevronLeft className="size-5" strokeWidth={1.75} />
-        </button>
-        <h1 className="text-2xl font-light tracking-tight text-black">
-          Notifications
-        </h1>
-      </div>
+      <h1 className="text-2xl font-light tracking-tight text-black">
+        Notifications
+      </h1>
 
       {loading ? (
         <div className="mt-6 space-y-3">
