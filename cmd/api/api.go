@@ -277,6 +277,11 @@ func (app *application) mount() http.Handler {
 						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})
 
+					r.Route("/walk-ins", func(r chi.Router) {
+						r.Get("/", app.getWalkInsHandler)
+						r.Post("/promote", app.promoteWalkInsHandler)
+					})
+
 					r.Route("/applications", func(r chi.Router) {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
