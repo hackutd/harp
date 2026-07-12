@@ -34,7 +34,7 @@ const SIDEBAR_STEP_PX = 44;
 // Uniform inset (rem) applied on every side of the bottom-nav bubble so the
 // gap around the active bubble is identical top/bottom/left/right. Matches the
 // bar's padding (p-[BOTTOM_NAV_PAD]) and the bubble's inset-y.
-const BOTTOM_NAV_PAD = 0.625;
+const BOTTOM_NAV_PAD = 0.375;
 
 function activeIndex(pathname: string): number {
   return NAV_ITEMS.findIndex((item) =>
@@ -145,7 +145,7 @@ export default function HackerLayout() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2.5 transition-colors active:scale-[0.98]",
+                  "relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 transition-colors active:scale-[0.98]",
                   isActive ? "text-white" : "text-white/60",
                 )
               }
