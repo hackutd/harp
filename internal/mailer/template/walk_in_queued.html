@@ -2,11 +2,11 @@
 <html>
 <head><meta charset="UTF-8"></head>
 <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h2>You're in the HackUTD Walk-In Queue</h2>
+  <h2>You're in the {{.HackathonName}} Walk-In Queue</h2>
   <p>Hi {{.Email}},</p>
-  <p>You've been added to the HackUTD walk-in queue at position <strong>#{{.Position}}</strong>.</p>
+  <p>You've been added to the {{.HackathonName}} walk-in queue at position <strong>#{{.Position}}</strong>.</p>
   <p>Your application status is now <strong>waitlisted</strong>. We'll email you with a QR code if a spot opens up.</p>
   <p>Please make sure you are within a <strong>10 minute distance</strong> of the check-in area so you can make it in time when called.</p>
-  <p>— The HackUTD Team</p>
+  <p>— The {{.HackathonName}} Team</p>
 </body>
 </html>
