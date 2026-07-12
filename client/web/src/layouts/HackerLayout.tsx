@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Bell,
   CalendarDays,
-  FileText,
   House,
   LogOut,
   ScanLine,
@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Home", to: "/app", icon: House, end: true },
   { label: "Scan", to: "/app/scan", icon: ScanLine, end: false },
   { label: "Schedule", to: "/app/schedule", icon: CalendarDays, end: false },
-  { label: "Application", to: "/app/apply", icon: FileText, end: false },
+  { label: "Notifications", to: "/app/notifications", icon: Bell, end: false },
   { label: "Profile", to: "/app/profile", icon: User, end: false },
 ];
 
