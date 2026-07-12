@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays,
   FileText,
@@ -6,13 +7,20 @@ import {
   ScanLine,
   User,
 } from "lucide-react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/shared/stores";
 
-const NAV_ITEMS = [
+interface NavItem {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+  end: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Home", to: "/app", icon: House, end: true },
   { label: "Scan", to: "/app/scan", icon: ScanLine, end: false },
   { label: "Schedule", to: "/app/schedule", icon: CalendarDays, end: false },
@@ -20,9 +28,24 @@ const NAV_ITEMS = [
   { label: "Profile", to: "/app/profile", icon: User, end: false },
 ];
 
+// Vertical item height (h-10 = 40px) plus gap (gap-1 = 4px).
+const SIDEBAR_STEP_PX = 44;
+
+function activeIndex(pathname: string): number {
+  return NAV_ITEMS.findIndex((item) =>
+    item.end
+      ? pathname === item.to
+      : pathname === item.to || pathname.startsWith(item.to + "/"),
+  );
+}
+
 export default function HackerLayout() {
   const clearUser = useUserStore((s) => s.clearUser);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const index = activeIndex(location.pathname);
+  const hasActive = index >= 0;
 
   const handleLogout = async () => {
     await signOut();
@@ -31,39 +54,50 @@ export default function HackerLayout() {
   };
 
   return (
-    <div className="min-h-svh bg-[#F5F5F3]">
+    <div className="min-h-svh bg-white">
       {/* Desktop left sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-[#E5E5E5] bg-white md:flex">
-        <div className="px-6 pt-8 pb-6">
-          <p className="text-xl font-medium tracking-tight text-black">HARP</p>
-          <p className="mt-0.5 text-xs font-light text-[#6B6B6B]">
-            HackUTD 2026
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-[#E5E5E5] bg-white md:flex">
+        <div className="px-4 pt-5 pb-4">
+          <p className="text-base font-medium tracking-tight text-black">
+            HARP
           </p>
+          <p className="text-xs font-light text-[#8A8A8A]">HackUTD 2026</p>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 px-3">
-          {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-normal transition-colors",
-                  isActive
-                    ? "bg-black text-white"
-                    : "text-[#6B6B6B] hover:bg-[#F5F5F3] hover:text-black",
-                )
-              }
-            >
-              <Icon className="size-4.5" strokeWidth={1.5} />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="px-3 pb-6">
+        <div className="flex-1 px-2">
+          <nav className="relative flex flex-col gap-1">
+            {hasActive && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-10 rounded-full bg-[#EDEDED] transition-transform duration-300 ease-out"
+                style={{
+                  transform: `translateY(${index * SIDEBAR_STEP_PX}px)`,
+                }}
+              />
+            )}
+            {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  cn(
+                    "relative z-10 flex h-10 items-center gap-2.5 rounded-full px-3 text-sm transition-colors",
+                    isActive
+                      ? "font-medium text-black"
+                      : "font-normal text-[#6B6B6B] hover:text-black",
+                  )
+                }
+              >
+                <Icon className="size-4.5" strokeWidth={1.5} />
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+        <div className="px-2 pb-4">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-sm font-normal text-[#6B6B6B] transition-colors hover:bg-[#F5F5F3] hover:text-black"
+            className="flex h-10 w-full items-center gap-2.5 rounded-full px-3 text-sm font-normal text-[#6B6B6B] transition-colors hover:bg-[#F0F0F0] hover:text-black"
           >
             <LogOut className="size-4.5" strokeWidth={1.5} />
             Sign out
@@ -72,32 +106,46 @@ export default function HackerLayout() {
       </aside>
 
       {/* Page content */}
-      <main className="pb-28 md:pb-0 md:pl-60">
-        <Outlet />
+      <main className="pb-24 md:pb-0 md:pl-56">
+        <div key={location.pathname} className="animate-page-enter">
+          <Outlet />
+        </div>
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav
-        className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-full bg-[#3A3A38] px-3 py-2 md:hidden"
-        style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+      <div
+        className="fixed inset-x-4 bottom-4 z-40 md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              cn(
-                "flex min-w-14 flex-col items-center gap-1 rounded-full px-2 py-1.5 transition-colors active:scale-[0.98]",
-                isActive ? "text-white" : "text-white/45",
-              )
-            }
-          >
-            <Icon className="size-5" strokeWidth={1.5} />
-            <span className="text-[10px] font-light">{label}</span>
-          </NavLink>
-        ))}
-      </nav>
+        <nav className="relative flex rounded-full bg-white p-2 shadow-[0_2px_16px_rgba(0,0,0,0.12)] ring-1 ring-[#E5E5E5]">
+          {hasActive && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-2 rounded-full bg-[#EDEDED] transition-all duration-300 ease-out"
+              style={{
+                left: `calc(${(index * 100) / NAV_ITEMS.length}% + 0.5rem)`,
+                width: `calc(${100 / NAV_ITEMS.length}% - 1rem)`,
+              }}
+            />
+          )}
+          {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                cn(
+                  "relative z-10 flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 transition-colors active:scale-[0.98]",
+                  isActive ? "text-black" : "text-[#9A9A9A]",
+                )
+              }
+            >
+              <Icon className="size-5" strokeWidth={1.5} />
+              <span className="text-[10px] font-light">{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </div>
     </div>
   );
 }
