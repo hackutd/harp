@@ -10,6 +10,19 @@ import {
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+} from "@/components/ui/sidebar";
+import { NavSection, NavUser } from "@/pages/admin/_shared";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/shared/stores";
 
@@ -28,8 +41,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Profile", to: "/app/profile", icon: User, end: false },
 ];
 
-// Vertical item height (h-10 = 40px) plus gap (gap-1 = 4px).
-const SIDEBAR_STEP_PX = 44;
+const SIDEBAR_NAV = NAV_ITEMS.map(({ label, to, icon }) => ({
+  name: label,
+  url: to,
+  icon,
+}));
 
 // Uniform inset (rem) applied on every side of the bottom-nav bubble so the
 // gap around the active bubble is identical top/bottom/left/right. Matches the
@@ -44,9 +60,54 @@ function activeIndex(pathname: string): number {
   );
 }
 
-export default function HackerLayout() {
-  const clearUser = useUserStore((s) => s.clearUser);
+function HackerSidebar() {
+  const { user, clearUser } = useUserStore();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const userData = {
+    name: "Hacker",
+    email: user?.email || "",
+    avatar: user?.profilePictureUrl || "",
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    clearUser();
+    navigate("/", { replace: true });
+  };
+
+  return (
+    <Sidebar collapsible="icon" className="hidden md:flex">
+      <SidebarHeader>
+        <NavUser user={userData} />
+      </SidebarHeader>
+      <SidebarContent>
+        <NavSection
+          label="Menu"
+          items={SIDEBAR_NAV}
+          currentPath={location.pathname}
+        />
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              className="cursor-pointer"
+            >
+              <LogOut />
+              <span>Sign out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+export default function HackerLayout() {
   const location = useLocation();
 
   const index = activeIndex(location.pathname);
@@ -56,72 +117,18 @@ export default function HackerLayout() {
   // bar is hidden there to avoid overlap.
   const hideMobileNav = location.pathname.startsWith("/app/apply");
 
-  const handleLogout = async () => {
-    await signOut();
-    clearUser();
-    navigate("/", { replace: true });
-  };
-
   return (
-    <div className="min-h-svh bg-white">
-      {/* Desktop left sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-[#E5E5E5] bg-white md:flex">
-        <div className="px-4 pt-5 pb-4">
-          <p className="text-base font-medium tracking-tight text-black">
-            HARP
-          </p>
-          <p className="text-xs font-light text-[#8A8A8A]">HackUTD 2026</p>
-        </div>
-        <div className="flex-1 px-2">
-          <nav className="relative flex flex-col gap-1">
-            {hasActive && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-10 rounded-full bg-[#EDEDED] transition-transform duration-300 ease-out"
-                style={{
-                  transform: `translateY(${index * SIDEBAR_STEP_PX}px)`,
-                }}
-              />
-            )}
-            {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  cn(
-                    "relative z-10 flex h-10 items-center gap-2.5 rounded-full px-3 text-sm transition-colors",
-                    isActive
-                      ? "font-medium text-black"
-                      : "font-normal text-[#6B6B6B] hover:text-black",
-                  )
-                }
-              >
-                <Icon className="size-4.5" strokeWidth={1.5} />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-        <div className="px-2 pb-4">
-          <button
-            onClick={handleLogout}
-            className="flex h-10 w-full items-center gap-2.5 rounded-full px-3 text-sm font-normal text-[#6B6B6B] transition-colors hover:bg-[#F0F0F0] hover:text-black"
-          >
-            <LogOut className="size-4.5" strokeWidth={1.5} />
-            Sign out
-          </button>
-        </div>
-      </aside>
+    <SidebarProvider className="min-h-svh bg-white">
+      <HackerSidebar />
 
       {/* Page content */}
-      <main
-        className={cn("md:pb-0 md:pl-56", hideMobileNav ? "pb-0" : "pb-24")}
+      <SidebarInset
+        className={cn("bg-white", hideMobileNav ? "pb-0" : "pb-24 md:pb-0")}
       >
         <div key={location.pathname} className="animate-page-enter">
           <Outlet />
         </div>
-      </main>
+      </SidebarInset>
 
       {/* Mobile bottom tab bar */}
       <div
@@ -165,6 +172,6 @@ export default function HackerLayout() {
           ))}
         </nav>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

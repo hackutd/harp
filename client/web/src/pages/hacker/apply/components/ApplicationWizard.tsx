@@ -400,7 +400,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Applications closed
   if (!applicationsEnabled) {
     return (
-      <div className="mx-auto max-w-md space-y-4 px-5 py-10">
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-3xl">
         <h1 className="text-3xl font-light tracking-tight text-black">
           Applications closed
         </h1>
@@ -418,7 +418,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Read-only mode if application is already submitted
   if (application && application.status !== "draft") {
     return (
-      <div className="mx-auto max-w-md space-y-4 px-5 py-10">
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-3xl">
         <h1 className="text-3xl font-light tracking-tight text-black">
           Application submitted
         </h1>
@@ -512,7 +512,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md px-5 pt-4 pb-32">
+    <div className="mx-auto w-full max-w-md px-5 pt-4 pb-32 md:max-w-3xl md:px-8">
       <StepIndicator
         currentStep={currentStep}
         totalSteps={steps.length}
