@@ -1,9 +1,9 @@
-FROM golang:1.24.11
+FROM golang:1.24.13
 WORKDIR /app
 
 # Install dev tools: air (hot reload), swag (swagger), task (taskfile runner)
 RUN go install github.com/air-verse/air@v1.61.5 && \
-    go install github.com/swaggo/swag/cmd/swag@latest && \
+    go install github.com/swaggo/swag/cmd/swag@v1.16.6 && \
     go install github.com/go-task/task/v3/cmd/task@v3.40.1
 
 # Install golang-migrate

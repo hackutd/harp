@@ -1,5 +1,5 @@
 # Stage 1: Build frontend
-FROM node:22-alpine AS frontend
+FROM node:22.23.1-alpine AS frontend
 WORKDIR /app/client/web
 
 COPY client/web/package.json client/web/package-lock.json ./
@@ -13,7 +13,7 @@ ENV VITE_GOOGLE_AUTH_ENABLED=$VITE_GOOGLE_AUTH_ENABLED
 RUN npm run build
 
 # Stage 2: Build backend
-FROM golang:1.24 AS builder
+FROM golang:1.24.13 AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
