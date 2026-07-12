@@ -6,7 +6,9 @@ import (
 )
 
 const (
-	FromName = "HackUTD"
+	// DefaultHackathonName is the fallback event name used in email subjects
+	// and bodies when HACKATHON_NAME is unset.
+	DefaultHackathonName = "Hackathon"
 )
 
 //go:embed template/*
@@ -14,13 +16,16 @@ var FS embed.FS
 
 type Client interface {
 	SendQREmail(toEmail, toName, userID string) error
+	SendWalkInQueuedEmail(toEmail string, position int) error
+	SendWalkInAcceptedEmail(toEmail, userID string) error
 }
 
 type Config struct {
-	FromEmail string
-	FromName  string
-	SendGrid  SendGridConfig
-	SMTP      SMTPConfig
+	FromEmail     string
+	FromName      string
+	HackathonName string
+	SendGrid      SendGridConfig
+	SMTP          SMTPConfig
 }
 
 type SendGridConfig struct {
@@ -49,9 +54,10 @@ func New(cfg Config) (Client, error) {
 			cfg.SMTP.Password,
 			cfg.FromEmail,
 			cfg.FromName,
-		), nil
+			cfg.HackathonName,
+		)
 	case cfg.SendGrid.APIKey != "":
-		return NewSendGrid(cfg.SendGrid.APIKey, cfg.FromEmail, cfg.FromName), nil
+		return NewSendGrid(cfg.SendGrid.APIKey, cfg.FromEmail, cfg.FromName, cfg.HackathonName), nil
 	default:
 		return nil, fmt.Errorf("no mailer configured: set SMTP (EMAIL_HOST, EMAIL_USERNAME, EMAIL_PASSWORD) or SENDGRID_API_KEY")
 	}

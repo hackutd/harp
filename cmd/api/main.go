@@ -67,8 +67,9 @@ func main() {
 				Username: env.GetString("EMAIL_USERNAME", ""),
 				Password: env.GetString("EMAIL_PASSWORD", ""),
 			},
-			FromEmail: env.GetString("EMAIL_FROM", "noreply@example.com"),
-			FromName:  env.GetString("EMAIL_FROM_NAME", mailer.FromName),
+			FromEmail:     env.GetString("EMAIL_FROM", "noreply@example.com"),
+			FromName:      env.GetString("EMAIL_FROM_NAME", env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName)),
+			HackathonName: env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName),
 		},
 		gcs: gcsConfig{
 			bucketName: env.GetString("GCS_BUCKET_NAME", ""),
