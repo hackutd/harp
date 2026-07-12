@@ -117,14 +117,14 @@ export default function HackerLayout() {
         className="fixed inset-x-4 bottom-4 z-40 md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <nav className="relative flex rounded-full bg-white p-2 shadow-[0_2px_16px_rgba(0,0,0,0.12)] ring-1 ring-[#E5E5E5]">
+        <nav className="relative flex rounded-full bg-black/80 p-1 shadow-[0_2px_16px_rgba(0,0,0,0.18)] backdrop-blur-sm">
           {hasActive && (
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-y-2 rounded-full bg-[#EDEDED] transition-all duration-300 ease-out"
+              className="pointer-events-none absolute inset-y-1 rounded-full bg-white/15 transition-all duration-300 ease-out"
               style={{
-                left: `calc(${(index * 100) / NAV_ITEMS.length}% + 0.5rem)`,
-                width: `calc(${100 / NAV_ITEMS.length}% - 1rem)`,
+                left: `calc(${(index * 100) / NAV_ITEMS.length}% + 0.25rem)`,
+                width: `calc(${100 / NAV_ITEMS.length}% - 0.5rem)`,
               }}
             />
           )}
@@ -135,8 +135,8 @@ export default function HackerLayout() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "relative z-10 flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 transition-colors active:scale-[0.98]",
-                  isActive ? "text-black" : "text-[#9A9A9A]",
+                  "relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 transition-colors active:scale-[0.98]",
+                  isActive ? "text-white" : "text-white/60",
                 )
               }
             >
