@@ -93,6 +93,33 @@ export interface Application {
   updated_at: string;
 }
 
+export interface ScheduleItem {
+  id: string;
+  event_name: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationFeedItem {
+  id: string;
+  title: string;
+  body: string;
+  url: string | null;
+  target_role: UserRole | null;
+  scheduled_at: string;
+  sent_at: string | null;
+  recipient_count: number;
+  schedule_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ApiResponse<T = unknown> {
   status: number;
   data?: T;

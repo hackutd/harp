@@ -104,6 +104,39 @@ func (s *ScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNoti
 	return notifications, rows.Err()
 }
 
+func (s *ScheduledNotificationsStore) ListSentForRole(ctx context.Context, role UserRole, limit int) ([]ScheduledNotification, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
+		FROM scheduled_notifications
+		WHERE sent_at IS NOT NULL AND (target_role IS NULL OR target_role = $1)
+		ORDER BY sent_at DESC
+		LIMIT $2
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, role, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	notifications := []ScheduledNotification{}
+	for rows.Next() {
+		var n ScheduledNotification
+		if err := rows.Scan(
+			&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
+			&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		notifications = append(notifications, n)
+	}
+
+	return notifications, rows.Err()
+}
+
 func (s *ScheduledNotificationsStore) Update(ctx context.Context, n *ScheduledNotification) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

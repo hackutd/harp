@@ -12,6 +12,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetNotificationFeed(t *testing.T) {
+	t.Run("returns sent notifications for the user's role", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		notifications := []store.ScheduledNotification{
+			{ID: "n-1", Title: "Doors open", Body: "Head to check-in"},
+		}
+		mockNotifs.On("ListSentForRole", store.RoleHacker, notificationFeedLimit).Return(notifications, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getNotificationFeedHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data NotificationFeedResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		require.Len(t, body.Data.Notifications, 1)
+		assert.Equal(t, "n-1", body.Data.Notifications[0].ID)
+
+		mockNotifs.AssertExpectations(t)
+	})
+
+	t.Run("returns 500 when the store fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		mockNotifs.On("ListSentForRole", store.RoleHacker, notificationFeedLimit).Return(nil, assert.AnError).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getNotificationFeedHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+
+		mockNotifs.AssertExpectations(t)
+	})
+}
+
 func TestGetVapidPublicKey(t *testing.T) {
 	t.Run("returns public key when configured", func(t *testing.T) {
 		app := newTestApplication(t)

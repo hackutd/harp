@@ -61,6 +61,21 @@ func (app *application) getAdminScheduleDateRange(w http.ResponseWriter, r *http
 	}
 }
 
+// getHackerScheduleHandler returns the full schedule for any authenticated user.
+//
+//	@Summary		Get schedule
+//	@Description	Returns the full event schedule, ordered by start time ascending
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	ScheduleListResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/schedule [get]
+func (app *application) getHackerScheduleHandler(w http.ResponseWriter, r *http.Request) {
+	app.listScheduleHandler(w, r)
+}
+
 // listScheduleHandler returns all schedule items (Admin)
 //
 //	@Summary		List schedule (Admin)

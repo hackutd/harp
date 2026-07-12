@@ -52,6 +52,10 @@ export default function HackerLayout() {
   const index = activeIndex(location.pathname);
   const hasActive = index >= 0;
 
+  // The application wizard has its own fixed bottom bar, so the mobile tab
+  // bar is hidden there to avoid overlap.
+  const hideMobileNav = location.pathname.startsWith("/app/apply");
+
   const handleLogout = async () => {
     await signOut();
     clearUser();
@@ -111,7 +115,9 @@ export default function HackerLayout() {
       </aside>
 
       {/* Page content */}
-      <main className="pb-24 md:pb-0 md:pl-56">
+      <main
+        className={cn("md:pb-0 md:pl-56", hideMobileNav ? "pb-0" : "pb-24")}
+      >
         <div key={location.pathname} className="animate-page-enter">
           <Outlet />
         </div>
@@ -119,7 +125,10 @@ export default function HackerLayout() {
 
       {/* Mobile bottom tab bar */}
       <div
-        className="fixed inset-x-4 bottom-4 z-40 md:hidden"
+        className={cn(
+          "fixed inset-x-4 bottom-4 z-40 md:hidden",
+          hideMobileNav && "hidden",
+        )}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <nav

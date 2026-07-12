@@ -1,17 +1,40 @@
+import { format, parseISO } from "date-fns";
+import { ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
-import type { Application } from "@/types";
+import type { Application, ApplicationStatus } from "@/types";
+
+const STATUS_LABELS: Record<ApplicationStatus, string> = {
+  draft: "In progress",
+  submitted: "Under review",
+  accepted: "Accepted",
+  rejected: "Not accepted",
+  waitlisted: "Waitlisted",
+};
+
+const STATUS_MESSAGES: Record<ApplicationStatus, string> = {
+  draft: "Your application is saved as a draft. Submit it when you're ready.",
+  submitted:
+    "Your application has been submitted and is under review. We'll notify you once a decision is made.",
+  accepted: "Congratulations! Your application has been accepted.",
+  rejected:
+    "Thank you for applying. Unfortunately, we cannot accept your application at this time.",
+  waitlisted:
+    "Your application is on the waitlist. We'll notify you if a spot becomes available.",
+};
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5">
+      <span className="text-xs font-light text-[#8A8A8A]">{label}</span>
+      <span className="text-right text-sm font-light text-black">{value}</span>
+    </div>
+  );
+}
 
 export default function StatusPage() {
   const navigate = useNavigate();
@@ -19,11 +42,14 @@ export default function StatusPage() {
   const [application, setApplication] = useState<Application | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadData = async () => {
       const res = await getRequest<Application>(
         "/applications/me",
         "application",
+        controller.signal,
       );
+      if (controller.signal.aborted) return;
       if (res.status === 200 && res.data) {
         setApplication(res.data);
       } else if (res.status !== 404) {
@@ -31,171 +57,106 @@ export default function StatusPage() {
       }
       setLoading(false);
     };
-
     loadData();
+    return () => controller.abort();
   }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return "bg-green-100 text-green-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      case "waitlisted":
-        return "bg-yellow-100 text-yellow-800";
-      case "submitted":
-        return "bg-blue-100 text-blue-800";
-      case "draft":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStatusMessage = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return "Congratulations! Your application has been accepted.";
-      case "rejected":
-        return "Thank you for applying. Unfortunately, we cannot accept your application at this time.";
-      case "waitlisted":
-        return "Your application is on the waitlist. We will notify you if a spot becomes available.";
-      case "submitted":
-        return "Your application has been submitted and is under review. We will notify you once a decision is made.";
-      case "draft":
-        return "Your application is saved as a draft. Submit it when you're ready!";
-      default:
-        return "Your application has been received and is pending review.";
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="mx-auto max-w-md space-y-4 px-5 pt-10">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-56 w-full rounded-xl" />
       </div>
     );
   }
 
   if (!application) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="mb-6">
-              <Button variant="ghost" onClick={() => navigate("/app")}>
-                &larr; Back to Dashboard
-              </Button>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>No Application Found</CardTitle>
-                <CardDescription>
-                  You haven't started an application yet
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">
-                  Get started by creating your hacker application.
-                </p>
-                <Button onClick={() => navigate("/app/apply")}>
-                  Apply Now
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      <div className="mx-auto max-w-md px-5 pt-10">
+        <h1 className="text-3xl font-light tracking-tight text-black">
+          No application yet
+        </h1>
+        <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+          Get started by creating your hacker application.
+        </p>
+        <Button
+          onClick={() => navigate("/app/apply")}
+          className="mt-6 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+        >
+          Apply now
+        </Button>
       </div>
     );
   }
 
+  const name = [
+    application.responses?.first_name,
+    application.responses?.last_name,
+  ]
+    .filter((v): v is string => typeof v === "string" && v.trim() !== "")
+    .join(" ");
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <Button variant="ghost" onClick={() => navigate("/app")}>
-              &larr; Back to Dashboard
-            </Button>
-          </div>
+    <div className="mx-auto max-w-md px-5 pt-4 pb-8">
+      <button
+        type="button"
+        onClick={() => navigate("/app")}
+        aria-label="Back"
+        className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-colors hover:bg-[#F0F0F0]"
+      >
+        <ChevronLeft className="size-5" strokeWidth={1.75} />
+      </button>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Application Status</CardTitle>
-              <CardDescription>
-                Track the progress of your application
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Current Status</p>
-                <Badge className={getStatusColor(application.status)}>
-                  {application.status.replace("_", " ").toUpperCase()}
-                </Badge>
-              </div>
-
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  {getStatusMessage(application.status)}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-semibold">Application Details</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p className="text-gray-600">Name:</p>
-                  <p className="font-medium">
-                    {String(application.responses?.first_name ?? "")}{" "}
-                    {String(application.responses?.last_name ?? "")}
-                  </p>
-
-                  <p className="text-gray-600">University:</p>
-                  <p className="font-medium">
-                    {String(
-                      application.responses?.university || "Not provided",
-                    )}
-                  </p>
-
-                  <p className="text-gray-600">Major:</p>
-                  <p className="font-medium">
-                    {String(application.responses?.major || "Not provided")}
-                  </p>
-
-                  {application.submitted_at && (
-                    <>
-                      <p className="text-gray-600">Submitted:</p>
-                      <p className="font-medium">
-                        {new Date(
-                          application.submitted_at,
-                        ).toLocaleDateString()}
-                      </p>
-                    </>
-                  )}
-
-                  <p className="text-gray-600">Created:</p>
-                  <p className="font-medium">
-                    {new Date(application.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-
-              {application.status === "draft" && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate("/app/apply")}
-                >
-                  Continue Editing Application
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Status card */}
+      <div className="mt-3 rounded-xl bg-[#3A3A38] p-5 text-white">
+        <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-widest uppercase">
+          {STATUS_LABELS[application.status]}
+        </span>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+          Application status
+        </h1>
+        <p className="mt-2 text-sm font-light text-white/70">
+          {STATUS_MESSAGES[application.status]}
+        </p>
       </div>
+
+      {/* Details */}
+      <section className="mt-5">
+        <h2 className="mb-1 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
+          Details
+        </h2>
+        <div className="divide-y divide-[#F0F0F0]">
+          {name && <DetailRow label="Name" value={name} />}
+          <DetailRow
+            label="University"
+            value={String(application.responses?.university || "Not provided")}
+          />
+          <DetailRow
+            label="Major"
+            value={String(application.responses?.major || "Not provided")}
+          />
+          {application.submitted_at && (
+            <DetailRow
+              label="Submitted"
+              value={format(parseISO(application.submitted_at), "MMM d, yyyy")}
+            />
+          )}
+          <DetailRow
+            label="Created"
+            value={format(parseISO(application.created_at), "MMM d, yyyy")}
+          />
+        </div>
+      </section>
+
+      {application.status === "draft" && (
+        <Button
+          onClick={() => navigate("/app/apply")}
+          className="mt-6 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+        >
+          Continue application
+        </Button>
+      )}
     </div>
   );
 }

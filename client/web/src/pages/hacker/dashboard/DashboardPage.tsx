@@ -10,7 +10,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getRequest } from "@/shared/lib/api";
-import type { Application, ApplicationStatus } from "@/types";
+import type {
+  Application,
+  ApplicationStatus,
+  NotificationFeedItem,
+} from "@/types";
+
+import { getNotificationFeed } from "../notifications/api";
 
 interface ImportantDate {
   month: string;
@@ -56,18 +62,25 @@ function completionPercent(application: Application | null): number {
 
 export default function DashboardPage() {
   const [application, setApplication] = useState<Application | null>(null);
+  const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const res = await getRequest<Application>(
-        "/applications/me",
-        "application",
-        controller.signal,
-      );
+      const [appRes, feedRes] = await Promise.all([
+        getRequest<Application>(
+          "/applications/me",
+          "application",
+          controller.signal,
+        ),
+        getNotificationFeed(controller.signal),
+      ]);
       if (controller.signal.aborted) return;
-      if (res.status === 200 && res.data) {
-        setApplication(res.data);
+      if (appRes.status === 200 && appRes.data) {
+        setApplication(appRes.data);
+      }
+      if (feedRes.status === 200 && feedRes.data) {
+        setFeed(feedRes.data.notifications ?? []);
       }
     };
     load();
@@ -78,30 +91,32 @@ export default function DashboardPage() {
   const badge = application ? STATUS_BADGES[application.status] : "Not started";
   const isDraft = !application || application.status === "draft";
 
-  const notifications = [
-    application?.status === "draft"
-      ? {
-          title: "Application progress saved",
-          body: "You can pick up where you left off",
-          active: true,
-        }
-      : application
-        ? {
-            title: `Application ${application.status}`,
-            body: "Check your status for details",
-            active: true,
-          }
-        : {
-            title: "Start your application",
-            body: "Applications for HackUTD 2026 are open",
-            active: true,
-          },
-    {
-      title: "Decisions go out Mar 20",
-      body: "Keep an eye on your email",
-      active: false,
-    },
-  ];
+  const notifications =
+    feed.length > 0
+      ? feed.slice(0, 3).map((n, i) => ({
+          title: n.title,
+          body: n.body,
+          active: i === 0,
+        }))
+      : [
+          application?.status === "draft"
+            ? {
+                title: "Application progress saved",
+                body: "You can pick up where you left off",
+                active: true,
+              }
+            : application
+              ? {
+                  title: `Application ${application.status}`,
+                  body: "Check your status for details",
+                  active: true,
+                }
+              : {
+                  title: "Start your application",
+                  body: "Applications for HackUTD 2026 are open",
+                  active: true,
+                },
+        ];
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:px-8 md:pt-6">
@@ -114,10 +129,16 @@ export default function DashboardPage() {
         >
           <Calendar className="size-5.5" strokeWidth={1.5} />
         </Link>
-        <button aria-label="Notifications" className="relative text-black">
+        <Link
+          to="/app/notifications"
+          aria-label="Notifications"
+          className="relative text-black active:scale-[0.98]"
+        >
           <Bell className="size-5.5" strokeWidth={1.5} />
-          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500" />
-        </button>
+          {feed.length > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500" />
+          )}
+        </Link>
       </div>
 
       {/* Application status card */}
@@ -177,7 +198,15 @@ export default function DashboardPage() {
 
       {/* Notifications */}
       <section className="mt-5">
-        <h2 className="mb-2.5 text-lg font-medium text-black">Notifications</h2>
+        <div className="mb-2.5 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-black">Notifications</h2>
+          <Link
+            to="/app/notifications"
+            className="text-sm font-light text-[#6B6B6B] hover:text-black"
+          >
+            See all
+          </Link>
+        </div>
         <div className="space-y-3">
           {notifications.map((n) => (
             <div

@@ -1,7 +1,5 @@
-import { Pencil } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
 import {
   deriveSections,
   formatResponseValue,
@@ -30,29 +28,31 @@ function ReviewSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold">{title}</h3>
-        <Button
+    <div className="rounded-lg border border-[#E5E5E5] p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-medium text-black">{title}</h3>
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
           onClick={() => onEdit(stepIndex)}
+          className="text-xs font-light text-[#8A8A8A] underline underline-offset-2 transition-colors hover:text-black"
         >
-          <Pencil className="w-4 h-4 mr-1" />
           Edit
-        </Button>
+        </button>
       </div>
-      <div className="space-y-2 text-sm">{children}</div>
+      <div className="space-y-2.5">{children}</div>
     </div>
   );
 }
 
 function ReviewField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span>{value || "Not provided"}</span>
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="shrink-0 text-xs font-light text-[#8A8A8A]">
+        {label}
+      </span>
+      <span className="text-right text-sm font-light text-black">
+        {value || "Not provided"}
+      </span>
     </div>
   );
 }
@@ -70,45 +70,49 @@ export function ReviewStep({
   const grouped = groupFieldsBySection(schema);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Review Your Application</h2>
-        <p className="text-sm text-muted-foreground">
-          Please review your answers before submitting
+    <div className="space-y-7">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-light tracking-tight text-black">
+          Review
+        </h1>
+        <p className="text-sm font-light text-[#8A8A8A]">
+          Check your answers before submitting
         </p>
       </div>
 
-      {sections.map(({ id: sectionId, label: sectionLabel }) => {
-        const fields = grouped[sectionId];
-        if (!fields || fields.length === 0) return null;
-        const stepIndex = sectionStepMap[sectionId] ?? 0;
+      <div className="space-y-4">
+        {sections.map(({ id: sectionId, label: sectionLabel }) => {
+          const fields = grouped[sectionId];
+          if (!fields || fields.length === 0) return null;
+          const stepIndex = sectionStepMap[sectionId] ?? 0;
 
-        return (
-          <ReviewSection
-            key={sectionId}
-            title={sectionLabel}
-            stepIndex={stepIndex}
-            onEdit={onEditStep}
-          >
-            {sectionId === "personal" && userEmail && (
-              <ReviewField label="Email" value={userEmail} />
-            )}
-            {fields.map((field) => (
-              <ReviewField
-                key={field.id}
-                label={field.label}
-                value={formatResponseValue(values[field.id], field)}
-              />
-            ))}
-            {sectionId === "links" && (
-              <ReviewField
-                label="Resume"
-                value={hasResume ? "Uploaded" : "Not provided"}
-              />
-            )}
-          </ReviewSection>
-        );
-      })}
+          return (
+            <ReviewSection
+              key={sectionId}
+              title={sectionLabel}
+              stepIndex={stepIndex}
+              onEdit={onEditStep}
+            >
+              {sectionId === "personal" && userEmail && (
+                <ReviewField label="Email" value={userEmail} />
+              )}
+              {fields.map((field) => (
+                <ReviewField
+                  key={field.id}
+                  label={field.label}
+                  value={formatResponseValue(values[field.id], field)}
+                />
+              ))}
+              {sectionId === "links" && (
+                <ReviewField
+                  label="Resume"
+                  value={hasResume ? "Uploaded" : "Not provided"}
+                />
+              )}
+            </ReviewSection>
+          );
+        })}
+      </div>
     </div>
   );
 }

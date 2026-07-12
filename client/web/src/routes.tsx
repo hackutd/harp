@@ -33,6 +33,9 @@ const HackerSchedulePage = lazy(
 const HackerProfilePage = lazy(
   () => import("@/pages/hacker/profile/ProfilePage"),
 );
+const HackerNotificationsPage = lazy(
+  () => import("@/pages/hacker/notifications/NotificationsPage"),
+);
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
@@ -135,6 +138,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <HackerProfilePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "notifications",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerNotificationsPage />
               </Suspense>
             ),
           },

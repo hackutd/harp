@@ -166,12 +166,16 @@ func (app *application) mount() http.Handler {
 
 			// Push notifications (any authenticated user)
 			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/feed", app.getNotificationFeedHandler)
 				r.Get("/vapid-public-key", app.getVapidPublicKeyHandler)
 				r.Post("/subscribe", app.subscribePushHandler)
 				r.Delete("/subscribe", app.unsubscribePushHandler)
 			})
 
 			// Hacker Routes
+			r.Get("/schedule", app.getHackerScheduleHandler)
+			r.Delete("/users/me", app.deleteMyAccountHandler)
+
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Get("/enabled", app.getApplicationsEnabled)

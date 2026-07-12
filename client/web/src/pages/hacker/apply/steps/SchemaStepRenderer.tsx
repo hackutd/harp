@@ -19,10 +19,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { renderLabel } from "@/shared/lib/schema-utils";
+import { cn } from "@/shared/lib/utils";
 import type { ApplicationSchemaField } from "@/types";
 
 type ApplicationFormValues = FieldValues & Record<string, unknown>;
 type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
+
+const underlineField =
+  "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
+
+const fieldLabel = "text-xs font-light text-[#8A8A8A]";
 
 interface SchemaStepRendererProps {
   sectionLabel: string;
@@ -38,27 +44,38 @@ export function SchemaStepRenderer({
 }: SchemaStepRendererProps) {
   const form = useFormContext<ApplicationFormValues>();
 
-  if (fields.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold">{sectionLabel}</h2>
-        </div>
-        <p className="text-muted-foreground">No fields configured.</p>
-      </div>
-    );
-  }
+  // Index of the first optional field that follows required ones, used to
+  // render an "OPTIONAL" divider between the two groups.
+  const firstOptionalIndex = fields.findIndex(
+    (f, i) => !f.required && fields.slice(0, i).some((p) => p.required),
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">{sectionLabel}</h2>
-      </div>
+    <div className="space-y-7">
+      <h1 className="text-3xl font-light tracking-tight text-black">
+        {sectionLabel}
+      </h1>
 
       {header}
 
-      {fields.map((field) => (
-        <SchemaFormField key={field.id} field={field} form={form} />
+      {fields.length === 0 && (
+        <p className="text-sm font-light text-[#8A8A8A]">
+          No fields configured.
+        </p>
+      )}
+
+      {fields.map((field, index) => (
+        <div key={field.id} className="space-y-7">
+          {index === firstOptionalIndex && (
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-[11px] font-light tracking-[0.2em] text-[#B8B8B8]">
+                OPTIONAL
+              </span>
+              <span className="h-px flex-1 bg-[#EDEDED]" />
+            </div>
+          )}
+          <SchemaFormField field={field} form={form} />
+        </div>
       ))}
     </div>
   );
@@ -82,14 +99,17 @@ function SchemaFormField({
           name={field.id}
           render={({ field: formField }) => (
             <FormItem>
-              <FormLabel>
+              <FormLabel className={fieldLabel}>
                 {field.label}
                 {requiredMark}
               </FormLabel>
               <FormControl>
-                <Input {...formField} value={formField.value ?? ""} />
+                <Input
+                  className={underlineField}
+                  {...formField}
+                  value={formField.value ?? ""}
+                />
               </FormControl>
-              {!field.required && <FormDescription>Optional</FormDescription>}
               <FormMessage />
             </FormItem>
           )}
@@ -103,20 +123,21 @@ function SchemaFormField({
           name={field.id}
           render={({ field: formField }) => (
             <FormItem>
-              <FormLabel>
+              <FormLabel className={fieldLabel}>
                 {field.label}
                 {requiredMark}
               </FormLabel>
               <FormControl>
                 <Input
+                  className={underlineField}
                   placeholder="+12025551234"
                   {...formField}
                   value={formField.value ?? ""}
                 />
               </FormControl>
-              <p className="text-xs text-muted-foreground">
+              <FormDescription className="text-xs font-light">
                 Include country code (e.g., +1 for US)
-              </p>
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -130,12 +151,13 @@ function SchemaFormField({
           name={field.id}
           render={({ field: formField }) => (
             <FormItem>
-              <FormLabel>
+              <FormLabel className={fieldLabel}>
                 {field.label}
                 {requiredMark}
               </FormLabel>
               <FormControl>
                 <Input
+                  className={underlineField}
                   type="number"
                   min={
                     typeof validation.min === "number"
@@ -166,24 +188,21 @@ function SchemaFormField({
           name={field.id}
           render={({ field: formField }) => (
             <FormItem>
-              <FormLabel>
+              <FormLabel className={fieldLabel}>
                 {field.label}
                 {requiredMark}
               </FormLabel>
               <FormControl>
                 <Textarea
-                  className="min-h-[100px]"
+                  className="min-h-[120px] rounded-md border-[#D9D9D9] bg-transparent text-base font-light shadow-none focus-visible:border-black focus-visible:ring-0"
                   {...formField}
                   value={formField.value ?? ""}
                 />
               </FormControl>
               {typeof validation.maxLength === "number" && (
-                <FormDescription>
+                <FormDescription className="text-xs font-light">
                   Max {validation.maxLength} characters
                 </FormDescription>
-              )}
-              {!field.required && !validation.maxLength && (
-                <FormDescription>Optional</FormDescription>
               )}
               <FormMessage />
             </FormItem>
@@ -198,7 +217,7 @@ function SchemaFormField({
           name={field.id}
           render={({ field: formField }) => (
             <FormItem>
-              <FormLabel>
+              <FormLabel className={fieldLabel}>
                 {field.label}
                 {requiredMark}
               </FormLabel>
@@ -207,7 +226,9 @@ function SchemaFormField({
                 value={formField.value ?? ""}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger
+                    className={cn(underlineField, "w-full justify-between")}
+                  >
                     <SelectValue
                       placeholder={`Select ${field.label.toLowerCase()}`}
                     />
@@ -234,9 +255,11 @@ function SchemaFormField({
           name={field.id}
           render={() => (
             <FormItem>
-              <FormLabel>{field.label}</FormLabel>
-              <FormDescription>Select all that apply</FormDescription>
-              <div className="grid grid-cols-2 gap-3 mt-2">
+              <FormLabel className={fieldLabel}>{field.label}</FormLabel>
+              <FormDescription className="text-xs font-light">
+                Select all that apply
+              </FormDescription>
+              <div className="mt-2 grid grid-cols-2 gap-3">
                 {(field.options ?? []).map((opt) => (
                   <FormField
                     key={opt}
@@ -260,7 +283,7 @@ function SchemaFormField({
                               }}
                             />
                           </FormControl>
-                          <FormLabel className="text-sm font-normal cursor-pointer">
+                          <FormLabel className="cursor-pointer text-sm font-light">
                             {opt}
                           </FormLabel>
                         </FormItem>
@@ -284,12 +307,13 @@ function SchemaFormField({
             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
               <FormControl>
                 <Checkbox
+                  className="mt-0.5"
                   checked={formField.value ?? false}
                   onCheckedChange={formField.onChange}
                 />
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="font-normal">
+              <div className="space-y-1 leading-snug">
+                <FormLabel className="text-sm font-light">
                   {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>

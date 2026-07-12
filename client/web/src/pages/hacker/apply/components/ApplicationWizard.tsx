@@ -5,13 +5,6 @@ import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import {
@@ -219,10 +212,25 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     if (isResumeBusy) return;
     setApiError(null);
     const isValid = await validateCurrentStep();
-    if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!isValid) return;
+
+    // Autosave progress before advancing
+    setSaving(true);
+    const formData = form.getValues();
+    const payload = transformFormDataToPayload(formData, schemaFields);
+    const res = await updateMyApplication(payload);
+    setSaving(false);
+
+    if (res.status === 200 && res.data) {
+      setApplication(res.data);
+    } else {
+      setApiError(res.error || "Failed to save progress");
+      errorAlert(res);
+      return;
     }
+
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const goToPreviousStep = () => {
@@ -237,26 +245,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     setApiError(null);
     setCurrentStep(stepIndex);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const saveDraft = async () => {
-    if (isResumeBusy) return;
-    setSaving(true);
-    setApiError(null);
-    setSaveSuccess(false);
-
-    const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData, schemaFields);
-    const res = await updateMyApplication(payload);
-
-    if (res.status === 200 && res.data) {
-      setApplication(res.data);
-      setSaveSuccess(true);
-    } else {
-      setApiError(res.error || "Failed to save progress");
-      errorAlert(res);
-    }
-    setSaving(false);
   };
 
   const submitApplication = async () => {
@@ -400,72 +388,58 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Loading state
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">
-              Loading your application...
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-24">
+        <div className="size-10 animate-spin rounded-full border-b-2 border-black"></div>
+        <p className="mt-4 text-sm font-light text-[#8A8A8A]">
+          Loading your application...
+        </p>
+      </div>
     );
   }
 
   // Applications closed
   if (!applicationsEnabled) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Applications Closed</CardTitle>
-          <CardDescription>
-            The application portal is not currently accepting submissions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Submissions Unavailable</AlertTitle>
-            <AlertDescription>
-              Applications are currently closed. Please check back later.
-              {application &&
-                application.status === "draft" &&
-                " Your draft has been saved and will be here when applications reopen."}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10">
+        <h1 className="text-3xl font-light tracking-tight text-black">
+          Applications closed
+        </h1>
+        <p className="text-sm font-light text-[#8A8A8A]">
+          The application portal is not currently accepting submissions. Please
+          check back later.
+          {application &&
+            application.status === "draft" &&
+            " Your draft has been saved and will be here when applications reopen."}
+        </p>
+      </div>
     );
   }
 
   // Read-only mode if application is already submitted
   if (application && application.status !== "draft") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Application Submitted</CardTitle>
-          <CardDescription>
-            Your application has been submitted and cannot be edited.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Status: {application.status}</AlertTitle>
-            <AlertDescription>
-              {application.status === "submitted" &&
-                "Your application is being reviewed."}
-              {application.status === "accepted" &&
-                "Congratulations! Your application has been accepted."}
-              {application.status === "rejected" &&
-                "Unfortunately, your application was not accepted."}
-              {application.status === "waitlisted" &&
-                "You have been placed on the waitlist."}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10">
+        <h1 className="text-3xl font-light tracking-tight text-black">
+          Application submitted
+        </h1>
+        <p className="text-sm font-light text-[#8A8A8A]">
+          {application.status === "submitted" &&
+            "Your application is being reviewed."}
+          {application.status === "accepted" &&
+            "Congratulations! Your application has been accepted."}
+          {application.status === "rejected" &&
+            "Unfortunately, your application was not accepted."}
+          {application.status === "waitlisted" &&
+            "You have been placed on the waitlist."}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/app/status")}
+          className="text-sm font-light text-black underline underline-offset-2"
+        >
+          View status
+        </button>
+      </div>
     );
   }
 
@@ -507,10 +481,14 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     // Personal section gets email display header
     const header =
       section === "personal" && userEmail ? (
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Email</label>
-          <Input value={userEmail} disabled className="bg-muted" />
-          <p className="text-xs text-muted-foreground">
+        <div className="space-y-1.5">
+          <label className="text-xs font-light text-[#8A8A8A]">Email</label>
+          <Input
+            value={userEmail}
+            disabled
+            className="h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 text-base font-light text-[#8A8A8A] shadow-none dark:bg-transparent"
+          />
+          <p className="text-xs font-light text-[#B8B8B8]">
             Email is from your account and cannot be changed here
           </p>
         </div>
@@ -525,23 +503,23 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     );
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Hacker Application</CardTitle>
-        <CardDescription>
-          Complete your application to participate in the hackathon
-        </CardDescription>
-        <div className="pt-4">
-          <StepIndicator
-            steps={steps}
-            currentStep={currentStep}
-            onStepClick={goToStep}
-          />
-        </div>
-      </CardHeader>
+  const handleBack = () => {
+    if (currentStep === 0) {
+      navigate("/app");
+    } else {
+      goToPreviousStep();
+    }
+  };
 
-      <CardContent>
+  return (
+    <div className="mx-auto w-full max-w-md px-5 pt-4 pb-32">
+      <StepIndicator
+        currentStep={currentStep}
+        totalSteps={steps.length}
+        onBack={handleBack}
+      />
+
+      <div className="pt-6">
         {apiError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -551,10 +529,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         )}
 
         {saveSuccess && (
-          <Alert className="mb-6 border-green-500 text-green-700">
-            <AlertTitle>Saved!</AlertTitle>
-            <AlertDescription>Your progress has been saved.</AlertDescription>
-          </Alert>
+          <p className="mb-4 text-xs font-light text-[#09D082]">Saved</p>
         )}
 
         <FormProvider {...form}>
@@ -565,7 +540,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
               currentStep={currentStep}
               onPrevious={goToPreviousStep}
               onNext={goToNextStep}
-              onSave={saveDraft}
               onSubmit={submitApplication}
               isSaving={saving}
               isSubmitting={submitting}
@@ -574,7 +548,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
             />
           </form>
         </FormProvider>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

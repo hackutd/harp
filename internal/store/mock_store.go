@@ -62,6 +62,11 @@ func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role Use
 	return args.Get(0).(*User), args.Error(1)
 }
 
+func (m *MockUsersStore) Delete(ctx context.Context, userID string) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
 func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
 	args := m.Called(role)
 	if args.Get(0) == nil {
@@ -520,6 +525,14 @@ func (m *MockScheduledNotificationsStore) GetByID(ctx context.Context, id string
 
 func (m *MockScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNotification, error) {
 	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScheduledNotification), args.Error(1)
+}
+
+func (m *MockScheduledNotificationsStore) ListSentForRole(ctx context.Context, role UserRole, limit int) ([]ScheduledNotification, error) {
+	args := m.Called(role, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
