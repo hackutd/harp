@@ -274,7 +274,7 @@ func parsePrivateKey(value []byte) (crypto.PrivateKey, error) {
 	}
 
 	if block, _ := pem.Decode(value); block != nil {
-		if x509.IsEncryptedPEMBlock(block) {
+		if _, ok := block.Headers["DEK-Info"]; ok {
 			return nil, errors.New("encrypted PEM private keys are not supported")
 		}
 		value = block.Bytes
