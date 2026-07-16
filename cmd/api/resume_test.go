@@ -121,6 +121,7 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 func TestDeleteResume(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 	mockGCS := app.gcsClient.(*gcs.MockClient)
 
 	t.Run("should delete resume", func(t *testing.T) {
@@ -132,6 +133,9 @@ func TestDeleteResume(t *testing.T) {
 			Status:     store.StatusDraft,
 			ResumePath: &resumePath,
 		}
+		schema := []store.ApplicationSchemaField{
+			{ID: "github", Type: "text", Label: "GitHub"},
+		}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
 		mockGCS.On("DeleteObject", mock.Anything, resumePath).Return(nil).Once()
@@ -139,6 +143,7 @@ func TestDeleteResume(t *testing.T) {
 			updated := args.Get(0).(*store.Application)
 			assert.Nil(t, updated.ResumePath)
 		}).Return(nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 
 		req, err := http.NewRequest(http.MethodDelete, "/", nil)
 		require.NoError(t, err)
@@ -147,7 +152,16 @@ func TestDeleteResume(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.deleteResumeHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Len(t, envelope.Data.ApplicationSchema, len(schema))
+
 		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
 		mockGCS.AssertExpectations(t)
 	})
 
@@ -183,6 +197,51 @@ func TestDeleteResume(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.deleteResumeHandler))
 		checkResponseCode(t, http.StatusConflict, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
+func TestGetMyResumeDownloadURL(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockGCS := app.gcsClient.(*gcs.MockClient)
+
+	t.Run("should generate download url for own resume", func(t *testing.T) {
+		user := newTestUser()
+		resumePath := "resumes/user-1/file.pdf"
+		application := &store.Application{ID: "app-1", UserID: user.ID, ResumePath: &resumePath}
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockGCS.On("GenerateDownloadURL", mock.Anything, resumePath).Return("https://download.example.com", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getMyResumeDownloadURLHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ResumeDownloadURLResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, "https://download.example.com", body.Data.DownloadURL)
+
+		mockApps.AssertExpectations(t)
+		mockGCS.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when resume does not exist", func(t *testing.T) {
+		user := newTestUser()
+		application := &store.Application{ID: "app-1", UserID: user.ID, ResumePath: nil}
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getMyResumeDownloadURLHandler))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
 		mockApps.AssertExpectations(t)
 	})

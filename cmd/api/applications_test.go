@@ -126,6 +126,14 @@ func TestUpdateApplication(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Len(t, envelope.Data.ApplicationSchema, len(schema))
+
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
 	})

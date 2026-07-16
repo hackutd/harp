@@ -56,6 +56,19 @@ export function getSectionInfo(fields: ApplicationSchemaField[]) {
   return { order, labels };
 }
 
+/**
+ * Resolve the section that hosts the resume uploader: "links" when present,
+ * otherwise the last section. Keeps the resume from being orphaned when a
+ * super admin renames or removes the "links" section.
+ */
+export function resolveResumeSectionId(
+  fields: ApplicationSchemaField[],
+): string | undefined {
+  const sectionIds = deriveSections(fields).map((s) => s.id);
+  if (sectionIds.includes("links")) return "links";
+  return sectionIds[sectionIds.length - 1];
+}
+
 /** Group schema fields by section, sorted by display_order within each section. */
 export function groupFieldsBySection(
   schema: ApplicationSchemaField[],

@@ -1,23 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import {
   buildDefaultValues,
   deriveSections,
   groupFieldsBySection,
+  resolveResumeSectionId,
 } from "@/shared/lib/schema-utils";
 import type { Application, ApplicationSchemaField } from "@/types";
 
@@ -29,6 +23,7 @@ import {
   updateMyApplication,
   uploadResumeToSignedURL as uploadToSignedURL,
 } from "../api";
+import { AgreementsStep } from "../steps/AgreementsStep";
 import { ReviewStep } from "../steps/ReviewStep";
 import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
 import { SponsorInfoStep } from "../steps/SponsorInfoStep";
@@ -42,6 +37,13 @@ interface ApplicationWizardProps {
 
 const PDF_MIME_TYPE = "application/pdf";
 const MAX_RESUME_SIZE_MB = MAX_RESUME_UPLOAD_SIZE_BYTES / (1024 * 1024);
+const AUTOSAVE_DEBOUNCE_MS = 1200;
+
+type AutosaveState = "idle" | "saving" | "saved" | "error";
+
+function stepStorageKey(applicationId: string): string {
+  return `harp-apply-step:${applicationId}`;
+}
 
 /** Sections that become wizard steps, derived dynamically from the schema. */
 
@@ -94,18 +96,23 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<Application | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
   const [applicationsEnabled, setApplicationsEnabled] = useState(true);
+  // Schema is captured once from the initial load; mutation responses
+  // (PATCH/DELETE) don't embed it and must not wipe it.
+  const [schemaFields, setSchemaFields] = useState<ApplicationSchemaField[]>(
+    [],
+  );
 
   const isResumeBusy = isUploadingResume || isDeletingResume;
+  const isDraft = application?.status === "draft";
 
-  // Schema from the loaded application
-  const schemaFields = useMemo(
-    () => application?.application_schema ?? [],
-    [application?.application_schema],
-  );
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Serializes saves so a slow request can't land after (and overwrite) a
+  // newer one.
+  const saveChain = useRef<Promise<boolean>>(Promise.resolve(true));
 
   // Derive sections from the schema
   const schemaSections = useMemo(
@@ -147,6 +154,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     return map;
   }, [schemaSections, grouped]);
 
+  // Section that hosts the resume uploader: "links" when present, otherwise
+  // the last section, so renaming/removing "links" can't orphan the upload.
+  const resumeSectionId = useMemo(
+    () => resolveResumeSectionId(schemaFields),
+    [schemaFields],
+  );
+
   // Build Zod schema dynamically from application_schema
   const formSchema = useMemo(
     () => buildApplicationSchema(schemaFields),
@@ -174,9 +188,25 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         const app = appRes.data;
         setApplication(app);
         const schema = app.application_schema ?? [];
+        setSchemaFields(schema);
         const formData = transformApplicationToFormData(app, schema);
         const defaults = buildDefaultValues(schema);
         form.reset({ ...defaults, ...formData });
+
+        // Restore the step the user last left off on
+        if (app.status === "draft") {
+          const sections = deriveSections(schema);
+          const groupedFields = groupFieldsBySection(schema);
+          const stepCount =
+            sections.filter((s) => (groupedFields[s.id] ?? []).length > 0)
+              .length + 1;
+          const savedStep = Number(
+            localStorage.getItem(stepStorageKey(app.id)) ?? "0",
+          );
+          if (Number.isInteger(savedStep) && savedStep > 0) {
+            setCurrentStep(Math.min(savedStep, stepCount - 1));
+          }
+        }
       }
 
       if (enabledRes.status === 200 && enabledRes.data) {
@@ -188,17 +218,81 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     loadApplication();
   }, [form]);
 
-  // Clear save success message after 3 seconds
-  useEffect(() => {
-    if (saveSuccess) {
-      const timer = setTimeout(() => setSaveSuccess(false), 3000);
-      return () => clearTimeout(timer);
+  // Clamp so the index stays valid if the schema-driven steps ever shrink
+  const safeCurrentStep = Math.min(currentStep, steps.length - 1);
+
+  // Save the current form values as a draft. Saves run one at a time.
+  const saveDraft = useCallback((): Promise<boolean> => {
+    const run = async (): Promise<boolean> => {
+      setAutosaveState("saving");
+      const payload = transformFormDataToPayload(
+        form.getValues(),
+        schemaFields,
+      );
+      const res = await updateMyApplication(payload);
+      if (res.status === 200 && res.data) {
+        setApplication(res.data);
+        setAutosaveState("saved");
+        return true;
+      }
+      setAutosaveState("error");
+      return false;
+    };
+    const next = saveChain.current.then(run, run);
+    saveChain.current = next.catch(() => false);
+    return next;
+  }, [form, schemaFields]);
+
+  const cancelPendingAutosave = useCallback(() => {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
     }
-  }, [saveSuccess]);
+  }, []);
+
+  const scheduleAutosave = useCallback(() => {
+    cancelPendingAutosave();
+    autosaveTimer.current = setTimeout(() => {
+      autosaveTimer.current = null;
+      void saveDraft();
+    }, AUTOSAVE_DEBOUNCE_MS);
+  }, [cancelPendingAutosave, saveDraft]);
+
+  // Autosave whenever the user edits a field. (form.watch returns an RHF
+  // subscription; the React Compiler flags it as a non-memoizable library
+  // call, which is a benign informational warning here.)
+  useEffect(() => {
+    if (loading || !applicationsEnabled || !isDraft) return;
+    const subscription = form.watch((_, { name }) => {
+      // Ignore programmatic bulk updates like form.reset
+      if (!name) return;
+      scheduleAutosave();
+    });
+    return () => {
+      subscription.unsubscribe();
+      cancelPendingAutosave();
+    };
+  }, [
+    form,
+    loading,
+    applicationsEnabled,
+    isDraft,
+    scheduleAutosave,
+    cancelPendingAutosave,
+  ]);
+
+  // Remember the step the user was on so they can pick up where they left off
+  useEffect(() => {
+    if (!isDraft || !application?.id) return;
+    localStorage.setItem(
+      stepStorageKey(application.id),
+      String(safeCurrentStep),
+    );
+  }, [isDraft, application?.id, safeCurrentStep]);
 
   // Get field IDs for the current step (for partial validation)
   const getCurrentStepFieldIds = (): string[] => {
-    const stepDef = steps[currentStep];
+    const stepDef = steps[safeCurrentStep];
     if (!stepDef || stepDef.id === "review") {
       return [];
     }
@@ -219,10 +313,21 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     if (isResumeBusy) return;
     setApiError(null);
     const isValid = await validateCurrentStep();
-    if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!isValid) return;
+
+    // Save progress before advancing
+    cancelPendingAutosave();
+    setSaving(true);
+    const saved = await saveDraft();
+    setSaving(false);
+
+    if (!saved) {
+      setApiError("Failed to save progress");
+      return;
     }
+
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const goToPreviousStep = () => {
@@ -239,26 +344,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const saveDraft = async () => {
-    if (isResumeBusy) return;
-    setSaving(true);
-    setApiError(null);
-    setSaveSuccess(false);
-
-    const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData, schemaFields);
-    const res = await updateMyApplication(payload);
-
-    if (res.status === 200 && res.data) {
-      setApplication(res.data);
-      setSaveSuccess(true);
-    } else {
-      setApiError(res.error || "Failed to save progress");
-      errorAlert(res);
-    }
-    setSaving(false);
-  };
-
   const submitApplication = async () => {
     if (isResumeBusy) return;
     setSubmitting(true);
@@ -273,19 +358,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
 
     // Save current state first
-    const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData, schemaFields);
-    const saveRes = await updateMyApplication(payload);
+    cancelPendingAutosave();
+    const saved = await saveDraft();
 
-    if (saveRes.status !== 200) {
-      setApiError(saveRes.error || "Failed to save before submitting");
-      errorAlert(saveRes);
+    if (!saved) {
+      setApiError("Failed to save before submitting");
       setSubmitting(false);
       return;
-    }
-
-    if (saveRes.data) {
-      setApplication(saveRes.data);
     }
 
     // Now submit
@@ -297,6 +376,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
     if (submitRes.status === 200 && submitRes.data) {
       setApplication(submitRes.data);
+      if (application?.id) {
+        localStorage.removeItem(stepStorageKey(application.id));
+      }
       navigate("/app/status");
     } else {
       setApiError(submitRes.error || "Failed to submit application");
@@ -333,7 +415,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
 
     setApiError(null);
-    setSaveSuccess(false);
     setIsUploadingResume(true);
 
     const uploadURLRes = await getResumeUploadURL();
@@ -359,7 +440,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     });
     if (saveRes.status === 200 && saveRes.data) {
       setApplication(saveRes.data);
-      setSaveSuccess(true);
+      setAutosaveState("saved");
     } else {
       setApiError(saveRes.error || "Failed to save resume");
       errorAlert(saveRes);
@@ -382,13 +463,12 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
 
     setApiError(null);
-    setSaveSuccess(false);
     setIsDeletingResume(true);
 
     const res = await deleteResume();
     if (res.status === 200 && res.data) {
       setApplication(res.data);
-      setSaveSuccess(true);
+      setAutosaveState("saved");
     } else {
       setApiError(res.error || "Failed to delete resume");
       errorAlert(res);
@@ -400,78 +480,64 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Loading state
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">
-              Loading your application...
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-24">
+        <div className="size-10 animate-spin rounded-full border-b-2 border-black"></div>
+        <p className="mt-4 text-sm font-light text-[#8A8A8A]">
+          Loading your application...
+        </p>
+      </div>
     );
   }
 
   // Applications closed
   if (!applicationsEnabled) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Applications Closed</CardTitle>
-          <CardDescription>
-            The application portal is not currently accepting submissions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Submissions Unavailable</AlertTitle>
-            <AlertDescription>
-              Applications are currently closed. Please check back later.
-              {application &&
-                application.status === "draft" &&
-                " Your draft has been saved and will be here when applications reopen."}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
+        <h1 className="text-3xl font-light tracking-tight text-black">
+          Applications closed
+        </h1>
+        <p className="text-sm font-light text-[#8A8A8A]">
+          The application portal is not currently accepting submissions. Please
+          check back later.
+          {application &&
+            application.status === "draft" &&
+            " Your draft has been saved and will be here when applications reopen."}
+        </p>
+      </div>
     );
   }
 
   // Read-only mode if application is already submitted
   if (application && application.status !== "draft") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Application Submitted</CardTitle>
-          <CardDescription>
-            Your application has been submitted and cannot be edited.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Status: {application.status}</AlertTitle>
-            <AlertDescription>
-              {application.status === "submitted" &&
-                "Your application is being reviewed."}
-              {application.status === "accepted" &&
-                "Congratulations! Your application has been accepted."}
-              {application.status === "rejected" &&
-                "Unfortunately, your application was not accepted."}
-              {application.status === "waitlisted" &&
-                "You have been placed on the waitlist."}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
+        <h1 className="text-3xl font-light tracking-tight text-black">
+          Application submitted
+        </h1>
+        <p className="text-sm font-light text-[#8A8A8A]">
+          {application.status === "submitted" &&
+            "Your application is being reviewed."}
+          {application.status === "accepted" &&
+            "Congratulations! Your application has been accepted."}
+          {application.status === "rejected" &&
+            "Unfortunately, your application was not accepted."}
+          {application.status === "waitlisted" &&
+            "You have been placed on the waitlist."}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/app/status")}
+          className="text-sm font-light text-black underline underline-offset-2"
+        >
+          View status
+        </button>
+      </div>
     );
   }
 
   // Render current step
   const renderStep = () => {
-    const stepDef = steps[currentStep];
+    const stepDef = steps[safeCurrentStep];
     if (!stepDef) return null;
 
     // Last step is always Review
@@ -483,6 +549,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           schema={schemaFields}
           hasResume={Boolean(application?.resume_path)}
           sectionStepMap={sectionStepMap}
+          resumeSectionId={resumeSectionId}
         />
       );
     }
@@ -490,10 +557,11 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const section = stepDef.id;
     const fields = grouped[section] ?? [];
 
-    // Links section gets special handling for resume upload
-    if (section === "links") {
+    // The resume section gets special handling for resume upload
+    if (section === resumeSectionId) {
       return (
         <SponsorInfoStep
+          sectionLabel={sectionLabels[section] ?? section}
           fields={fields}
           hasResume={Boolean(application?.resume_path)}
           isUploadingResume={isUploadingResume}
@@ -504,13 +572,27 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       );
     }
 
+    // Agreements section gets a dedicated accordion-based layout
+    if (section === "agreements") {
+      return (
+        <AgreementsStep
+          sectionLabel={sectionLabels[section] ?? section}
+          fields={fields}
+        />
+      );
+    }
+
     // Personal section gets email display header
     const header =
       section === "personal" && userEmail ? (
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Email</label>
-          <Input value={userEmail} disabled className="bg-muted" />
-          <p className="text-xs text-muted-foreground">
+        <div className="space-y-1.5">
+          <label className="text-xs font-light text-[#8A8A8A]">Email</label>
+          <Input
+            value={userEmail}
+            disabled
+            className="h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 text-base font-light text-[#8A8A8A] shadow-none dark:bg-transparent"
+          />
+          <p className="text-xs font-light text-[#B8B8B8]">
             Email is from your account and cannot be changed here
           </p>
         </div>
@@ -525,23 +607,25 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     );
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Hacker Application</CardTitle>
-        <CardDescription>
-          Complete your application to participate in the hackathon
-        </CardDescription>
-        <div className="pt-4">
-          <StepIndicator
-            steps={steps}
-            currentStep={currentStep}
-            onStepClick={goToStep}
-          />
-        </div>
-      </CardHeader>
+  // The top back button always exits to the homepage; step navigation
+  // happens only through the bottom bar. Flush any pending autosave first.
+  const handleBack = () => {
+    if (autosaveTimer.current) {
+      cancelPendingAutosave();
+      void saveDraft();
+    }
+    navigate("/app");
+  };
 
-      <CardContent>
+  return (
+    <div className="mx-auto w-full max-w-md px-5 pt-4 pb-32 md:max-w-5xl md:px-8">
+      <StepIndicator
+        currentStep={safeCurrentStep}
+        totalSteps={steps.length}
+        onBack={handleBack}
+      />
+
+      <div className="pt-6">
         {apiError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -550,31 +634,39 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           </Alert>
         )}
 
-        {saveSuccess && (
-          <Alert className="mb-6 border-green-500 text-green-700">
-            <AlertTitle>Saved!</AlertTitle>
-            <AlertDescription>Your progress has been saved.</AlertDescription>
-          </Alert>
-        )}
+        <p
+          aria-live="polite"
+          className={`mb-4 h-4 text-xs font-light ${
+            autosaveState === "error"
+              ? "text-red-500"
+              : autosaveState === "saved"
+                ? "text-[#09D082]"
+                : "text-[#8A8A8A]"
+          }`}
+        >
+          {autosaveState === "saving" && "Saving..."}
+          {autosaveState === "saved" && "Saved"}
+          {autosaveState === "error" &&
+            "Couldn't save your changes — check your connection"}
+        </p>
 
         <FormProvider {...form}>
           <form onSubmit={(e) => e.preventDefault()}>
             {renderStep()}
 
             <StepNavigation
-              currentStep={currentStep}
+              currentStep={safeCurrentStep}
               onPrevious={goToPreviousStep}
               onNext={goToNextStep}
-              onSave={saveDraft}
               onSubmit={submitApplication}
               isSaving={saving}
               isSubmitting={submitting}
               isResumeBusy={isResumeBusy}
-              isLastStep={currentStep === steps.length - 1}
+              isLastStep={safeCurrentStep === steps.length - 1}
             />
           </form>
         </FormProvider>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

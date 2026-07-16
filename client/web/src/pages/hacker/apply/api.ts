@@ -1,4 +1,9 @@
-import { deleteRequest, patchRequest, postRequest } from "@/shared/lib/api";
+import {
+  deleteRequest,
+  getRequest,
+  patchRequest,
+  postRequest,
+} from "@/shared/lib/api";
 import type { ApiResponse, Application } from "@/types";
 
 export interface UpdateApplicationPayload {
@@ -16,6 +21,10 @@ interface DataEnvelope<T> {
 export interface ResumeUploadURLResponse {
   upload_url: string;
   resume_path: string;
+}
+
+export interface ResumeDownloadURLResponse {
+  download_url: string;
 }
 
 function unwrapPatchedApplication(
@@ -64,6 +73,15 @@ export async function requestResumeUploadURL(): Promise<
 
 export async function deleteMyResume(): Promise<ApiResponse<Application>> {
   return deleteRequest<Application>("/applications/me/resume", "resume");
+}
+
+export async function requestResumeDownloadURL(): Promise<
+  ApiResponse<ResumeDownloadURLResponse>
+> {
+  return getRequest<ResumeDownloadURLResponse>(
+    "/applications/me/resume-url",
+    "resume",
+  );
 }
 
 export async function uploadResumeToSignedURL(

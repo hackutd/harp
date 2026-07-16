@@ -1,102 +1,224 @@
-import { Link, useNavigate } from "react-router-dom";
-import { signOut } from "supertokens-auth-react/recipe/session";
+import { ChevronRight, HelpCircle, Mail, MessageSquare } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
-import { AdminPortalButton } from "@/components/AdminPortalButton";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useUserStore } from "@/shared/stores";
+import { getRequest } from "@/shared/lib/api";
+import type {
+  Application,
+  ApplicationStatus,
+  NotificationFeedItem,
+} from "@/types";
 
-import { NotificationsCard } from "./components/NotificationsCard";
+import { getNotificationFeed } from "../notifications/api";
+
+interface ImportantDate {
+  month: string;
+  day: string;
+  label: string;
+}
+
+const IMPORTANT_DATES: ImportantDate[] = [
+  { month: "Mar", day: "14", label: "App due" },
+  { month: "Mar", day: "20", label: "Decisions" },
+  { month: "Apr", day: "04", label: "Kickoff" },
+];
+
+const QUICK_LINKS = [
+  { label: "Help", icon: HelpCircle, href: "mailto:hello@hackutd.co" },
+  { label: "Contact", icon: Mail, href: "mailto:hello@hackutd.co" },
+  { label: "FAQ", icon: MessageSquare, href: "https://hackutd.co" },
+];
+
+const STATUS_BADGES: Record<ApplicationStatus, string> = {
+  draft: "In progress",
+  submitted: "Submitted",
+  accepted: "Accepted",
+  rejected: "Decided",
+  waitlisted: "Waitlisted",
+};
+
+const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
+  draft: "bg-gray-100 text-gray-800",
+  submitted: "bg-blue-100 text-blue-800",
+  accepted: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  waitlisted: "bg-yellow-100 text-yellow-800",
+};
+
+function completionPercent(application: Application | null): number {
+  if (!application) return 0;
+  if (application.status !== "draft") return 100;
+  const fields = application.application_schema ?? [];
+  if (fields.length === 0) return 0;
+  const responses = application.responses ?? {};
+  const filled = fields.filter((f) => {
+    const value = responses[f.id];
+    if (value == null) return false;
+    if (typeof value === "string") return value.trim() !== "";
+    if (Array.isArray(value)) return value.length > 0;
+    return true;
+  }).length;
+  return Math.round((filled / fields.length) * 100);
+}
 
 export default function DashboardPage() {
-  const { user, clearUser } = useUserStore();
-  const navigate = useNavigate();
+  const [application, setApplication] = useState<Application | null>(null);
+  const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
 
-  const handleLogout = async () => {
-    await signOut();
-    clearUser();
-    navigate("/", { replace: true });
-  };
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      const [appRes, feedRes] = await Promise.all([
+        getRequest<Application>(
+          "/applications/me",
+          "application",
+          controller.signal,
+        ),
+        getNotificationFeed(controller.signal),
+      ]);
+      if (controller.signal.aborted) return;
+      if (appRes.status === 200 && appRes.data) {
+        setApplication(appRes.data);
+      }
+      if (feedRes.status === 200 && feedRes.data) {
+        setFeed(feedRes.data.notifications ?? []);
+      }
+    };
+    load();
+    return () => controller.abort();
+  }, []);
+
+  const percent = completionPercent(application);
+  const badge = application ? STATUS_BADGES[application.status] : "Not started";
+  const badgeColor = application
+    ? STATUS_BADGE_COLORS[application.status]
+    : "bg-white/15";
+  const isDraft = !application || application.status === "draft";
+
+  const notifications =
+    feed.length > 0
+      ? feed.slice(0, 3).map((n) => ({
+          title: n.title,
+          body: n.body,
+        }))
+      : [
+          application?.status === "draft"
+            ? {
+                title: "Application progress saved",
+                body: "You can pick up where you left off",
+              }
+            : application
+              ? {
+                  title: `Application ${application.status}`,
+                  body: "Check your status for details",
+                }
+              : {
+                  title: "Start your application",
+                  body: "Applications for HackUTD 2026 are open",
+                },
+        ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8 flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome{user?.email ? `, ${user.email}` : "!"}
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Manage your hackathon journey from here
+    <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
+      {/* Application status card */}
+      <div className="rounded-xl bg-[#3A3A38] p-5 text-white">
+        <span
+          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-widest uppercase ${badgeColor}`}
+        >
+          {badge}
+        </span>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+          HackUTD 2026
+        </h1>
+        <p className="mt-1 text-sm font-light text-white/70">
+          Application {percent}% complete
+        </p>
+        <div className="mt-3 h-1 w-full rounded-full bg-white/20">
+          <div
+            className="h-1 rounded-full bg-white transition-all"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <Link
+          to={isDraft ? "/app/apply" : "/app/status"}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-medium text-black active:scale-[0.98]"
+        >
+          {isDraft ? "Continue" : "View status"}
+          <ChevronRight className="size-4" strokeWidth={1.75} />
+        </Link>
+      </div>
+
+      {/* Important dates */}
+      <section className="mt-5">
+        <div className="mb-2.5 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-black">Important dates</h2>
+          <Link
+            to="/app/schedule"
+            className="text-sm font-light text-[#6B6B6B] hover:text-black"
+          >
+            See all
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {IMPORTANT_DATES.map((d) => (
+            <div
+              key={d.label}
+              className="rounded-lg border border-[#E5E5E5] bg-white p-4"
+            >
+              <p className="text-[11px] font-medium tracking-widest text-[#6B6B6B] uppercase">
+                {d.month}
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-black">{d.day}</p>
+              <p className="mt-1 text-xs font-light text-[#6B6B6B]">
+                {d.label}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <AdminPortalButton />
-              <Button variant="outline" onClick={handleLogout}>
-                Sign Out
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Application</CardTitle>
-                <CardDescription>
-                  Submit or update your application
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-4">
-                  Complete your hacker application to participate in HackUTD
-                </p>
-                <Link to="/app/apply">
-                  <Button className="w-full">Go to Application</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Status</CardTitle>
-                <CardDescription>Check your application status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-4">
-                  View the current status of your application
-                </p>
-                <Link to="/app/status">
-                  <Button variant="outline" className="w-full">
-                    View Status
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-
-          <NotificationsCard />
-
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Important Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>• Event Date: TBA</li>
-                <li>• Location: University of Texas at Dallas</li>
-                <li>• Questions? Contact us at hello@hackutd.co</li>
-              </ul>
-            </CardContent>
-          </Card>
+          ))}
         </div>
-      </div>
+      </section>
+
+      {/* Notifications */}
+      <section className="mt-5">
+        <div className="mb-2.5 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-black">Notifications</h2>
+          <Link
+            to="/app/notifications"
+            className="text-sm font-light text-[#6B6B6B] hover:text-black"
+          >
+            See all
+          </Link>
+        </div>
+        <div className="space-y-3">
+          {notifications.map((n) => (
+            <div
+              key={n.title}
+              className="flex items-center gap-3 rounded-lg border border-[#E5E5E5] bg-white px-4 py-3.5"
+            >
+              <span className="size-2 shrink-0 rounded-full bg-black" />
+              <div>
+                <p className="text-sm font-normal text-black">{n.title}</p>
+                <p className="mt-0.5 text-xs font-light text-[#6B6B6B]">
+                  {n.body}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Quick links */}
+      <section className="mt-5 grid grid-cols-3 gap-3">
+        {QUICK_LINKS.map(({ label, icon: Icon, href }) => (
+          <a
+            key={label}
+            href={href}
+            className="flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]"
+          >
+            <Icon className="size-5 text-black" strokeWidth={1.5} />
+            <span className="text-sm font-normal text-black">{label}</span>
+          </a>
+        ))}
+      </section>
     </div>
   );
 }

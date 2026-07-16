@@ -361,6 +361,32 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 	return nil
 }
 
+func (s *UsersStore) Delete(ctx context.Context, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		DELETE FROM users
+		WHERE id = $1
+	`
+
+	result, err := s.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
 func (s *UsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
