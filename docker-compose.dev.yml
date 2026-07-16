@@ -30,13 +30,15 @@ services:
       - DB_ADDR=postgres://admin:adminpassword@db:5432/portal?sslmode=disable
       - SUPERTOKENS_CONNECTION_URI=${SUPERTOKENS_CONNECTION_URI}
       - SUPERTOKENS_API_KEY=${SUPERTOKENS_API_KEY}
-      - AUTH_BASIC_USER=admin
-      - AUTH_BASIC_PASS=admin
+      - AUTH_BASIC_USER=${AUTH_BASIC_USER}
+      - AUTH_BASIC_PASS=${AUTH_BASIC_PASS}
       - APP_URL=http://localhost:8080
       - FRONTEND_URL=http://localhost:3000
       - ENV=development
-      - GOOGLE_CLIENT_ID=your-google-client-id
-      - GOOGLE_CLIENT_SECRET=your-google-client-secret
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - PUBLIC_API_KEY=${PUBLIC_API_KEY}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     ports:
       - "8080:8080"
     volumes:

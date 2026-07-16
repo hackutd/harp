@@ -18,12 +18,13 @@ const (
 	ScanCategoryMeal    ScanTypeCategory = "meal"
 	ScanCategorySwag    ScanTypeCategory = "swag"
 	ScanCategoryOther   ScanTypeCategory = "other"
+	ScanCategoryWalkIn  ScanTypeCategory = "walk_in"
 )
 
 type ScanType struct {
 	Name        string           `json:"name" validate:"required,min=1,max=50"`
 	DisplayName string           `json:"display_name" validate:"required,min=1,max=100"`
-	Category    ScanTypeCategory `json:"category" validate:"required,oneof=check_in meal swag other"`
+	Category    ScanTypeCategory `json:"category" validate:"required,oneof=check_in meal swag other walk_in"`
 	IsActive    bool             `json:"is_active"`
 }
 

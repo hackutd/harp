@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your HackUTD QR Code</title>
+    <title>Your {{.HackathonName}} QR Code</title>
   </head>
   <body
     style="
@@ -40,7 +40,7 @@
                 "
               >
                 <h1 style="color: #ffffff; margin: 0; font-size: 28px">
-                  HackUTD
+                  {{.HackathonName}}
                 </h1>
               </td>
             </tr>
@@ -67,7 +67,7 @@
                 "
               >
                 <p style="color: #999999; font-size: 12px; margin: 0">
-                  &copy; HackUTD. All rights reserved.
+                  &copy; {{.HackathonName}}. All rights reserved.
                 </p>
               </td>
             </tr>
