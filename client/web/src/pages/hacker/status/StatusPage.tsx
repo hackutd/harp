@@ -1,12 +1,16 @@
 import { format, parseISO } from "date-fns";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
+import { resolveResumeSectionId } from "@/shared/lib/schema-utils";
 import type { Application, ApplicationStatus } from "@/types";
+
+import { ApplicationSummary } from "../apply/components/ApplicationSummary";
+import { ResumePreviewDialog } from "../apply/components/ResumePreviewDialog";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   draft: "In progress",
@@ -40,6 +44,7 @@ export default function StatusPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<Application | null>(null);
+  const [showFullApplication, setShowFullApplication] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -63,7 +68,7 @@ export default function StatusPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-md space-y-4 px-5 pt-10 md:max-w-3xl">
+      <div className="mx-auto max-w-2xl space-y-4 px-5 pt-10 md:max-w-5xl md:px-8">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-56 w-full rounded-xl" />
@@ -73,7 +78,7 @@ export default function StatusPage() {
 
   if (!application) {
     return (
-      <div className="mx-auto max-w-md px-5 pt-10 md:max-w-3xl">
+      <div className="mx-auto max-w-2xl px-5 pt-10 md:max-w-5xl md:px-8">
         <h1 className="text-3xl font-light tracking-tight text-black">
           No application yet
         </h1>
@@ -97,8 +102,12 @@ export default function StatusPage() {
     .filter((v): v is string => typeof v === "string" && v.trim() !== "")
     .join(" ");
 
+  const schema = application.application_schema ?? [];
+  const hasResume = Boolean(application.resume_path);
+  const resumeSectionId = resolveResumeSectionId(schema);
+
   return (
-    <div className="mx-auto max-w-md px-5 pt-4 pb-8 md:max-w-3xl">
+    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8">
       <button
         type="button"
         onClick={() => navigate("/app")}
@@ -148,6 +157,61 @@ export default function StatusPage() {
           />
         </div>
       </section>
+
+      {/* Resume quick view */}
+      {hasResume && (
+        <ResumePreviewDialog
+          trigger={
+            <button
+              type="button"
+              className="mt-5 flex w-full items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+            >
+              <div>
+                <p className="text-sm font-normal text-black">Resume</p>
+                <p className="text-xs font-light text-[#8A8A8A]">
+                  Tap to preview
+                </p>
+              </div>
+              <Eye className="size-4.5 text-[#8A8A8A]" strokeWidth={1.5} />
+            </button>
+          }
+        />
+      )}
+
+      {/* Full application review */}
+      {schema.length > 0 && (
+        <section className="mt-5">
+          <button
+            type="button"
+            onClick={() => setShowFullApplication((v) => !v)}
+            className="flex w-full items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+          >
+            <div>
+              <p className="text-sm font-normal text-black">Your application</p>
+              <p className="text-xs font-light text-[#8A8A8A]">
+                Review your submitted answers
+              </p>
+            </div>
+            <ChevronRight
+              className={`size-4 text-[#8A8A8A] transition-transform ${
+                showFullApplication ? "rotate-90" : ""
+              }`}
+              strokeWidth={1.75}
+            />
+          </button>
+
+          {showFullApplication && (
+            <div className="mt-3">
+              <ApplicationSummary
+                schema={schema}
+                responses={application.responses ?? {}}
+                hasResume={hasResume}
+                resumeSectionId={resumeSectionId}
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       {application.status === "draft" && (
         <Button

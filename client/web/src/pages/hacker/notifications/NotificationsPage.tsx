@@ -77,8 +77,8 @@ export default function NotificationsPage() {
               <div className="space-y-3">
                 {groupItems.map((item) => {
                   const content = (
-                    <div className="flex items-start gap-3 rounded-lg border border-[#E5E5E5] bg-white px-4 py-3.5">
-                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-black" />
+                    <div className="flex items-center gap-3 rounded-lg border border-[#E5E5E5] bg-white px-4 py-3.5">
+                      <span className="size-2 shrink-0 rounded-full bg-black" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-3">
                           <p className="truncate text-sm font-normal text-black">

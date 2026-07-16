@@ -80,7 +80,8 @@ export interface Application {
   user_id: string;
   status: ApplicationStatus;
   responses: Record<string, unknown>;
-  application_schema: ApplicationSchemaField[];
+  /** Embedded on GET /applications/me; absent on mutation responses. */
+  application_schema?: ApplicationSchemaField[];
   resume_path: string | null;
   ai_percent: number | null;
   accept_votes: number;

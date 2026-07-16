@@ -29,6 +29,7 @@ WORKDIR /app
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/api ./api
 COPY --from=frontend /app/client/web/dist ./static
+COPY --from=frontend /app/client/web/public/pwa-192x192.png ./client/web/public/pwa-192x192.png
 
 EXPOSE 8080
 CMD ["./api"]

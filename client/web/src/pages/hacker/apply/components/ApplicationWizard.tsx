@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
@@ -11,6 +11,7 @@ import {
   buildDefaultValues,
   deriveSections,
   groupFieldsBySection,
+  resolveResumeSectionId,
 } from "@/shared/lib/schema-utils";
 import type { Application, ApplicationSchemaField } from "@/types";
 
@@ -22,6 +23,7 @@ import {
   updateMyApplication,
   uploadResumeToSignedURL as uploadToSignedURL,
 } from "../api";
+import { AgreementsStep } from "../steps/AgreementsStep";
 import { ReviewStep } from "../steps/ReviewStep";
 import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
 import { SponsorInfoStep } from "../steps/SponsorInfoStep";
@@ -35,6 +37,13 @@ interface ApplicationWizardProps {
 
 const PDF_MIME_TYPE = "application/pdf";
 const MAX_RESUME_SIZE_MB = MAX_RESUME_UPLOAD_SIZE_BYTES / (1024 * 1024);
+const AUTOSAVE_DEBOUNCE_MS = 1200;
+
+type AutosaveState = "idle" | "saving" | "saved" | "error";
+
+function stepStorageKey(applicationId: string): string {
+  return `harp-apply-step:${applicationId}`;
+}
 
 /** Sections that become wizard steps, derived dynamically from the schema. */
 
@@ -87,18 +96,23 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<Application | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
   const [applicationsEnabled, setApplicationsEnabled] = useState(true);
+  // Schema is captured once from the initial load; mutation responses
+  // (PATCH/DELETE) don't embed it and must not wipe it.
+  const [schemaFields, setSchemaFields] = useState<ApplicationSchemaField[]>(
+    [],
+  );
 
   const isResumeBusy = isUploadingResume || isDeletingResume;
+  const isDraft = application?.status === "draft";
 
-  // Schema from the loaded application
-  const schemaFields = useMemo(
-    () => application?.application_schema ?? [],
-    [application?.application_schema],
-  );
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Serializes saves so a slow request can't land after (and overwrite) a
+  // newer one.
+  const saveChain = useRef<Promise<boolean>>(Promise.resolve(true));
 
   // Derive sections from the schema
   const schemaSections = useMemo(
@@ -140,6 +154,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     return map;
   }, [schemaSections, grouped]);
 
+  // Section that hosts the resume uploader: "links" when present, otherwise
+  // the last section, so renaming/removing "links" can't orphan the upload.
+  const resumeSectionId = useMemo(
+    () => resolveResumeSectionId(schemaFields),
+    [schemaFields],
+  );
+
   // Build Zod schema dynamically from application_schema
   const formSchema = useMemo(
     () => buildApplicationSchema(schemaFields),
@@ -167,9 +188,25 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         const app = appRes.data;
         setApplication(app);
         const schema = app.application_schema ?? [];
+        setSchemaFields(schema);
         const formData = transformApplicationToFormData(app, schema);
         const defaults = buildDefaultValues(schema);
         form.reset({ ...defaults, ...formData });
+
+        // Restore the step the user last left off on
+        if (app.status === "draft") {
+          const sections = deriveSections(schema);
+          const groupedFields = groupFieldsBySection(schema);
+          const stepCount =
+            sections.filter((s) => (groupedFields[s.id] ?? []).length > 0)
+              .length + 1;
+          const savedStep = Number(
+            localStorage.getItem(stepStorageKey(app.id)) ?? "0",
+          );
+          if (Number.isInteger(savedStep) && savedStep > 0) {
+            setCurrentStep(Math.min(savedStep, stepCount - 1));
+          }
+        }
       }
 
       if (enabledRes.status === 200 && enabledRes.data) {
@@ -181,17 +218,81 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     loadApplication();
   }, [form]);
 
-  // Clear save success message after 3 seconds
-  useEffect(() => {
-    if (saveSuccess) {
-      const timer = setTimeout(() => setSaveSuccess(false), 3000);
-      return () => clearTimeout(timer);
+  // Clamp so the index stays valid if the schema-driven steps ever shrink
+  const safeCurrentStep = Math.min(currentStep, steps.length - 1);
+
+  // Save the current form values as a draft. Saves run one at a time.
+  const saveDraft = useCallback((): Promise<boolean> => {
+    const run = async (): Promise<boolean> => {
+      setAutosaveState("saving");
+      const payload = transformFormDataToPayload(
+        form.getValues(),
+        schemaFields,
+      );
+      const res = await updateMyApplication(payload);
+      if (res.status === 200 && res.data) {
+        setApplication(res.data);
+        setAutosaveState("saved");
+        return true;
+      }
+      setAutosaveState("error");
+      return false;
+    };
+    const next = saveChain.current.then(run, run);
+    saveChain.current = next.catch(() => false);
+    return next;
+  }, [form, schemaFields]);
+
+  const cancelPendingAutosave = useCallback(() => {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
     }
-  }, [saveSuccess]);
+  }, []);
+
+  const scheduleAutosave = useCallback(() => {
+    cancelPendingAutosave();
+    autosaveTimer.current = setTimeout(() => {
+      autosaveTimer.current = null;
+      void saveDraft();
+    }, AUTOSAVE_DEBOUNCE_MS);
+  }, [cancelPendingAutosave, saveDraft]);
+
+  // Autosave whenever the user edits a field. (form.watch returns an RHF
+  // subscription; the React Compiler flags it as a non-memoizable library
+  // call, which is a benign informational warning here.)
+  useEffect(() => {
+    if (loading || !applicationsEnabled || !isDraft) return;
+    const subscription = form.watch((_, { name }) => {
+      // Ignore programmatic bulk updates like form.reset
+      if (!name) return;
+      scheduleAutosave();
+    });
+    return () => {
+      subscription.unsubscribe();
+      cancelPendingAutosave();
+    };
+  }, [
+    form,
+    loading,
+    applicationsEnabled,
+    isDraft,
+    scheduleAutosave,
+    cancelPendingAutosave,
+  ]);
+
+  // Remember the step the user was on so they can pick up where they left off
+  useEffect(() => {
+    if (!isDraft || !application?.id) return;
+    localStorage.setItem(
+      stepStorageKey(application.id),
+      String(safeCurrentStep),
+    );
+  }, [isDraft, application?.id, safeCurrentStep]);
 
   // Get field IDs for the current step (for partial validation)
   const getCurrentStepFieldIds = (): string[] => {
-    const stepDef = steps[currentStep];
+    const stepDef = steps[safeCurrentStep];
     if (!stepDef || stepDef.id === "review") {
       return [];
     }
@@ -214,18 +315,14 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const isValid = await validateCurrentStep();
     if (!isValid) return;
 
-    // Autosave progress before advancing
+    // Save progress before advancing
+    cancelPendingAutosave();
     setSaving(true);
-    const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData, schemaFields);
-    const res = await updateMyApplication(payload);
+    const saved = await saveDraft();
     setSaving(false);
 
-    if (res.status === 200 && res.data) {
-      setApplication(res.data);
-    } else {
-      setApiError(res.error || "Failed to save progress");
-      errorAlert(res);
+    if (!saved) {
+      setApiError("Failed to save progress");
       return;
     }
 
@@ -261,19 +358,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
 
     // Save current state first
-    const formData = form.getValues();
-    const payload = transformFormDataToPayload(formData, schemaFields);
-    const saveRes = await updateMyApplication(payload);
+    cancelPendingAutosave();
+    const saved = await saveDraft();
 
-    if (saveRes.status !== 200) {
-      setApiError(saveRes.error || "Failed to save before submitting");
-      errorAlert(saveRes);
+    if (!saved) {
+      setApiError("Failed to save before submitting");
       setSubmitting(false);
       return;
-    }
-
-    if (saveRes.data) {
-      setApplication(saveRes.data);
     }
 
     // Now submit
@@ -285,6 +376,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
     if (submitRes.status === 200 && submitRes.data) {
       setApplication(submitRes.data);
+      if (application?.id) {
+        localStorage.removeItem(stepStorageKey(application.id));
+      }
       navigate("/app/status");
     } else {
       setApiError(submitRes.error || "Failed to submit application");
@@ -321,7 +415,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
 
     setApiError(null);
-    setSaveSuccess(false);
     setIsUploadingResume(true);
 
     const uploadURLRes = await getResumeUploadURL();
@@ -347,7 +440,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     });
     if (saveRes.status === 200 && saveRes.data) {
       setApplication(saveRes.data);
-      setSaveSuccess(true);
+      setAutosaveState("saved");
     } else {
       setApiError(saveRes.error || "Failed to save resume");
       errorAlert(saveRes);
@@ -370,13 +463,12 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }
 
     setApiError(null);
-    setSaveSuccess(false);
     setIsDeletingResume(true);
 
     const res = await deleteResume();
     if (res.status === 200 && res.data) {
       setApplication(res.data);
-      setSaveSuccess(true);
+      setAutosaveState("saved");
     } else {
       setApiError(res.error || "Failed to delete resume");
       errorAlert(res);
@@ -400,7 +492,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Applications closed
   if (!applicationsEnabled) {
     return (
-      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-3xl">
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
         <h1 className="text-3xl font-light tracking-tight text-black">
           Applications closed
         </h1>
@@ -418,7 +510,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Read-only mode if application is already submitted
   if (application && application.status !== "draft") {
     return (
-      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-3xl">
+      <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
         <h1 className="text-3xl font-light tracking-tight text-black">
           Application submitted
         </h1>
@@ -445,7 +537,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Render current step
   const renderStep = () => {
-    const stepDef = steps[currentStep];
+    const stepDef = steps[safeCurrentStep];
     if (!stepDef) return null;
 
     // Last step is always Review
@@ -457,6 +549,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           schema={schemaFields}
           hasResume={Boolean(application?.resume_path)}
           sectionStepMap={sectionStepMap}
+          resumeSectionId={resumeSectionId}
         />
       );
     }
@@ -464,16 +557,27 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const section = stepDef.id;
     const fields = grouped[section] ?? [];
 
-    // Links section gets special handling for resume upload
-    if (section === "links") {
+    // The resume section gets special handling for resume upload
+    if (section === resumeSectionId) {
       return (
         <SponsorInfoStep
+          sectionLabel={sectionLabels[section] ?? section}
           fields={fields}
           hasResume={Boolean(application?.resume_path)}
           isUploadingResume={isUploadingResume}
           isDeletingResume={isDeletingResume}
           onResumeSelected={uploadResume}
           onDeleteResume={removeResume}
+        />
+      );
+    }
+
+    // Agreements section gets a dedicated accordion-based layout
+    if (section === "agreements") {
+      return (
+        <AgreementsStep
+          sectionLabel={sectionLabels[section] ?? section}
+          fields={fields}
         />
       );
     }
@@ -503,18 +607,20 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     );
   };
 
+  // The top back button always exits to the homepage; step navigation
+  // happens only through the bottom bar. Flush any pending autosave first.
   const handleBack = () => {
-    if (currentStep === 0) {
-      navigate("/app");
-    } else {
-      goToPreviousStep();
+    if (autosaveTimer.current) {
+      cancelPendingAutosave();
+      void saveDraft();
     }
+    navigate("/app");
   };
 
   return (
-    <div className="mx-auto w-full max-w-md px-5 pt-4 pb-32 md:max-w-3xl md:px-8">
+    <div className="mx-auto w-full max-w-md px-5 pt-4 pb-32 md:max-w-5xl md:px-8">
       <StepIndicator
-        currentStep={currentStep}
+        currentStep={safeCurrentStep}
         totalSteps={steps.length}
         onBack={handleBack}
       />
@@ -528,23 +634,35 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           </Alert>
         )}
 
-        {saveSuccess && (
-          <p className="mb-4 text-xs font-light text-[#09D082]">Saved</p>
-        )}
+        <p
+          aria-live="polite"
+          className={`mb-4 h-4 text-xs font-light ${
+            autosaveState === "error"
+              ? "text-red-500"
+              : autosaveState === "saved"
+                ? "text-[#09D082]"
+                : "text-[#8A8A8A]"
+          }`}
+        >
+          {autosaveState === "saving" && "Saving..."}
+          {autosaveState === "saved" && "Saved"}
+          {autosaveState === "error" &&
+            "Couldn't save your changes — check your connection"}
+        </p>
 
         <FormProvider {...form}>
           <form onSubmit={(e) => e.preventDefault()}>
             {renderStep()}
 
             <StepNavigation
-              currentStep={currentStep}
+              currentStep={safeCurrentStep}
               onPrevious={goToPreviousStep}
               onNext={goToNextStep}
               onSubmit={submitApplication}
               isSaving={saving}
               isSubmitting={submitting}
               isResumeBusy={isResumeBusy}
-              isLastStep={currentStep === steps.length - 1}
+              isLastStep={safeCurrentStep === steps.length - 1}
             />
           </form>
         </FormProvider>

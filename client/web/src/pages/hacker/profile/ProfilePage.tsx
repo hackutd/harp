@@ -1,15 +1,15 @@
 import {
   Bell,
-  ChevronRight,
+  Eye,
   FileText,
   Loader2,
   LogOut,
-  QrCode,
   Trash2,
   Upload,
 } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
 import { AdminPortalButton } from "@/components/AdminPortalButton";
@@ -38,7 +38,7 @@ import {
   updateMyApplication,
   uploadResumeToSignedURL,
 } from "../apply/api";
-import { HackerQR } from "../components/HackerQR";
+import { ResumePreviewDialog } from "../apply/components/ResumePreviewDialog";
 import { deleteMyAccount } from "./api";
 
 const MAX_RESUME_SIZE_MB = MAX_RESUME_SIZE_BYTES / (1024 * 1024);
@@ -73,7 +73,6 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [application, setApplication] = useState<Application | null>(null);
-  const [showQR, setShowQR] = useState(false);
   const [resumeBusy, setResumeBusy] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -107,9 +106,20 @@ export default function ProfilePage() {
 
   const handlePushToggle = async (checked: boolean) => {
     if (checked) {
-      await push.enable();
+      const result = await push.enable();
+      if (result === "granted") {
+        toast.success("Notifications enabled");
+      } else if (result === "denied") {
+        toast.error("Notifications blocked", {
+          description:
+            "Allow notifications for this site in your browser settings to receive updates.",
+        });
+      } else {
+        toast.error("Couldn't enable notifications. Please try again.");
+      }
     } else {
       await push.disable();
+      toast.success("Notifications disabled");
     }
   };
 
@@ -216,34 +226,8 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* QR card */}
-      <button
-        type="button"
-        onClick={() => setShowQR((v) => !v)}
-        className="mt-6 flex w-full items-center justify-between rounded-xl bg-black p-5 text-left text-white active:scale-[0.99]"
-      >
-        <div className="flex items-center gap-3">
-          <QrCode className="size-5" strokeWidth={1.5} />
-          <div>
-            <p className="text-sm font-normal">Your QR code</p>
-            <p className="text-xs font-light text-white/60">
-              Check-in, meals & events
-            </p>
-          </div>
-        </div>
-        <ChevronRight
-          className={`size-4 transition-transform ${showQR ? "rotate-90" : ""}`}
-          strokeWidth={1.75}
-        />
-      </button>
-      {showQR && user?.id && (
-        <div className="mt-3 flex justify-center rounded-xl border border-[#E5E5E5] py-6">
-          <HackerQR value={user.id} size={200} />
-        </div>
-      )}
-
       {/* Tavern points placeholder */}
-      <div className="mt-3 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
+      <div className="mt-6 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
         <div>
           <p className="text-sm font-normal text-black">Tavern Points</p>
           <p className="text-xs font-light text-[#8A8A8A]">Coming soon</p>
@@ -258,18 +242,18 @@ export default function ProfilePage() {
         </h2>
         <div className="divide-y divide-[#F0F0F0] rounded-xl border border-[#E5E5E5]">
           {/* Push notifications */}
-          <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex min-h-[68px] items-center justify-between px-5 py-4">
             <div className="flex items-center gap-3">
               <Bell className="size-4.5 text-black" strokeWidth={1.5} />
               <div>
                 <p className="text-sm font-normal text-black">
                   Push notifications
                 </p>
-                {!push.supported && (
-                  <p className="text-xs font-light text-[#8A8A8A]">
-                    Not supported in this browser
-                  </p>
-                )}
+                <p className="text-xs font-light text-[#8A8A8A]">
+                  {push.supported
+                    ? "Decision & event alerts"
+                    : "Not supported in this browser"}
+                </p>
               </div>
             </div>
             <Switch
@@ -280,7 +264,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Resume */}
-          <div className="px-5 py-4">
+          <div className="flex min-h-[68px] flex-col justify-center px-5 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileText className="size-4.5 text-black" strokeWidth={1.5} />
@@ -292,9 +276,22 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              {canEditResume && (
-                <div className="flex items-center gap-1">
-                  {hasResume ? (
+              <div className="flex items-center gap-1">
+                {hasResume && (
+                  <ResumePreviewDialog
+                    trigger={
+                      <button
+                        type="button"
+                        aria-label="View resume"
+                        className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black"
+                      >
+                        <Eye className="size-4" strokeWidth={1.5} />
+                      </button>
+                    }
+                  />
+                )}
+                {canEditResume &&
+                  (hasResume ? (
                     <button
                       type="button"
                       onClick={handleDeleteResume}
@@ -322,9 +319,8 @@ export default function ProfilePage() {
                         <Upload className="size-4" strokeWidth={1.5} />
                       )}
                     </button>
-                  )}
-                </div>
-              )}
+                  ))}
+              </div>
             </div>
             {resumeError && (
               <p className="mt-2 text-xs font-light text-red-500">

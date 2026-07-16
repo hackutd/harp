@@ -1,11 +1,15 @@
+import { Eye } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 
 import {
   deriveSections,
   formatResponseValue,
   groupFieldsBySection,
+  stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
+
+import { ResumePreviewDialog } from "../components/ResumePreviewDialog";
 
 interface ReviewStepProps {
   onEditStep: (stepIndex: number) => void;
@@ -14,6 +18,8 @@ interface ReviewStepProps {
   hasResume: boolean;
   /** Map section id → step index so "Edit" buttons jump to the right step. */
   sectionStepMap: Record<string, number>;
+  /** Section that hosts the resume uploader. */
+  resumeSectionId?: string;
 }
 
 function ReviewSection({
@@ -44,13 +50,43 @@ function ReviewSection({
   );
 }
 
-function ReviewField({ label, value }: { label: string; value: string }) {
+function ReviewField({
+  label,
+  value,
+  truncateLabel = false,
+  stacked = false,
+}: {
+  label: string;
+  value: string;
+  /** Long labels (e.g. agreements) collapse to a single line with an ellipsis. */
+  truncateLabel?: boolean;
+  /** Long answers (e.g. short-answer questions) render below the question. */
+  stacked?: boolean;
+}) {
+  if (stacked) {
+    return (
+      <div className="space-y-1">
+        <span className="block text-xs font-light text-[#8A8A8A]">{label}</span>
+        <p className="text-sm font-light break-words whitespace-pre-wrap text-black">
+          {value || "Not provided"}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-light text-[#8A8A8A]">
+      <span
+        title={truncateLabel ? label : undefined}
+        className={
+          truncateLabel
+            ? "min-w-0 flex-1 truncate text-xs font-light text-[#8A8A8A]"
+            : "shrink-0 text-xs font-light text-[#8A8A8A]"
+        }
+      >
         {label}
       </span>
-      <span className="text-right text-sm font-light text-black">
+      <span className="shrink-0 text-right text-sm font-light text-black">
         {value || "Not provided"}
       </span>
     </div>
@@ -63,6 +99,7 @@ export function ReviewStep({
   schema,
   hasResume,
   sectionStepMap,
+  resumeSectionId,
 }: ReviewStepProps) {
   const form = useFormContext();
   const values = form.watch();
@@ -96,18 +133,44 @@ export function ReviewStep({
               {sectionId === "personal" && userEmail && (
                 <ReviewField label="Email" value={userEmail} />
               )}
-              {fields.map((field) => (
-                <ReviewField
-                  key={field.id}
-                  label={field.label}
-                  value={formatResponseValue(values[field.id], field)}
-                />
-              ))}
-              {sectionId === "links" && (
-                <ReviewField
-                  label="Resume"
-                  value={hasResume ? "Uploaded" : "Not provided"}
-                />
+              {fields.map((field) => {
+                const isAgreement = field.type === "checkbox";
+                const isLongAnswer = field.type === "textarea";
+                return (
+                  <ReviewField
+                    key={field.id}
+                    label={
+                      isAgreement ? stripLabelLinks(field.label) : field.label
+                    }
+                    value={formatResponseValue(values[field.id], field)}
+                    truncateLabel={isAgreement}
+                    stacked={isLongAnswer}
+                  />
+                );
+              })}
+              {sectionId === resumeSectionId && (
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="shrink-0 text-xs font-light text-[#8A8A8A]">
+                    Resume
+                  </span>
+                  {hasResume ? (
+                    <ResumePreviewDialog
+                      trigger={
+                        <button
+                          type="button"
+                          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-light text-black underline underline-offset-2 transition-colors hover:text-[#8A8A8A]"
+                        >
+                          <Eye className="size-3.5" strokeWidth={1.5} />
+                          View resume
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <span className="shrink-0 text-right text-sm font-light text-black">
+                      Not provided
+                    </span>
+                  )}
+                </div>
               )}
             </ReviewSection>
           );

@@ -1,5 +1,16 @@
 import { ChevronLeft, Loader2 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
 interface StepNavigationProps {
@@ -31,7 +42,7 @@ export function StepNavigation({
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[#F0F0F0] bg-white/95 px-5 pt-3 backdrop-blur-sm md:left-(--sidebar-width)"
       style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
     >
-      <div className="mx-auto flex w-full max-w-md items-center gap-3 md:max-w-3xl">
+      <div className="mx-auto flex w-full max-w-md items-center gap-3 md:max-w-5xl">
         {!isFirstStep && (
           <button
             type="button"
@@ -45,15 +56,42 @@ export function StepNavigation({
         )}
 
         {isLastStep ? (
-          <Button
-            type="button"
-            onClick={onSubmit}
-            disabled={busy}
-            className="h-12 flex-1 rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
-          >
-            {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-            {isSubmitting ? "Submitting..." : "Submit application"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                disabled={busy}
+                className="h-12 flex-1 rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+              >
+                {isSubmitting && (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                )}
+                {isSubmitting ? "Submitting..." : "Submit application"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Submit your application?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Once submitted, you won&apos;t be able to make any further
+                  edits to your application. Please double-check your answers
+                  before continuing.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-full">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onSubmit}
+                  disabled={isSubmitting}
+                  className="rounded-full bg-black text-white hover:bg-black/85"
+                >
+                  Submit
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         ) : (
           <Button
             type="button"

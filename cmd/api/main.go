@@ -101,6 +101,17 @@ func main() {
 			privateKey: env.GetString("VAPID_PRIVATE_KEY", ""),
 			subject:    env.GetString("VAPID_SUBJECT", "noreply@example.com"),
 		},
+		appleWallet: appleWalletConfig{
+			enabled:               env.GetBool("APPLE_WALLET_ENABLED", false),
+			passTypeIdentifier:    env.GetString("APPLE_WALLET_PASS_TYPE_IDENTIFIER", ""),
+			teamIdentifier:        env.GetString("APPLE_WALLET_TEAM_IDENTIFIER", ""),
+			organizationName:      env.GetString("APPLE_WALLET_ORGANIZATION_NAME", "HackUTD"),
+			description:           env.GetString("APPLE_WALLET_DESCRIPTION", "HackUTD Hacker Pass"),
+			certificateBase64:     env.GetString("APPLE_WALLET_CERTIFICATE_BASE64", ""),
+			privateKeyBase64:      env.GetString("APPLE_WALLET_PRIVATE_KEY_BASE64", ""),
+			wwdrCertificateBase64: env.GetString("APPLE_WALLET_WWDR_CERTIFICATE_BASE64", ""),
+			iconPath:              env.GetString("APPLE_WALLET_ICON_PATH", "client/web/public/pwa-192x192.png"),
+		},
 	}
 
 	if _, err := time.LoadLocation(cfg.hackathonTimeZone); err != nil {
@@ -169,14 +180,25 @@ func main() {
 		cfg.rateLimiter.TimeFrame,
 	)
 
+	// Apple Wallet signing is optional. If explicitly enabled, invalid or
+	// incomplete signing material is a deployment error.
+	appleWalletPasses, err := newAppleWalletPassGenerator(cfg.appleWallet)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	if appleWalletPasses != nil {
+		logger.Info("Apple Wallet pass generation enabled")
+	}
+
 	// Init app
 	app := &application{
-		config:      cfg,
-		store:       store,
-		logger:      logger,
-		mailer:      mailClient,
-		gcsClient:   gcsClient,
-		rateLimiter: rateLimiter,
+		config:            cfg,
+		store:             store,
+		logger:            logger,
+		mailer:            mailClient,
+		gcsClient:         gcsClient,
+		appleWalletPasses: appleWalletPasses,
+		rateLimiter:       rateLimiter,
 	}
 
 	// Metrics collected

@@ -16,6 +16,7 @@ require (
 	github.com/supertokens/supertokens-golang v0.25.1
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
+	go.mozilla.org/pkcs7 v0.9.0
 	go.uber.org/zap v1.27.1
 )
 

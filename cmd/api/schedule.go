@@ -76,6 +76,35 @@ func (app *application) getHackerScheduleHandler(w http.ResponseWriter, r *http.
 	app.listScheduleHandler(w, r)
 }
 
+// getHackerScheduleDateRange returns configured hackathon start/end dates.
+//
+//	@Summary		Get hackathon date range
+//	@Description	Returns configured hackathon start and end dates so the hacker schedule can render one column per day
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	HackathonDateRangeResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/schedule/date-range [get]
+func (app *application) getHackerScheduleDateRange(w http.ResponseWriter, r *http.Request) {
+	dateRange, err := app.store.Settings.GetHackathonDateRange(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonDateRangeResponse{
+		StartDate:  dateRange.StartDate,
+		EndDate:    dateRange.EndDate,
+		Configured: dateRange.StartDate != nil && dateRange.EndDate != nil,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // listScheduleHandler returns all schedule items (Admin)
 //
 //	@Summary		List schedule (Admin)

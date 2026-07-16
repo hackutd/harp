@@ -1,4 +1,10 @@
-import { type FieldValues, useFormContext } from "react-hook-form";
+import { Check, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import {
+  type ControllerRenderProps,
+  type FieldValues,
+  useFormContext,
+} from "react-hook-form";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -11,12 +17,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { renderLabel } from "@/shared/lib/schema-utils";
 import { cn } from "@/shared/lib/utils";
@@ -29,6 +33,15 @@ const underlineField =
   "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
 
 const fieldLabel = "text-xs font-light text-[#8A8A8A]";
+
+// Dark floating dropdown panel (see design screenshot). Slides down out of the
+// trigger: the zoom/scale is neutralized (`zoom-*-100`) so the motion reads as
+// a slide rather than a fade-into-position, anchored to the top edge.
+const selectContent =
+  "origin-top overflow-hidden rounded-lg border-0 bg-[#3A3A3A] p-0 text-white shadow-2xl ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:duration-500 data-[state=closed]:duration-300 data-[state=open]:!zoom-in-100 data-[state=closed]:!zoom-out-100 data-[side=bottom]:!slide-in-from-top-3 data-[side=top]:!slide-in-from-bottom-3 data-[state=closed]:!slide-out-to-top-3";
+
+const selectItem =
+  "flex w-full cursor-pointer items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-3.5 text-left text-[15px] font-light text-white/90 transition-colors last:border-b-0 hover:bg-white/[0.07] hover:text-white focus-visible:bg-white/[0.07] focus-visible:text-white focus-visible:outline-none";
 
 interface SchemaStepRendererProps {
   sectionLabel: string;
@@ -158,21 +171,23 @@ function SchemaFormField({
               <FormControl>
                 <Input
                   className={underlineField}
-                  type="number"
-                  min={
-                    typeof validation.min === "number"
-                      ? validation.min
-                      : undefined
-                  }
-                  max={
-                    typeof validation.max === "number"
-                      ? validation.max
-                      : undefined
-                  }
+                  type="text"
+                  inputMode="numeric"
                   {...formField}
-                  onChange={(e) =>
-                    formField.onChange(e.target.valueAsNumber || 0)
-                  }
+                  value={formField.value ?? 0}
+                  // Select the whole value on focus so the leading 0 is
+                  // replaced by the first keystroke instead of prepended.
+                  onFocus={(e) => e.target.select()}
+                  onMouseUp={(e) => e.preventDefault()}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^\d.-]/g, "");
+                    if (cleaned === "" || cleaned === "-") {
+                      formField.onChange(0);
+                      return;
+                    }
+                    const num = Number(cleaned);
+                    formField.onChange(Number.isNaN(num) ? 0 : num);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -221,27 +236,7 @@ function SchemaFormField({
                 {field.label}
                 {requiredMark}
               </FormLabel>
-              <Select
-                onValueChange={formField.onChange}
-                value={formField.value ?? ""}
-              >
-                <FormControl>
-                  <SelectTrigger
-                    className={cn(underlineField, "w-full justify-between")}
-                  >
-                    <SelectValue
-                      placeholder={`Select ${field.label.toLowerCase()}`}
-                    />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {(field.options ?? []).map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SchemaSelect field={field} formField={formField} />
               <FormMessage />
             </FormItem>
           )}
@@ -327,4 +322,68 @@ function SchemaFormField({
     default:
       return null;
   }
+}
+
+/**
+ * Select field built on Popover rather than Radix Select. Radix Select teleports
+ * its content into a detached DocumentFragment when closed (ignoring
+ * `forceMount`), so a closing animation is impossible and unmounting the content
+ * drops the selected value. Popover supports proper enter/exit animations, and
+ * we render the selected label ourselves so it always persists.
+ */
+function SchemaSelect({
+  field,
+  formField,
+}: {
+  field: ApplicationSchemaField;
+  formField: ControllerRenderProps<ApplicationFormValues>;
+}) {
+  const [open, setOpen] = useState(false);
+  const value = (formField.value as string) ?? "";
+  const options = field.options ?? [];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <FormControl>
+        <PopoverTrigger
+          onBlur={formField.onBlur}
+          className={cn(
+            underlineField,
+            "flex w-full items-center justify-between gap-2 outline-none",
+            !value && "text-[#8A8A8A]",
+          )}
+        >
+          <span className="truncate">
+            {value || `Select ${field.label.toLowerCase()}`}
+          </span>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+              open && "rotate-180",
+            )}
+          />
+        </PopoverTrigger>
+      </FormControl>
+      <PopoverContent
+        align="start"
+        sideOffset={-6}
+        className={cn(selectContent, "w-[var(--radix-popover-trigger-width)]")}
+      >
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            className={selectItem}
+            onClick={() => {
+              formField.onChange(opt);
+              setOpen(false);
+            }}
+          >
+            <span className="truncate">{opt}</span>
+            {opt === value && <Check className="size-4 shrink-0" />}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 }

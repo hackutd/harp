@@ -91,7 +91,7 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 //	@Accept			json
 //	@Produce		json
 //	@Param			application	body		UpdateApplicationPayload	true	"Fields to update"
-//	@Success		200			{object}	store.Application
+//	@Success		200			{object}	ApplicationWithSchema
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		404			{object}	object{error=string}
@@ -126,6 +126,12 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	// Only update if field is present in the request
 	if req.Responses != nil {
 		// Validate types against the schema before persisting. Required fields are
@@ -134,12 +140,6 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		var responses map[string]interface{}
 		if err := json.Unmarshal(req.Responses, &responses); err != nil {
 			app.badRequestResponse(w, r, errors.New("responses must be a JSON object"))
-			return
-		}
-
-		schema, err := app.store.Settings.GetApplicationSchema(r.Context())
-		if err != nil {
-			app.internalServerError(w, r, err)
 			return
 		}
 
@@ -159,7 +159,12 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+	response := ApplicationWithSchema{
+		Application:       application,
+		ApplicationSchema: schema,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

@@ -1,11 +1,4 @@
-import {
-  Bell,
-  Calendar,
-  ChevronRight,
-  HelpCircle,
-  Mail,
-  MessageSquare,
-} from "lucide-react";
+import { ChevronRight, HelpCircle, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -42,6 +35,14 @@ const STATUS_BADGES: Record<ApplicationStatus, string> = {
   accepted: "Accepted",
   rejected: "Decided",
   waitlisted: "Waitlisted",
+};
+
+const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
+  draft: "bg-gray-100 text-gray-800",
+  submitted: "bg-blue-100 text-blue-800",
+  accepted: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  waitlisted: "bg-yellow-100 text-yellow-800",
 };
 
 function completionPercent(application: Application | null): number {
@@ -89,61 +90,41 @@ export default function DashboardPage() {
 
   const percent = completionPercent(application);
   const badge = application ? STATUS_BADGES[application.status] : "Not started";
+  const badgeColor = application
+    ? STATUS_BADGE_COLORS[application.status]
+    : "bg-white/15";
   const isDraft = !application || application.status === "draft";
 
   const notifications =
     feed.length > 0
-      ? feed.slice(0, 3).map((n, i) => ({
+      ? feed.slice(0, 3).map((n) => ({
           title: n.title,
           body: n.body,
-          active: i === 0,
         }))
       : [
           application?.status === "draft"
             ? {
                 title: "Application progress saved",
                 body: "You can pick up where you left off",
-                active: true,
               }
             : application
               ? {
                   title: `Application ${application.status}`,
                   body: "Check your status for details",
-                  active: true,
                 }
               : {
                   title: "Start your application",
                   body: "Applications for HackUTD 2026 are open",
-                  active: true,
                 },
         ];
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
-      {/* Top icons */}
-      <div className="mb-3 flex items-center justify-end gap-4">
-        <Link
-          to="/app/schedule"
-          aria-label="Schedule"
-          className="text-black active:scale-[0.98]"
-        >
-          <Calendar className="size-5.5" strokeWidth={1.5} />
-        </Link>
-        <Link
-          to="/app/notifications"
-          aria-label="Notifications"
-          className="relative text-black active:scale-[0.98]"
-        >
-          <Bell className="size-5.5" strokeWidth={1.5} />
-          {feed.length > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500" />
-          )}
-        </Link>
-      </div>
-
       {/* Application status card */}
       <div className="rounded-xl bg-[#3A3A38] p-5 text-white">
-        <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-widest uppercase">
+        <span
+          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-widest uppercase ${badgeColor}`}
+        >
           {badge}
         </span>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">
@@ -211,13 +192,9 @@ export default function DashboardPage() {
           {notifications.map((n) => (
             <div
               key={n.title}
-              className="flex items-start gap-3 rounded-lg border border-[#E5E5E5] bg-white px-4 py-3.5"
+              className="flex items-center gap-3 rounded-lg border border-[#E5E5E5] bg-white px-4 py-3.5"
             >
-              <span
-                className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                  n.active ? "bg-black" : "bg-[#C4C4C4]"
-                }`}
-              />
+              <span className="size-2 shrink-0 rounded-full bg-black" />
               <div>
                 <p className="text-sm font-normal text-black">{n.title}</p>
                 <p className="mt-0.5 text-xs font-light text-[#6B6B6B]">

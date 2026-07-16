@@ -1,14 +1,16 @@
-import { FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { Eye, FileText, Loader2, Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useRef } from "react";
 
 import type { ApplicationSchemaField } from "@/types";
 
 import { MAX_RESUME_SIZE_BYTES as MAX_RESUME_UPLOAD_SIZE_BYTES } from "../api";
+import { ResumePreviewDialog } from "../components/ResumePreviewDialog";
 import { SchemaStepRenderer } from "./SchemaStepRenderer";
 
 const MAX_RESUME_SIZE_MB = MAX_RESUME_UPLOAD_SIZE_BYTES / (1024 * 1024);
 
 interface SponsorInfoStepProps {
+  sectionLabel: string;
   fields: ApplicationSchemaField[];
   hasResume: boolean;
   isUploadingResume: boolean;
@@ -18,6 +20,7 @@ interface SponsorInfoStepProps {
 }
 
 export function SponsorInfoStep({
+  sectionLabel,
   fields,
   hasResume,
   isUploadingResume,
@@ -39,10 +42,10 @@ export function SponsorInfoStep({
   return (
     <div className="space-y-7">
       {fields.length > 0 ? (
-        <SchemaStepRenderer sectionLabel="Links & Profiles" fields={fields} />
+        <SchemaStepRenderer sectionLabel={sectionLabel} fields={fields} />
       ) : (
         <h1 className="text-3xl font-light tracking-tight text-black">
-          Links &amp; Profiles
+          {sectionLabel}
         </h1>
       )}
 
@@ -66,19 +69,32 @@ export function SponsorInfoStep({
                 Resume on file
               </span>
             </div>
-            <button
-              type="button"
-              onClick={onDeleteResume}
-              disabled={isResumeBusy}
-              aria-label="Delete resume"
-              className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
-            >
-              {isDeletingResume ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Trash2 className="size-4" strokeWidth={1.5} />
-              )}
-            </button>
+            <div className="flex items-center gap-1">
+              <ResumePreviewDialog
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="View resume"
+                    className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black"
+                  >
+                    <Eye className="size-4" strokeWidth={1.5} />
+                  </button>
+                }
+              />
+              <button
+                type="button"
+                onClick={onDeleteResume}
+                disabled={isResumeBusy}
+                aria-label="Delete resume"
+                className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
+              >
+                {isDeletingResume ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" strokeWidth={1.5} />
+                )}
+              </button>
+            </div>
           </div>
         ) : (
           <button
