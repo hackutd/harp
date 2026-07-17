@@ -56,3 +56,25 @@ The backend runs database migrations automatically on startup. Both the frontend
 **Frontend:** React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui
 
 **Deployment:** GCP (GCR, GCS), multi-stage Docker (scratch), Neon DB
+
+## Apple Wallet passes
+
+The scan page can offer an Apple Wallet pass when it is opened as an installed
+iPhone PWA. Pass generation is disabled by default. To enable it, create a Pass
+Type ID and signing certificate in the Apple Developer portal, then configure
+the backend with:
+
+```dotenv
+APPLE_WALLET_ENABLED=true
+APPLE_WALLET_PASS_TYPE_IDENTIFIER=pass.com.example.hackutd
+APPLE_WALLET_TEAM_IDENTIFIER=YOURTEAMID
+APPLE_WALLET_CERTIFICATE_BASE64=<base64-encoded pass certificate in PEM or DER format>
+APPLE_WALLET_PRIVATE_KEY_BASE64=<base64-encoded unencrypted PKCS#8, PKCS#1, or EC private key>
+APPLE_WALLET_WWDR_CERTIFICATE_BASE64=<base64-encoded Apple WWDR certificate in PEM or DER format>
+```
+
+Optional values are `APPLE_WALLET_ORGANIZATION_NAME`,
+`APPLE_WALLET_DESCRIPTION`, and `APPLE_WALLET_ICON_PATH`. The default icon is
+the PWA icon. Keep the certificate and private key in your deployment's secret
+manager; never commit them to the repository. Apple documents the certificate
+and bundle requirements in [Building a Pass](https://developer.apple.com/documentation/walletpasses/building-a-pass).

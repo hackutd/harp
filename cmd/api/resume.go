@@ -92,7 +92,7 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 //	@Description	Deletes the resume reference from the authenticated user's draft application and best-effort deletes the object from GCS.
 //	@Tags			hackers
 //	@Produce		json
-//	@Success		200	{object}	store.Application
+//	@Success		200	{object}	ApplicationWithSchema
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		404	{object}	object{error=string}
 //	@Failure		409	{object}	object{error=string}
@@ -140,7 +140,73 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ApplicationWithSchema{
+		Application:       application,
+		ApplicationSchema: schema,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getMyResumeDownloadURLHandler returns a signed download URL for the authenticated
+// user's own resume so they can preview it. Works in any application status.
+//
+//	@Summary		Get my resume download URL
+//	@Description	Generates a signed GCS download URL for the authenticated user's resume.
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	ResumeDownloadURLResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Failure		503	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/applications/me/resume-url [get]
+func (app *application) getMyResumeDownloadURLHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("missing user in context"))
+		return
+	}
+
+	application, err := app.store.Application.GetByUserID(r.Context(), user.ID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("application not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if application.ResumePath == nil {
+		app.notFoundResponse(w, r, errors.New("resume not found"))
+		return
+	}
+
+	if app.gcsClient == nil {
+		app.logger.Warnw("resume download url requested but gcs is not configured", "user_id", user.ID)
+		writeJSONError(w, http.StatusServiceUnavailable, "resume downloads are not configured")
+		return
+	}
+
+	downloadURL, err := app.gcsClient.GenerateDownloadURL(r.Context(), *application.ResumePath)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, ResumeDownloadURLResponse{
+		DownloadURL: downloadURL,
+	}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

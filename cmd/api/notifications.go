@@ -22,6 +22,41 @@ type UnsubscribePushPayload struct {
 	Endpoint string `json:"endpoint" validate:"required"`
 }
 
+type NotificationFeedResponse struct {
+	Notifications []store.ScheduledNotification `json:"notifications"`
+}
+
+const notificationFeedLimit = 50
+
+// getNotificationFeedHandler returns sent notifications visible to the current user.
+//
+//	@Summary		Get notification feed
+//	@Description	Returns sent notifications targeted at the current user's role (or all roles), newest first
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	NotificationFeedResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/notifications/feed [get]
+func (app *application) getNotificationFeedHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("user not in context"))
+		return
+	}
+
+	notifications, err := app.store.ScheduledNotifications.ListSentForRole(r.Context(), user.Role, notificationFeedLimit)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, NotificationFeedResponse{Notifications: notifications}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // getVapidPublicKeyHandler returns the VAPID public key for push subscription.
 //
 //	@Summary		Get VAPID public key

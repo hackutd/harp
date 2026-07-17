@@ -62,6 +62,11 @@ func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role Use
 	return args.Get(0).(*User), args.Error(1)
 }
 
+func (m *MockUsersStore) Delete(ctx context.Context, userID string) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
 func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
 	args := m.Called(role)
 	if args.Get(0) == nil {
@@ -136,6 +141,11 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*Application), args.Error(1)
+}
+
+func (m *MockApplicationStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
+	args := m.Called(userID)
+	return args.Get(0).(ApplicationStatus), args.Error(1)
 }
 
 func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
@@ -526,6 +536,14 @@ func (m *MockScheduledNotificationsStore) List(ctx context.Context) ([]Scheduled
 	return args.Get(0).([]ScheduledNotification), args.Error(1)
 }
 
+func (m *MockScheduledNotificationsStore) ListSentForRole(ctx context.Context, role UserRole, limit int) ([]ScheduledNotification, error) {
+	args := m.Called(role, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScheduledNotification), args.Error(1)
+}
+
 func (m *MockScheduledNotificationsStore) Update(ctx context.Context, n *ScheduledNotification) error {
 	args := m.Called(n)
 	return args.Error(0)
@@ -557,6 +575,37 @@ func (m *MockScheduledNotificationsStore) GenerateFromSchedule(ctx context.Conte
 	return args.Get(0).(*ScheduleNotificationGenerationResult), args.Error(1)
 }
 
+// MockWalkInsStore is a mock implementation of the WalkIns interface
+type MockWalkInsStore struct {
+	mock.Mock
+}
+
+func (m *MockWalkInsStore) Enqueue(ctx context.Context, userID string) (bool, int, error) {
+	args := m.Called(userID)
+	return args.Bool(0), args.Int(1), args.Error(2)
+}
+
+func (m *MockWalkInsStore) PromoteNext(ctx context.Context, count int, promotedBy string) ([]User, error) {
+	args := m.Called(count, promotedBy)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]User), args.Error(1)
+}
+
+func (m *MockWalkInsStore) QueueDepth(ctx context.Context) (int, int, error) {
+	args := m.Called()
+	return args.Int(0), args.Int(1), args.Error(2)
+}
+
+func (m *MockWalkInsStore) List(ctx context.Context) ([]WalkIn, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]WalkIn), args.Error(1)
+}
+
 // returns a Storage with all mock implementations
 func NewMockStore() Storage {
 	return Storage{
@@ -570,5 +619,6 @@ func NewMockStore() Storage {
 		Sponsors:               &MockSponsorsStore{},
 		PushSubscriptions:      &MockPushSubscriptionsStore{},
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
+		WalkIns:                &MockWalkInsStore{},
 	}
 }

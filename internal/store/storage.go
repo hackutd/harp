@@ -25,11 +25,13 @@ type Storage struct {
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 		GetByRole(ctx context.Context, role UserRole) ([]User, error)
+		Delete(ctx context.Context, userID string) error
 		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
 		GetByID(ctx context.Context, id string) (*Application, error)
+		GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error
@@ -106,11 +108,18 @@ type Storage struct {
 		Create(ctx context.Context, n *ScheduledNotification) error
 		GetByID(ctx context.Context, id string) (*ScheduledNotification, error)
 		List(ctx context.Context) ([]ScheduledNotification, error)
+		ListSentForRole(ctx context.Context, role UserRole, limit int) ([]ScheduledNotification, error)
 		Update(ctx context.Context, n *ScheduledNotification) error
 		Delete(ctx context.Context, id string) error
 		ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error)
 		MarkSent(ctx context.Context, id string, recipientCount int) error
 		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
+	}
+	WalkIns interface {
+		Enqueue(ctx context.Context, userID string) (inserted bool, position int, err error)
+		PromoteNext(ctx context.Context, count int, promotedBy string) ([]User, error)
+		QueueDepth(ctx context.Context) (pending int, total int, err error)
+		List(ctx context.Context) ([]WalkIn, error)
 	}
 }
 
@@ -126,5 +135,6 @@ func NewStorage(db *sql.DB) Storage {
 		Sponsors:               &SponsorsStore{db: db},
 		PushSubscriptions:      &PushSubscriptionsStore{db: db},
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
+		WalkIns:                &WalkInsStore{db: db},
 	}
 }

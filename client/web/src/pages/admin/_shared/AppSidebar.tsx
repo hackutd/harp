@@ -4,6 +4,7 @@ import {
   Bell,
   Calendar,
   ClipboardList,
+  DoorOpen,
   Handshake,
   ScanLine,
   Settings,
@@ -80,6 +81,11 @@ const superAdminNav = [
     name: "Notifications",
     url: "/admin/sa/notifications",
     icon: Bell,
+  },
+  {
+    name: "Walk-In Queue",
+    url: "/admin/sa/walk-in-queue",
+    icon: DoorOpen,
   },
 ];
 

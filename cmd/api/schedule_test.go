@@ -98,6 +98,60 @@ func TestGetAdminScheduleDateRange(t *testing.T) {
 	})
 }
 
+func TestGetHackerScheduleDateRange(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("returns configured date range for hacker", func(t *testing.T) {
+		start := "2026-03-13"
+		end := "2026-03-15"
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackerScheduleDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		require.NotNil(t, body.Data.StartDate)
+		require.NotNil(t, body.Data.EndDate)
+		assert.Equal(t, start, *body.Data.StartDate)
+		assert.Equal(t, end, *body.Data.EndDate)
+		assert.True(t, body.Data.Configured)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("reports not configured when unset", func(t *testing.T) {
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{}, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackerScheduleDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.False(t, body.Data.Configured)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
 func TestCreateSchedule(t *testing.T) {
 	t.Run("returns 201 on success", func(t *testing.T) {
 		app := newTestApplication(t)

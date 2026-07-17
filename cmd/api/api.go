@@ -23,13 +23,14 @@ import (
 )
 
 type application struct {
-	config           config
-	store            store.Storage
-	logger           *zap.SugaredLogger
-	mailer           mailer.Client
-	gcsClient        gcs.Client
-	rateLimiter      ratelimiter.Limiter
-	dispatcherCancel context.CancelFunc
+	config            config
+	store             store.Storage
+	logger            *zap.SugaredLogger
+	mailer            mailer.Client
+	gcsClient         gcs.Client
+	appleWalletPasses appleWalletPassGenerator
+	rateLimiter       ratelimiter.Limiter
+	dispatcherCancel  context.CancelFunc
 }
 
 type config struct {
@@ -46,6 +47,7 @@ type config struct {
 	supertokens       supertokensConfig
 	publicCORSOrigin  string
 	vapid             vapidConfig
+	appleWallet       appleWalletConfig
 }
 
 type vapidConfig struct {
@@ -166,15 +168,25 @@ func (app *application) mount() http.Handler {
 
 			// Push notifications (any authenticated user)
 			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/feed", app.getNotificationFeedHandler)
 				r.Get("/vapid-public-key", app.getVapidPublicKeyHandler)
 				r.Post("/subscribe", app.subscribePushHandler)
 				r.Delete("/subscribe", app.unsubscribePushHandler)
 			})
 
 			// Hacker Routes
+			r.Get("/schedule", app.getHackerScheduleHandler)
+			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
+			r.Delete("/users/me", app.deleteMyAccountHandler)
+			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
+			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
+
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Get("/enabled", app.getApplicationsEnabled)
+				// Viewing your own resume is allowed in any status,
+				// even after applications close.
+				r.Get("/me/resume-url", app.getMyResumeDownloadURLHandler)
 
 				r.Group(func(r chi.Router) {
 					r.Use(app.ApplicationsEnabledMiddleware)
@@ -271,6 +283,11 @@ func (app *application) mount() http.Handler {
 						r.Put("/meal-groups", app.updateMealGroups)
 						r.Get("/meal-groups/stats", app.getMealGroupStats)
 						r.Put("/applications-enabled", app.setApplicationsEnabled)
+					})
+
+					r.Route("/walk-ins", func(r chi.Router) {
+						r.Get("/", app.getWalkInsHandler)
+						r.Post("/promote", app.promoteWalkInsHandler)
 					})
 
 					r.Route("/applications", func(r chi.Router) {

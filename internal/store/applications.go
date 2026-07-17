@@ -595,6 +595,22 @@ type UserEmailInfo struct {
 	LastName  *string `json:"last_name"`
 }
 
+func (s *ApplicationsStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var status ApplicationStatus
+	err := s.db.QueryRowContext(ctx,
+		`SELECT status FROM applications WHERE user_id = $1`, userID).Scan(&status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return status, nil
+}
+
 func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

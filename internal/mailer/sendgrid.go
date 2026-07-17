@@ -11,23 +11,39 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 )
 
-type SendGridMailer struct {
-	fromEmail string
-	fromName  string
-	client    *sendgrid.Client
+type walkInQueuedData struct {
+	Email         string
+	Position      int
+	HackathonName string
 }
 
-func NewSendGrid(apiKey, fromEmail, fromName string) *SendGridMailer {
+type walkInAcceptedData struct {
+	Email         string
+	HackathonName string
+}
+
+type SendGridMailer struct {
+	fromEmail     string
+	fromName      string
+	hackathonName string
+	client        *sendgrid.Client
+}
+
+func NewSendGrid(apiKey, fromEmail, fromName, hackathonName string) *SendGridMailer {
 	client := sendgrid.NewSendClient(apiKey)
 
+	if hackathonName == "" {
+		hackathonName = DefaultHackathonName
+	}
 	if fromName == "" {
-		fromName = FromName
+		fromName = hackathonName
 	}
 
 	return &SendGridMailer{
-		fromEmail: fromEmail,
-		fromName:  fromName,
-		client:    client,
+		fromEmail:     fromEmail,
+		fromName:      fromName,
+		hackathonName: hackathonName,
+		client:        client,
 	}
 }
 
@@ -50,7 +66,7 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 	}
 
 	var htmlBody bytes.Buffer
-	err = tmpl.Execute(&htmlBody, map[string]string{"Name": toName})
+	err = tmpl.Execute(&htmlBody, map[string]string{"Name": toName, "HackathonName": m.hackathonName})
 	if err != nil {
 		return fmt.Errorf("executing email template: %w", err)
 	}
@@ -60,7 +76,7 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 
 	message := mail.NewV3Mail()
 	message.SetFrom(from)
-	message.Subject = "Your HackUTD QR Code"
+	message.Subject = fmt.Sprintf("Your %s QR Code", m.hackathonName)
 
 	p := mail.NewPersonalization()
 	p.AddTos(to)
@@ -78,6 +94,97 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 	response, err := m.client.Send(message)
 	if err != nil {
 		return fmt.Errorf("sending email: %w", err)
+	}
+	if response.StatusCode >= 400 {
+		return fmt.Errorf("sendgrid returned status %d: %s", response.StatusCode, response.Body)
+	}
+
+	return nil
+}
+
+func (m *SendGridMailer) SendWalkInQueuedEmail(toEmail string, position int) error {
+	tmplData, err := FS.ReadFile("template/walk_in_queued.html")
+	if err != nil {
+		return fmt.Errorf("reading walk_in_queued template: %w", err)
+	}
+
+	tmpl, err := template.New("walk_in_queued").Parse(string(tmplData))
+	if err != nil {
+		return fmt.Errorf("parsing walk_in_queued template: %w", err)
+	}
+
+	var htmlBody bytes.Buffer
+	if err := tmpl.Execute(&htmlBody, walkInQueuedData{Email: toEmail, Position: position, HackathonName: m.hackathonName}); err != nil {
+		return fmt.Errorf("executing walk_in_queued template: %w", err)
+	}
+
+	from := mail.NewEmail(m.fromName, m.fromEmail)
+	to := mail.NewEmail(toEmail, toEmail)
+
+	message := mail.NewV3Mail()
+	message.SetFrom(from)
+	message.Subject = fmt.Sprintf("You're #%d in the %s walk-in queue", position, m.hackathonName)
+
+	p := mail.NewPersonalization()
+	p.AddTos(to)
+	message.AddPersonalizations(p)
+	message.AddContent(mail.NewContent("text/html", htmlBody.String()))
+
+	response, err := m.client.Send(message)
+	if err != nil {
+		return fmt.Errorf("sending walk-in queued email: %w", err)
+	}
+	if response.StatusCode >= 400 {
+		return fmt.Errorf("sendgrid returned status %d: %s", response.StatusCode, response.Body)
+	}
+
+	return nil
+}
+
+func (m *SendGridMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
+	qrPNG, err := qrcode.Encode(userID, qrcode.Medium, 256)
+	if err != nil {
+		return fmt.Errorf("generating QR code: %w", err)
+	}
+	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
+
+	tmplData, err := FS.ReadFile("template/walk_in_accepted.html")
+	if err != nil {
+		return fmt.Errorf("reading walk_in_accepted template: %w", err)
+	}
+
+	tmpl, err := template.New("walk_in_accepted").Parse(string(tmplData))
+	if err != nil {
+		return fmt.Errorf("parsing walk_in_accepted template: %w", err)
+	}
+
+	var htmlBody bytes.Buffer
+	if err := tmpl.Execute(&htmlBody, walkInAcceptedData{Email: toEmail, HackathonName: m.hackathonName}); err != nil {
+		return fmt.Errorf("executing walk_in_accepted template: %w", err)
+	}
+
+	from := mail.NewEmail(m.fromName, m.fromEmail)
+	to := mail.NewEmail(toEmail, toEmail)
+
+	message := mail.NewV3Mail()
+	message.SetFrom(from)
+	message.Subject = fmt.Sprintf("You're in — %s Walk-In Acceptance", m.hackathonName)
+
+	p := mail.NewPersonalization()
+	p.AddTos(to)
+	message.AddPersonalizations(p)
+	message.AddContent(mail.NewContent("text/html", htmlBody.String()))
+
+	attachment := mail.NewAttachment()
+	attachment.SetContent(qrBase64)
+	attachment.SetType("image/png")
+	attachment.SetFilename("hackutd-qrcode.png")
+	attachment.SetDisposition("attachment")
+	message.AddAttachment(attachment)
+
+	response, err := m.client.Send(message)
+	if err != nil {
+		return fmt.Errorf("sending walk-in accepted email: %w", err)
 	}
 	if response.StatusCode >= 400 {
 		return fmt.Errorf("sendgrid returned status %d: %s", response.StatusCode, response.Body)
