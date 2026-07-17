@@ -341,7 +341,7 @@ export default function SchedulePage() {
     <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:max-w-5xl md:px-8 md:pt-10">
       {/* Header */}
       <div className="flex items-center">
-        <h1 className="text-[32px] leading-none font-light tracking-tight text-black">
+        <h1 className="text-[26px] leading-none font-light tracking-tight text-black">
           {days.length > 0 ? formatMonthTitle(days) : "Schedule"}
         </h1>
       </div>

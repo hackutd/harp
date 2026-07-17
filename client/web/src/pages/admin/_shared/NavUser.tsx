@@ -30,7 +30,7 @@ export function NavUser({
     avatar: string;
   };
 }) {
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
   const { user: currentUser, clearUser } = useUserStore();
@@ -53,13 +53,20 @@ export function NavUser({
   };
 
   const handleSwitchView = () => {
-    navigate(inAdminView ? "/app" : "/admin");
+    const target = inAdminView ? "/app" : "/admin";
+    // Close the mobile sidebar sheet first, then defer navigation so Radix's
+    // modal overlays (Sheet + DropdownMenu) can restore `document.body`'s
+    // pointer-events on close. Navigating synchronously unmounts them mid-open,
+    // leaving `<body>` stuck with `pointer-events: none` and the whole next
+    // page (e.g. the hacker bottom nav) unclickable.
+    setOpenMobile(false);
+    requestAnimationFrame(() => navigate(target));
   };
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"

@@ -41,7 +41,6 @@ export function ResumePreviewDialog({ trigger }: ResumePreviewDialogProps) {
     const res = await requestResumeDownloadURL();
     if (res.status === 200 && res.data) {
       setUrl(res.data.download_url);
-      window.open(res.data.download_url, "_blank", "noopener,noreferrer");
     } else {
       setError(res.error || "Couldn't load your resume. Please try again.");
     }
