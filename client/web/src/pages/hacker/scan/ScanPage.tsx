@@ -52,9 +52,7 @@ export default function ScanPage() {
 
   return (
     <div className="mx-auto flex min-h-[70svh] max-w-2xl flex-col items-center justify-center px-5 md:px-10">
-      <h1 className="text-2xl font-light tracking-tight text-black">
-        QR Code
-      </h1>
+      <h1 className="text-2xl font-light tracking-tight text-black">QR Code</h1>
       <p className="mt-1 text-center text-sm font-light text-[#8A8A8A]">
         Show this at check-in, meals, and events
       </p>
