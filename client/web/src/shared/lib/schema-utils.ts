@@ -115,16 +115,20 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
       return z.string().optional().default("");
     }
     case "phone": {
+      // Stored canonically as +1 followed by 10 US digits (see PhoneInput).
+      const usPhone = /^\+1\d{10}$/;
+      const msg = "Enter a 10-digit US phone number";
       if (field.required) {
         return z
           .string()
           .min(1, `${field.label} is required`)
-          .regex(
-            /^\+[1-9]\d{1,14}$/,
-            "Phone must be in E.164 format (e.g., +12025551234)",
-          );
+          .regex(usPhone, msg);
       }
-      return z.string().optional().default("");
+      return z
+        .string()
+        .optional()
+        .default("")
+        .refine((v) => !v || usPhone.test(v), msg);
     }
     case "number": {
       let n = z.coerce.number({ message: `${field.label} is required` });
