@@ -36,6 +36,7 @@ const HackerProfilePage = lazy(
 const HackerNotificationsPage = lazy(
   () => import("@/pages/hacker/notifications/NotificationsPage"),
 );
+const HackerFAQPage = lazy(() => import("@/pages/hacker/faq/FAQPage"));
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
@@ -61,6 +62,7 @@ const AdminGradingPage = lazy(
   () => import("@/pages/admin/reviews/grading/GradingPage"),
 );
 const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
+const FAQAdminPage = lazy(() => import("@/pages/admin/faq/FAQPage"));
 
 export const router = createBrowserRouter([
   {
@@ -152,6 +154,14 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
           },
+          {
+            path: "faq",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerFAQPage />
+              </Suspense>
+            ),
+          },
         ],
       },
 
@@ -215,6 +225,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <SponsorsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "faq",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <FAQAdminPage />
               </Suspense>
             ),
           },

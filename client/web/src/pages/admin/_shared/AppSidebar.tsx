@@ -6,6 +6,7 @@ import {
   ClipboardList,
   DoorOpen,
   Handshake,
+  MessageSquare,
   ScanLine,
   Settings,
   Star,
@@ -58,6 +59,11 @@ const eventNav = [
     name: "Sponsors",
     url: "/admin/sponsors",
     icon: Handshake,
+  },
+  {
+    name: "FAQ",
+    url: "/admin/faq",
+    icon: MessageSquare,
   },
 ];
 

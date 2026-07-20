@@ -66,29 +66,36 @@ export default function PermissionsTab() {
   const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
     useState(true);
   const [adminSponsorEditEnabled, setAdminSponsorEditEnabled] = useState(true);
+  const [adminFAQEditEnabled, setAdminFAQEditEnabled] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [applicationsSaving, setApplicationsSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [sponsorSaving, setSponsorSaving] = useState(false);
+  const [faqSaving, setFaqSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
     async function fetchSettings() {
-      const [applicationsRes, scheduleRes, sponsorRes] = await Promise.all([
-        getRequest<{ enabled: boolean }>(
-          "/applications/enabled",
-          "applications enabled",
-        ),
-        getRequest<{ enabled: boolean }>(
-          "/superadmin/settings/admin-schedule-edit-toggle",
-          "admin schedule edit toggle",
-        ),
-        getRequest<{ enabled: boolean }>(
-          "/superadmin/settings/admin-sponsor-edit-toggle",
-          "admin sponsor edit toggle",
-        ),
-      ]);
+      const [applicationsRes, scheduleRes, sponsorRes, faqRes] =
+        await Promise.all([
+          getRequest<{ enabled: boolean }>(
+            "/applications/enabled",
+            "applications enabled",
+          ),
+          getRequest<{ enabled: boolean }>(
+            "/superadmin/settings/admin-schedule-edit-toggle",
+            "admin schedule edit toggle",
+          ),
+          getRequest<{ enabled: boolean }>(
+            "/superadmin/settings/admin-sponsor-edit-toggle",
+            "admin sponsor edit toggle",
+          ),
+          getRequest<{ enabled: boolean }>(
+            "/superadmin/settings/admin-faq-edit-toggle",
+            "admin FAQ edit toggle",
+          ),
+        ]);
 
       if (applicationsRes.status === 200 && applicationsRes.data) {
         setApplicationsEnabled(applicationsRes.data.enabled);
@@ -106,6 +113,12 @@ export default function PermissionsTab() {
         setAdminSponsorEditEnabled(sponsorRes.data.enabled);
       } else {
         errorAlert(sponsorRes);
+      }
+
+      if (faqRes.status === 200 && faqRes.data) {
+        setAdminFAQEditEnabled(faqRes.data.enabled);
+      } else {
+        errorAlert(faqRes);
       }
 
       setLoading(false);
@@ -188,6 +201,28 @@ export default function PermissionsTab() {
     setSponsorSaving(false);
   }
 
+  async function handleFAQToggle(nextValue: boolean) {
+    setFaqSaving(true);
+    const res = await postRequest<{ enabled: boolean }>(
+      "/superadmin/settings/admin-faq-edit-toggle",
+      { enabled: nextValue },
+      "admin FAQ edit toggle",
+    );
+
+    if (res.status === 200 && res.data) {
+      setAdminFAQEditEnabled(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Admins can now edit FAQs."
+          : "Admins are now blocked from editing FAQs.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setFaqSaving(false);
+  }
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg text-zinc-100">Permissions</h3>
@@ -220,6 +255,15 @@ export default function PermissionsTab() {
         checked={adminSponsorEditEnabled}
         disabled={loading || sponsorSaving}
         onCheckedChange={handleSponsorToggle}
+      />
+
+      <PermissionToggle
+        id="admin-faq-edit-toggle"
+        label="Admin FAQ Editing"
+        description="When disabled, only super admins can create, update, or delete FAQs."
+        checked={adminFAQEditEnabled}
+        disabled={loading || faqSaving}
+        onCheckedChange={handleFAQToggle}
       />
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>

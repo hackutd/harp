@@ -238,6 +238,16 @@ func (m *MockSettingsStore) SetAdminSponsorEditEnabled(ctx context.Context, enab
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetAdminFAQEditEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -482,6 +492,34 @@ func (m *MockSponsorsStore) UpdateLogo(ctx context.Context, id string, logoData 
 	return args.Error(0)
 }
 
+// MockFAQsStore is a mock implementation of the FAQs interface
+type MockFAQsStore struct {
+	mock.Mock
+}
+
+func (m *MockFAQsStore) List(ctx context.Context) ([]FAQ, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]FAQ), args.Error(1)
+}
+
+func (m *MockFAQsStore) Create(ctx context.Context, faq *FAQ) error {
+	args := m.Called(faq)
+	return args.Error(0)
+}
+
+func (m *MockFAQsStore) Update(ctx context.Context, faq *FAQ) error {
+	args := m.Called(faq)
+	return args.Error(0)
+}
+
+func (m *MockFAQsStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 // MockPushSubscriptionsStore is a mock implementation of the PushSubscriptions interface
 type MockPushSubscriptionsStore struct {
 	mock.Mock
@@ -617,6 +655,7 @@ func NewMockStore() Storage {
 		Scans:                  &MockScansStore{},
 		Schedule:               &MockScheduleStore{},
 		Sponsors:               &MockSponsorsStore{},
+		FAQs:                   &MockFAQsStore{},
 		PushSubscriptions:      &MockPushSubscriptionsStore{},
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
 		WalkIns:                &MockWalkInsStore{},
