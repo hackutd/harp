@@ -33,3 +33,18 @@ func (app *application) getPublicScheduleHandler(w http.ResponseWriter, r *http.
 func (app *application) getPublicSponsorsHandler(w http.ResponseWriter, r *http.Request) {
 	app.listSponsorsHandler(w, r)
 }
+
+// getPublicFAQHandler returns all FAQs (public, API key auth)
+//
+//	@Summary		Get FAQs (Public)
+//	@Description	Returns all frequently asked questions, ordered by display order
+//	@Tags			public
+//	@Produce		json
+//	@Param			X-API-Key	header		string	true	"API Key"
+//	@Success		200			{object}	FAQListResponse
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
+//	@Router			/public/faq [get]
+func (app *application) getPublicFAQHandler(w http.ResponseWriter, r *http.Request) {
+	app.listFAQsHandler(w, r)
+}

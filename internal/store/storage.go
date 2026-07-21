@@ -64,6 +64,8 @@ type Storage struct {
 		SetApplicationsEnabled(ctx context.Context, enabled bool) error
 		GetAdminSponsorEditEnabled(ctx context.Context) (bool, error)
 		SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error
+		GetAdminFAQEditEnabled(ctx context.Context) (bool, error)
+		SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
 		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error)
@@ -97,6 +99,12 @@ type Storage struct {
 		Delete(ctx context.Context, id string) error
 		GetByID(ctx context.Context, id string) (*Sponsor, error)
 		UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error
+	}
+	FAQs interface {
+		List(ctx context.Context) ([]FAQ, error)
+		Create(ctx context.Context, faq *FAQ) error
+		Update(ctx context.Context, faq *FAQ) error
+		Delete(ctx context.Context, id string) error
 	}
 	PushSubscriptions interface {
 		Upsert(ctx context.Context, sub *PushSubscription) error
@@ -133,6 +141,7 @@ func NewStorage(db *sql.DB) Storage {
 		Scans:                  &ScansStore{db: db},
 		Schedule:               &ScheduleStore{db: db},
 		Sponsors:               &SponsorsStore{db: db},
+		FAQs:                   &FAQsStore{db: db},
 		PushSubscriptions:      &PushSubscriptionsStore{db: db},
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
 		WalkIns:                &WalkInsStore{db: db},

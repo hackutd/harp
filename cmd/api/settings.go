@@ -197,6 +197,14 @@ type AdminSponsorEditToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetAdminFAQEditTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminFAQEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 type SetHackathonDateRangePayload struct {
 	StartDate string `json:"start_date" validate:"required"`
 	EndDate   string `json:"end_date" validate:"required"`
@@ -388,6 +396,68 @@ func (app *application) setAdminSponsorEditToggle(w http.ResponseWriter, r *http
 	}
 
 	response := AdminSponsorEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getAdminFAQEditToggle returns whether admins can edit FAQs
+//
+//	@Summary		Get admin FAQ edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete FAQs
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminFAQEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-faq-edit-toggle [get]
+func (app *application) getAdminFAQEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminFAQEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminFAQEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminFAQEditToggle updates whether admins can edit FAQs
+//
+//	@Summary		Set admin FAQ edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete FAQs
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminFAQEditTogglePayload	true	"Admin FAQ editing enabled state"
+//	@Success		200		{object}	AdminFAQEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-faq-edit-toggle [post]
+func (app *application) setAdminFAQEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminFAQEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminFAQEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminFAQEditToggleResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

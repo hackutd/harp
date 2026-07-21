@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { ChevronRight, HelpCircle, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -23,10 +24,17 @@ const IMPORTANT_DATES: ImportantDate[] = [
   { month: "Apr", day: "04", label: "Kickoff" },
 ];
 
-const QUICK_LINKS = [
+interface QuickLink {
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+  to?: string;
+}
+
+const QUICK_LINKS: QuickLink[] = [
   { label: "Help", icon: HelpCircle, href: "mailto:hello@hackutd.co" },
   { label: "Contact", icon: Mail, href: "mailto:hello@hackutd.co" },
-  { label: "FAQ", icon: MessageSquare, href: "https://hackutd.co" },
+  { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
 ];
 
 const STATUS_BADGES: Record<ApplicationStatus, string> = {
@@ -208,16 +216,25 @@ export default function DashboardPage() {
 
       {/* Quick links */}
       <section className="mt-5 grid grid-cols-3 gap-3">
-        {QUICK_LINKS.map(({ label, icon: Icon, href }) => (
-          <a
-            key={label}
-            href={href}
-            className="flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]"
-          >
-            <Icon className="size-5 text-black" strokeWidth={1.5} />
-            <span className="text-sm font-normal text-black">{label}</span>
-          </a>
-        ))}
+        {QUICK_LINKS.map(({ label, icon: Icon, href, to }) => {
+          const className =
+            "flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]";
+          const content = (
+            <>
+              <Icon className="size-5 text-black" strokeWidth={1.5} />
+              <span className="text-sm font-normal text-black">{label}</span>
+            </>
+          );
+          return to ? (
+            <Link key={label} to={to} className={className}>
+              {content}
+            </Link>
+          ) : (
+            <a key={label} href={href} className={className}>
+              {content}
+            </a>
+          );
+        })}
       </section>
     </div>
   );

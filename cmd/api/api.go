@@ -95,6 +95,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/scans",
 		"admin/schedule",
 		"admin/sponsors",
+		"admin/faq",
 		"superadmin/applications",
 		"superadmin/settings",
 		"superadmin/users"
@@ -146,6 +147,7 @@ func (app *application) mount() http.Handler {
 			r.Use(app.APIKeyMiddleware)
 			r.Get("/schedule", app.getPublicScheduleHandler)
 			r.Get("/sponsors", app.getPublicSponsorsHandler)
+			r.Get("/faq", app.getPublicFAQHandler)
 		})
 
 		// Auth endpoints not handled by SuperTokens
@@ -177,6 +179,7 @@ func (app *application) mount() http.Handler {
 			// Hacker Routes
 			r.Get("/schedule", app.getHackerScheduleHandler)
 			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
+			r.Get("/faq", app.getHackerFAQHandler)
 			r.Delete("/users/me", app.deleteMyAccountHandler)
 			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
 			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
@@ -256,6 +259,19 @@ func (app *application) mount() http.Handler {
 							r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
 						})
 					})
+
+					// FAQ
+					r.Route("/faq", func(r chi.Router) {
+						r.Get("/", app.listFAQsHandler)
+						r.Get("/edit-permission", app.getFAQEditPermissionHandler)
+
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminFAQEditPermissionMiddleware)
+							r.Post("/", app.createFAQHandler)
+							r.Put("/{faqID}", app.updateFAQHandler)
+							r.Delete("/{faqID}", app.deleteFAQHandler)
+						})
+					})
 				})
 			})
 
@@ -276,6 +292,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
 						r.Get("/admin-sponsor-edit-toggle", app.getAdminSponsorEditToggle)
 						r.Post("/admin-sponsor-edit-toggle", app.setAdminSponsorEditToggle)
+						r.Get("/admin-faq-edit-toggle", app.getAdminFAQEditToggle)
+						r.Post("/admin-faq-edit-toggle", app.setAdminFAQEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Put("/scan-types", app.updateScanTypesHandler)
