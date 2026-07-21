@@ -619,7 +619,8 @@ func (app *application) setHackerPackURL(w http.ResponseWriter, r *http.Request)
 	}
 
 	url := strings.TrimSpace(req.URL)
-	if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+	lower := strings.ToLower(url)
+	if url != "" && !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
 		app.badRequestResponse(w, r, errors.New("url must start with http:// or https://"))
 		return
 	}

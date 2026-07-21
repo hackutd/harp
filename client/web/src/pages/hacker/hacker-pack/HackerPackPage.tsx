@@ -26,7 +26,7 @@ export default function HackerPackPage() {
   }, []);
 
   return (
-    <div className="flex h-svh flex-col md:h-[calc(100svh-1rem)]">
+    <div className="flex h-[calc(100svh-6rem)] flex-col md:h-svh">
       <div className="mx-auto w-full max-w-2xl px-5 pt-4 md:max-w-5xl md:px-8 md:pt-6">
         <button
           type="button"
