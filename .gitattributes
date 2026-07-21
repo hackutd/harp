@@ -1,0 +1,16 @@
+# Shell scripts must always use LF line endings
+*.sh text eol=lf
+
+# SQL files
+*.sql text eol=lf
+
+# Go source files
+*.go text eol=lf
+
+# Yaml files
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Docker files
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf

@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: adminpassword
     volumes:
       - dev-db-data:/var/lib/postgresql/data
-      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -49,6 +49,8 @@ services:
       - APP_URL=http://localhost:8080
       - FRONTEND_URL=http://localhost:3000
       - ENV=development
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     ports:
       - "8080:8080"
     volumes:
@@ -64,6 +66,7 @@ services:
       dockerfile: dev.Dockerfile
     environment:
       - API_PROXY_TARGET=http://go-dev:8080
+      - VITE_GOOGLE_AUTH_ENABLED=true
     ports:
       - "3000:3000"
     volumes:

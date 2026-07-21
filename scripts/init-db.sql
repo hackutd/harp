@@ -1,0 +1,2 @@
+CREATE DATABASE supertokens;
+GRANT ALL PRIVILEGES ON DATABASE supertokens TO admin;

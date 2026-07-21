@@ -167,12 +167,12 @@ func main() {
 	if cfg.gcs.bucketName != "" {
 		gc, err := gcs.New(context.Background(), cfg.gcs.bucketName)
 		if err != nil {
-			logger.Fatal("failed to initialize gcs client", zap.Error(err))
+			logger.Warnw("failed to initialize gcs client, continuing without it", zap.Error(err))
+		} else {
+			defer gc.Close()
+			gcsClient = gc
+			logger.Infow("gcs client initialized", "bucket", cfg.gcs.bucketName)
 		}
-		defer gc.Close()
-
-		gcsClient = gc
-		logger.Infow("gcs client initialized", "bucket", cfg.gcs.bucketName)
 	}
 
 	// Init rate limiter
