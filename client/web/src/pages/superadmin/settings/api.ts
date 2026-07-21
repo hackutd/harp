@@ -2,6 +2,7 @@ import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
 import type {
+  HackerPackURLResult,
   MealGroupsResult,
   MealGroupStatsResult,
   ResetHackathonOptions,
@@ -44,5 +45,25 @@ export async function fetchMealGroupStats(
     "/superadmin/settings/meal-groups/stats",
     "meal group stats",
     signal,
+  );
+}
+
+export async function fetchHackerPackURL(
+  signal?: AbortSignal,
+): Promise<ApiResponse<HackerPackURLResult>> {
+  return getRequest<HackerPackURLResult>(
+    "/superadmin/settings/hacker-pack-url",
+    "hacker pack URL",
+    signal,
+  );
+}
+
+export async function updateHackerPackURL(
+  url: string,
+): Promise<ApiResponse<HackerPackURLResult>> {
+  return postRequest<HackerPackURLResult>(
+    "/superadmin/settings/hacker-pack-url",
+    { url },
+    "hacker pack URL",
   );
 }

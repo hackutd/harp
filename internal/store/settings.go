@@ -23,6 +23,7 @@ const SettingsKeyAdminFAQEditEnabled = "admin_faq_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
 const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
+const SettingsKeyHackerPackURL = "hacker_pack_url"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -509,6 +510,55 @@ func (s *SettingsStore) SetHackathonDateRange(ctx context.Context, dateRange Hac
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackathonDateRange, string(jsonValue))
+	return err
+}
+
+// GetHackerPackURL returns the configured Hacker Pack Notion URL.
+// Defaults to an empty string if the row does not exist (not configured).
+func (s *SettingsStore) GetHackerPackURL(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyHackerPackURL).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	var url string
+	if err := json.Unmarshal(value, &url); err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+// SetHackerPackURL updates the Hacker Pack Notion URL.
+func (s *SettingsStore) SetHackerPackURL(ctx context.Context, url string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(url)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackerPackURL, string(jsonValue))
 	return err
 }
 

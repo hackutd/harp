@@ -224,6 +224,14 @@ type HackathonDateRangeResponse struct {
 	Configured bool    `json:"configured"`
 }
 
+type SetHackerPackURLPayload struct {
+	URL string `json:"url"`
+}
+
+type HackerPackURLResponse struct {
+	URL string `json:"url"`
+}
+
 // setReviewAssignmentToggle updates the review assignment enabled setting
 //
 //	@Summary		Set review assignment enabled state for a user (Super Admin)
@@ -560,6 +568,91 @@ func (app *application) setHackathonDateRange(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getHackerPackURL returns the configured Hacker Pack Notion URL
+//
+//	@Summary		Get Hacker Pack URL (Super Admin)
+//	@Description	Returns the configured Hacker Pack Notion URL
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	HackerPackURLResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hacker-pack-url [get]
+func (app *application) getHackerPackURL(w http.ResponseWriter, r *http.Request) {
+	url, err := app.store.Settings.GetHackerPackURL(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, HackerPackURLResponse{URL: url}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setHackerPackURL updates the Hacker Pack Notion URL
+//
+//	@Summary		Set Hacker Pack URL (Super Admin)
+//	@Description	Updates the Hacker Pack Notion URL embedded on the hacker-facing Hacker Pack page
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			url	body		SetHackerPackURLPayload	true	"Hacker Pack Notion URL"
+//	@Success		200	{object}	HackerPackURLResponse
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hacker-pack-url [post]
+func (app *application) setHackerPackURL(w http.ResponseWriter, r *http.Request) {
+	var req SetHackerPackURLPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	url := strings.TrimSpace(req.URL)
+	if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		app.badRequestResponse(w, r, errors.New("url must start with http:// or https://"))
+		return
+	}
+
+	if err := app.store.Settings.SetHackerPackURL(r.Context(), url); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, HackerPackURLResponse{URL: url}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getHackerPackHandler returns the configured Hacker Pack Notion URL for any authenticated user.
+//
+//	@Summary		Get Hacker Pack URL
+//	@Description	Returns the configured Hacker Pack Notion URL to embed on the hacker dashboard
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	HackerPackURLResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/hacker-pack [get]
+func (app *application) getHackerPackHandler(w http.ResponseWriter, r *http.Request) {
+	url, err := app.store.Settings.GetHackerPackURL(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, HackerPackURLResponse{URL: url}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

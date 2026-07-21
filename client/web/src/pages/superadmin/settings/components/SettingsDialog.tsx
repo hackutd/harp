@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  BookOpen,
   CalendarRange,
   ShieldCheck,
   UtensilsCrossed,
@@ -21,17 +22,24 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
+import HackerPackTab from "../tabs/HackerPackTab";
 import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
 import ScheduleTab from "../tabs/ScheduleTab";
 
-type SettingsTab = "permissions" | "schedule" | "meal-groups" | "reset";
+type SettingsTab =
+  | "permissions"
+  | "schedule"
+  | "meal-groups"
+  | "hacker-pack"
+  | "reset";
 
 const settingsTabs = [
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
   { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
   { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
+  { id: "hacker-pack" as const, label: "Hacker Pack", icon: BookOpen },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];
 
@@ -89,6 +97,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                 {activeTab === "permissions" && <PermissionsTab />}
                 {activeTab === "schedule" && <ScheduleTab />}
                 {activeTab === "meal-groups" && <MealGroupsTab />}
+                {activeTab === "hacker-pack" && <HackerPackTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>
             </ScrollArea>

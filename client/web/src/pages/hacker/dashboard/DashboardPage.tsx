@@ -1,5 +1,11 @@
 import type { LucideIcon } from "lucide-react";
-import { ChevronRight, HelpCircle, Mail, MessageSquare } from "lucide-react";
+import {
+  BookOpen,
+  ChevronRight,
+  HelpCircle,
+  Mail,
+  MessageSquare,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -32,9 +38,10 @@ interface QuickLink {
 }
 
 const QUICK_LINKS: QuickLink[] = [
+  { label: "Hacker Pack", icon: BookOpen, to: "/app/hacker-pack" },
+  { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
   { label: "Help", icon: HelpCircle, href: "mailto:hello@hackutd.co" },
   { label: "Contact", icon: Mail, href: "mailto:hello@hackutd.co" },
-  { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
 ];
 
 const STATUS_BADGES: Record<ApplicationStatus, string> = {
