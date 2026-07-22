@@ -379,7 +379,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       if (application?.id) {
         localStorage.removeItem(stepStorageKey(application.id));
       }
-      navigate("/app/status");
+      navigate("/app/status", {
+        state: { justSubmitted: application!.id },
+      });
     } else {
       setApiError(submitRes.error || "Failed to submit application");
       errorAlert(submitRes);
