@@ -9,6 +9,11 @@ import { errorAlert } from "@/shared/lib/api";
 
 import { fetchHackerPackURL, updateHackerPackURL } from "../api";
 
+function extractEmbedURL(value: string): string {
+  const match = value.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);
+  return match ? match[1] : value;
+}
+
 export default function HackerPackTab() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,8 +79,10 @@ export default function HackerPackTab() {
               Notion Share URL
             </Label>
             <p className="text-xs text-zinc-500">
-              Paste a public Notion "Share to web" URL. Content updates live —
-              no redeploy needed. Leave empty to hide the page.
+              Paste a Notion embed link (Share → Embed this page) or the full
+              &lt;iframe&gt; snippet — the URL is extracted automatically.
+              Content updates live — no redeploy needed. Leave empty to hide the
+              page.
             </p>
           </div>
           <BookOpen className="size-5 text-zinc-500" />
@@ -88,7 +95,7 @@ export default function HackerPackTab() {
           placeholder="https://your-workspace.notion.site/..."
           value={url}
           disabled={loading || saving}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => setUrl(extractEmbedURL(e.target.value))}
           className="border-zinc-800 bg-zinc-950 text-zinc-100 placeholder:text-zinc-600"
         />
 
@@ -96,10 +103,9 @@ export default function HackerPackTab() {
           <p className="text-xs text-red-400">{validationError}</p>
         ) : (
           <p className="text-xs text-zinc-500">
-            If Notion blocks embedding (X-Frame-Options / CSP), use a Notion
-            embed proxy domain (e.g. Super.so or Potion) instead of the raw
-            notion.site URL. Hackers can always open it via the "Open in Notion"
-            link.
+            Notion "Embed this page" links (notion.site/ebd/...) render inline.
+            Regular "Share to web" URLs are blocked from iframing by Notion, but
+            hackers can always open them via the "Open in Notion" link.
           </p>
         )}
 

@@ -11,6 +11,8 @@ export default function HackerPackPage() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const openUrl = url.replace(/\/ebd\/+/i, "/");
+
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
@@ -48,7 +50,7 @@ export default function HackerPackPage() {
           </div>
           {url && (
             <a
-              href={url}
+              href={openUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#E5E5E5] px-3.5 py-1.5 text-xs font-light text-[#6B6B6B] transition-colors hover:text-black"
@@ -71,7 +73,12 @@ export default function HackerPackPage() {
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]">
-            <iframe src={url} title="Hacker Pack" className="h-full w-full" />
+            <iframe
+              src={url}
+              title="Hacker Pack"
+              className="h-full w-full"
+              allowFullScreen
+            />
           </div>
         )}
       </div>
