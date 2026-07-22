@@ -1,6 +1,5 @@
-import { useEffect, useRef } from "react";
-
 import type { Options } from "canvas-confetti";
+import { useEffect, useRef } from "react";
 
 interface CelebrationEffectProps {
   /** Unique key for localStorage dedup — e.g. app.id */
