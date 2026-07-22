@@ -3,30 +3,40 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { errorAlert } from "@/shared/lib/api";
 
 import { fetchHackerPackURL, updateHackerPackURL } from "../api";
 
-function extractEmbedURL(value: string): string {
+const PLACEHOLDER = `<iframe src="https://your-workspace.notion.site/ebd/..." width="100%" height="600" frameborder="0" allowfullscreen />`;
+
+function toEmbedCode(url: string): string {
+  if (!url) return "";
+  return `<iframe src="${url}" width="100%" height="600" frameborder="0" allowfullscreen />`;
+}
+
+function extractEmbedURL(value: string): string | null {
   const match = value.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);
-  return match ? match[1] : value;
+  if (!match) return null;
+  const src = match[1].trim();
+  if (!/^https?:\/\//i.test(src)) return null;
+  return src;
 }
 
 export default function HackerPackTab() {
-  const [url, setUrl] = useState("");
+  const [embedCode, setEmbedCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const validationError = useMemo(() => {
-    const trimmed = url.trim();
+    const trimmed = embedCode.trim();
     if (!trimmed) return null;
-    if (!/^https?:\/\//i.test(trimmed)) {
-      return "URL must start with http:// or https://";
+    if (!extractEmbedURL(trimmed)) {
+      return 'Paste the full <iframe ... /> embed code copied from Notion\'s "Embed this page" option.';
     }
     return null;
-  }, [url]);
+  }, [embedCode]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,7 +44,7 @@ export default function HackerPackTab() {
       const res = await fetchHackerPackURL(controller.signal);
       if (controller.signal.aborted) return;
       if (res.status === 200 && res.data) {
-        setUrl(res.data.url);
+        setEmbedCode(toEmbedCode(res.data.url));
       } else {
         errorAlert(res);
       }
@@ -51,10 +61,11 @@ export default function HackerPackTab() {
     }
 
     setSaving(true);
-    const res = await updateHackerPackURL(url.trim());
+    const url = extractEmbedURL(embedCode.trim()) ?? "";
+    const res = await updateHackerPackURL(url);
     if (res.status === 200 && res.data) {
-      setUrl(res.data.url);
-      toast.success("Hacker Pack URL saved.");
+      setEmbedCode(toEmbedCode(res.data.url));
+      toast.success("Hacker Pack embed saved.");
     } else {
       errorAlert(res);
     }
@@ -73,39 +84,44 @@ export default function HackerPackTab() {
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <Label
-              htmlFor="hacker-pack-url"
+              htmlFor="hacker-pack-embed"
               className="text-sm font-medium text-zinc-100"
             >
-              Notion Share URL
+              Notion Embed Code
             </Label>
-            <p className="text-xs text-zinc-500">
-              Paste a Notion embed link (Share → Embed this page) or the full
-              &lt;iframe&gt; snippet — the URL is extracted automatically.
-              Content updates live — no redeploy needed. Leave empty to hide the
-              page.
-            </p>
+            <ol className="list-decimal space-y-0.5 pl-4 text-xs text-zinc-500">
+              <li>Publish your Notion page (Share → Publish).</li>
+              <li>
+                Click{" "}
+                <span className="text-zinc-300">&lt;/&gt; Embed this page</span>
+                .
+              </li>
+              <li>
+                Click <span className="text-zinc-300">Copy code</span> and paste
+                the &lt;iframe&gt; snippet below. This is the only way the embed
+                works.
+              </li>
+            </ol>
           </div>
           <BookOpen className="size-5 text-zinc-500" />
         </div>
 
-        <Input
-          id="hacker-pack-url"
-          type="url"
-          inputMode="url"
-          placeholder="https://your-workspace.notion.site/..."
-          value={url}
+        <Textarea
+          id="hacker-pack-embed"
+          placeholder={PLACEHOLDER}
+          value={embedCode}
           disabled={loading || saving}
-          onChange={(e) => setUrl(extractEmbedURL(e.target.value))}
-          className="border-zinc-800 bg-zinc-950 text-zinc-100 placeholder:text-zinc-600"
+          onChange={(e) => setEmbedCode(e.target.value)}
+          rows={3}
+          className="border-zinc-800 bg-zinc-950 font-mono text-xs text-zinc-100 placeholder:text-zinc-600"
         />
 
         {validationError ? (
           <p className="text-xs text-red-400">{validationError}</p>
         ) : (
           <p className="text-xs text-zinc-500">
-            Notion "Embed this page" links (notion.site/ebd/...) render inline.
-            Regular "Share to web" URLs are blocked from iframing by Notion, but
-            hackers can always open them via the "Open in Notion" link.
+            Content updates live — no redeploy needed. Leave empty to hide the
+            page.
           </p>
         )}
 
@@ -114,7 +130,7 @@ export default function HackerPackTab() {
           disabled={loading || saving || !!validationError}
           className="cursor-pointer bg-white text-black hover:bg-zinc-200"
         >
-          {saving ? "Saving..." : "Save Hacker Pack URL"}
+          {saving ? "Saving..." : "Save Hacker Pack Embed"}
         </Button>
       </div>
     </div>
