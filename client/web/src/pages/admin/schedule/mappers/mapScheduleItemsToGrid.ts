@@ -1,14 +1,15 @@
+import { getLocalParts, toDateKey } from "@/shared/lib/datetime";
+
 import type { ScheduleResponseItem } from "../api";
 import { QUARTER_HOUR_SLOTS } from "../constants";
 import type { ScheduleItem } from "../types";
-import { getDatePartsInChicago, toInputDateValue } from "../utils";
 
 export function mapScheduleItemsToGrid(
   items: ScheduleResponseItem[],
   scheduleDays: Date[],
 ): ScheduleItem[] {
   const dayIndexByDateKey = new Map(
-    scheduleDays.map((day, index) => [toInputDateValue(day), index]),
+    scheduleDays.map((day, index) => [toDateKey(day), index]),
   );
 
   return items.flatMap((item) => {
@@ -19,8 +20,8 @@ export function mapScheduleItemsToGrid(
       return [];
     }
 
-    const startParts = getDatePartsInChicago(startTime);
-    const endParts = getDatePartsInChicago(endTime);
+    const startParts = getLocalParts(startTime);
+    const endParts = getLocalParts(endTime);
 
     if (startParts.dateKey !== endParts.dateKey) {
       return [];

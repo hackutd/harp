@@ -293,7 +293,7 @@ func TestScheduleDateRangeValidation(t *testing.T) {
 			EndDate:   &end,
 		}, nil).Once()
 
-		body := `{"event_name":"Post Event","start_time":"2026-03-16T10:00:00Z","end_time":"2026-03-16T11:00:00Z"}`
+		body := `{"event_name":"Post Event","start_time":"2026-04-01T10:00:00Z","end_time":"2026-04-01T11:00:00Z"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -316,7 +316,7 @@ func TestScheduleDateRangeValidation(t *testing.T) {
 			EndDate:   &end,
 		}, nil).Once()
 
-		body := `{"event_name":"Overnight","start_time":"2026-03-15T04:30:00Z","end_time":"2026-03-15T06:30:00Z"}`
+		body := `{"event_name":"Overnight","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-15T11:00:00Z"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")

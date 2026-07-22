@@ -1,71 +1,18 @@
+import { getLocalParts, parseDateOnly, toDateKey } from "@/shared/lib/datetime";
 import type { ScheduleItem } from "@/types";
 
-// The hackathon runs on Central time. Events are authored (and validated on the
-// backend) against this zone, so the hacker schedule places events and the
-// "now" line using Central time regardless of where the viewer's browser is.
-export const CENTRAL_TZ = "America/Chicago";
+// Events are stored as UTC instants and rendered in the viewer's local
+// timezone, so the schedule places events and the "now" line using the
+// browser's local time. The current zone is labeled for the viewer on the page.
 
 export const HOURS_IN_DAY = 24;
 export const MINUTES_IN_DAY = HOURS_IN_DAY * 60;
 
-const centralPartsFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: CENTRAL_TZ,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-export interface CentralParts {
-  /** Calendar date in Central time, e.g. "2026-03-14". */
-  dateKey: string;
-  hour: number;
-  minute: number;
-}
-
-/** Breaks a Date into Central-time calendar/date parts. */
-export function getCentralParts(date: Date): CentralParts {
-  const parts = centralPartsFormatter.formatToParts(date);
-  const value = (type: string) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-
-  const year = value("year") || "0000";
-  const month = value("month") || "01";
-  const day = value("day") || "01";
-  // hour12:false can emit "24" at midnight in some engines; normalize to 0.
-  let hour = Number(value("hour") || "0");
-  if (hour === 24) hour = 0;
-  const minute = Number(value("minute") || "0");
-
-  return { dateKey: `${year}-${month}-${day}`, hour, minute };
-}
-
 export interface ScheduleDay {
-  /** "YYYY-MM-DD" — matches the Central dateKey of events on this day. */
+  /** "YYYY-MM-DD" — matches the local dateKey of events on this day. */
   dateKey: string;
   /** Local midnight Date for the calendar day, used only for label formatting. */
   date: Date;
-}
-
-function parseDateOnly(value: string | null): Date | null {
-  if (!value) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (!match) return null;
-  const date = new Date(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-  );
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function toDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -111,8 +58,8 @@ export interface PositionedEvent extends DayEvent {
 }
 
 /**
- * Converts an item to minutes-of-day in Central time. Returns null when the
- * item cannot be placed on a single day (invalid or spans midnight backwards).
+ * Converts an item to minutes-of-day in local time. Returns null when the item
+ * cannot be placed on a single day (invalid or spans midnight backwards).
  */
 export function toDayEvent(item: ScheduleItem): {
   dateKey: string;
@@ -122,8 +69,8 @@ export function toDayEvent(item: ScheduleItem): {
   const end = new Date(item.end_time);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
 
-  const startParts = getCentralParts(start);
-  const endParts = getCentralParts(end);
+  const startParts = getLocalParts(start);
+  const endParts = getLocalParts(end);
 
   const startMin = startParts.hour * 60 + startParts.minute;
   let endMin = endParts.hour * 60 + endParts.minute;
