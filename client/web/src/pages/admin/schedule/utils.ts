@@ -1,34 +1,6 @@
 import { MS_PER_DAY, QUARTER_HOUR_SLOTS } from "./constants";
 import type { DragSelection } from "./types";
 
-const chicagoDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Chicago",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-export function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-export function toInputDateValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-export function parseDate(value: string) {
-  if (!value) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
-
 export function getDateRange(start: Date, end: Date) {
   const days: Date[] = [];
   for (let current = start; current <= end; ) {
@@ -43,16 +15,6 @@ export function formatDayHeader(date: Date) {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(date);
-}
-
-export function formatPickerDate(date: Date | null) {
-  if (!date) return "Select date";
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
   }).format(date);
 }
 
@@ -75,6 +37,9 @@ export function buildSelectionBounds(selection: DragSelection) {
   return { startQuarter, endQuarter };
 }
 
+// Builds the event instant from a day column + quarter slot in the admin's
+// LOCAL timezone (then serialized with toISOString for the API). This must stay
+// local so it round-trips with getLocalParts() when the schedule is read back.
 export function dateForQuarter(day: Date, quarter: number) {
   const hour = Math.floor(quarter / 4);
   const minute = (quarter % 4) * 15;
@@ -87,21 +52,4 @@ export function dateForQuarter(day: Date, quarter: number) {
     0,
     0,
   );
-}
-
-export function getDatePartsInChicago(date: Date) {
-  const parts = chicagoDateFormatter.formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
-  const month = parts.find((part) => part.type === "month")?.value ?? "01";
-  const day = parts.find((part) => part.type === "day")?.value ?? "01";
-  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
-  const minute = Number(
-    parts.find((part) => part.type === "minute")?.value ?? "0",
-  );
-
-  return {
-    dateKey: `${year}-${month}-${day}`,
-    hour,
-    minute,
-  };
 }

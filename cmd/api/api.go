@@ -34,20 +34,19 @@ type application struct {
 }
 
 type config struct {
-	addr              string
-	db                dbConfig
-	env               string
-	appURL            string
-	frontendURL       string
-	hackathonTimeZone string
-	mail              mailer.Config
-	gcs               gcsConfig
-	auth              authConfig
-	rateLimiter       ratelimiter.Config
-	supertokens       supertokensConfig
-	publicCORSOrigin  string
-	vapid             vapidConfig
-	appleWallet       appleWalletConfig
+	addr             string
+	db               dbConfig
+	env              string
+	appURL           string
+	frontendURL      string
+	mail             mailer.Config
+	gcs              gcsConfig
+	auth             authConfig
+	rateLimiter      ratelimiter.Config
+	supertokens      supertokensConfig
+	publicCORSOrigin string
+	vapid            vapidConfig
+	appleWallet      appleWalletConfig
 }
 
 type vapidConfig struct {

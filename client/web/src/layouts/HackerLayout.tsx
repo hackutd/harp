@@ -29,10 +29,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Profile", to: "/app/profile", icon: User, end: false },
 ];
 
-const SIDEBAR_NAV = NAV_ITEMS.map(({ label, to, icon }) => ({
+const SIDEBAR_NAV = NAV_ITEMS.map(({ label, to, icon, end }) => ({
   name: label,
   url: to,
   icon,
+  end,
 }));
 
 // Uniform inset (rem) applied on every side of the bottom-nav bubble so the

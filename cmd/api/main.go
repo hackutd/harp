@@ -6,7 +6,6 @@ import (
 	"log"
 	"runtime"
 	"time"
-	_ "time/tzdata"
 
 	_ "github.com/hackutd/portal/docs"
 	"github.com/hackutd/portal/internal/auth"
@@ -87,9 +86,8 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL:       env.GetString("FRONTEND_URL", appURL),
-		publicCORSOrigin:  env.GetString("PUBLIC_CORS_ORIGIN", ""),
-		hackathonTimeZone: env.GetString("HACKATHON_TIMEZONE", "America/Chicago"),
+		frontendURL:      env.GetString("FRONTEND_URL", appURL),
+		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),
@@ -113,10 +111,6 @@ func main() {
 			wwdrCertificateBase64: env.GetString("APPLE_WALLET_WWDR_CERTIFICATE_BASE64", ""),
 			iconPath:              env.GetString("APPLE_WALLET_ICON_PATH", "client/web/public/pwa-192x192.png"),
 		},
-	}
-
-	if _, err := time.LoadLocation(cfg.hackathonTimeZone); err != nil {
-		log.Fatalf("invalid HACKATHON_TIMEZONE %q: %v", cfg.hackathonTimeZone, err)
 	}
 
 	// Init Logger

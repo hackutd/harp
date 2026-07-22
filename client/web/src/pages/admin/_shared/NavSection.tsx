@@ -21,6 +21,8 @@ export function NavSection({
     name: string;
     url: string;
     icon: LucideIcon;
+    /** When true, only the exact path is active (not nested child routes). */
+    end?: boolean;
   }[];
   currentPath: string;
 }) {
@@ -29,8 +31,10 @@ export function NavSection({
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive =
-            currentPath === item.url || currentPath.startsWith(item.url + "/");
+          const isActive = item.end
+            ? currentPath === item.url
+            : currentPath === item.url ||
+              currentPath.startsWith(item.url + "/");
           return (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton asChild isActive={isActive}>
