@@ -495,6 +495,111 @@ func TestSetHackathonDateRange(t *testing.T) {
 	})
 }
 
+func TestGetHackerPackURL(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return configured url", func(t *testing.T) {
+		url := "https://hackutd.notion.site/pack"
+		mockSettings.On("GetHackerPackURL").Return(url, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackerPackURL))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackerPackURLResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, url, body.Data.URL)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestGetHackerPackHandler(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return url for hacker", func(t *testing.T) {
+		url := "https://hackutd.notion.site/pack"
+		mockSettings.On("GetHackerPackURL").Return(url, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackerPackHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackerPackURLResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, url, body.Data.URL)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestSetHackerPackURL(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should trim and set valid url", func(t *testing.T) {
+		mockSettings.On("SetHackerPackURL", "https://hackutd.notion.site/pack").Return(nil).Once()
+
+		body := `{"url":"  https://hackutd.notion.site/pack  "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackerPackURL))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data HackerPackURLResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Equal(t, "https://hackutd.notion.site/pack", respBody.Data.URL)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should allow clearing with empty url", func(t *testing.T) {
+		mockSettings.On("SetHackerPackURL", "").Return(nil).Once()
+
+		body := `{"url":""}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackerPackURL))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject non-http url", func(t *testing.T) {
+		body := `{"url":"ftp://example.com/pack"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackerPackURL))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
 func TestGetMealGroups(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)

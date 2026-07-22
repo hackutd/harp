@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ChevronRight, HelpCircle, Mail, MessageSquare } from "lucide-react";
+import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import type {
   NotificationFeedItem,
 } from "@/types";
 
+import { fetchHackerPackURL } from "../hacker-pack/api";
 import { getNotificationFeed } from "../notifications/api";
 
 interface ImportantDate {
@@ -31,10 +32,12 @@ interface QuickLink {
   to?: string;
 }
 
+const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL || "hello@hackutd.co";
+
 const QUICK_LINKS: QuickLink[] = [
-  { label: "Help", icon: HelpCircle, href: "mailto:hello@hackutd.co" },
-  { label: "Contact", icon: Mail, href: "mailto:hello@hackutd.co" },
+  { label: "Hacker Pack", icon: BookOpen, to: "/app/hacker-pack" },
   { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
+  { label: "Contact", icon: Mail, href: `mailto:${CONTACT_EMAIL}` },
 ];
 
 const STATUS_BADGES: Record<ApplicationStatus, string> = {
@@ -72,17 +75,19 @@ function completionPercent(application: Application | null): number {
 export default function DashboardPage() {
   const [application, setApplication] = useState<Application | null>(null);
   const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
+  const [hackerPackURL, setHackerPackURL] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const [appRes, feedRes] = await Promise.all([
+      const [appRes, feedRes, packRes] = await Promise.all([
         getRequest<Application>(
           "/applications/me",
           "application",
           controller.signal,
         ),
         getNotificationFeed(controller.signal),
+        fetchHackerPackURL(controller.signal),
       ]);
       if (controller.signal.aborted) return;
       if (appRes.status === 200 && appRes.data) {
@@ -90,6 +95,9 @@ export default function DashboardPage() {
       }
       if (feedRes.status === 200 && feedRes.data) {
         setFeed(feedRes.data.notifications ?? []);
+      }
+      if (packRes.status === 200 && packRes.data) {
+        setHackerPackURL(packRes.data.url.trim());
       }
     };
     load();
@@ -216,7 +224,9 @@ export default function DashboardPage() {
 
       {/* Quick links */}
       <section className="mt-5 grid grid-cols-3 gap-3">
-        {QUICK_LINKS.map(({ label, icon: Icon, href, to }) => {
+        {QUICK_LINKS.filter(
+          ({ to }) => to !== "/app/hacker-pack" || hackerPackURL,
+        ).map(({ label, icon: Icon, href, to }) => {
           const className =
             "flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]";
           const content = (
