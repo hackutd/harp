@@ -66,6 +66,7 @@ export default function HackerPackPage() {
               src={url}
               title="Hacker Pack"
               className="h-full w-full"
+              style={{ colorScheme: "light" }}
               allowFullScreen
             />
           </div>
