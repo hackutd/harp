@@ -1,8 +1,9 @@
 import { format, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
@@ -42,9 +43,20 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 export default function StatusPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<Application | null>(null);
   const [showFullApplication, setShowFullApplication] = useState(false);
+
+  // Grab the "justSubmitted" ID from navigation state then clear it
+  // so back-navigation doesn't re-trigger the submit celebration.
+  const justSubmittedId = (location.state as { justSubmitted?: string })
+    ?.justSubmitted;
+  useEffect(() => {
+    if (justSubmittedId) {
+      window.history.replaceState({}, "");
+    }
+  }, [justSubmittedId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,6 +141,13 @@ export default function StatusPage() {
           {STATUS_MESSAGES[application.status]}
         </p>
       </div>
+
+      {/* Celebration effects — fire once based on localStorage */}
+
+      {/* Submit celebration: fires when the user was just redirected from submit */}
+      {application && justSubmittedId === application.id && (
+        <CelebrationEffect id={application.id} type="submit" />
+      )}
 
       {/* Details */}
       <section className="mt-5">

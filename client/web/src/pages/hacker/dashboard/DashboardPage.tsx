@@ -3,6 +3,7 @@ import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { getRequest } from "@/shared/lib/api";
 import type {
   Application,
@@ -136,6 +137,11 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
+      {/* Celebration effect — fires once on login when application is accepted */}
+      {application?.status === "accepted" && (
+        <CelebrationEffect id={application.id} type="accepted" />
+      )}
+
       {/* Application status card */}
       <div className="rounded-xl bg-[#3A3A38] p-5 text-white">
         <span
