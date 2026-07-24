@@ -181,6 +181,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		UserID:    req.UserID,
 		ScanType:  req.ScanType,
 		ScannedBy: admin.ID,
+		Points:    found.Points,
 	}
 
 	if err := app.store.Scans.Create(r.Context(), scan); err != nil {

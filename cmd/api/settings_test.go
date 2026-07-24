@@ -600,6 +600,105 @@ func TestSetHackerPackURL(t *testing.T) {
 	})
 }
 
+func TestGetPointsName(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return configured name", func(t *testing.T) {
+		mockSettings.On("GetPointsName").Return("Tavern Points", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getPointsName))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data PointsNameResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, "Tavern Points", body.Data.Name)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestGetPointsNameHandler(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should return name for hacker", func(t *testing.T) {
+		mockSettings.On("GetPointsName").Return("Nuggets", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getPointsNameHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data PointsNameResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, "Nuggets", body.Data.Name)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestSetPointsName(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should trim and set name", func(t *testing.T) {
+		mockSettings.On("SetPointsName", "Tavern Points").Return(nil).Once()
+
+		body := `{"name":"  Tavern Points  "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPointsName))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data PointsNameResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Equal(t, "Tavern Points", respBody.Data.Name)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject empty name", func(t *testing.T) {
+		body := `{"name":"   "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPointsName))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should reject name over 30 characters", func(t *testing.T) {
+		body := `{"name":"` + strings.Repeat("a", 31) + `"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPointsName))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
 func TestGetMealGroups(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)

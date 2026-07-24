@@ -80,6 +80,7 @@ type ApplicationListItem struct {
 	AIPercent          *int              `json:"ai_percent"`
 	HasResume          bool              `json:"has_resume"`
 	MealGroup          *string           `json:"meal_group"`
+	Points             int               `json:"points"`
 }
 
 // ApplicationListResult contains paginated results
@@ -368,7 +369,8 @@ func (s *ApplicationsStore) List(
 		       NULLIF(a.responses->>'hackathons_attended', '')::smallint AS hackathons_attended,
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
-		       a.resume_path IS NOT NULL AS has_resume, a.meal_group
+		       a.resume_path IS NOT NULL AS has_resume, a.meal_group,
+		       (SELECT COALESCE(SUM(s.points), 0) FROM scans s WHERE s.user_id = a.user_id) AS points
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -463,7 +465,7 @@ func (s *ApplicationsStore) List(
 			&item.HackathonsAttended,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
-			&item.HasResume, &item.MealGroup,
+			&item.HasResume, &item.MealGroup, &item.Points,
 		); err != nil {
 			return nil, err
 		}

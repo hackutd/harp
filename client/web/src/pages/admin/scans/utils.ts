@@ -20,6 +20,9 @@ export function validate(types: ScanType[]): string | null {
   if (types.some((st) => !st.display_name.trim() || !st.name.trim())) {
     return "All scan types must have a name";
   }
+  if (types.some((st) => !Number.isInteger(st.points) || st.points < 0)) {
+    return "Points must be a non-negative whole number";
+  }
   const names = types.map((st) => st.name.trim());
   if (new Set(names).size !== names.length) {
     return "Scan type names must be unique";

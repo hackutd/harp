@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/shared/stores/user";
 
+import { PointsNameCard } from "./components/PointsNameCard";
 import { ScannerDialog } from "./components/ScannerDialog";
 import { ScanStatsCards } from "./components/ScanStatsCards";
 import { ScanTypesTable } from "./components/ScanTypesTable";
@@ -20,6 +21,7 @@ export default function ScansPage() {
     rebalancing,
     fetchTypes,
     fetchStats,
+    fetchPointsName,
     saveScanTypes,
     rebalanceStats,
     setActiveScanType,
@@ -31,12 +33,13 @@ export default function ScansPage() {
     const controller = new AbortController();
     fetchTypes(controller.signal);
     fetchStats(controller.signal);
+    fetchPointsName(controller.signal);
     return () => {
       controller.abort();
       // Reset active scan type so dialog doesn't reopen on navigate back
       setActiveScanType(null);
     };
-  }, [fetchTypes, fetchStats, setActiveScanType]);
+  }, [fetchTypes, fetchStats, fetchPointsName, setActiveScanType]);
 
   if (typesLoading && scanTypes.length === 0) {
     return (
@@ -74,6 +77,7 @@ export default function ScansPage() {
         stats={stats}
         loading={typesLoading || statsLoading}
       />
+      <PointsNameCard isSuperAdmin={isSuperAdmin} />
       <ScanTypesTable
         scanTypes={scanTypes}
         stats={stats}

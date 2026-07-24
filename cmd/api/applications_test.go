@@ -39,6 +39,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockScans := app.store.Scans.(*store.MockScansStore)
 
 	t.Run("should return existing application", func(t *testing.T) {
 		user := newTestUser()
@@ -47,6 +48,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(15, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -55,8 +57,17 @@ func TestGetOrCreateApplication(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getOrCreateApplicationHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 15, envelope.Data.Points)
+
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	t.Run("should create draft when no application exists", func(t *testing.T) {
@@ -66,6 +77,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 		mockApps.On("GetByUserID", user.ID).Return(nil, store.ErrNotFound).Once()
 		mockApps.On("Create", mock.AnythingOfType("*store.Application")).Return(nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -76,6 +88,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	t.Run("should handle race condition on create conflict", func(t *testing.T) {
@@ -87,6 +100,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 		mockApps.On("Create", mock.AnythingOfType("*store.Application")).Return(store.ErrConflict).Once()
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -97,6 +111,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 }
 
@@ -116,6 +131,7 @@ func TestUpdateApplication(t *testing.T) {
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 		mockApps.On("Update", mock.AnythingOfType("*store.Application")).Return(nil).Once()
+		app.store.Scans.(*store.MockScansStore).On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		body := `{"responses": {"first_name": "Jane", "last_name": "Doe"}}`
 		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))

@@ -82,6 +82,8 @@ export interface Application {
   responses: Record<string, unknown>;
   /** Embedded on GET /applications/me; absent on mutation responses. */
   application_schema?: ApplicationSchemaField[];
+  /** Total scan points; populated on read endpoints. */
+  points?: number;
   resume_path: string | null;
   ai_percent: number | null;
   accept_votes: number;
@@ -161,6 +163,7 @@ export interface ApplicationListItem {
   reviews_completed: number;
   ai_percent: number | null;
   has_resume: boolean;
+  points: number;
 }
 
 // Paginated response from admin applications endpoint

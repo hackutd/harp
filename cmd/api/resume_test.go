@@ -144,6 +144,7 @@ func TestDeleteResume(t *testing.T) {
 			assert.Nil(t, updated.ResumePath)
 		}).Return(nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		app.store.Scans.(*store.MockScansStore).On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodDelete, "/", nil)
 		require.NoError(t, err)

@@ -76,6 +76,9 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
               <Badge className={getStatusColor(application.status)}>
                 {application.status}
               </Badge>
+              <Badge variant="secondary" className="tabular-nums">
+                {application.points ?? 0} pts
+              </Badge>
             </>
           ) : null}
         </div>

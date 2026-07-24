@@ -30,6 +30,7 @@ export interface ApplicationListItem {
   reviews_assigned: number;
   reviews_completed: number;
   has_resume: boolean;
+  points: number;
 }
 
 export interface ApplicationListResult {

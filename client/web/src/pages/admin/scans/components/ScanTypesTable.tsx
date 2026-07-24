@@ -72,6 +72,7 @@ export function ScanTypesTable({
 }: ScanTypesTableProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editDisplayName, setEditDisplayName] = useState("");
+  const [editPoints, setEditPoints] = useState("0");
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [pendingNew, setPendingNew] = useState<ScanType | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
@@ -90,6 +91,7 @@ export function ScanTypesTable({
     setEditingIndex(index);
     if (scanTypes[index]) {
       setEditDisplayName(scanTypes[index].display_name);
+      setEditPoints(String(scanTypes[index].points ?? 0));
     }
   };
 
@@ -97,6 +99,8 @@ export function ScanTypesTable({
     if (editingIndex === null) return;
 
     const trimmed = editDisplayName.trim();
+    const parsedPoints = Number.parseInt(editPoints, 10);
+    const points = Number.isNaN(parsedPoints) ? 0 : parsedPoints;
 
     // Pending new row — save only if user typed something, otherwise no-op
     if (pendingNew) {
@@ -105,6 +109,7 @@ export function ScanTypesTable({
         ...pendingNew,
         display_name: trimmed,
         name: toSnakeCase(trimmed),
+        points,
       };
       const updated = [...scanTypes, newType];
 
@@ -124,11 +129,11 @@ export function ScanTypesTable({
     if (!current) return;
 
     // No change — skip save
-    if (trimmed === current.display_name) return;
+    if (trimmed === current.display_name && points === current.points) return;
 
     const updated = scanTypes.map((st, i) =>
       i === editingIndex
-        ? { ...st, display_name: trimmed, name: toSnakeCase(trimmed) }
+        ? { ...st, display_name: trimmed, name: toSnakeCase(trimmed), points }
         : st,
     );
 
@@ -139,7 +144,7 @@ export function ScanTypesTable({
     }
 
     onSave(updated);
-  }, [editingIndex, editDisplayName, scanTypes, pendingNew, onSave]);
+  }, [editingIndex, editDisplayName, editPoints, scanTypes, pendingNew, onSave]);
 
   // Ref to avoid stale closures in event listeners
   const saveDisplayNameRef = useRef(saveDisplayName);
@@ -197,10 +202,12 @@ export function ScanTypesTable({
       display_name: "",
       category: "other",
       is_active: true,
+      points: 0,
     };
     setPendingNew(newType);
     setEditingIndex(scanTypes.length);
     setEditDisplayName("");
+    setEditPoints("0");
   };
 
   const handleDelete = (index: number) => {
@@ -295,6 +302,7 @@ export function ScanTypesTable({
                 <TableHead className="w-24">Action</TableHead>
                 <TableHead className="w-48">Name</TableHead>
                 <TableHead className="w-150">Category</TableHead>
+                <TableHead className="w-24">Points</TableHead>
                 <TableHead className="w-24">Scans</TableHead>
                 {isSuperAdmin && <TableHead>Active</TableHead>}
               </TableRow>
@@ -374,6 +382,29 @@ export function ScanTypesTable({
                             );
                           })}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={editPoints}
+                          onChange={(e) => setEditPoints(e.target.value)}
+                          onBlur={(e) => {
+                            if (
+                              editRowRef.current?.contains(
+                                e.relatedTarget as Node,
+                              )
+                            )
+                              return;
+                            saveDisplayName();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              closeEditing();
+                            }
+                          }}
+                          className="h-8 w-20 text-sm font-light shadow-none bg-transparent pl-2 rounded-sm focus-visible:ring-1"
+                        />
                       </TableCell>
                       <TableCell className="tabular-nums">{count}</TableCell>
                       <TableCell>
@@ -460,6 +491,9 @@ export function ScanTypesTable({
                           {scanType.category.replace("_", " ")}
                         </Badge>
                       </div>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {scanType.points ?? 0}
                     </TableCell>
                     <TableCell className="tabular-nums">{count}</TableCell>
                     {isSuperAdmin && (

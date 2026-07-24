@@ -21,6 +21,8 @@ type UpdateApplicationPayload struct {
 type ApplicationWithSchema struct {
 	*store.Application
 	ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+	// Points is the user's total scan points; populated on read endpoints only.
+	Points int `json:"points"`
 }
 
 // getOrCreateApplicationHandler returns or creates the user's hackathon application
@@ -73,9 +75,16 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		return
 	}
 
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            points,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -159,9 +168,16 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            points,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -593,9 +609,16 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), application.UserID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            points,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

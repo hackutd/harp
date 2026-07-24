@@ -24,6 +24,7 @@ const SettingsKeyHackathonDateRange = "hackathon_date_range"
 const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
 const SettingsKeyHackerPackURL = "hacker_pack_url"
+const SettingsKeyPointsName = "points_name"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -559,6 +560,55 @@ func (s *SettingsStore) SetHackerPackURL(ctx context.Context, url string) error 
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackerPackURL, string(jsonValue))
+	return err
+}
+
+// GetPointsName returns the configured display name of the points system.
+// Defaults to "Points" if the row does not exist (not configured).
+func (s *SettingsStore) GetPointsName(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyPointsName).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "Points", nil
+		}
+		return "", err
+	}
+
+	var name string
+	if err := json.Unmarshal(value, &name); err != nil {
+		return "", err
+	}
+
+	return name, nil
+}
+
+// SetPointsName updates the display name of the points system.
+func (s *SettingsStore) SetPointsName(ctx context.Context, name string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(name)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyPointsName, string(jsonValue))
 	return err
 }
 

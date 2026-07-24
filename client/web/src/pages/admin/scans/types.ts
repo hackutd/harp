@@ -10,6 +10,7 @@ export interface ScanType {
   display_name: string;
   category: ScanTypeCategory;
   is_active: boolean;
+  points: number;
 }
 
 export interface Scan {
@@ -17,6 +18,7 @@ export interface Scan {
   user_id: string;
   scan_type: string;
   scanned_by: string;
+  points: number;
   scanned_at: string;
   created_at: string;
 }
@@ -36,4 +38,8 @@ export interface ScanStatsResponse {
 
 export interface ScansResponse {
   scans: Scan[];
+}
+
+export interface PointsNameResponse {
+  name: string;
 }

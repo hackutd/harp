@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [application, setApplication] = useState<Application | null>(null);
+  const [pointsName, setPointsName] = useState("Points");
   const [resumeBusy, setResumeBusy] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -80,14 +81,24 @@ export default function ProfilePage() {
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const res = await getRequest<Application>(
-        "/applications/me",
-        "application",
-        controller.signal,
-      );
+      const [appRes, pointsNameRes] = await Promise.all([
+        getRequest<Application>(
+          "/applications/me",
+          "application",
+          controller.signal,
+        ),
+        getRequest<{ name: string }>(
+          "/points-name",
+          "points name",
+          controller.signal,
+        ),
+      ]);
       if (controller.signal.aborted) return;
-      if (res.status === 200 && res.data) {
-        setApplication(res.data);
+      if (appRes.status === 200 && appRes.data) {
+        setApplication(appRes.data);
+      }
+      if (pointsNameRes.status === 200 && pointsNameRes.data) {
+        setPointsName(pointsNameRes.data.name);
       }
     };
     load();
@@ -226,13 +237,17 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Tavern points placeholder */}
+      {/* Points */}
       <div className="mt-6 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
         <div>
-          <p className="text-sm font-normal text-black">Tavern Points</p>
-          <p className="text-xs font-light text-[#8A8A8A]">Coming soon</p>
+          <p className="text-sm font-normal text-black">{pointsName}</p>
+          <p className="text-xs font-light text-[#8A8A8A]">
+            Earned from check-ins and events
+          </p>
         </div>
-        <span className="text-2xl font-light text-[#B8B8B8]">—</span>
+        <span className="text-2xl font-light text-black tabular-nums">
+          {application?.points ?? 0}
+        </span>
       </div>
 
       {/* Settings */}

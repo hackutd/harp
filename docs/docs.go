@@ -3213,6 +3213,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/points-name": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configured display name of the points system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get points system name",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PointsNameResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/public/faq": {
             "get": {
                 "description": "Returns all frequently asked questions, ordered by display order",
@@ -5309,6 +5356,145 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/points-name": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configured display name of the points system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get points system name (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PointsNameResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates the display name of the points system shown to hackers and admins",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set points system name (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Points system name",
+                        "name": "name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetPointsNamePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PointsNameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/review-assignment-toggle": {
             "put": {
                 "security": [
@@ -6136,6 +6322,10 @@ const docTemplate = `{
                 "meal_group": {
                     "type": "string"
                 },
+                "points": {
+                    "description": "Points is the user's total scan points; populated on read endpoints only.",
+                    "type": "integer"
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -6227,6 +6417,9 @@ const docTemplate = `{
                 },
                 "meal_group": {
                     "type": "string"
+                },
+                "points": {
+                    "type": "integer"
                 },
                 "scan_type": {
                     "type": "string"
@@ -6441,6 +6634,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/store.ApplicationReviewWithDetails"
                     }
+                }
+            }
+        },
+        "main.PointsNameResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -6717,6 +6918,14 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.SetPointsNamePayload": {
+            "type": "object",
+            "properties": {
+                "name": {
                     "type": "string"
                 }
             }
@@ -7130,6 +7339,9 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
+                "points": {
+                    "type": "integer"
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -7431,6 +7643,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "points": {
+                    "type": "integer"
+                },
                 "scan_type": {
                     "type": "string"
                 },
@@ -7490,6 +7705,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 1
+                },
+                "points": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },

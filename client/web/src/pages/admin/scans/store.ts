@@ -5,9 +5,11 @@ import { errorAlert } from "@/shared/lib/api";
 
 import {
   createScan as apiCreateScan,
+  fetchPointsName as apiFetchPointsName,
   fetchScanStats,
   fetchScanTypes,
   rebalanceScanStats as apiRebalanceScanStats,
+  savePointsName as apiSavePointsName,
   saveScanTypes as apiSaveScanTypes,
 } from "./api";
 import type { Scan, ScanStat, ScanType } from "./types";
@@ -21,16 +23,20 @@ export interface ScanResult {
 export interface ScansState {
   scanTypes: ScanType[];
   stats: ScanStat[];
+  pointsName: string;
   typesLoading: boolean;
   statsLoading: boolean;
   scanning: boolean;
   saving: boolean;
+  savingPointsName: boolean;
   rebalancing: boolean;
   activeScanType: ScanType | null;
   lastScanResult: ScanResult | null;
 
   fetchTypes: (signal?: AbortSignal) => Promise<void>;
   fetchStats: (signal?: AbortSignal) => Promise<void>;
+  fetchPointsName: (signal?: AbortSignal) => Promise<void>;
+  savePointsName: (name: string) => Promise<boolean>;
   performScan: (userId: string) => Promise<void>;
   rebalanceStats: () => Promise<void>;
   saveScanTypes: (
@@ -43,10 +49,12 @@ export interface ScansState {
 export const useScansStore = create<ScansState>((set, get) => ({
   scanTypes: [],
   stats: [],
+  pointsName: "Points",
   typesLoading: false,
   statsLoading: false,
   scanning: false,
   saving: false,
+  savingPointsName: false,
   rebalancing: false,
   activeScanType: null,
   lastScanResult: null,
@@ -77,6 +85,33 @@ export const useScansStore = create<ScansState>((set, get) => ({
     } else {
       set({ stats: [], statsLoading: false });
     }
+  },
+
+  fetchPointsName: async (signal?: AbortSignal) => {
+    const res = await apiFetchPointsName(signal);
+
+    if (signal?.aborted) return;
+
+    if (res.status === 200 && res.data) {
+      set({ pointsName: res.data.name });
+    }
+  },
+
+  savePointsName: async (name: string) => {
+    if (get().savingPointsName) return false;
+
+    set({ savingPointsName: true });
+
+    const res = await apiSavePointsName(name);
+
+    if (res.status === 200 && res.data) {
+      set({ pointsName: res.data.name, savingPointsName: false });
+      toast.success("Points system name saved");
+      return true;
+    }
+    set({ savingPointsName: false });
+    errorAlert(res, "Failed to save points system name");
+    return false;
   },
 
   performScan: async (userId: string) => {

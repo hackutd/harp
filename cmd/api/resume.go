@@ -146,9 +146,16 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            points,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

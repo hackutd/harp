@@ -271,6 +271,16 @@ func (m *MockSettingsStore) SetHackerPackURL(ctx context.Context, url string) er
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetPointsName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPointsName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetScanTypes(ctx context.Context) ([]ScanType, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -423,6 +433,11 @@ func (m *MockScansStore) GetStats(ctx context.Context) ([]ScanStat, error) {
 func (m *MockScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error) {
 	args := m.Called(userID, checkInTypes)
 	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockScansStore) GetTotalPointsByUserID(ctx context.Context, userID string) (int, error) {
+	args := m.Called(userID)
+	return args.Int(0), args.Error(1)
 }
 
 func (m *MockScansStore) RebalanceStats(ctx context.Context) ([]ScanStat, error) {

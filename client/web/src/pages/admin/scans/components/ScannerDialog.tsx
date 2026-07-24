@@ -19,6 +19,7 @@ export function ScannerDialog() {
     activeScanType,
     lastScanResult,
     scanning,
+    pointsName,
     setActiveScanType,
     performScan,
     clearLastResult,
@@ -103,6 +104,12 @@ export function ScannerDialog() {
                 <XCircle className="size-12" />
               )}
               <p className="text-lg font-medium">{lastScanResult.message}</p>
+              {lastScanResult.success &&
+                (lastScanResult.scan?.points ?? 0) > 0 && (
+                  <p className="text-sm font-medium">
+                    +{lastScanResult.scan?.points} {pointsName}
+                  </p>
+                )}
               <Button variant="outline" onClick={handleResume}>
                 <ScanLine className="mr-2 size-4" />
                 Scan Next
