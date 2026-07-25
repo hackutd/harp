@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
 import { Button } from "@/components/ui/button";
