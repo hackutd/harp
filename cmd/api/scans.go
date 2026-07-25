@@ -35,6 +35,8 @@ type UpdateScanTypesPayload struct {
 type CreateScanResponse struct {
 	*store.Scan
 	MealGroup *string `json:"meal_group,omitempty"`
+	// Balance is the user's remaining points; populated only for shop scans.
+	Balance *int `json:"balance,omitempty"`
 }
 
 // getScanTypesHandler returns all configured scan types
@@ -64,7 +66,7 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 // createScanHandler records a scan for a user
 //
 //	@Summary		Create a scan (Admin)
-//	@Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.
+//	@Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.
 //	@Tags			admin/scans
 //	@Accept			json
 //	@Produce		json
@@ -72,6 +74,7 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 //	@Success		201		{object}	CreateScanResponse
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
+//	@Failure		402		{object}	object{error=string}	"Insufficient points for shop scan"
 //	@Failure		403		{object}	object{error=string}
 //	@Failure		409		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
@@ -184,7 +187,28 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		Points:    found.Points,
 	}
 
-	if err := app.store.Scans.Create(r.Context(), scan); err != nil {
+	var balance *int
+	if found.Category == store.ScanCategoryShop {
+		// Shop scans spend points: negate the configured cost and let the
+		// store verify the balance atomically.
+		scan.Points = -found.Points
+
+		newBalance, err := app.store.Scans.CreatePurchase(r.Context(), scan)
+		if err != nil {
+			if errors.Is(err, store.ErrInsufficientPoints) {
+				writeJSONError(w, http.StatusPaymentRequired,
+					fmt.Sprintf("insufficient points: balance is %d, %s costs %d", newBalance, found.DisplayName, found.Points))
+				return
+			}
+			if errors.Is(err, store.ErrNotFound) {
+				app.notFoundResponse(w, r, errors.New("user not found"))
+				return
+			}
+			app.internalServerError(w, r, err)
+			return
+		}
+		balance = &newBalance
+	} else if err := app.store.Scans.Create(r.Context(), scan); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			app.conflictResponse(w, r, errors.New("user already scanned for: "+req.ScanType))
 			return
@@ -210,6 +234,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	response := CreateScanResponse{
 		Scan:      scan,
 		MealGroup: mealGroup,
+		Balance:   balance,
 	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, response); err != nil {

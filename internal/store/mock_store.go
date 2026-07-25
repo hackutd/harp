@@ -414,6 +414,11 @@ func (m *MockScansStore) Create(ctx context.Context, scan *Scan) error {
 	return args.Error(0)
 }
 
+func (m *MockScansStore) CreatePurchase(ctx context.Context, scan *Scan) (int, error) {
+	args := m.Called(scan)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *MockScansStore) GetByUserID(ctx context.Context, userID string) ([]Scan, error) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {

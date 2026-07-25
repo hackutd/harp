@@ -19,12 +19,13 @@ const (
 	ScanCategorySwag    ScanTypeCategory = "swag"
 	ScanCategoryOther   ScanTypeCategory = "other"
 	ScanCategoryWalkIn  ScanTypeCategory = "walk_in"
+	ScanCategoryShop    ScanTypeCategory = "shop"
 )
 
 type ScanType struct {
 	Name        string           `json:"name" validate:"required,min=1,max=50"`
 	DisplayName string           `json:"display_name" validate:"required,min=1,max=100"`
-	Category    ScanTypeCategory `json:"category" validate:"required,oneof=check_in meal swag other walk_in"`
+	Category    ScanTypeCategory `json:"category" validate:"required,oneof=check_in meal swag other walk_in shop"`
 	IsActive    bool             `json:"is_active"`
 	Points      int              `json:"points" validate:"min=0"`
 }
@@ -84,6 +85,63 @@ func (s *ScansStore) Create(ctx context.Context, scan *Scan) error {
 	}
 
 	return tx.Commit()
+}
+
+// CreatePurchase inserts a repeatable scan with negative points after verifying
+// the user's balance covers the cost. Returns the resulting balance. A
+// per-user advisory lock serializes concurrent purchases so two scans cannot
+// both pass the balance check; concurrent awards only increase the balance so
+// they cannot invalidate a passed check.
+func (s *ScansStore) CreatePurchase(ctx context.Context, scan *Scan) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, scan.UserID); err != nil {
+		return 0, err
+	}
+
+	var balance int
+	err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(points), 0) FROM scans WHERE user_id = $1`, scan.UserID).
+		Scan(&balance)
+	if err != nil {
+		return 0, err
+	}
+
+	if balance+scan.Points < 0 {
+		return balance, ErrInsufficientPoints
+	}
+
+	query := `
+		INSERT INTO scans (user_id, scan_type, scanned_by, points, repeatable)
+		VALUES ($1, $2, $3, $4, TRUE)
+		RETURNING id, scanned_at, created_at
+	`
+
+	err = tx.QueryRowContext(ctx, query, scan.UserID, scan.ScanType, scan.ScannedBy, scan.Points).
+		Scan(&scan.ID, &scan.ScannedAt, &scan.CreatedAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return 0, ErrNotFound
+		}
+		return 0, err
+	}
+
+	if err := incrementScanStat(ctx, tx, scan.ScanType); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return balance + scan.Points, nil
 }
 
 func (s *ScansStore) GetByUserID(ctx context.Context, userID string) ([]Scan, error) {

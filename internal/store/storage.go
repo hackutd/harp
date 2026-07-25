@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	ErrNotFound          = errors.New("resource not found")
-	ErrConflict          = errors.New("resource already exists")
-	QueryTimeoutDuration = time.Second * 5
+	ErrNotFound           = errors.New("resource not found")
+	ErrConflict           = errors.New("resource already exists")
+	ErrInsufficientPoints = errors.New("insufficient points")
+	QueryTimeoutDuration  = time.Second * 5
 )
 
 type Storage struct {
@@ -76,6 +77,7 @@ type Storage struct {
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
+		CreatePurchase(ctx context.Context, scan *Scan) (int, error)
 		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
 		GetStats(ctx context.Context) ([]ScanStat, error)
 		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)

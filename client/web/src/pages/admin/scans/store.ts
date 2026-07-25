@@ -141,6 +141,8 @@ export const useScansStore = create<ScansState>((set, get) => ({
         message = `Already scanned for ${activeScanType.display_name}`;
       } else if (res.status === 403) {
         message = "User must check in first";
+      } else if (res.status === 402) {
+        message = res.error || "Insufficient points";
       }
 
       set({

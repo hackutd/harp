@@ -1201,7 +1201,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.",
+                "description": "Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1243,6 +1243,17 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Insufficient points for shop scan",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -6409,6 +6420,10 @@ const docTemplate = `{
         "main.CreateScanResponse": {
             "type": "object",
             "properties": {
+                "balance": {
+                    "description": "Balance is the user's remaining points; populated only for shop scans.",
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -7685,7 +7700,8 @@ const docTemplate = `{
                         "meal",
                         "swag",
                         "other",
-                        "walk_in"
+                        "walk_in",
+                        "shop"
                     ],
                     "allOf": [
                         {
@@ -7719,14 +7735,16 @@ const docTemplate = `{
                 "meal",
                 "swag",
                 "other",
-                "walk_in"
+                "walk_in",
+                "shop"
             ],
             "x-enum-varnames": [
                 "ScanCategoryCheckIn",
                 "ScanCategoryMeal",
                 "ScanCategorySwag",
                 "ScanCategoryOther",
-                "ScanCategoryWalkIn"
+                "ScanCategoryWalkIn",
+                "ScanCategoryShop"
             ]
         },
         "store.ScheduleItem": {

@@ -105,9 +105,18 @@ export function ScannerDialog() {
               )}
               <p className="text-lg font-medium">{lastScanResult.message}</p>
               {lastScanResult.success &&
-                (lastScanResult.scan?.points ?? 0) > 0 && (
+                (lastScanResult.scan?.points ?? 0) !== 0 && (
                   <p className="text-sm font-medium">
-                    +{lastScanResult.scan?.points} {pointsName}
+                    {(lastScanResult.scan?.points ?? 0) > 0
+                      ? `+${lastScanResult.scan?.points}`
+                      : `−${Math.abs(lastScanResult.scan?.points ?? 0)}`}{" "}
+                    {pointsName}
+                  </p>
+                )}
+              {lastScanResult.success &&
+                lastScanResult.scan?.balance !== undefined && (
+                  <p className="text-sm font-light">
+                    Balance: {lastScanResult.scan.balance} {pointsName}
                   </p>
                 )}
               <Button variant="outline" onClick={handleResume}>

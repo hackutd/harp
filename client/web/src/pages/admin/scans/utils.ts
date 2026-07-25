@@ -2,6 +2,7 @@ import {
   DoorOpen,
   Gift,
   MoreHorizontal,
+  ShoppingCart,
   UserCheck,
   Utensils,
 } from "lucide-react";
@@ -48,6 +49,7 @@ export const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
   swag: Gift,
   other: MoreHorizontal,
   walk_in: DoorOpen,
+  shop: ShoppingCart,
 };
 
 export const categoryColors: Record<ScanTypeCategory, string> = {
@@ -56,6 +58,7 @@ export const categoryColors: Record<ScanTypeCategory, string> = {
   swag: "bg-purple-100 text-purple-800",
   other: "bg-gray-100 text-gray-800",
   walk_in: "bg-violet-100 text-violet-700",
+  shop: "bg-emerald-100 text-emerald-800",
 };
 
 export const categoryOptions = [
@@ -64,4 +67,5 @@ export const categoryOptions = [
   { value: "swag", label: "Swag" },
   { value: "other", label: "Other" },
   { value: "walk_in", label: "Walk-In" },
+  { value: "shop", label: "Shop" },
 ] as const;
