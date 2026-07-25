@@ -105,11 +105,7 @@ export default function ScansTab() {
               disabled={saving}
               onClick={handleSave}
             >
-              {saving ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                "Save"
-              )}
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Save"}
             </Button>
           )}
         </div>

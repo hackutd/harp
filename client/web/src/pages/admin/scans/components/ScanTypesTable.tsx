@@ -144,7 +144,14 @@ export function ScanTypesTable({
     }
 
     onSave(updated);
-  }, [editingIndex, editDisplayName, editPoints, scanTypes, pendingNew, onSave]);
+  }, [
+    editingIndex,
+    editDisplayName,
+    editPoints,
+    scanTypes,
+    pendingNew,
+    onSave,
+  ]);
 
   // Ref to avoid stale closures in event listeners
   const saveDisplayNameRef = useRef(saveDisplayName);

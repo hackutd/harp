@@ -66,11 +66,7 @@ export async function saveScanTypes(
 export async function fetchPointsName(
   signal?: AbortSignal,
 ): Promise<ApiResponse<PointsNameResponse>> {
-  return getRequest<PointsNameResponse>(
-    "/points-name",
-    "points name",
-    signal,
-  );
+  return getRequest<PointsNameResponse>("/points-name", "points name", signal);
 }
 
 export async function savePointsName(
