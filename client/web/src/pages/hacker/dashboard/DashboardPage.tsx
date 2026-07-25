@@ -3,13 +3,8 @@ import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { getRequest } from "@/shared/lib/api";
-import type {
-  Application,
-  ApplicationStatus,
-  NotificationFeedItem,
-} from "@/types";
+import type { Application, NotificationFeedItem } from "@/types";
 
 import { fetchHackerPackURL } from "../hacker-pack/api";
 import { getNotificationFeed } from "../notifications/api";
@@ -41,21 +36,24 @@ const QUICK_LINKS: QuickLink[] = [
   { label: "Contact", icon: Mail, href: `mailto:${CONTACT_EMAIL}` },
 ];
 
-const STATUS_BADGES: Record<ApplicationStatus, string> = {
-  draft: "In progress",
-  submitted: "Submitted",
-  accepted: "Accepted",
-  rejected: "Decided",
-  waitlisted: "Waitlisted",
-};
-
-const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  draft: "bg-gray-100 text-gray-800",
-  submitted: "bg-blue-100 text-blue-800",
-  accepted: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-  waitlisted: "bg-yellow-100 text-yellow-800",
-};
+// The dashboard intentionally hides the specific decision. Hackers see only a
+// neutral "Under review" / "Decisions are out" here; the real outcome
+// (accepted / waitlisted / not accepted) is revealed on the status page.
+function dashboardStatus(application: Application | null): {
+  label: string;
+  color: string;
+} {
+  if (!application) return { label: "Not started", color: "bg-white/15" };
+  switch (application.status) {
+    case "draft":
+      return { label: "In progress", color: "bg-gray-100 text-gray-800" };
+    case "submitted":
+      return { label: "Under review", color: "bg-white/15" };
+    default:
+      // accepted / rejected / waitlisted — never reveal the outcome here
+      return { label: "Decisions are out", color: "bg-white text-black" };
+  }
+}
 
 function completionPercent(application: Application | null): number {
   if (!application) return 0;
@@ -106,11 +104,13 @@ export default function DashboardPage() {
   }, []);
 
   const percent = completionPercent(application);
-  const badge = application ? STATUS_BADGES[application.status] : "Not started";
-  const badgeColor = application
-    ? STATUS_BADGE_COLORS[application.status]
-    : "bg-white/15";
+  const status = dashboardStatus(application);
   const isDraft = !application || application.status === "draft";
+  const statusSubtext = isDraft
+    ? `Application ${percent}% complete`
+    : application?.status === "submitted"
+      ? "Your application is under review"
+      : "A decision has been made";
 
   const notifications =
     feed.length > 0
@@ -124,43 +124,44 @@ export default function DashboardPage() {
                 title: "Application progress saved",
                 body: "You can pick up where you left off",
               }
-            : application
+            : application?.status === "submitted"
               ? {
-                  title: `Application ${application.status}`,
-                  body: "Check your status for details",
+                  title: "Application under review",
+                  body: "We'll email you when decisions are out",
                 }
-              : {
-                  title: "Start your application",
-                  body: "Applications for HackUTD 2026 are open",
-                },
+              : application
+                ? {
+                    title: "Decisions are out",
+                    body: "View your status to see your decision",
+                  }
+                : {
+                    title: "Start your application",
+                    body: "Applications for HackUTD 2026 are open",
+                  },
         ];
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
-      {/* Celebration effect — fires once on login when application is accepted */}
-      {application?.status === "accepted" && (
-        <CelebrationEffect id={application.id} type="accepted" />
-      )}
-
-      {/* Application status card */}
+      {/* Application status card — intentionally shows only a neutral state,
+          never the decision outcome (that lives on the status page) */}
       <div className="rounded-xl bg-[#3A3A38] p-5 text-white">
         <span
-          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-widest uppercase ${badgeColor}`}
+          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-widest uppercase ${status.color}`}
         >
-          {badge}
+          {status.label}
         </span>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">
           HackUTD 2026
         </h1>
-        <p className="mt-1 text-sm font-light text-white/70">
-          Application {percent}% complete
-        </p>
-        <div className="mt-3 h-1 w-full rounded-full bg-white/20">
-          <div
-            className="h-1 rounded-full bg-white transition-all"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
+        <p className="mt-1 text-sm font-light text-white/70">{statusSubtext}</p>
+        {isDraft && (
+          <div className="mt-3 h-1 w-full rounded-full bg-white/20">
+            <div
+              className="h-1 rounded-full bg-white transition-all"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        )}
         <Link
           to={isDraft ? "/app/apply" : "/app/status"}
           className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-medium text-black active:scale-[0.98]"

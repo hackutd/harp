@@ -145,8 +145,13 @@ export default function StatusPage() {
       {/* Celebration effects — fire once based on localStorage */}
 
       {/* Submit celebration: fires when the user was just redirected from submit */}
-      {application && justSubmittedId === application.id && (
+      {justSubmittedId === application.id && (
         <CelebrationEffect id={application.id} type="submit" />
+      )}
+
+      {/* Accepted celebration: fires once when an accepted hacker opens their status */}
+      {application.status === "accepted" && (
+        <CelebrationEffect id={application.id} type="accepted" />
       )}
 
       {/* Details */}
