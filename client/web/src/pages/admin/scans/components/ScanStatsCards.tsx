@@ -2,6 +2,7 @@ import {
   DoorOpen,
   Gift,
   MoreHorizontal,
+  ShoppingBag,
   UserCheck,
   Utensils,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
   check_in: UserCheck,
   meal: Utensils,
   swag: Gift,
+  shop: ShoppingBag,
   other: MoreHorizontal,
   walk_in: DoorOpen,
 };
