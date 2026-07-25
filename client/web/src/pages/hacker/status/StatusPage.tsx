@@ -54,9 +54,9 @@ export default function StatusPage() {
     ?.justSubmitted;
   useEffect(() => {
     if (justSubmittedId) {
-      window.history.replaceState({}, "");
+      navigate(location.pathname, { replace: true, state: null });
     }
-  }, [justSubmittedId]);
+  }, [justSubmittedId, navigate, location.pathname]);
 
   useEffect(() => {
     const controller = new AbortController();

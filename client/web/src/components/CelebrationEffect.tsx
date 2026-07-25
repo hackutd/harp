@@ -1,5 +1,7 @@
 import type { Options } from "canvas-confetti";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { cn } from "@/shared/lib/utils";
 
 interface CelebrationEffectProps {
   /** Unique key for localStorage dedup — e.g. app.id */
@@ -16,14 +18,7 @@ function getStorageKey(type: string, id: string): string {
 
 function hasFired(type: string, id: string): boolean {
   try {
-    const key = getStorageKey(type, id);
-    const val = localStorage.getItem(key);
-    // Initialize to "false" if the key doesn't exist yet
-    if (val === null) {
-      localStorage.setItem(key, "false");
-      return false;
-    }
-    return val === "true";
+    return localStorage.getItem(getStorageKey(type, id)) === "true";
   } catch {
     return false;
   }
@@ -136,54 +131,56 @@ async function fireAcceptedConfetti(): Promise<void> {
  * For submit: a checkmark stating "Submitted".
  * For accepted: "Accepted" with a stronger visual flash.
  */
-function ReducedMotionCelebration({ type }: { type: "submit" | "accepted" }) {
-  const elRef = useRef<HTMLDivElement>(null);
+function ReducedMotionCelebration({
+  type,
+  onComplete,
+}: {
+  type: "submit" | "accepted";
+  onComplete: () => void;
+}) {
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const el = elRef.current;
-    if (!el) return;
-    const timer = setTimeout(() => {
-      el.style.opacity = "0";
-      el.style.transform = "scale(0.8)";
-    }, 1500);
-    const removeTimer = setTimeout(() => {
-      el?.remove();
-    }, 2000);
+    const fadeTimer = setTimeout(() => setVisible(false), 1500);
+    const doneTimer = setTimeout(() => onComplete(), 2000);
     return () => {
-      clearTimeout(timer);
-      clearTimeout(removeTimer);
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
     };
-  }, []);
+  }, [onComplete]);
 
   const isAccepted = type === "accepted";
 
   return (
     <div
-      ref={elRef}
-      className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center transition-all duration-500"
-      style={{ animation: "celebration-fade-in 0.3s ease-out" }}
+      className={cn(
+        "animate-celebration-fade-in pointer-events-none fixed inset-0 z-50 flex items-center justify-center transition-all duration-500",
+        visible ? "scale-100 opacity-100" : "scale-90 opacity-0",
+      )}
     >
       <div
-        className={`flex items-center gap-3 rounded-full px-6 py-3 text-base font-semibold tracking-wider uppercase shadow-2xl ${
+        className={cn(
+          "flex items-center gap-3 rounded-full px-6 py-3 text-base font-semibold tracking-wider uppercase shadow-2xl",
           isAccepted
             ? "bg-black text-white"
-            : "border-2 border-black bg-white text-black"
-        }`}
+            : "border-2 border-black bg-white text-black",
+        )}
       >
         {isAccepted ? "✓ Accepted" : "✓ Submitted"}
       </div>
-      <style>{`
-        @keyframes celebration-fade-in {
-          from { opacity: 0; transform: scale(0.5); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }
 
 export function CelebrationEffect({ id, type }: CelebrationEffectProps) {
   const fired = useRef(false);
+  // Decide once whether the reduced-motion badge should show. This is the same
+  // dedup gate as the confetti (skip if already fired for this id/type), computed
+  // from read-only checks so it can run during render without side effects.
+  const [showBadge, setShowBadge] = useState(
+    () => !hasFired(type, id) && prefersReducedMotion(),
+  );
+  const hideBadge = useCallback(() => setShowBadge(false), []);
 
   useEffect(() => {
     if (fired.current) return;
@@ -192,10 +189,9 @@ export function CelebrationEffect({ id, type }: CelebrationEffectProps) {
     fired.current = true;
     markFired(type, id);
 
-    if (prefersReducedMotion()) {
-      // The reduced-motion fallback renders through the component's return
-      return;
-    }
+    // Reduced motion renders the static badge instead of firing confetti; its
+    // visibility was already decided by the initializer above.
+    if (prefersReducedMotion()) return;
 
     if (type === "submit") {
       fireSubmitConfetti();
@@ -204,9 +200,8 @@ export function CelebrationEffect({ id, type }: CelebrationEffectProps) {
     }
   }, [type, id]);
 
-  // For reduced motion, render the static fallback
-  if (typeof window !== "undefined" && prefersReducedMotion()) {
-    return <ReducedMotionCelebration type={type} />;
+  if (showBadge) {
+    return <ReducedMotionCelebration type={type} onComplete={hideBadge} />;
   }
 
   return null;
