@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/shared/stores/user";
 
-import { PointsNameCard } from "./components/PointsNameCard";
 import { ScannerDialog } from "./components/ScannerDialog";
 import { ScanStatsCards } from "./components/ScanStatsCards";
 import { ScanTypesTable } from "./components/ScanTypesTable";
@@ -77,7 +76,6 @@ export default function ScansPage() {
         stats={stats}
         loading={typesLoading || statsLoading}
       />
-      <PointsNameCard isSuperAdmin={isSuperAdmin} />
       <ScanTypesTable
         scanTypes={scanTypes}
         stats={stats}
