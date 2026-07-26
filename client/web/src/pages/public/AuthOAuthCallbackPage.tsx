@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { signInAndUp } from "supertokens-auth-react/recipe/thirdparty";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";

@@ -1,7 +1,7 @@
 import { format, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { Button } from "@/components/ui/button";

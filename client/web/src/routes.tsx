@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 
 import { ErrorPage } from "@/components/ErrorPage";
 import { PageLoader } from "@/components/PageLoader";

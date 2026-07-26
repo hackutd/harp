@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { createCode } from "supertokens-auth-react/recipe/passwordless";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";

@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { getRequest } from "@/shared/lib/api";
 import type { Application, NotificationFeedItem } from "@/types";
