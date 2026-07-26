@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { isStandalone } from "@/shared/install/platform";
 import { useUserStore } from "@/shared/stores";
 
 import { isPushSupported } from "./client";
 import { enablePushSubscription, PUSH_PROMPTED_KEY } from "./subscription";
-
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  if (window.matchMedia("(display-mode: standalone)").matches) return true;
-  const nav = navigator as Navigator & { standalone?: boolean };
-  return Boolean(nav.standalone);
-}
 
 export interface UsePushPromptResult {
   shouldPrompt: boolean;
@@ -30,6 +24,22 @@ export function usePushPrompt(): UsePushPromptResult {
     window.addEventListener("appinstalled", handleInstalled);
     return () => window.removeEventListener("appinstalled", handleInstalled);
   }, []);
+
+  // iOS never fires "appinstalled" for a manual home-screen add — the only
+  // signal is display-mode flipping to standalone, caught when the user
+  // returns to the tab (e.g. after using the Share sheet).
+  useEffect(() => {
+    if (installed) return;
+    function recheck() {
+      if (isStandalone()) setInstalled(true);
+    }
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("focus", recheck);
+    return () => {
+      document.removeEventListener("visibilitychange", recheck);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [installed]);
 
   const shouldPrompt =
     !!user &&

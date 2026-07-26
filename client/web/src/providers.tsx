@@ -1,5 +1,6 @@
 import { SuperTokensWrapper } from "supertokens-auth-react";
 
+import { InstallPromptHost } from "@/components/InstallPromptHost";
 import { PushPromptHost } from "@/components/PushPromptHost";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -12,6 +13,7 @@ export function Providers({ children }: ProvidersProps) {
     <SuperTokensWrapper>
       {children}
       <Toaster />
+      <InstallPromptHost />
       <PushPromptHost />
     </SuperTokensWrapper>
   );
