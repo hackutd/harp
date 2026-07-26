@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -39,6 +40,10 @@ import {
   type ScheduleDay,
   toDayEvent,
 } from "./utils";
+
+// Shown once on first visit to teach hackers how the calendar works.
+const SCHEDULE_TIP_PROMPTED_KEY = "schedule-tip-prompted-v1";
+const SCHEDULE_TIP_TOAST_ID = "schedule-tip";
 
 const HOUR_PX = 56;
 const GRID_HEIGHT = HOURS_IN_DAY * HOUR_PX;
@@ -218,6 +223,33 @@ export default function SchedulePage() {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  // One-time tip explaining how to browse the calendar. Skipped if there's
+  // nothing to show yet, and never re-shown once dismissed.
+  useEffect(() => {
+    if (loading || items.length === 0) return;
+    if (localStorage.getItem(SCHEDULE_TIP_PROMPTED_KEY) === "1") return;
+
+    const dismiss = () => {
+      localStorage.setItem(SCHEDULE_TIP_PROMPTED_KEY, "1");
+      toast.dismiss(SCHEDULE_TIP_TOAST_ID);
+    };
+
+    toast("Browsing the schedule", {
+      id: SCHEDULE_TIP_TOAST_ID,
+      description:
+        "Tap any event to see its details. Use the filter icon in the top corner to show only certain event types.",
+      duration: Infinity,
+      cancel: {
+        label: "Got it",
+        onClick: dismiss,
+      },
+    });
+
+    return () => {
+      toast.dismiss(SCHEDULE_TIP_TOAST_ID);
+    };
+  }, [loading, items.length]);
 
   // Fade the pinned filter button once the grid has been scrolled into.
   useEffect(() => {
