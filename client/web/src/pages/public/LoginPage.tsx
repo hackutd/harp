@@ -119,11 +119,14 @@ export default function Login() {
     <div className="flex min-h-svh items-center justify-center bg-white px-6">
       <div className="w-full max-w-xs space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-semibold tracking-tight text-black">
+          <p className="text-xs font-medium tracking-[0.2em] text-[#8A8A8A] uppercase">
+            Hackathon Application Review Platform
+          </p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-black">
             HARP
           </h1>
           <p className="mt-2 text-sm font-light text-[#8A8A8A]">
-            Sign in to continue
+            Login or create an account
           </p>
         </div>
 
@@ -139,7 +142,7 @@ export default function Login() {
             <input
               id="email"
               type="email"
-              placeholder="you@school.edu"
+              placeholder="caleb@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
