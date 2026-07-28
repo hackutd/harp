@@ -28,7 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
-import { useUserStore } from "@/shared/stores";
+import { usePointsNameStore, useUserStore } from "@/shared/stores";
 import type { Application } from "@/types";
 
 import {
@@ -72,8 +72,10 @@ export default function ProfilePage() {
   const push = usePushSubscription();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const pointsName = usePointsNameStore((s) => s.pointsName);
+  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
+
   const [application, setApplication] = useState<Application | null>(null);
-  const [pointsName, setPointsName] = useState("Points");
   const [resumeBusy, setResumeBusy] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -81,29 +83,20 @@ export default function ProfilePage() {
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const [appRes, pointsNameRes] = await Promise.all([
-        getRequest<Application>(
-          "/applications/me",
-          "application",
-          controller.signal,
-        ),
-        getRequest<{ name: string }>(
-          "/points-name",
-          "points name",
-          controller.signal,
-        ),
-      ]);
+      const res = await getRequest<Application>(
+        "/applications/me",
+        "application",
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
-      if (appRes.status === 200 && appRes.data) {
-        setApplication(appRes.data);
-      }
-      if (pointsNameRes.status === 200 && pointsNameRes.data) {
-        setPointsName(pointsNameRes.data.name);
+      if (res.status === 200 && res.data) {
+        setApplication(res.data);
       }
     };
     load();
+    fetchPointsName(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [fetchPointsName]);
 
   const name = displayName(application);
   const canEditResume = application?.status === "draft";

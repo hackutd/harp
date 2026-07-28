@@ -600,31 +600,6 @@ func TestSetHackerPackURL(t *testing.T) {
 	})
 }
 
-func TestGetPointsName(t *testing.T) {
-	app := newTestApplication(t)
-	mockSettings := app.store.Settings.(*store.MockSettingsStore)
-
-	t.Run("should return configured name", func(t *testing.T) {
-		mockSettings.On("GetPointsName").Return("Tavern Points", nil).Once()
-
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
-		require.NoError(t, err)
-		req = setUserContext(req, newSuperAdminUser())
-
-		rr := executeRequest(req, http.HandlerFunc(app.getPointsName))
-		checkResponseCode(t, http.StatusOK, rr.Code)
-
-		var body struct {
-			Data PointsNameResponse `json:"data"`
-		}
-		err = json.NewDecoder(rr.Body).Decode(&body)
-		require.NoError(t, err)
-		assert.Equal(t, "Tavern Points", body.Data.Name)
-
-		mockSettings.AssertExpectations(t)
-	})
-}
-
 func TestGetPointsNameHandler(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)

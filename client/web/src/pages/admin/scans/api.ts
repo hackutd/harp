@@ -2,7 +2,6 @@ import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
 import type {
-  PointsNameResponse,
   Scan,
   ScanStatsResponse,
   ScanType,
@@ -60,21 +59,5 @@ export async function saveScanTypes(
     "/superadmin/settings/scan-types",
     { scan_types: scanTypes },
     "scan types",
-  );
-}
-
-export async function fetchPointsName(
-  signal?: AbortSignal,
-): Promise<ApiResponse<PointsNameResponse>> {
-  return getRequest<PointsNameResponse>("/points-name", "points name", signal);
-}
-
-export async function savePointsName(
-  name: string,
-): Promise<ApiResponse<PointsNameResponse>> {
-  return postRequest<PointsNameResponse>(
-    "/superadmin/settings/points-name",
-    { name },
-    "points name",
   );
 }

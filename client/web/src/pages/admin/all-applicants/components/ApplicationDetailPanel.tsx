@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { errorAlert } from "@/shared/lib/api";
+import { usePointsNameStore } from "@/shared/stores";
 import type { Application } from "@/types";
 
 import { fetchApplicationResumeURL } from "../api";
@@ -34,6 +35,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
   onGrade,
 }: ApplicationDetailPanelProps) {
   const [isOpeningResume, setIsOpeningResume] = useState(false);
+  const pointsName = usePointsNameStore((s) => s.pointsName);
 
   const handleViewResume = useCallback(async () => {
     if (!application || !application.resume_path || isOpeningResume) {
@@ -77,7 +79,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
                 {application.status}
               </Badge>
               <Badge variant="secondary" className="tabular-nums">
-                {application.points ?? 0} pts
+                {application.points ?? 0} {pointsName}
               </Badge>
             </>
           ) : null}

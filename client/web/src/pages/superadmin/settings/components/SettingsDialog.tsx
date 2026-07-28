@@ -42,7 +42,7 @@ const settingsTabs = [
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
   { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
   { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
-  { id: "scans" as const, label: "Scans", icon: ScanLine },
+  { id: "scans" as const, label: "Points System", icon: ScanLine },
   { id: "hacker-pack" as const, label: "Hacker Pack", icon: BookOpen },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];

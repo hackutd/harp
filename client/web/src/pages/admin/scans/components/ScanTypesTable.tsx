@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePointsNameStore } from "@/shared/stores";
 
 import type { ScanStat, ScanType, ScanTypeCategory } from "../types";
 import {
@@ -77,6 +78,7 @@ export function ScanTypesTable({
   const [pendingNew, setPendingNew] = useState<ScanType | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const editRowRef = useRef<HTMLTableRowElement>(null);
+  const pointsName = usePointsNameStore((s) => s.pointsName);
 
   // When there's a pending new row, append it so it renders in the table
   const effectiveTypes = pendingNew ? [...scanTypes, pendingNew] : scanTypes;
@@ -129,11 +131,20 @@ export function ScanTypesTable({
     if (!current) return;
 
     // No change — skip save
-    if (trimmed === current.display_name && points === current.points) return;
+    const nameChanged = trimmed !== current.display_name;
+    if (!nameChanged && points === current.points) return;
 
+    // Only re-derive `name` when the display name actually changed — it's the
+    // key historical scans and scan_stats are keyed by, so a points-only edit
+    // must not rename the scan type.
     const updated = scanTypes.map((st, i) =>
       i === editingIndex
-        ? { ...st, display_name: trimmed, name: toSnakeCase(trimmed), points }
+        ? {
+            ...st,
+            display_name: trimmed,
+            name: nameChanged ? toSnakeCase(trimmed) : st.name,
+            points,
+          }
         : st,
     );
 
@@ -309,7 +320,7 @@ export function ScanTypesTable({
                 <TableHead className="w-24">Action</TableHead>
                 <TableHead className="w-48">Name</TableHead>
                 <TableHead className="w-150">Category</TableHead>
-                <TableHead className="w-24">Points</TableHead>
+                <TableHead className="w-24">{pointsName}</TableHead>
                 <TableHead className="w-24">Scans</TableHead>
                 {isSuperAdmin && <TableHead>Active</TableHead>}
               </TableRow>

@@ -299,7 +299,6 @@ func (app *application) mount() http.Handler {
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Get("/hacker-pack-url", app.getHackerPackURL)
 						r.Post("/hacker-pack-url", app.setHackerPackURL)
-						r.Get("/points-name", app.getPointsName)
 						r.Post("/points-name", app.setPointsName)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)

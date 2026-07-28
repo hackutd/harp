@@ -5,6 +5,7 @@ import type {
   HackerPackURLResult,
   MealGroupsResult,
   MealGroupStatsResult,
+  PointsNameResult,
   ResetHackathonOptions,
   ResetHackathonResult,
 } from "./types";
@@ -65,5 +66,17 @@ export async function updateHackerPackURL(
     "/superadmin/settings/hacker-pack-url",
     { url },
     "hacker pack URL",
+  );
+}
+
+// Reads go through usePointsNameStore — the name is visible to every
+// authenticated user, so only the write is super admin gated.
+export async function updatePointsName(
+  name: string,
+): Promise<ApiResponse<PointsNameResult>> {
+  return postRequest<PointsNameResult>(
+    "/superadmin/settings/points-name",
+    { name },
+    "points name",
   );
 }

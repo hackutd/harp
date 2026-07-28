@@ -233,7 +233,7 @@ type HackerPackURLResponse struct {
 }
 
 type SetPointsNamePayload struct {
-	Name string `json:"name"`
+	Name string `json:"name" validate:"required,min=1,max=30"`
 }
 
 type PointsNameResponse struct {
@@ -666,30 +666,6 @@ func (app *application) getHackerPackHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// getPointsName returns the configured points system display name
-//
-//	@Summary		Get points system name (Super Admin)
-//	@Description	Returns the configured display name of the points system
-//	@Tags			superadmin/settings
-//	@Produce		json
-//	@Success		200	{object}	PointsNameResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/points-name [get]
-func (app *application) getPointsName(w http.ResponseWriter, r *http.Request) {
-	name, err := app.store.Settings.GetPointsName(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, PointsNameResponse{Name: name}); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
 // setPointsName updates the points system display name
 //
 //	@Summary		Set points system name (Super Admin)
@@ -712,22 +688,19 @@ func (app *application) setPointsName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		app.badRequestResponse(w, r, errors.New("name must not be empty"))
-		return
-	}
-	if len(name) > 30 {
-		app.badRequestResponse(w, r, errors.New("name must be at most 30 characters"))
+	// Trim before validating so a whitespace-only name still fails min=1.
+	req.Name = strings.TrimSpace(req.Name)
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if err := app.store.Settings.SetPointsName(r.Context(), name); err != nil {
+	if err := app.store.Settings.SetPointsName(r.Context(), req.Name); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, PointsNameResponse{Name: name}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, PointsNameResponse(req)); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

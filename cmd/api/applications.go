@@ -25,6 +25,18 @@ type ApplicationWithSchema struct {
 	Points int `json:"points"`
 }
 
+// userPoints returns the user's total scan points. Points are cosmetic, so a
+// lookup failure is logged and reported as 0 rather than failing the request.
+func (app *application) userPoints(r *http.Request, userID string) int {
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), userID)
+	if err != nil {
+		app.logger.Warnw("failed to fetch scan points", "user_id", userID, "error", err)
+		return 0
+	}
+
+	return points
+}
+
 // getOrCreateApplicationHandler returns or creates the user's hackathon application
 //
 //	@Summary		Get or create application
@@ -75,16 +87,10 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), user.ID)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
-		Points:            points,
+		Points:            app.userPoints(r, user.ID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -168,16 +174,10 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), user.ID)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
-		Points:            points,
+		Points:            app.userPoints(r, user.ID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -609,16 +609,10 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), application.UserID)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
-		Points:            points,
+		Points:            app.userPoints(r, application.UserID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

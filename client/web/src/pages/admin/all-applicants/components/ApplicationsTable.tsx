@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePointsNameStore } from "@/shared/stores";
 
 import type { ApplicationListItem } from "../types";
 import { formatName, getStatusColor } from "../utils";
@@ -28,6 +29,8 @@ export const ApplicationsTable = memo(function ApplicationsTable({
   selectedId,
   onSelectApplication,
 }: ApplicationsTableProps) {
+  const pointsName = usePointsNameStore((s) => s.pointsName);
+
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
       {loading && (
@@ -51,7 +54,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
             <TableHead>AI Percent</TableHead>
-            <TableHead>Points</TableHead>
+            <TableHead>{pointsName}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

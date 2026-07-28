@@ -5,34 +5,32 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
+import { errorAlert } from "@/shared/lib/api";
+import { usePointsNameStore } from "@/shared/stores";
 
-interface PointsNameResponse {
-  name: string;
-}
+import { updatePointsName } from "../api";
+
+const MAX_POINTS_NAME_LENGTH = 30;
 
 export default function ScansTab() {
-  const [pointsName, setPointsName] = useState("");
-  const [draft, setDraft] = useState("");
-  const [loading, setLoading] = useState(true);
+  const pointsName = usePointsNameStore((s) => s.pointsName);
+  const loading = usePointsNameStore((s) => s.loading);
+  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
+  const setPointsName = usePointsNameStore((s) => s.setPointsName);
+
+  const [draft, setDraft] = useState(pointsName);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function fetchPointsName() {
-      const res = await getRequest<PointsNameResponse>(
-        "/points-name",
-        "points name",
-      );
-      if (res.status === 200 && res.data) {
-        setPointsName(res.data.name);
-        setDraft(res.data.name);
-      } else {
-        errorAlert(res);
-      }
-      setLoading(false);
-    }
-    fetchPointsName();
-  }, []);
+    const controller = new AbortController();
+    fetchPointsName(controller.signal);
+    return () => controller.abort();
+  }, [fetchPointsName]);
+
+  // Sync the draft once the fetched name lands.
+  useEffect(() => {
+    setDraft(pointsName);
+  }, [pointsName]);
 
   const dirty = draft.trim() !== pointsName;
 
@@ -42,21 +40,20 @@ export default function ScansTab() {
       toast.error("Points system name must not be empty");
       return;
     }
-    if (trimmed.length > 30) {
-      toast.error("Points system name must be at most 30 characters");
+    if (trimmed.length > MAX_POINTS_NAME_LENGTH) {
+      toast.error(
+        `Points system name must be at most ${MAX_POINTS_NAME_LENGTH} characters`,
+      );
       return;
     }
 
     setSaving(true);
-    const res = await postRequest<PointsNameResponse>(
-      "/superadmin/settings/points-name",
-      { name: trimmed },
-      "points name",
-    );
+    const res = await updatePointsName(trimmed);
 
     if (res.status === 200 && res.data) {
+      // Push into the shared store so every surface showing points picks up
+      // the new label without a refetch.
       setPointsName(res.data.name);
-      setDraft(res.data.name);
       toast.success("Points system name saved");
     } else {
       errorAlert(res, "Failed to save points system name");
@@ -66,7 +63,7 @@ export default function ScansTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg text-zinc-100">Scans</h3>
+      <h3 className="text-lg text-zinc-100">Points System</h3>
       <p className="text-sm text-zinc-400">
         Configure scan and points settings.
       </p>
@@ -94,14 +91,13 @@ export default function ScansTab() {
             }}
             placeholder="Points"
             className="h-8 w-48 text-sm font-light bg-zinc-800 border-zinc-700 text-zinc-100"
-            maxLength={30}
+            maxLength={MAX_POINTS_NAME_LENGTH}
             disabled={loading}
           />
           {dirty && (
             <Button
               size="sm"
-              variant="outline"
-              className="cursor-pointer border-zinc-700 text-zinc-100 hover:bg-zinc-800"
+              className="cursor-pointer bg-white text-black hover:bg-zinc-200"
               disabled={saving}
               onClick={handleSave}
             >

@@ -363,6 +363,8 @@ func TestCreateScan(t *testing.T) {
 		require.NotNil(t, resp.Data.Balance)
 		assert.Equal(t, 70, *resp.Data.Balance)
 
+		// Shop scans go through CreatePurchase so the balance check is atomic.
+		mockScans.AssertNotCalled(t, "Create", mock.Anything)
 		mockSettings.AssertExpectations(t)
 		mockScans.AssertExpectations(t)
 		mockApps.AssertExpectations(t)

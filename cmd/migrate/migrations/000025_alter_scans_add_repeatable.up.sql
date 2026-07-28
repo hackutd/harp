@@ -1,7 +1,7 @@
 -- Shop purchases may repeat per user; all other scan types stay once-per-user.
 ALTER TABLE scans ADD COLUMN repeatable BOOLEAN NOT NULL DEFAULT false;
 
-ALTER TABLE scans DROP CONSTRAINT scans_user_id_scan_type_key;
+ALTER TABLE scans DROP CONSTRAINT IF EXISTS scans_user_id_scan_type_key;
 
 CREATE UNIQUE INDEX uq_scans_user_scan_type_once ON scans(user_id, scan_type) WHERE NOT repeatable;
 

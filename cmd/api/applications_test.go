@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -596,6 +597,86 @@ func TestListApplications(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
+func TestGetApplication(t *testing.T) {
+	schema := []store.ApplicationSchemaField{{ID: "first_name", Type: "text", Label: "First Name"}}
+
+	newRequest := func(t *testing.T, applicationID string) *http.Request {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", applicationID)
+		return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	}
+
+	t.Run("should return application with points", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		existing := newCompleteApplication("user-1")
+		mockApps.On("GetByID", "app-1").Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", "user-1").Return(42, nil).Once()
+
+		rr := executeRequest(newRequest(t, "app-1"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 42, envelope.Data.Points)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+	})
+
+	// Points are cosmetic — a failed lookup must not fail the whole read.
+	t.Run("should still return 200 with 0 points when lookup fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		existing := newCompleteApplication("user-1")
+		mockApps.On("GetByID", "app-1").Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", "user-1").
+			Return(0, errors.New("scans unavailable")).Once()
+
+		rr := executeRequest(newRequest(t, "app-1"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 0, envelope.Data.Points)
+
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mockApps.On("GetByID", "nonexistent").Return(nil, store.ErrNotFound).Once()
+
+		rr := executeRequest(newRequest(t, "nonexistent"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
 		mockApps.AssertExpectations(t)
 	})

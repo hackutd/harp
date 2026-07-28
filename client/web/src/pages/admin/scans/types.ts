@@ -42,7 +42,3 @@ export interface ScanStatsResponse {
 export interface ScansResponse {
   scans: Scan[];
 }
-
-export interface PointsNameResponse {
-  name: string;
-}
