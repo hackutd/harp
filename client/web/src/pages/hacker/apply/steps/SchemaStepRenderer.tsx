@@ -15,11 +15,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Dialog,
-  DialogContent,
-  DialogOverlay,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogOverlay } from "@/components/ui/dialog";
 import {
   FormControl,
   FormDescription,
@@ -680,9 +676,7 @@ function ComboboxContent({
       <CommandList
         className={cn(
           "overflow-y-auto",
-          fullHeight
-            ? "max-h-none flex-1"
-            : "max-h-[300px]",
+          fullHeight ? "max-h-none flex-1" : "max-h-[300px]",
         )}
       >
         <CommandEmpty className="px-5 py-3 text-left text-sm font-light text-white/60">
