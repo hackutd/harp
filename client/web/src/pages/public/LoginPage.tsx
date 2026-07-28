@@ -5,6 +5,7 @@ import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
 
 import googleIcon from "@/assets/google_icon.webp";
+import logo from "@/assets/logo.webp";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { isGoogleAuthEnabled } from "@/shared/auth";
@@ -119,7 +120,8 @@ export default function Login() {
     <div className="flex min-h-svh items-center justify-center bg-white px-6">
       <div className="w-full max-w-xs space-y-8">
         <div className="text-center">
-          <p className="text-xs font-medium tracking-[0.2em] text-[#8A8A8A] uppercase">
+          <img src={logo} alt="HARP" className="mx-auto h-12 w-12" />
+          <p className="mt-3 text-xs font-medium tracking-[0.2em] text-[#8A8A8A] uppercase">
             Hackathon Application Review Platform
           </p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight text-black">
