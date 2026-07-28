@@ -4,7 +4,11 @@ import { isStandalone } from "@/shared/install/platform";
 import { useUserStore } from "@/shared/stores";
 
 import { isPushSupported } from "./client";
-import { enablePushSubscription, PUSH_PROMPTED_KEY } from "./subscription";
+import {
+  enablePushSubscription,
+  PUSH_PROMPT_SETTLED_EVENT,
+  PUSH_PROMPTED_KEY,
+} from "./subscription";
 
 export interface UsePushPromptResult {
   shouldPrompt: boolean;
@@ -52,6 +56,7 @@ export function usePushPrompt(): UsePushPromptResult {
   const dismiss = useCallback(() => {
     localStorage.setItem(PUSH_PROMPTED_KEY, "1");
     setDismissed(true);
+    window.dispatchEvent(new Event(PUSH_PROMPT_SETTLED_EVENT));
   }, []);
 
   const accept = useCallback(async () => {
@@ -60,6 +65,7 @@ export function usePushPrompt(): UsePushPromptResult {
     } finally {
       localStorage.setItem(PUSH_PROMPTED_KEY, "1");
       setDismissed(true);
+      window.dispatchEvent(new Event(PUSH_PROMPT_SETTLED_EVENT));
     }
   }, []);
 

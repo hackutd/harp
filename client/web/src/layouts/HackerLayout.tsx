@@ -11,6 +11,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavSection, NavUser } from "@/pages/admin/_shared";
+import { ScheduleTipHost } from "@/pages/hacker/components/ScheduleTipHost";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/shared/stores";
 
@@ -88,6 +89,7 @@ export default function HackerLayout() {
 
   return (
     <SidebarProvider className="min-h-svh bg-white">
+      <ScheduleTipHost />
       <HackerSidebar />
 
       {/* Page content */}

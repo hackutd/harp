@@ -14,6 +14,12 @@ import {
 export const PUSH_PROMPTED_KEY = "push-prompted-v1";
 export const PUSH_ENDPOINT_KEY = "push-endpoint-v1";
 
+// Fired whenever the push prompt is resolved (accepted or dismissed), so
+// same-tab listeners (e.g. the next step in the onboarding toast chain) can
+// react without waiting for a reload. localStorage's own "storage" event only
+// fires in other tabs, hence the custom event.
+export const PUSH_PROMPT_SETTLED_EVENT = "push-prompt-settled";
+
 export type EnablePushResult = "granted" | "denied" | "error";
 
 // Requests permission, creates a browser push subscription, and registers it

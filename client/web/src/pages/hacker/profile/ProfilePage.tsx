@@ -135,9 +135,10 @@ export default function ProfilePage() {
     if (install.platform === "ios") {
       toast("Add HARP to your home screen", {
         description: (
-          <span className="flex items-center gap-1.5">
-            Tap
-            <Share className="inline size-3.5" strokeWidth={2} />
+          <span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              Tap <Share className="size-3.5" strokeWidth={2} />
+            </span>{" "}
             then "Add to Home Screen" to install and get notified.
           </span>
         ),
