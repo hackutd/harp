@@ -1,5 +1,5 @@
-import { ArrowLeft, Check, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Check, ChevronDown, X } from "lucide-react";
+import { useCallback, useState } from "react";
 import {
   type ControllerRenderProps,
   type FieldValues,
@@ -16,6 +16,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
+  Dialog,
+  DialogContent,
+  DialogOverlay,
+} from "@/components/ui/dialog";
+import {
   FormControl,
   FormDescription,
   FormField,
@@ -30,6 +35,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import { useIsMobile } from "@/shared/hooks";
 import { getFieldPresets } from "@/shared/lib/field-presets";
 import { renderLabel } from "@/shared/lib/schema-utils";
 import { cn } from "@/shared/lib/utils";
@@ -462,6 +468,10 @@ function SchemaSelect({
  * "Other" escape hatch that reveals a free-text input for values not in the
  * list. The stored value is always a plain string — a picked preset or the
  * free-typed entry — so it stays identical to what a plain text field produced.
+ *
+ * On mobile (< 768px) it renders a full-screen Dialog so the entire option list
+ * is always scrollable with no clipping at the top of the viewport. On desktop
+ * it uses the searchable Popover.
  */
 function SchemaCombobox({
   field,
@@ -475,6 +485,7 @@ function SchemaCombobox({
   const value = (formField.value as string) ?? "";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const isMobile = useIsMobile();
   // Free-text mode: on first render, infer it from a saved value that isn't a
   // known preset (e.g. a resumed draft or an existing submission).
   const [otherMode, setOtherMode] = useState(
@@ -509,6 +520,72 @@ function SchemaCombobox({
     );
   }
 
+  // Mobile: full-screen Dialog so the entire list is always visible and
+  // scrollable with no clipping at the top of the viewport.
+  if (isMobile) {
+    return (
+      <>
+        <FormControl>
+          <button
+            type="button"
+            onBlur={formField.onBlur}
+            onClick={() => setOpen(true)}
+            className={cn(
+              underlineField,
+              "flex w-full items-center justify-between gap-2 outline-none",
+              !value && "text-[#8A8A8A]",
+            )}
+          >
+            <span className={cn("truncate", !value && "text-sm")}>
+              {value || `Select ${field.label.toLowerCase()}`}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                open && "rotate-180",
+              )}
+            />
+          </button>
+        </FormControl>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogOverlay className="bg-black/60" />
+          <DialogContent
+            showCloseButton={false}
+            className="fixed inset-0 z-50 flex max-h-dvh w-full max-w-full translate-x-0 translate-y-0 flex-col rounded-none border-0 bg-[#3A3A3A] p-0 text-white"
+          >
+            {/* Close button */}
+            <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
+              <span className="text-sm font-light text-white/70">
+                {field.label}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex size-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ComboboxContent
+                field={field}
+                formField={formField}
+                options={options}
+                value={value}
+                query={query}
+                setQuery={setQuery}
+                setOtherMode={setOtherMode}
+                setOpen={setOpen}
+                fullHeight
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  // Desktop: searchable Popover anchored to the trigger.
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <FormControl>
@@ -536,48 +613,103 @@ function SchemaCombobox({
         sideOffset={-6}
         className={cn(selectContent, "w-[var(--radix-popover-trigger-width)]")}
       >
-        <Command className="bg-transparent text-white">
-          <CommandInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder={`Search ${field.label.toLowerCase()}...`}
-            className="text-white placeholder:text-white/40"
-          />
-          <CommandList>
-            <CommandEmpty className="px-5 py-3 text-left text-sm font-light text-white/60">
-              No matches — choose “Other” below to enter it manually.
-            </CommandEmpty>
-            <CommandGroup className="p-0">
-              {options.map((opt) => (
-                <CommandItem
-                  key={opt}
-                  value={opt}
-                  onSelect={() => {
-                    formField.onChange(opt);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer justify-between rounded-none border-b border-white/[0.08] px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/[0.07] data-[selected=true]:text-white"
-                >
-                  <span className="truncate">{opt}</span>
-                  {opt === value && <Check className="size-4 shrink-0" />}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-        {/* Outside CommandList so it's never hidden by the search filter. */}
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 border-t border-white/[0.08] px-5 py-3.5 text-left text-sm font-light text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white"
-          onClick={() => {
-            setOtherMode(true);
-            formField.onChange(query);
-            setOpen(false);
-          }}
-        >
-          Other (enter manually)
-        </button>
+        <ComboboxContent
+          field={field}
+          formField={formField}
+          options={options}
+          value={value}
+          query={query}
+          setQuery={setQuery}
+          setOtherMode={setOtherMode}
+          setOpen={setOpen}
+        />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * The inner content shared between the desktop Popover and the mobile Dialog.
+ * Renders the Command search bar, the filtered options list, and the "Other"
+ * escape hatch.
+ */
+function ComboboxContent({
+  field,
+  formField,
+  options,
+  value,
+  query,
+  setQuery,
+  setOtherMode,
+  setOpen,
+  fullHeight,
+}: {
+  field: ApplicationSchemaField;
+  formField: ControllerRenderProps<ApplicationFormValues>;
+  options: readonly string[];
+  value: string;
+  query: string;
+  setQuery: (q: string) => void;
+  setOtherMode: (v: boolean) => void;
+  setOpen: (v: boolean) => void;
+  /** When true, the option list fills available space (for the mobile Dialog). */
+  fullHeight?: boolean;
+}) {
+  const handleSelect = useCallback(
+    (opt: string) => {
+      formField.onChange(opt);
+      setOpen(false);
+    },
+    [formField, setOpen],
+  );
+
+  const handleOther = useCallback(() => {
+    setOtherMode(true);
+    formField.onChange(query);
+    setOpen(false);
+  }, [setOtherMode, formField, query, setOpen]);
+
+  return (
+    <Command className="bg-transparent text-white">
+      <CommandInput
+        value={query}
+        onValueChange={setQuery}
+        placeholder={`Search ${field.label.toLowerCase()}...`}
+        className="text-white placeholder:text-white/40"
+      />
+      <CommandList
+        className={cn(
+          "overflow-y-auto",
+          fullHeight
+            ? "max-h-none flex-1"
+            : "max-h-[300px]",
+        )}
+      >
+        <CommandEmpty className="px-5 py-3 text-left text-sm font-light text-white/60">
+          No matches — choose "Other" below to enter it manually.
+        </CommandEmpty>
+        <CommandGroup className="p-0">
+          {options.map((opt) => (
+            <CommandItem
+              key={opt}
+              value={opt}
+              onSelect={() => handleSelect(opt)}
+              className="cursor-pointer justify-between rounded-none border-b border-white/[0.08] px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/[0.07] data-[selected=true]:text-white"
+            >
+              <span className="truncate">{opt}</span>
+              {opt === value && <Check className="size-4 shrink-0" />}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+      {/* Outside CommandList so it's never hidden by the search filter. */}
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 border-t border-white/[0.08] px-5 py-3.5 text-left text-sm font-light text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white"
+        onClick={handleOther}
+      >
+        Other (enter manually)
+      </button>
+    </Command>
   );
 }
