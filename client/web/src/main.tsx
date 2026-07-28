@@ -1,7 +1,7 @@
 import "./index.css";
 
 import ReactDOM from "react-dom/client";
-import { RouterProvider } from "react-router-dom";
+import { RouterProvider } from "react-router/dom";
 
 import { initSuperTokens } from "@/shared/auth";
 

@@ -8,7 +8,7 @@ import {
   Upload,
 } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { signOut } from "supertokens-auth-react/recipe/session";
 

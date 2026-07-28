@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { consumeCode } from "supertokens-auth-react/recipe/passwordless";
 
 import { Button } from "@/components/ui/button";

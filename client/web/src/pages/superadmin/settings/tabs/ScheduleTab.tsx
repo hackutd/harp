@@ -20,39 +20,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
+import {
+  formatPickerDate,
+  parseDateOnly,
+  startOfDay,
+  toDateKey,
+} from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 
 import { resetHackathon } from "../api";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function parseDate(value: string) {
-  if (!value) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
-
-function toInputDateValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatPickerDate(date: Date | null) {
-  if (!date) return "Select date";
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
-}
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
 
 export default function ScheduleTab() {
   const [startDate, setStartDate] = useState("");
@@ -64,8 +42,8 @@ export default function ScheduleTab() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clearSchedule, setClearSchedule] = useState(false);
 
-  const parsedStart = useMemo(() => parseDate(startDate), [startDate]);
-  const parsedEnd = useMemo(() => parseDate(endDate), [endDate]);
+  const parsedStart = useMemo(() => parseDateOnly(startDate), [startDate]);
+  const parsedEnd = useMemo(() => parseDateOnly(endDate), [endDate]);
 
   const validationError = useMemo(() => {
     if (!startDate || !endDate) {
@@ -229,7 +207,7 @@ export default function ScheduleTab() {
                   defaultMonth={parsedStart ?? undefined}
                   onSelect={(selectedDate) => {
                     if (!selectedDate) return;
-                    setStartDate(toInputDateValue(selectedDate));
+                    setStartDate(toDateKey(selectedDate));
                     setStartPickerOpen(false);
                   }}
                 />
@@ -263,7 +241,7 @@ export default function ScheduleTab() {
                   defaultMonth={parsedEnd ?? parsedStart ?? undefined}
                   onSelect={(selectedDate) => {
                     if (!selectedDate) return;
-                    setEndDate(toInputDateValue(selectedDate));
+                    setEndDate(toDateKey(selectedDate));
                     setEndPickerOpen(false);
                   }}
                   disabled={(date) =>

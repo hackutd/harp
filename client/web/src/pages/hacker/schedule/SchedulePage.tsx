@@ -7,7 +7,7 @@ import {
   Tag,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getLocalParts, getLocalTimeZoneLabel } from "@/shared/lib/datetime";
 import {
   FALLBACK_TAG_COLOR,
   TAG_COLORS,
@@ -27,13 +28,11 @@ import type { ScheduleItem } from "@/types";
 
 import { getSchedule, getScheduleDateRange } from "./api";
 import {
-  CENTRAL_TZ,
   type DayEvent,
   enumerateDays,
   formatClock,
   formatHourLabel,
   formatMonthTitle,
-  getCentralParts,
   HOURS_IN_DAY,
   layoutDayEvents,
   type PositionedEvent,
@@ -44,9 +43,12 @@ import {
 const HOUR_PX = 56;
 const GRID_HEIGHT = HOURS_IN_DAY * HOUR_PX;
 const MIN_EVENT_PX = 24;
-const AUTO_SCROLL_HOUR = 7;
 
-const HOUR_LINES = `repeating-linear-gradient(to bottom, #F0F0F0 0, #F0F0F0 1px, transparent 1px, transparent ${HOUR_PX}px)`;
+// Hour separators drawn at the *bottom* of each cell rather than the top, so
+// the first line lands one hour down instead of at y=0 — the sticky header's
+// bottom border already provides the top boundary, and drawing over it would
+// make the very top line read as double-thick.
+const HOUR_LINES = `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, #F0F0F0 ${HOUR_PX - 1}px, #F0F0F0 ${HOUR_PX}px)`;
 
 const FILTER_OPTIONS = [
   ...Object.entries(TAG_COLORS).map(([key, color]) => ({ key, ...color })),
@@ -64,7 +66,6 @@ function eventFilterKey(item: ScheduleItem): string {
 const DETAIL_CARD_CLAMP_PX = 280;
 
 const CARD_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: CENTRAL_TZ,
   weekday: "short",
   month: "short",
   day: "numeric",
@@ -190,9 +191,6 @@ export default function SchedulePage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const stickyHeaderRef = useRef<HTMLDivElement>(null);
-  const sevenAmRef = useRef<HTMLDivElement>(null);
-  const hasAutoScrolledRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -296,7 +294,8 @@ export default function SchedulePage() {
     };
   }, [selectedEventId]);
 
-  const nowParts = useMemo(() => getCentralParts(now), [now]);
+  const nowParts = useMemo(() => getLocalParts(now), [now]);
+  const localTimeZone = useMemo(() => getLocalTimeZoneLabel(), []);
   const todayIndex = useMemo(
     () => days.findIndex((day) => day.dateKey === nowParts.dateKey),
     [days, nowParts.dateKey],
@@ -310,23 +309,6 @@ export default function SchedulePage() {
     () => Array.from({ length: HOURS_IN_DAY }, (_, hour) => hour),
     [],
   );
-
-  // On open, jump the calendar down to the morning (7 AM) so the pre-dawn hours
-  // aren't the first thing hackers see. Runs once, offset for the sticky header.
-  useEffect(() => {
-    if (loading || days.length === 0 || hasAutoScrolledRef.current) return;
-
-    const animationFrame = window.requestAnimationFrame(() => {
-      const marker = sevenAmRef.current;
-      if (!marker) return;
-      const headerHeight = stickyHeaderRef.current?.offsetHeight ?? 0;
-      marker.style.scrollMarginTop = `${headerHeight + 8}px`;
-      marker.scrollIntoView({ behavior: "smooth", block: "start" });
-      hasAutoScrolledRef.current = true;
-    });
-
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [loading, days.length]);
 
   const toggleTag = (key: string) => {
     setSelectedTags((prev) => {
@@ -413,10 +395,7 @@ export default function SchedulePage() {
           {/* Calendar grid */}
           <div className="relative mt-3">
             {/* Sticky header — day strip + column labels stay pinned on scroll */}
-            <div
-              ref={stickyHeaderRef}
-              className="sticky top-0 z-30 bg-white pt-2"
-            >
+            <div className="sticky top-0 z-30 bg-white pt-2">
               {/* Day strip — one cell per hackathon day, today circled. Offset by
                   the hour-gutter width so it lines up with the columns below. */}
               <div className="flex">
@@ -465,9 +444,14 @@ export default function SchedulePage() {
                 </div>
               </div>
 
-              {/* Column headers */}
+              {/* Column headers — timezone label sits in the hour gutter, on
+                  the same row as the date headers. */}
               <div className="mt-3 flex border-b border-[#EDEDED]">
-                <div className="w-14 shrink-0" />
+                <div className="flex w-14 shrink-0 items-end justify-end pr-2 pb-2">
+                  <span className="text-[11px] font-semibold text-[#8A8A8A]">
+                    {localTimeZone.abbrev || localTimeZone.iana}
+                  </span>
+                </div>
                 {days.map((day) => {
                   const isToday = day.dateKey === nowParts.dateKey;
                   return (
@@ -495,13 +479,6 @@ export default function SchedulePage() {
             <div className="relative flex" style={{ height: GRID_HEIGHT }}>
               {/* Hour axis */}
               <div className="relative w-14 shrink-0">
-                {/* Anchor for the on-open auto-scroll to the morning */}
-                <div
-                  ref={sevenAmRef}
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0"
-                  style={{ top: AUTO_SCROLL_HOUR * HOUR_PX }}
-                />
                 {hours.map((hour) => {
                   const { value, suffix } = formatHourLabel(hour);
                   return (

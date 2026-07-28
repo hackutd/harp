@@ -34,20 +34,19 @@ type application struct {
 }
 
 type config struct {
-	addr              string
-	db                dbConfig
-	env               string
-	appURL            string
-	frontendURL       string
-	hackathonTimeZone string
-	mail              mailer.Config
-	gcs               gcsConfig
-	auth              authConfig
-	rateLimiter       ratelimiter.Config
-	supertokens       supertokensConfig
-	publicCORSOrigin  string
-	vapid             vapidConfig
-	appleWallet       appleWalletConfig
+	addr             string
+	db               dbConfig
+	env              string
+	appURL           string
+	frontendURL      string
+	mail             mailer.Config
+	gcs              gcsConfig
+	auth             authConfig
+	rateLimiter      ratelimiter.Config
+	supertokens      supertokensConfig
+	publicCORSOrigin string
+	vapid            vapidConfig
+	appleWallet      appleWalletConfig
 }
 
 type vapidConfig struct {
@@ -180,6 +179,7 @@ func (app *application) mount() http.Handler {
 			r.Get("/schedule", app.getHackerScheduleHandler)
 			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
 			r.Get("/faq", app.getHackerFAQHandler)
+			r.Get("/hacker-pack", app.getHackerPackHandler)
 			r.Delete("/users/me", app.deleteMyAccountHandler)
 			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
 			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
@@ -296,6 +296,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/admin-faq-edit-toggle", app.setAdminFAQEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
+						r.Get("/hacker-pack-url", app.getHackerPackURL)
+						r.Post("/hacker-pack-url", app.setHackerPackURL)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)
 						r.Put("/meal-groups", app.updateMealGroups)

@@ -22,3 +22,7 @@ export interface MealGroupsResult {
 export interface MealGroupStatsResult {
   stats: Record<string, number>;
 }
+
+export interface HackerPackURLResult {
+  url: string;
+}

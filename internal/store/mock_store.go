@@ -261,6 +261,16 @@ func (m *MockSettingsStore) SetHackathonDateRange(ctx context.Context, dateRange
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetHackerPackURL(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetHackerPackURL(ctx context.Context, url string) error {
+	args := m.Called(url)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetScanTypes(ctx context.Context) ([]ScanType, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

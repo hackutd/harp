@@ -15,5 +15,5 @@ func main() {
 
 	fmt.Printf("VAPID_PUBLIC_KEY=%s\n", public)
 	fmt.Printf("VAPID_PRIVATE_KEY=%s\n", private)
-	fmt.Println("VAPID_SUBJECT=mailto:dev@example.com")
+	fmt.Println("VAPID_SUBJECT=dev@example.com")
 }

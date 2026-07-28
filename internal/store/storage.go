@@ -54,6 +54,8 @@ type Storage struct {
 		SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error
 		GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error)
 		SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error
+		GetHackerPackURL(ctx context.Context) (string, error)
+		SetHackerPackURL(ctx context.Context, url string) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronsUpDown, Eye, LogOut, ShieldCheck } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import Session from "supertokens-auth-react/recipe/session";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

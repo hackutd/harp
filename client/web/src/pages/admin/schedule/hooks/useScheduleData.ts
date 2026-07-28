@@ -8,11 +8,12 @@ import {
 import { toast } from "sonner";
 
 import { errorAlert } from "@/shared/lib/api";
+import { parseDateOnly, startOfDay } from "@/shared/lib/datetime";
 
 import { fetchScheduleDateRange, fetchScheduleItems } from "../api";
 import { mapScheduleItemsToGrid } from "../mappers/mapScheduleItemsToGrid";
 import type { ScheduleItem } from "../types";
-import { getDateRange, parseDate, startOfDay } from "../utils";
+import { getDateRange } from "../utils";
 
 type UseScheduleDataResult = {
   loading: boolean;
@@ -62,8 +63,8 @@ export function useScheduleData(): UseScheduleDataResult {
         setConfiguredEndDate(rangeRes.data.end_date);
 
         if (configured) {
-          const start = parseDate(rangeRes.data.start_date!);
-          const end = parseDate(rangeRes.data.end_date!);
+          const start = parseDateOnly(rangeRes.data.start_date!);
+          const end = parseDateOnly(rangeRes.data.end_date!);
 
           if (!start || !end || end < start) {
             setRangeConfigured(false);

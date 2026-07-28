@@ -1,5 +1,5 @@
 import { ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { useIsMobile } from "@/shared/hooks";
 import { useUserStore } from "@/shared/stores";

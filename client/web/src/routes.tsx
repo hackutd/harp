@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 
 import { ErrorPage } from "@/components/ErrorPage";
 import { PageLoader } from "@/components/PageLoader";
@@ -37,6 +37,9 @@ const HackerNotificationsPage = lazy(
   () => import("@/pages/hacker/notifications/NotificationsPage"),
 );
 const HackerFAQPage = lazy(() => import("@/pages/hacker/faq/FAQPage"));
+const HackerPackPage = lazy(
+  () => import("@/pages/hacker/hacker-pack/HackerPackPage"),
+);
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
@@ -159,6 +162,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <HackerFAQPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "hacker-pack",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerPackPage />
               </Suspense>
             ),
           },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Session, { signOut } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
 

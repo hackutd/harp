@@ -18,6 +18,20 @@ const FIELD_PRESETS: Record<string, readonly string[]> = {
   university: UNIVERSITIES,
   major: MAJORS,
   country_of_residence: COUNTRIES,
+  race: [
+    "American Indian or Alaska Native",
+    "Asian",
+    "Black or African American",
+    "Native Hawaiian or Pacific Islander",
+    "White",
+    "Two or more races",
+    "Prefer not to say",
+  ],
+  ethnicity: [
+    "Hispanic or Latino",
+    "Not Hispanic or Latino",
+    "Prefer not to say",
+  ],
 };
 
 /** Preset options for a field id, or undefined if it has none. */

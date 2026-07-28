@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { getLocalTimeZoneLabel } from "@/shared/lib/datetime";
 
 import { fetchScheduleItems } from "../api";
 
@@ -67,6 +68,8 @@ export function ScheduleHeaderCard({
     [loadJsonResponse],
   );
 
+  const timeZoneLabel = getLocalTimeZoneLabel().label;
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -116,7 +119,8 @@ export function ScheduleHeaderCard({
           <p className="text-sm text-muted-foreground">
             Showing {scheduleDaysLength} day
             {scheduleDaysLength === 1 ? "" : "s"} for {configuredStartDate} to{" "}
-            {configuredEndDate} (America/Chicago).
+            {configuredEndDate}. Times shown in{" "}
+            <span className="font-semibold">{timeZoneLabel}</span>.
           </p>
         ) : (
           <p className="text-sm text-destructive">

@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getLocalTimeZoneLabel } from "@/shared/lib/datetime";
 import type { UserRole } from "@/types";
 
 import { fetchScheduleForNotifications } from "../api";
@@ -70,6 +71,7 @@ function GenerateFromScheduleForm({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [nowMs] = useState(() => Date.now());
+  const localTimeZone = useMemo(() => getLocalTimeZoneLabel(), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -223,6 +225,14 @@ function GenerateFromScheduleForm({
             </ul>
           )}
         </div>
+        {!loading && !loadError && preview.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Times shown in{" "}
+            <span className="font-semibold">
+              {localTimeZone.abbrev || localTimeZone.iana}
+            </span>
+          </p>
+        )}
       </div>
 
       <DialogFooter>

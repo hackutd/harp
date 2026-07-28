@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 
 import { Skeleton } from "@/components/ui/skeleton";
