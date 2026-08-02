@@ -1,7 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { toast } from "sonner";
 
 import { getRequest } from "@/shared/lib/api";
 import type { Application, NotificationFeedItem } from "@/types";
@@ -75,6 +76,18 @@ export default function DashboardPage() {
   const [application, setApplication] = useState<Application | null>(null);
   const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
   const [hackerPackURL, setHackerPackURL] = useState("");
+
+  // Desktop browsers with no registered mail handler make the mailto: link a
+  // dead click, so also copy the address and confirm it. The href still fires
+  // for anyone who does have a mail client.
+  const handleCopyEmail = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL);
+      toast(`Copied ${CONTACT_EMAIL} to clipboard`);
+    } catch {
+      // Clipboard unavailable (insecure context or denied) — mailto: handles it
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -247,7 +260,14 @@ export default function DashboardPage() {
               {content}
             </Link>
           ) : (
-            <a key={label} href={href} className={className}>
+            <a
+              key={label}
+              href={href}
+              onClick={
+                href?.startsWith("mailto:") ? handleCopyEmail : undefined
+              }
+              className={className}
+            >
               {content}
             </a>
           );
