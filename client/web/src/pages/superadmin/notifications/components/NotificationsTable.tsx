@@ -352,7 +352,7 @@ export function NotificationsTable({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="cursor-pointer bg-destructive text-white hover:bg-destructive/90"
               disabled={saving}
               onClick={async () => {
                 if (deleteTarget && !saving) {
