@@ -156,6 +156,28 @@ func main() {
 		logger.Fatal("failed to initialize mailer", zap.Error(err))
 	}
 
+	// Settings configured through the SuperAdmin onboarding form win over the
+	// env defaults above, so renaming the event never needs a redeploy.
+	mailClient.SetIdentityResolver(func() mailer.Identity {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		name, err := store.Settings.GetHackathonName(ctx)
+		if err != nil {
+			logger.Warnw("failed to read hackathon name setting", "error", err)
+		}
+		fromEmail, err := store.Settings.GetFromEmail(ctx)
+		if err != nil {
+			logger.Warnw("failed to read from email setting", "error", err)
+		}
+		fromName, err := store.Settings.GetFromName(ctx)
+		if err != nil {
+			logger.Warnw("failed to read from name setting", "error", err)
+		}
+
+		return mailer.Identity{HackathonName: name, FromEmail: fromEmail, FromName: fromName}
+	})
+
 	// Init GCS (optional in local/dev)
 	var gcsClient gcs.Client
 	if cfg.gcs.bucketName != "" {

@@ -2,9 +2,15 @@ import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
 import type {
+  DateSettingResult,
+  EmailSettingResult,
+  FromNameResult,
+  HackathonDateRangeResult,
+  HackathonNameResult,
   HackerPackURLResult,
   MealGroupsResult,
   MealGroupStatsResult,
+  OnboardingStatus,
   PointsNameResult,
   ResetHackathonOptions,
   ResetHackathonResult,
@@ -66,6 +72,177 @@ export async function updateHackerPackURL(
     "/superadmin/settings/hacker-pack-url",
     { url },
     "hacker pack URL",
+  );
+}
+
+export async function fetchOnboardingStatus(
+  signal?: AbortSignal,
+): Promise<ApiResponse<OnboardingStatus>> {
+  return getRequest<OnboardingStatus>(
+    "/superadmin/settings/onboarding-status",
+    "onboarding status",
+    signal,
+  );
+}
+
+export async function fetchHackathonName(
+  signal?: AbortSignal,
+): Promise<ApiResponse<HackathonNameResult>> {
+  return getRequest<HackathonNameResult>(
+    "/superadmin/settings/hackathon-name",
+    "hackathon name",
+    signal,
+  );
+}
+
+export async function updateHackathonName(
+  name: string,
+): Promise<ApiResponse<HackathonNameResult>> {
+  return postRequest<HackathonNameResult>(
+    "/superadmin/settings/hackathon-name",
+    { name },
+    "hackathon name",
+  );
+}
+
+export async function fetchHackathonDateRange(
+  signal?: AbortSignal,
+): Promise<ApiResponse<HackathonDateRangeResult>> {
+  return getRequest<HackathonDateRangeResult>(
+    "/superadmin/settings/hackathon-date-range",
+    "hackathon date range",
+    signal,
+  );
+}
+
+export async function updateHackathonDateRange(
+  startDate: string,
+  endDate: string,
+): Promise<ApiResponse<HackathonDateRangeResult>> {
+  return postRequest<HackathonDateRangeResult>(
+    "/superadmin/settings/hackathon-date-range",
+    { start_date: startDate, end_date: endDate },
+    "hackathon date range",
+  );
+}
+
+export async function fetchContactEmail(
+  signal?: AbortSignal,
+): Promise<ApiResponse<EmailSettingResult>> {
+  return getRequest<EmailSettingResult>(
+    "/superadmin/settings/contact-email",
+    "contact email",
+    signal,
+  );
+}
+
+export async function updateContactEmail(
+  email: string,
+): Promise<ApiResponse<EmailSettingResult>> {
+  return postRequest<EmailSettingResult>(
+    "/superadmin/settings/contact-email",
+    { email },
+    "contact email",
+  );
+}
+
+export async function fetchFromEmail(
+  signal?: AbortSignal,
+): Promise<ApiResponse<EmailSettingResult>> {
+  return getRequest<EmailSettingResult>(
+    "/superadmin/settings/from-email",
+    "sender email",
+    signal,
+  );
+}
+
+export async function updateFromEmail(
+  email: string,
+): Promise<ApiResponse<EmailSettingResult>> {
+  return postRequest<EmailSettingResult>(
+    "/superadmin/settings/from-email",
+    { email },
+    "sender email",
+  );
+}
+
+export async function fetchFromName(
+  signal?: AbortSignal,
+): Promise<ApiResponse<FromNameResult>> {
+  return getRequest<FromNameResult>(
+    "/superadmin/settings/from-name",
+    "sender name",
+    signal,
+  );
+}
+
+export async function updateFromName(
+  name: string,
+): Promise<ApiResponse<FromNameResult>> {
+  return postRequest<FromNameResult>(
+    "/superadmin/settings/from-name",
+    { name },
+    "sender name",
+  );
+}
+
+export async function fetchApplicationDueDate(
+  signal?: AbortSignal,
+): Promise<ApiResponse<DateSettingResult>> {
+  return getRequest<DateSettingResult>(
+    "/superadmin/settings/application-due-date",
+    "application due date",
+    signal,
+  );
+}
+
+export async function updateApplicationDueDate(
+  date: string,
+): Promise<ApiResponse<DateSettingResult>> {
+  return postRequest<DateSettingResult>(
+    "/superadmin/settings/application-due-date",
+    { date },
+    "application due date",
+  );
+}
+
+export async function fetchDecisionReleaseDate(
+  signal?: AbortSignal,
+): Promise<ApiResponse<DateSettingResult>> {
+  return getRequest<DateSettingResult>(
+    "/superadmin/settings/decision-release-date",
+    "decision release date",
+    signal,
+  );
+}
+
+export async function updateDecisionReleaseDate(
+  date: string,
+): Promise<ApiResponse<DateSettingResult>> {
+  return postRequest<DateSettingResult>(
+    "/superadmin/settings/decision-release-date",
+    { date },
+    "decision release date",
+  );
+}
+
+export async function fetchEventStartDate(
+  signal?: AbortSignal,
+): Promise<ApiResponse<DateSettingResult>> {
+  return getRequest<DateSettingResult>(
+    "/superadmin/settings/event-start-date",
+    "event start date",
+    signal,
+  );
+}
+
+export async function updateEventStartDate(
+  date: string,
+): Promise<ApiResponse<DateSettingResult>> {
+  return postRequest<DateSettingResult>(
+    "/superadmin/settings/event-start-date",
+    { date },
+    "event start date",
   );
 }
 

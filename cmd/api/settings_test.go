@@ -757,3 +757,174 @@ func TestGetMealGroupStats(t *testing.T) {
 		mockSettings.AssertExpectations(t)
 	})
 }
+
+func TestSetHackathonName(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should trim and store the name", func(t *testing.T) {
+		mockSettings.On("SetHackathonName", "HackUTD 2026").Return(nil).Once()
+
+		body := `{"name":"  HackUTD 2026  "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackathonName))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data HackathonNameResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Equal(t, "HackUTD 2026", respBody.Data.Name)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject a blank name", func(t *testing.T) {
+		body := `{"name":"   "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setHackathonName))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
+func TestSetContactEmail(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should store a valid email", func(t *testing.T) {
+		mockSettings.On("SetContactEmail", "hello@hackutd.co").Return(nil).Once()
+
+		body := `{"email":"hello@hackutd.co"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setContactEmail))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject an invalid email", func(t *testing.T) {
+		body := `{"email":"not-an-email"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setContactEmail))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
+func TestSetApplicationDueDate(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should store a valid date", func(t *testing.T) {
+		mockSettings.On("SetApplicationDueDate", "2026-03-14").Return(nil).Once()
+
+		body := `{"date":"2026-03-14"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationDueDate))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data DateSettingResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.True(t, respBody.Data.Configured)
+		assert.Equal(t, "2026-03-14", respBody.Data.Date)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject a non ISO date", func(t *testing.T) {
+		body := `{"date":"03/14/2026"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationDueDate))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
+func TestGetOnboardingStatus(t *testing.T) {
+	t.Run("should report complete when every setting is configured", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		start := "2026-04-04"
+		end := "2026-04-05"
+		mockSettings.On("GetHackathonName").Return("HackUTD 2026", nil).Once()
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{StartDate: &start, EndDate: &end}, nil).Once()
+		mockSettings.On("GetApplicationDueDate").Return("2026-03-14", nil).Once()
+		mockSettings.On("GetDecisionReleaseDate").Return("2026-03-20", nil).Once()
+		mockSettings.On("GetEventStartDate").Return("2026-04-04", nil).Once()
+		mockSettings.On("GetContactEmail").Return("hello@hackutd.co", nil).Once()
+		mockSettings.On("GetFromEmail").Return("noreply@hackutd.co", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getOnboardingStatus))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data OnboardingStatusResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.True(t, respBody.Data.Complete)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should report incomplete when a setting is missing", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		mockSettings.On("GetHackathonName").Return("", nil).Once()
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{}, nil).Once()
+		mockSettings.On("GetApplicationDueDate").Return("", nil).Once()
+		mockSettings.On("GetDecisionReleaseDate").Return("", nil).Once()
+		mockSettings.On("GetEventStartDate").Return("", nil).Once()
+		mockSettings.On("GetContactEmail").Return("", nil).Once()
+		mockSettings.On("GetFromEmail").Return("", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getOnboardingStatus))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data OnboardingStatusResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.False(t, respBody.Data.Complete)
+		assert.False(t, respBody.Data.HackathonName)
+
+		mockSettings.AssertExpectations(t)
+	})
+}

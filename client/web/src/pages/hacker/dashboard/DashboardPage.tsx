@@ -5,10 +5,13 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 
 import { getRequest } from "@/shared/lib/api";
+import { parseDateOnly } from "@/shared/lib/datetime";
 import type { Application, NotificationFeedItem } from "@/types";
 
 import { fetchHackerPackURL } from "../hacker-pack/api";
 import { getNotificationFeed } from "../notifications/api";
+import type { HackathonConfig } from "./api";
+import { fetchHackathonConfig } from "./api";
 
 interface ImportantDate {
   month: string;
@@ -16,11 +19,42 @@ interface ImportantDate {
   label: string;
 }
 
-const IMPORTANT_DATES: ImportantDate[] = [
-  { month: "Mar", day: "14", label: "App due" },
-  { month: "Mar", day: "20", label: "Decisions" },
-  { month: "Apr", day: "04", label: "Kickoff" },
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
+
+// Unconfigured dates are simply omitted rather than shown as placeholders.
+function importantDates(config: HackathonConfig | null): ImportantDate[] {
+  if (!config) return [];
+  return (
+    [
+      { value: config.application_due_date, label: "App due" },
+      { value: config.decision_release_date, label: "Decisions" },
+      { value: config.event_start_date, label: "Kickoff" },
+    ] as const
+  ).flatMap(({ value, label }) => {
+    const date = parseDateOnly(value);
+    if (!date) return [];
+    return [
+      {
+        month: MONTHS[date.getMonth()],
+        day: String(date.getDate()).padStart(2, "0"),
+        label,
+      },
+    ];
+  });
+}
 
 interface QuickLink {
   label: string;
@@ -29,12 +63,10 @@ interface QuickLink {
   to?: string;
 }
 
-const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL || "harp@hackutd.co";
-
-const QUICK_LINKS: QuickLink[] = [
+const QUICK_LINKS: Omit<QuickLink, "href">[] = [
   { label: "Hacker Pack", icon: BookOpen, to: "/app/hacker-pack" },
   { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
-  { label: "Contact", icon: Mail, href: `mailto:${CONTACT_EMAIL}` },
+  { label: "Contact", icon: Mail },
 ];
 
 // The dashboard intentionally hides the specific decision. Hackers see only a
@@ -76,23 +108,28 @@ export default function DashboardPage() {
   const [application, setApplication] = useState<Application | null>(null);
   const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
   const [hackerPackURL, setHackerPackURL] = useState("");
+  const [config, setConfig] = useState<HackathonConfig | null>(null);
+
+  const hackathonName = config?.hackathon_name || "Hackathon";
+  const contactEmail = config?.contact_email ?? "";
 
   // Desktop browsers with no registered mail handler make the mailto: link a
   // dead click, so also copy the address and confirm it. The href still fires
   // for anyone who does have a mail client.
   const handleCopyEmail = useCallback(async () => {
+    if (!contactEmail) return;
     try {
-      await navigator.clipboard.writeText(CONTACT_EMAIL);
-      toast(`Copied ${CONTACT_EMAIL} to clipboard`);
+      await navigator.clipboard.writeText(contactEmail);
+      toast(`Copied ${contactEmail} to clipboard`);
     } catch {
       // Clipboard unavailable (insecure context or denied) — mailto: handles it
     }
-  }, []);
+  }, [contactEmail]);
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const [appRes, feedRes, packRes] = await Promise.all([
+      const [appRes, feedRes, packRes, configRes] = await Promise.all([
         getRequest<Application>(
           "/applications/me",
           "application",
@@ -100,6 +137,7 @@ export default function DashboardPage() {
         ),
         getNotificationFeed(controller.signal),
         fetchHackerPackURL(controller.signal),
+        fetchHackathonConfig(controller.signal),
       ]);
       if (controller.signal.aborted) return;
       if (appRes.status === 200 && appRes.data) {
@@ -111,11 +149,15 @@ export default function DashboardPage() {
       if (packRes.status === 200 && packRes.data) {
         setHackerPackURL(packRes.data.url.trim());
       }
+      if (configRes.status === 200 && configRes.data) {
+        setConfig(configRes.data);
+      }
     };
     load();
     return () => controller.abort();
   }, []);
 
+  const dates = importantDates(config);
   const percent = completionPercent(application);
   const status = dashboardStatus(application);
   const isDraft = !application || application.status === "draft";
@@ -149,7 +191,7 @@ export default function DashboardPage() {
                   }
                 : {
                     title: "Start your application",
-                    body: "Applications for HackUTD 2026 are open",
+                    body: `Applications for ${hackathonName} are open`,
                   },
         ];
 
@@ -164,7 +206,7 @@ export default function DashboardPage() {
           {status.label}
         </span>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-          HackUTD 2026
+          {hackathonName}
         </h1>
         <p className="mt-1 text-sm font-light text-white/70">{statusSubtext}</p>
         {isDraft && (
@@ -185,7 +227,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Important dates */}
-      <section className="mt-5">
+      <section className={dates.length > 0 ? "mt-5" : "hidden"}>
         <div className="mb-2.5 flex items-center justify-between">
           <h2 className="text-lg font-medium text-black">Important dates</h2>
           <Link
@@ -196,7 +238,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {IMPORTANT_DATES.map((d) => (
+          {dates.map((d) => (
             <div
               key={d.label}
               className="rounded-lg border border-[#E5E5E5] bg-white p-4"
@@ -245,8 +287,12 @@ export default function DashboardPage() {
       {/* Quick links */}
       <section className="mt-5 grid grid-cols-3 gap-3">
         {QUICK_LINKS.filter(
-          ({ to }) => to !== "/app/hacker-pack" || hackerPackURL,
-        ).map(({ label, icon: Icon, href, to }) => {
+          ({ to, label }) =>
+            (to !== "/app/hacker-pack" || hackerPackURL) &&
+            (label !== "Contact" || contactEmail),
+        ).map(({ label, icon: Icon, to }) => {
+          const href =
+            label === "Contact" ? `mailto:${contactEmail}` : undefined;
           const className =
             "flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]";
           const content = (

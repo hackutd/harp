@@ -59,6 +59,20 @@ type Storage struct {
 		SetHackerPackURL(ctx context.Context, url string) error
 		GetPointsName(ctx context.Context) (string, error)
 		SetPointsName(ctx context.Context, name string) error
+		GetHackathonName(ctx context.Context) (string, error)
+		SetHackathonName(ctx context.Context, name string) error
+		GetContactEmail(ctx context.Context) (string, error)
+		SetContactEmail(ctx context.Context, email string) error
+		GetFromEmail(ctx context.Context) (string, error)
+		SetFromEmail(ctx context.Context, email string) error
+		GetFromName(ctx context.Context) (string, error)
+		SetFromName(ctx context.Context, name string) error
+		GetApplicationDueDate(ctx context.Context) (string, error)
+		SetApplicationDueDate(ctx context.Context, date string) error
+		GetDecisionReleaseDate(ctx context.Context) (string, error)
+		SetDecisionReleaseDate(ctx context.Context, date string) error
+		GetEventStartDate(ctx context.Context) (string, error)
+		SetEventStartDate(ctx context.Context, date string) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)

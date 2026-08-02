@@ -2,13 +2,14 @@ import { ChevronLeft } from "lucide-react";
 import { Outlet, useNavigate } from "react-router";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/pages/admin/_shared";
+import { AppSidebar, OnboardingGate } from "@/pages/admin/_shared";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
 
   return (
     <SidebarProvider className="h-svh min-h-0!">
+      <OnboardingGate />
       <AppSidebar />
       <SidebarInset className="overflow-hidden">
         {/* Mobile: the admin portal is scan-only, so there is no sidebar nav.

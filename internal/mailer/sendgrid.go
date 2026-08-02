@@ -23,27 +23,14 @@ type walkInAcceptedData struct {
 }
 
 type SendGridMailer struct {
-	fromEmail     string
-	fromName      string
-	hackathonName string
-	client        *sendgrid.Client
+	identity
+	client *sendgrid.Client
 }
 
 func NewSendGrid(apiKey, fromEmail, fromName, hackathonName string) *SendGridMailer {
-	client := sendgrid.NewSendClient(apiKey)
-
-	if hackathonName == "" {
-		hackathonName = DefaultHackathonName
-	}
-	if fromName == "" {
-		fromName = hackathonName
-	}
-
 	return &SendGridMailer{
-		fromEmail:     fromEmail,
-		fromName:      fromName,
-		hackathonName: hackathonName,
-		client:        client,
+		identity: newIdentity(fromEmail, fromName, hackathonName),
+		client:   sendgrid.NewSendClient(apiKey),
 	}
 }
 
@@ -54,6 +41,7 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 	}
 
 	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
+	id := m.resolve()
 
 	tmplData, err := FS.ReadFile("template/qr_email.html")
 	if err != nil {
@@ -66,17 +54,17 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 	}
 
 	var htmlBody bytes.Buffer
-	err = tmpl.Execute(&htmlBody, map[string]string{"Name": toName, "HackathonName": m.hackathonName})
+	err = tmpl.Execute(&htmlBody, map[string]string{"Name": toName, "HackathonName": id.HackathonName})
 	if err != nil {
 		return fmt.Errorf("executing email template: %w", err)
 	}
 
-	from := mail.NewEmail(m.fromName, m.fromEmail)
+	from := mail.NewEmail(id.FromName, id.FromEmail)
 	to := mail.NewEmail(toName, toEmail)
 
 	message := mail.NewV3Mail()
 	message.SetFrom(from)
-	message.Subject = fmt.Sprintf("Your %s QR Code", m.hackathonName)
+	message.Subject = fmt.Sprintf("Your %s QR Code", id.HackathonName)
 
 	p := mail.NewPersonalization()
 	p.AddTos(to)
@@ -103,6 +91,8 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 }
 
 func (m *SendGridMailer) SendWalkInQueuedEmail(toEmail string, position int) error {
+	id := m.resolve()
+
 	tmplData, err := FS.ReadFile("template/walk_in_queued.html")
 	if err != nil {
 		return fmt.Errorf("reading walk_in_queued template: %w", err)
@@ -114,16 +104,16 @@ func (m *SendGridMailer) SendWalkInQueuedEmail(toEmail string, position int) err
 	}
 
 	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, walkInQueuedData{Email: toEmail, Position: position, HackathonName: m.hackathonName}); err != nil {
+	if err := tmpl.Execute(&htmlBody, walkInQueuedData{Email: toEmail, Position: position, HackathonName: id.HackathonName}); err != nil {
 		return fmt.Errorf("executing walk_in_queued template: %w", err)
 	}
 
-	from := mail.NewEmail(m.fromName, m.fromEmail)
+	from := mail.NewEmail(id.FromName, id.FromEmail)
 	to := mail.NewEmail(toEmail, toEmail)
 
 	message := mail.NewV3Mail()
 	message.SetFrom(from)
-	message.Subject = fmt.Sprintf("You're #%d in the %s walk-in queue", position, m.hackathonName)
+	message.Subject = fmt.Sprintf("You're #%d in the %s walk-in queue", position, id.HackathonName)
 
 	p := mail.NewPersonalization()
 	p.AddTos(to)
@@ -147,6 +137,7 @@ func (m *SendGridMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 		return fmt.Errorf("generating QR code: %w", err)
 	}
 	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
+	id := m.resolve()
 
 	tmplData, err := FS.ReadFile("template/walk_in_accepted.html")
 	if err != nil {
@@ -159,16 +150,16 @@ func (m *SendGridMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	}
 
 	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, walkInAcceptedData{Email: toEmail, HackathonName: m.hackathonName}); err != nil {
+	if err := tmpl.Execute(&htmlBody, walkInAcceptedData{Email: toEmail, HackathonName: id.HackathonName}); err != nil {
 		return fmt.Errorf("executing walk_in_accepted template: %w", err)
 	}
 
-	from := mail.NewEmail(m.fromName, m.fromEmail)
+	from := mail.NewEmail(id.FromName, id.FromEmail)
 	to := mail.NewEmail(toEmail, toEmail)
 
 	message := mail.NewV3Mail()
 	message.SetFrom(from)
-	message.Subject = fmt.Sprintf("You're in — %s Walk-In Acceptance", m.hackathonName)
+	message.Subject = fmt.Sprintf("You're in — %s Walk-In Acceptance", id.HackathonName)
 
 	p := mail.NewPersonalization()
 	p.AddTos(to)

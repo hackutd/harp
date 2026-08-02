@@ -20,3 +20,5 @@ func (m *MockClient) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	args := m.Called(toEmail, userID)
 	return args.Error(0)
 }
+
+func (m *MockClient) SetIdentityResolver(fn IdentityFunc) {}

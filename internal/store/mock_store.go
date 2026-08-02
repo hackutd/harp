@@ -281,6 +281,76 @@ func (m *MockSettingsStore) SetPointsName(ctx context.Context, name string) erro
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetHackathonName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetHackathonName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetContactEmail(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetContactEmail(ctx context.Context, email string) error {
+	args := m.Called(email)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetFromEmail(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetFromEmail(ctx context.Context, email string) error {
+	args := m.Called(email)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetFromName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetFromName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetApplicationDueDate(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
+	args := m.Called(date)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetDecisionReleaseDate(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetDecisionReleaseDate(ctx context.Context, date string) error {
+	args := m.Called(date)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetEventStartDate(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetEventStartDate(ctx context.Context, date string) error {
+	args := m.Called(date)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetScanTypes(ctx context.Context) ([]ScanType, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

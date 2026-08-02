@@ -25,6 +25,13 @@ const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
 const SettingsKeyHackerPackURL = "hacker_pack_url"
 const SettingsKeyPointsName = "points_name"
+const SettingsKeyHackathonName = "hackathon_name"
+const SettingsKeyContactEmail = "contact_email"
+const SettingsKeyFromEmail = "from_email"
+const SettingsKeyFromName = "from_name"
+const SettingsKeyApplicationDueDate = "application_due_date"
+const SettingsKeyDecisionReleaseDate = "decision_release_date"
+const SettingsKeyEventStartDate = "event_start_date"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -827,4 +834,126 @@ func (s *SettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled bool
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminFAQEditEnabled, string(jsonValue))
 	return err
+}
+
+// getStringSetting returns the string value stored under key, or an empty
+// string when the row does not exist or holds a JSON null.
+func (s *SettingsStore) getStringSetting(ctx context.Context, key string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, key).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	var parsed *string
+	if err := json.Unmarshal(value, &parsed); err != nil {
+		return "", err
+	}
+	if parsed == nil {
+		return "", nil
+	}
+
+	return *parsed, nil
+}
+
+// setStringSetting upserts a string value under key.
+func (s *SettingsStore) setStringSetting(ctx context.Context, key, value string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, key, string(jsonValue))
+	return err
+}
+
+// GetHackathonName returns the configured hackathon name (empty when unset).
+func (s *SettingsStore) GetHackathonName(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyHackathonName)
+}
+
+// SetHackathonName updates the hackathon name shown across the portal and emails.
+func (s *SettingsStore) SetHackathonName(ctx context.Context, name string) error {
+	return s.setStringSetting(ctx, SettingsKeyHackathonName, name)
+}
+
+// GetContactEmail returns the configured public contact email (empty when unset).
+func (s *SettingsStore) GetContactEmail(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyContactEmail)
+}
+
+// SetContactEmail updates the public contact email surfaced to hackers.
+func (s *SettingsStore) SetContactEmail(ctx context.Context, email string) error {
+	return s.setStringSetting(ctx, SettingsKeyContactEmail, email)
+}
+
+// GetFromEmail returns the configured sender email for outgoing mail.
+func (s *SettingsStore) GetFromEmail(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyFromEmail)
+}
+
+// SetFromEmail updates the sender email for outgoing mail.
+func (s *SettingsStore) SetFromEmail(ctx context.Context, email string) error {
+	return s.setStringSetting(ctx, SettingsKeyFromEmail, email)
+}
+
+// GetFromName returns the configured sender display name for outgoing mail.
+func (s *SettingsStore) GetFromName(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyFromName)
+}
+
+// SetFromName updates the sender display name for outgoing mail.
+func (s *SettingsStore) SetFromName(ctx context.Context, name string) error {
+	return s.setStringSetting(ctx, SettingsKeyFromName, name)
+}
+
+// GetApplicationDueDate returns the application deadline as YYYY-MM-DD.
+func (s *SettingsStore) GetApplicationDueDate(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyApplicationDueDate)
+}
+
+// SetApplicationDueDate updates the application deadline (YYYY-MM-DD).
+func (s *SettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
+	return s.setStringSetting(ctx, SettingsKeyApplicationDueDate, date)
+}
+
+// GetDecisionReleaseDate returns the decision release date as YYYY-MM-DD.
+func (s *SettingsStore) GetDecisionReleaseDate(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyDecisionReleaseDate)
+}
+
+// SetDecisionReleaseDate updates the decision release date (YYYY-MM-DD).
+func (s *SettingsStore) SetDecisionReleaseDate(ctx context.Context, date string) error {
+	return s.setStringSetting(ctx, SettingsKeyDecisionReleaseDate, date)
+}
+
+// GetEventStartDate returns the event kickoff date as YYYY-MM-DD.
+func (s *SettingsStore) GetEventStartDate(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyEventStartDate)
+}
+
+// SetEventStartDate updates the event kickoff date (YYYY-MM-DD).
+func (s *SettingsStore) SetEventStartDate(ctx context.Context, date string) error {
+	return s.setStringSetting(ctx, SettingsKeyEventStartDate, date)
 }
