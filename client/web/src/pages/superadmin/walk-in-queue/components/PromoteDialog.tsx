@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowUpFromLine, Loader2 } from "lucide-react";
+import { ArrowUpFromLine } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -111,11 +111,8 @@ export function PromoteDialog({ pending, onSuccess }: PromoteDialogProps) {
               <Button
                 type="submit"
                 className="cursor-pointer"
-                disabled={form.formState.isSubmitting}
+                loading={form.formState.isSubmitting}
               >
-                {form.formState.isSubmitting && (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                )}
                 Promote &amp; send emails
               </Button>
             </DialogFooter>

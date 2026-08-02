@@ -3,7 +3,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   Download,
-  Loader2,
   Mail,
   Minus,
   Plus,
@@ -40,6 +39,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { SearchBar } from "@/pages/admin/_shared";
 import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
@@ -334,7 +334,7 @@ export default function ReviewsPage() {
                 <Plus className="size-3" />
               </Button>
               {savingCount && (
-                <Loader2 className="ml-1 size-4 animate-spin text-muted-foreground" />
+                <Skeleton className="ml-1 size-4 rounded-full" />
               )}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -379,15 +379,12 @@ export default function ReviewsPage() {
             <CardTitle className="text-xl font-semibold">Assign</CardTitle>
             <Button
               onClick={() => setConfirmOpen(true)}
-              disabled={assigning}
+              loading={assigning}
               className="w-full cursor-pointer"
               size="sm"
             >
               {assigning ? (
-                <>
-                  <Loader2 className="mr-2 size-3 animate-spin" />
-                  Assigning...
-                </>
+                <>Assigning...</>
               ) : (
                 <>
                   Assign Reviews
@@ -518,14 +515,11 @@ export default function ReviewsPage() {
                       variant="outline"
                       size="sm"
                       className="w-full mt-3 cursor-pointer font-light"
-                      disabled={!emailStatus || downloadingCsv}
+                      disabled={!emailStatus}
+                      loading={downloadingCsv}
                       onClick={handleGenerateCsv}
                     >
-                      {downloadingCsv ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Download className="size-3.5" />
-                      )}
+                      {!downloadingCsv && <Download className="size-3.5" />}
                       {downloadingCsv ? "Generating..." : "Generate CSV"}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-2">

@@ -1,5 +1,4 @@
 import {
-  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -29,6 +28,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -293,21 +293,15 @@ export function ScanTypesTable({
           {isSuperAdmin ? "configured" : "available"}
         </CardDescription>
         <div className="flex items-center gap-2">
-          {saving && (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-          )}
+          {saving && <Skeleton className="size-4 rounded-full" />}
           <Button
             variant="outline"
             size="sm"
             className="cursor-pointer"
-            disabled={rebalancing}
+            loading={rebalancing}
             onClick={() => setRebalanceOpen(true)}
           >
-            {rebalancing ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="size-3.5" />
-            )}
+            {!rebalancing && <RefreshCw className="size-3.5" />}
             Rebalance
           </Button>
         </div>

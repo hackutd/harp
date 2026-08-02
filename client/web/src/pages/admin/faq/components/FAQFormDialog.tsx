@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -96,10 +95,10 @@ function FAQForm({
         </Button>
         <Button
           type="submit"
-          disabled={saving || !question.trim() || !answer.trim()}
+          loading={saving}
+          disabled={!question.trim() || !answer.trim()}
           className="cursor-pointer"
         >
-          {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
           {faq ? "Save" : "Create"}
         </Button>
       </DialogFooter>

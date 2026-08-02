@@ -171,16 +171,10 @@ export default function Login() {
             <Button
               type="submit"
               className="h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
-              disabled={state === "sending" || !email}
+              disabled={!email}
+              loading={state === "sending"}
             >
-              {state === "sending" ? (
-                <span className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
-                  Sending magic link...
-                </span>
-              ) : (
-                "Send magic link"
-              )}
+              {state === "sending" ? "Sending magic link..." : "Send magic link"}
             </Button>
           </form>
 

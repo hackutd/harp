@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import {
   buildDefaultValues,
@@ -485,11 +486,18 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Loading state
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <div className="size-10 animate-spin rounded-full border-b-2 border-black"></div>
-        <p className="mt-4 text-sm font-light text-[#8A8A8A]">
-          Loading your application...
-        </p>
+      <div className="mx-auto max-w-md space-y-6 px-5 py-10 md:max-w-5xl">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-9 w-64" />
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-11 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-12 w-full rounded-full" />
       </div>
     );
   }

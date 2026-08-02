@@ -2,7 +2,6 @@ import {
   Bell,
   Eye,
   FileText,
-  Loader2,
   LogOut,
   Trash2,
   Upload,
@@ -305,13 +304,9 @@ export default function ProfilePage() {
                       onClick={handleDeleteResume}
                       disabled={resumeBusy}
                       aria-label="Delete resume"
-                      className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
+                      className={`flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50 ${resumeBusy ? "animate-pulse" : ""}`}
                     >
-                      {resumeBusy ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" strokeWidth={1.5} />
-                      )}
+                      <Trash2 className="size-4" strokeWidth={1.5} />
                     </button>
                   ) : (
                     <button
@@ -319,13 +314,9 @@ export default function ProfilePage() {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={resumeBusy}
                       aria-label="Upload resume"
-                      className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
+                      className={`flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50 ${resumeBusy ? "animate-pulse" : ""}`}
                     >
-                      {resumeBusy ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Upload className="size-4" strokeWidth={1.5} />
-                      )}
+                      <Upload className="size-4" strokeWidth={1.5} />
                     </button>
                   ))}
               </div>

@@ -1,4 +1,4 @@
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,19 +31,11 @@ export function LinksSection({
               variant="outline"
               size="sm"
               onClick={onViewResume}
-              disabled={!onViewResume || isOpeningResume}
+              disabled={!onViewResume}
+              loading={isOpeningResume}
             >
-              {isOpeningResume ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Opening...
-                </>
-              ) : (
-                <>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Resume
-                </>
-              )}
+              <ExternalLink className="h-4 w-4 mr-2" />
+              {isOpeningResume ? "Opening..." : "View Resume"}
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -65,19 +65,10 @@ export function ApplicationDetailsPanel({
                 variant="outline"
                 size="sm"
                 onClick={handleViewResume}
-                disabled={isOpeningResume}
+                loading={isOpeningResume}
               >
-                {isOpeningResume ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Opening...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Resume
-                  </>
-                )}
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {isOpeningResume ? "Opening..." : "View Resume"}
               </Button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -187,13 +187,12 @@ export function ResetHackathonCard() {
               <Button
                 variant="destructive"
                 onClick={handleReset}
+                loading={loading}
                 disabled={
-                  loading ||
                   confirmText !== "RESET HACKATHON" ||
                   !Object.values(options).some(Boolean)
                 }
               >
-                {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Reset Data
               </Button>
             </DialogFooter>

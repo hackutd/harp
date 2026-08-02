@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -195,8 +194,12 @@ function NotificationForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={!canSubmit} className="cursor-pointer">
-          {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+        <Button
+          type="submit"
+          disabled={!canSubmit}
+          loading={saving}
+          className="cursor-pointer"
+        >
           {notification ? "Save" : "Schedule"}
         </Button>
       </DialogFooter>

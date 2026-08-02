@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { consumeCode } from "supertokens-auth-react/recipe/passwordless";
 
+import { AuthFlowSkeleton } from "@/components/AuthFlowSkeleton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -52,14 +53,7 @@ export default function AuthVerify() {
   }, [navigate]);
 
   if (status === "verifying") {
-    return (
-      <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto" />
-          <p className="mt-4 text-gray-600">Verifying your magic link...</p>
-        </div>
-      </div>
-    );
+    return <AuthFlowSkeleton />;
   }
 
   return (

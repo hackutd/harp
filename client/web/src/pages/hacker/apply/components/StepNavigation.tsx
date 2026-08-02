@@ -1,4 +1,4 @@
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import {
   AlertDialog,
@@ -61,11 +61,9 @@ export function StepNavigation({
               <Button
                 type="button"
                 disabled={busy}
+                loading={isSubmitting}
                 className="h-12 flex-1 rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
               >
-                {isSubmitting && (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                )}
                 {isSubmitting ? "Submitting..." : "Submit application"}
               </Button>
             </AlertDialogTrigger>
@@ -97,9 +95,9 @@ export function StepNavigation({
             type="button"
             onClick={onNext}
             disabled={busy}
+            loading={isSaving}
             className="h-12 flex-1 rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
           >
-            {isSaving && <Loader2 className="mr-2 size-4 animate-spin" />}
             Continue
           </Button>
         )}

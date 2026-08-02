@@ -1,2 +1,2 @@
-export { LoadingSpinner } from "./LoadingSpinner";
+export { AuthFlowSkeleton } from "./AuthFlowSkeleton";
 export * from "./ui";

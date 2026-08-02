@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -98,10 +97,10 @@ export default function ScansTab() {
             <Button
               size="sm"
               className="cursor-pointer bg-white text-black hover:bg-zinc-200"
-              disabled={saving}
+              loading={saving}
               onClick={handleSave}
             >
-              {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Save"}
+              Save
             </Button>
           )}
         </div>

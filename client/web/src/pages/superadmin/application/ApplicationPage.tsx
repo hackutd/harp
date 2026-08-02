@@ -1,4 +1,4 @@
-import { Loader2, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useEffect } from "react";
 
 import {
@@ -19,6 +19,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { ApplicationPreview } from "./components/ApplicationPreview";
 import { SchemaEditor } from "./components/SchemaEditor";
@@ -57,8 +58,11 @@ export default function ApplicationPage() {
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            <div className="space-y-3 py-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+              <Skeleton className="h-9 w-full" />
             </div>
           ) : (
             <div className="space-y-3">
@@ -66,12 +70,8 @@ export default function ApplicationPage() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button disabled={saving} className="w-full cursor-pointer">
-                    {saving ? (
-                      <Loader2 className="size-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="size-4 mr-2" />
-                    )}
+                  <Button loading={saving} className="w-full cursor-pointer">
+                    {!saving && <Save className="size-4 mr-2" />}
                     Save Schema
                   </Button>
                 </AlertDialogTrigger>

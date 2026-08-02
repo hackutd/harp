@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { signInAndUp } from "supertokens-auth-react/recipe/thirdparty";
 
+import { AuthFlowSkeleton } from "@/components/AuthFlowSkeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,12 +92,5 @@ export default function AuthOAuthCallback() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-        <p className="text-gray-600">Completing sign in...</p>
-      </div>
-    </div>
-  );
+  return <AuthFlowSkeleton />;
 }

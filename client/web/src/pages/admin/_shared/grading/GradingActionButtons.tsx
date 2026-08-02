@@ -1,4 +1,4 @@
-import { Loader2, Minus, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Minus, ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,13 +33,9 @@ export function GradingActionButtons({
               variant="outline"
               className="w-full cursor-pointer hover:bg-red-50 hover:text-red-700 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={onReject}
-              disabled={disabled}
+              loading={disabled}
             >
-              {disabled ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <ThumbsDown className="h-4 w-4 mr-1.5" />
-              )}
+              <ThumbsDown className="h-4 w-4 mr-1.5" />
               Reject
               <kbd className="ml-auto px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-muted-foreground">
                 ⌘J
@@ -54,13 +50,9 @@ export function GradingActionButtons({
               variant="outline"
               className="w-full cursor-pointer hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={onWaitlist}
-              disabled={disabled}
+              loading={disabled}
             >
-              {disabled ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <Minus className="h-4 w-4 mr-1.5" />
-              )}
+              <Minus className="h-4 w-4 mr-1.5" />
               Waitlist
               <kbd className="ml-auto px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-muted-foreground">
                 ⌘K
@@ -75,13 +67,9 @@ export function GradingActionButtons({
               variant="outline"
               className="w-full cursor-pointer hover:bg-green-50 hover:text-green-700 hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={onAccept}
-              disabled={disabled}
+              loading={disabled}
             >
-              {disabled ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <ThumbsUp className="h-4 w-4 mr-1.5" />
-              )}
+              <ThumbsUp className="h-4 w-4 mr-1.5" />
               Accept
               <kbd className="ml-auto px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-muted-foreground">
                 ⌘L

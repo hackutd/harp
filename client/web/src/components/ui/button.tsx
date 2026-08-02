@@ -42,10 +42,13 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  loading = false,
+  disabled,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    loading?: boolean;
   }) {
   const Comp = asChild ? Slot : "button";
 
@@ -54,7 +57,13 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-loading={loading || undefined}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        loading && "animate-pulse pointer-events-none",
+      )}
       {...props}
     />
   );
