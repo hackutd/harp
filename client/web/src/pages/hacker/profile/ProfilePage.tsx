@@ -1,4 +1,13 @@
-import { Bell, Eye, FileText, LogOut, Trash2, Upload } from "lucide-react";
+import {
+  Bell,
+  Eye,
+  FileText,
+  LogOut,
+  Share,
+  SmartphoneNfc,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -18,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { useInstallPrompt } from "@/shared/install";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
 import { usePointsNameStore, useUserStore } from "@/shared/stores";
@@ -62,6 +72,7 @@ export default function ProfilePage() {
   const { user, clearUser } = useUserStore();
   const navigate = useNavigate();
   const push = usePushSubscription();
+  const install = useInstallPrompt();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const pointsName = usePointsNameStore((s) => s.pointsName);
@@ -116,6 +127,37 @@ export default function ProfilePage() {
     } else {
       await push.disable();
       toast.success("Notifications disabled");
+    }
+  };
+
+  const handleInstallClick = () => {
+    if (install.platform === "ios") {
+      toast("Add HARP to your home screen", {
+        description: (
+          <span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              Tap <Share className="size-3.5" strokeWidth={2} />
+            </span>{" "}
+            then "Add to Home Screen" to install and get notified.
+          </span>
+        ),
+      });
+      return;
+    }
+    if (install.platform === "desktop") {
+      toast("Open HARP on your phone", {
+        description:
+          "Add HARP to your phone's home screen to get notified about your application status.",
+      });
+      return;
+    }
+    if (install.canPromptNatively) {
+      void install.promptInstall();
+    } else {
+      toast("Install not available yet", {
+        description:
+          'Look for "Install app" or "Add to Home Screen" in your browser\'s menu.',
+      });
     }
   };
 
@@ -241,6 +283,30 @@ export default function ProfilePage() {
           Settings
         </h2>
         <div className="divide-y divide-[#F0F0F0] rounded-xl border border-[#E5E5E5]">
+          {/* Install app */}
+          {!install.installed && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="flex min-h-[68px] w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+            >
+              <div className="flex items-center gap-3">
+                <SmartphoneNfc
+                  className="size-4.5 text-black"
+                  strokeWidth={1.5}
+                />
+                <div>
+                  <p className="text-sm font-normal text-black">Install app</p>
+                  <p className="text-xs font-light text-[#8A8A8A]">
+                    {install.platform === "desktop"
+                      ? "Add it to your phone's home screen for the full experience"
+                      : "Add to home screen for the full experience"}
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
+
           {/* Push notifications */}
           <div className="flex min-h-[68px] items-center justify-between px-5 py-4">
             <div className="flex items-center gap-3">

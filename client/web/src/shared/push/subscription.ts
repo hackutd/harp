@@ -10,8 +10,9 @@ import {
   unsubscribeFromPush,
 } from "./client";
 
-// localStorage keys shared across the push module.
-export const PUSH_PROMPTED_KEY = "push-prompted-v1";
+// localStorage keys shared across the push module. The one-time prompt flag
+// lives in @/shared/onboarding (STEP_KEYS.push) alongside the rest of the
+// onboarding chain.
 export const PUSH_ENDPOINT_KEY = "push-endpoint-v1";
 
 export type EnablePushResult = "granted" | "denied" | "error";

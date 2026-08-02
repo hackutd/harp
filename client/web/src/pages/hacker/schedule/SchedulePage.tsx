@@ -27,6 +27,7 @@ import { cn } from "@/shared/lib/utils";
 import type { ScheduleItem } from "@/types";
 
 import { getSchedule, getScheduleDateRange } from "./api";
+import { ScheduleTipHost } from "./components/ScheduleTipHost";
 import {
   type DayEvent,
   enumerateDays,
@@ -321,6 +322,8 @@ export default function SchedulePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:max-w-5xl md:px-8 md:pt-10">
+      <ScheduleTipHost ready={!loading && items.length > 0} />
+
       {/* Header */}
       <div className="flex items-center">
         <h1 className="text-[26px] leading-none font-light tracking-tight text-black">
