@@ -1,11 +1,4 @@
-import {
-  Bell,
-  Eye,
-  FileText,
-  LogOut,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Bell, Eye, FileText, LogOut, Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";

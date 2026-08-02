@@ -333,9 +333,7 @@ export default function ReviewsPage() {
               >
                 <Plus className="size-3" />
               </Button>
-              {savingCount && (
-                <Skeleton className="ml-1 size-4 rounded-full" />
-              )}
+              {savingCount && <Skeleton className="ml-1 size-4 rounded-full" />}
             </div>
             <p className="text-sm text-muted-foreground">
               Reviews needed before a decision

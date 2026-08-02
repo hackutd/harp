@@ -174,7 +174,9 @@ export default function Login() {
               disabled={!email}
               loading={state === "sending"}
             >
-              {state === "sending" ? "Sending magic link..." : "Send magic link"}
+              {state === "sending"
+                ? "Sending magic link..."
+                : "Send magic link"}
             </Button>
           </form>
 
