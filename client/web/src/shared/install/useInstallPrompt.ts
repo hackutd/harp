@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { useOnboardingStep } from "@/shared/onboarding";
 import { useUserStore } from "@/shared/stores";
 
 import { detectPlatform, type InstallPlatform, isStandalone } from "./platform";
@@ -9,8 +10,6 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
-
-export const INSTALL_PROMPTED_KEY = "install-prompted-v1";
 
 export interface UseInstallPromptResult {
   shouldPrompt: boolean;
@@ -28,9 +27,13 @@ export function useInstallPrompt(): UseInstallPromptResult {
   const user = useUserStore((s) => s.user);
   const platform = detectPlatform();
   const [installed, setInstalled] = useState(() => isStandalone());
-  const [dismissed, setDismissed] = useState(false);
   const [deferredEvent, setDeferredEvent] =
     useState<BeforeInstallPromptEvent | null>(null);
+
+  // Whether this device can install at all (platform, standalone) is declared
+  // in the onboarding registry so the same rule governs whether this step
+  // blocks the ones after it.
+  const { isActive, settle } = useOnboardingStep("install", !!user);
 
   useEffect(() => {
     function handleBeforeInstallPrompt(event: Event) {
@@ -70,35 +73,28 @@ export function useInstallPrompt(): UseInstallPromptResult {
     };
   }, [installed, platform]);
 
-  const shouldPrompt =
-    !!user &&
-    !dismissed &&
-    !installed &&
-    platform !== "desktop" &&
-    localStorage.getItem(INSTALL_PROMPTED_KEY) !== "1";
-
-  const dismiss = useCallback(() => {
-    localStorage.setItem(INSTALL_PROMPTED_KEY, "1");
-    setDismissed(true);
-  }, []);
-
   const promptInstall = useCallback(async () => {
-    if (!deferredEvent) return;
-    await deferredEvent.prompt();
-    const { outcome } = await deferredEvent.userChoice;
+    const event = deferredEvent;
+    if (!event) return;
+    // The event is single-use, so drop it before awaiting.
     setDeferredEvent(null);
-    if (outcome === "accepted") {
-      localStorage.setItem(INSTALL_PROMPTED_KEY, "1");
-      setDismissed(true);
+    try {
+      await event.prompt();
+      await event.userChoice;
+    } finally {
+      // Settle on either outcome. The browser withholds beforeinstallprompt for
+      // a while after a native dismissal, so leaving the step unsettled here
+      // would strand every step behind it with no toast left to resolve it.
+      settle();
     }
-  }, [deferredEvent]);
+  }, [deferredEvent, settle]);
 
   return {
-    shouldPrompt,
+    shouldPrompt: isActive,
     platform,
     installed,
     canPromptNatively: !!deferredEvent,
     promptInstall,
-    dismiss,
+    dismiss: settle,
   };
 }

@@ -13,7 +13,6 @@ export {
   disablePushSubscription,
   enablePushSubscription,
   PUSH_ENDPOINT_KEY,
-  PUSH_PROMPTED_KEY,
 } from "./subscription";
 export type {
   PushPermission,

@@ -145,6 +145,13 @@ export default function ProfilePage() {
       });
       return;
     }
+    if (install.platform === "desktop") {
+      toast("Open HARP on your phone", {
+        description:
+          "Add HARP to your phone's home screen to get notified about your application status.",
+      });
+      return;
+    }
     if (install.canPromptNatively) {
       void install.promptInstall();
     } else {
@@ -278,7 +285,7 @@ export default function ProfilePage() {
         </h2>
         <div className="divide-y divide-[#F0F0F0] rounded-xl border border-[#E5E5E5]">
           {/* Install app */}
-          {!install.installed && install.platform !== "desktop" && (
+          {!install.installed && (
             <button
               type="button"
               onClick={handleInstallClick}
@@ -292,7 +299,9 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-sm font-normal text-black">Install app</p>
                   <p className="text-xs font-light text-[#8A8A8A]">
-                    Add to home screen for the full experience
+                    {install.platform === "desktop"
+                      ? "Add it to your phone's home screen for the full experience"
+                      : "Add to home screen for the full experience"}
                   </p>
                 </div>
               </div>

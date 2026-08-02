@@ -22,10 +22,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
         error: <OctagonXIcon className="size-4" />,
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
-      position="top-center"
-      // Keep toasts clear of the notch/status bar on mobile.
+      // On mobile the hacker layout renders a floating bottom nav bar, so lift
+      // toasts above it. Desktop keeps sonner's default offset.
       mobileOffset={{
-        top: "calc(1rem + env(safe-area-inset-top))",
+        bottom: "calc(6rem + env(safe-area-inset-bottom))",
       }}
       style={
         {
