@@ -84,7 +84,10 @@ function dashboardStatus(application: Application | null): {
       return { label: "Under review", color: "bg-white/15" };
     default:
       // accepted / rejected / waitlisted — never reveal the outcome here
-      return { label: "Decisions are out", color: "bg-white text-black" };
+      return {
+        label: "Decisions are out",
+        color: "bg-[#7A7973] text-white",
+      };
   }
 }
 
@@ -161,11 +164,13 @@ export default function DashboardPage() {
   const percent = completionPercent(application);
   const status = dashboardStatus(application);
   const isDraft = !application || application.status === "draft";
+  // Once a decision exists the card stays deliberately silent — no subtext at
+  // all, so nothing here can hint at the outcome.
   const statusSubtext = isDraft
     ? `Application ${percent}% complete`
     : application?.status === "submitted"
       ? "Your application is under review"
-      : "A decision has been made";
+      : null;
 
   const notifications =
     feed.length > 0
@@ -199,16 +204,20 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
       {/* Application status card — intentionally shows only a neutral state,
           never the decision outcome (that lives on the status page) */}
-      <div className="rounded-xl bg-[#3A3A38] p-5 text-white">
+      <div className="rounded-xl border border-white/10 bg-[#46453F]/90 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(255,255,255,0.14),rgba(255,255,255,0)_55%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_28px_rgba(0,0,0,0.10)] backdrop-blur-xl">
         <span
-          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-widest uppercase ${status.color}`}
+          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide ${status.color}`}
         >
           {status.label}
         </span>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+        <h1 className="mt-3 text-xl font-light tracking-tight">
           {hackathonName}
         </h1>
-        <p className="mt-1 text-sm font-light text-white/70">{statusSubtext}</p>
+        {statusSubtext && (
+          <p className="mt-1 text-sm font-light text-white/70">
+            {statusSubtext}
+          </p>
+        )}
         {isDraft && (
           <div className="mt-3 h-1 w-full rounded-full bg-white/20">
             <div
