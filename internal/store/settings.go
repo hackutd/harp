@@ -25,13 +25,13 @@ const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
 const SettingsKeyHackerPackURL = "hacker_pack_url"
 const SettingsKeyPointsName = "points_name"
+const SettingsKeyPointsEnabled = "points_enabled"
 const SettingsKeyHackathonName = "hackathon_name"
 const SettingsKeyContactEmail = "contact_email"
 const SettingsKeyFromEmail = "from_email"
 const SettingsKeyFromName = "from_name"
 const SettingsKeyApplicationDueDate = "application_due_date"
 const SettingsKeyDecisionReleaseDate = "decision_release_date"
-const SettingsKeyEventStartDate = "event_start_date"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -619,6 +619,56 @@ func (s *SettingsStore) SetPointsName(ctx context.Context, name string) error {
 	return err
 }
 
+// GetPointsEnabled returns whether the points system is enabled.
+// Defaults to true if the setting row does not exist.
+func (s *SettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyPointsEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetPointsEnabled updates whether the points system is enabled. When disabled
+// the points system is hidden from the hacker-facing portal.
+func (s *SettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyPointsEnabled, string(jsonValue))
+	return err
+}
+
 // GetMealGroups returns the configured list of meal group names (e.g., ["A", "B", "C", "D"])
 func (s *SettingsStore) GetMealGroups(ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -946,14 +996,4 @@ func (s *SettingsStore) GetDecisionReleaseDate(ctx context.Context) (string, err
 // SetDecisionReleaseDate updates the decision release date (YYYY-MM-DD).
 func (s *SettingsStore) SetDecisionReleaseDate(ctx context.Context, date string) error {
 	return s.setStringSetting(ctx, SettingsKeyDecisionReleaseDate, date)
-}
-
-// GetEventStartDate returns the event kickoff date as YYYY-MM-DD.
-func (s *SettingsStore) GetEventStartDate(ctx context.Context) (string, error) {
-	return s.getStringSetting(ctx, SettingsKeyEventStartDate)
-}
-
-// SetEventStartDate updates the event kickoff date (YYYY-MM-DD).
-func (s *SettingsStore) SetEventStartDate(ctx context.Context, date string) error {
-	return s.setStringSetting(ctx, SettingsKeyEventStartDate, date)
 }

@@ -33,7 +33,6 @@ import {
   fetchApplicationDueDate,
   fetchContactEmail,
   fetchDecisionReleaseDate,
-  fetchEventStartDate,
   fetchFromEmail,
   fetchFromName,
   fetchHackathonDateRange,
@@ -41,7 +40,6 @@ import {
   updateApplicationDueDate,
   updateContactEmail,
   updateDecisionReleaseDate,
-  updateEventStartDate,
   updateFromEmail,
   updateFromName,
   updateHackathonDateRange,
@@ -58,7 +56,6 @@ const EMPTY_VALUES: OnboardingValues = {
   end_date: "",
   application_due_date: "",
   decision_release_date: "",
-  event_start_date: "",
   contact_email: "",
   from_email: "",
   from_name: "",
@@ -159,13 +156,12 @@ export function OnboardingDialog({
     const controller = new AbortController();
     const load = async () => {
       setLoading(true);
-      const [name, range, appDue, decision, kickoff, contact, from, fromName] =
+      const [name, range, appDue, decision, contact, from, fromName] =
         await Promise.all([
           fetchHackathonName(controller.signal),
           fetchHackathonDateRange(controller.signal),
           fetchApplicationDueDate(controller.signal),
           fetchDecisionReleaseDate(controller.signal),
-          fetchEventStartDate(controller.signal),
           fetchContactEmail(controller.signal),
           fetchFromEmail(controller.signal),
           fetchFromName(controller.signal),
@@ -178,7 +174,6 @@ export function OnboardingDialog({
         end_date: range.data?.end_date ?? "",
         application_due_date: appDue.data?.date ?? "",
         decision_release_date: decision.data?.date ?? "",
-        event_start_date: kickoff.data?.date ?? "",
         contact_email: contact.data?.email ?? "",
         from_email: from.data?.email ?? "",
         from_name: fromName.data?.name ?? "",
@@ -213,7 +208,6 @@ export function OnboardingDialog({
       return "Application due date is required.";
     if (!values.decision_release_date)
       return "Decision release date is required.";
-    if (!values.event_start_date) return "Kickoff date is required.";
     if (!EMAIL_PATTERN.test(values.contact_email.trim()))
       return "Enter a valid contact email.";
     if (!EMAIL_PATTERN.test(values.from_email.trim()))
@@ -234,7 +228,6 @@ export function OnboardingDialog({
       updateHackathonDateRange(values.start_date, values.end_date),
       updateApplicationDueDate(values.application_due_date),
       updateDecisionReleaseDate(values.decision_release_date),
-      updateEventStartDate(values.event_start_date),
       updateContactEmail(values.contact_email.trim()),
       updateFromEmail(values.from_email.trim()),
       updateFromName(values.from_name.trim()),
@@ -296,6 +289,7 @@ export function OnboardingDialog({
                 <DateField
                   id="onboarding-start-date"
                   label="Hackathon start"
+                  hint="Shown to hackers as the kickoff date."
                   value={values.start_date}
                   disabled={loading || saving}
                   onChange={(value) => setField("start_date", value)}
@@ -318,7 +312,7 @@ export function OnboardingDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <DateField
                   id="onboarding-app-due"
                   label="Applications due"
@@ -332,13 +326,6 @@ export function OnboardingDialog({
                   value={values.decision_release_date}
                   disabled={loading || saving}
                   onChange={(value) => setField("decision_release_date", value)}
-                />
-                <DateField
-                  id="onboarding-kickoff"
-                  label="Kickoff"
-                  value={values.event_start_date}
-                  disabled={loading || saving}
-                  onChange={(value) => setField("event_start_date", value)}
                 />
               </div>
 

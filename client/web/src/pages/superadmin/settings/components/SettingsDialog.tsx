@@ -5,7 +5,6 @@ import {
   BookOpen,
   CalendarRange,
   Rocket,
-  ScanLine,
   ShieldCheck,
   UtensilsCrossed,
 } from "lucide-react";
@@ -29,7 +28,6 @@ import HackerPackTab from "../tabs/HackerPackTab";
 import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
-import ScansTab from "../tabs/ScansTab";
 import ScheduleTab from "../tabs/ScheduleTab";
 
 type SettingsTab =
@@ -37,7 +35,6 @@ type SettingsTab =
   | "permissions"
   | "schedule"
   | "meal-groups"
-  | "scans"
   | "hacker-pack"
   | "reset";
 
@@ -46,7 +43,6 @@ const settingsTabs = [
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
   { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
   { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
-  { id: "scans" as const, label: "Points System", icon: ScanLine },
   { id: "hacker-pack" as const, label: "Hacker Pack", icon: BookOpen },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];
@@ -106,7 +102,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                 {activeTab === "permissions" && <PermissionsTab />}
                 {activeTab === "schedule" && <ScheduleTab />}
                 {activeTab === "meal-groups" && <MealGroupsTab />}
-                {activeTab === "scans" && <ScansTab />}
                 {activeTab === "hacker-pack" && <HackerPackTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>

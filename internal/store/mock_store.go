@@ -276,6 +276,16 @@ func (m *MockSettingsStore) GetPointsName(ctx context.Context) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockSettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) SetPointsName(ctx context.Context, name string) error {
 	args := m.Called(name)
 	return args.Error(0)
@@ -337,16 +347,6 @@ func (m *MockSettingsStore) GetDecisionReleaseDate(ctx context.Context) (string,
 }
 
 func (m *MockSettingsStore) SetDecisionReleaseDate(ctx context.Context, date string) error {
-	args := m.Called(date)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetEventStartDate(ctx context.Context) (string, error) {
-	args := m.Called()
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetEventStartDate(ctx context.Context, date string) error {
 	args := m.Called(date)
 	return args.Error(0)
 }

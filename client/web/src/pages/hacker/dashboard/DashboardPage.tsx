@@ -41,7 +41,7 @@ function importantDates(config: HackathonConfig | null): ImportantDate[] {
     [
       { value: config.application_due_date, label: "App due" },
       { value: config.decision_release_date, label: "Decisions" },
-      { value: config.event_start_date, label: "Kickoff" },
+      { value: config.start_date ?? "", label: "Kickoff" },
     ] as const
   ).flatMap(({ value, label }) => {
     const date = parseDateOnly(value);

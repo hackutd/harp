@@ -1,13 +1,13 @@
 import { getRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
-// Hackathon identity and key dates, configured by super admins.
+// Hackathon identity and key dates, configured by super admins. Kickoff is the
+// hackathon start date rather than a separately configured date.
 export interface HackathonConfig {
   hackathon_name: string;
   contact_email: string;
   application_due_date: string;
   decision_release_date: string;
-  event_start_date: string;
   start_date: string | null;
   end_date: string | null;
 }

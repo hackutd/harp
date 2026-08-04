@@ -11,6 +11,7 @@ import type {
   MealGroupsResult,
   MealGroupStatsResult,
   OnboardingStatus,
+  PointsEnabledResult,
   PointsNameResult,
   ResetHackathonOptions,
   ResetHackathonResult,
@@ -226,28 +227,8 @@ export async function updateDecisionReleaseDate(
   );
 }
 
-export async function fetchEventStartDate(
-  signal?: AbortSignal,
-): Promise<ApiResponse<DateSettingResult>> {
-  return getRequest<DateSettingResult>(
-    "/superadmin/settings/event-start-date",
-    "event start date",
-    signal,
-  );
-}
-
-export async function updateEventStartDate(
-  date: string,
-): Promise<ApiResponse<DateSettingResult>> {
-  return postRequest<DateSettingResult>(
-    "/superadmin/settings/event-start-date",
-    { date },
-    "event start date",
-  );
-}
-
-// Reads go through usePointsNameStore — the name is visible to every
-// authenticated user, so only the write is super admin gated.
+// Reads go through usePointsConfigStore — the points config is visible to every
+// authenticated user, so only the writes are super admin gated.
 export async function updatePointsName(
   name: string,
 ): Promise<ApiResponse<PointsNameResult>> {
@@ -255,5 +236,15 @@ export async function updatePointsName(
     "/superadmin/settings/points-name",
     { name },
     "points name",
+  );
+}
+
+export async function updatePointsEnabled(
+  enabled: boolean,
+): Promise<ApiResponse<PointsEnabledResult>> {
+  return postRequest<PointsEnabledResult>(
+    "/superadmin/settings/points-enabled",
+    { enabled },
+    "points system enabled",
   );
 }

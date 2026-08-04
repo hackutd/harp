@@ -600,26 +600,76 @@ func TestSetHackerPackURL(t *testing.T) {
 	})
 }
 
-func TestGetPointsNameHandler(t *testing.T) {
+func TestGetPointsConfigHandler(t *testing.T) {
 	app := newTestApplication(t)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
-	t.Run("should return name for hacker", func(t *testing.T) {
+	t.Run("should return name and enabled state for hacker", func(t *testing.T) {
 		mockSettings.On("GetPointsName").Return("Nuggets", nil).Once()
+		mockSettings.On("GetPointsEnabled").Return(true, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
 		req = setUserContext(req, newTestUser())
 
-		rr := executeRequest(req, http.HandlerFunc(app.getPointsNameHandler))
+		rr := executeRequest(req, http.HandlerFunc(app.getPointsConfigHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		var body struct {
-			Data PointsNameResponse `json:"data"`
+			Data PointsConfigResponse `json:"data"`
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
 		assert.Equal(t, "Nuggets", body.Data.Name)
+		assert.True(t, body.Data.Enabled)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should report the points system as disabled", func(t *testing.T) {
+		mockSettings.On("GetPointsName").Return("Nuggets", nil).Once()
+		mockSettings.On("GetPointsEnabled").Return(false, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getPointsConfigHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data PointsConfigResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.False(t, body.Data.Enabled)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestSetPointsEnabled(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should disable the points system", func(t *testing.T) {
+		mockSettings.On("SetPointsEnabled", false).Return(nil).Once()
+
+		body := `{"enabled":false}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPointsEnabled))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data PointsEnabledResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.False(t, respBody.Data.Enabled)
 
 		mockSettings.AssertExpectations(t)
 	})
@@ -877,7 +927,6 @@ func TestGetOnboardingStatus(t *testing.T) {
 		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{StartDate: &start, EndDate: &end}, nil).Once()
 		mockSettings.On("GetApplicationDueDate").Return("2026-03-14", nil).Once()
 		mockSettings.On("GetDecisionReleaseDate").Return("2026-03-20", nil).Once()
-		mockSettings.On("GetEventStartDate").Return("2026-04-04", nil).Once()
 		mockSettings.On("GetContactEmail").Return("hello@hackutd.co", nil).Once()
 		mockSettings.On("GetFromEmail").Return("noreply@hackutd.co", nil).Once()
 
@@ -906,7 +955,6 @@ func TestGetOnboardingStatus(t *testing.T) {
 		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{}, nil).Once()
 		mockSettings.On("GetApplicationDueDate").Return("", nil).Once()
 		mockSettings.On("GetDecisionReleaseDate").Return("", nil).Once()
-		mockSettings.On("GetEventStartDate").Return("", nil).Once()
 		mockSettings.On("GetContactEmail").Return("", nil).Once()
 		mockSettings.On("GetFromEmail").Return("", nil).Once()
 

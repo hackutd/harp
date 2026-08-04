@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePointsNameStore, useUserStore } from "@/shared/stores";
+import { usePointsConfigStore, useUserStore } from "@/shared/stores";
 
 import { ScannerDialog } from "./components/ScannerDialog";
 import { ScanStatsCards } from "./components/ScanStatsCards";
@@ -24,7 +24,7 @@ export default function ScansPage() {
     rebalanceStats,
     setActiveScanType,
   } = useScansStore();
-  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
+  const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
 
   const isSuperAdmin = user?.role === "super_admin";
 
@@ -32,13 +32,13 @@ export default function ScansPage() {
     const controller = new AbortController();
     fetchTypes(controller.signal);
     fetchStats(controller.signal);
-    fetchPointsName(controller.signal);
+    fetchPointsConfig(controller.signal);
     return () => {
       controller.abort();
       // Reset active scan type so dialog doesn't reopen on navigate back
       setActiveScanType(null);
     };
-  }, [fetchTypes, fetchStats, fetchPointsName, setActiveScanType]);
+  }, [fetchTypes, fetchStats, fetchPointsConfig, setActiveScanType]);
 
   if (typesLoading && scanTypes.length === 0) {
     return (

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchBar } from "@/pages/admin/_shared";
-import { usePointsNameStore } from "@/shared/stores";
+import { usePointsConfigStore } from "@/shared/stores";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
 import { ApplicationsTable } from "./components/ApplicationsTable";
@@ -32,7 +32,7 @@ export default function AllApplicantsPage() {
   const statsLoading = useApplicationsStore((s) => s.statsLoading);
   const fetchApplications = useApplicationsStore((s) => s.fetchApplications);
   const fetchStats = useApplicationsStore((s) => s.fetchStats);
-  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
+  const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
 
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
@@ -48,9 +48,9 @@ export default function AllApplicantsPage() {
     const controller = new AbortController();
     fetchApplications(undefined, controller.signal);
     fetchStats(controller.signal);
-    fetchPointsName(controller.signal);
+    fetchPointsConfig(controller.signal);
     return () => controller.abort();
-  }, [fetchApplications, fetchStats, fetchPointsName]);
+  }, [fetchApplications, fetchStats, fetchPointsConfig]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {

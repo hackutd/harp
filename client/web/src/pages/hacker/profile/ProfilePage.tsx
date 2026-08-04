@@ -30,7 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { useInstallPrompt } from "@/shared/install";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
-import { usePointsNameStore, useUserStore } from "@/shared/stores";
+import { usePointsConfigStore, useUserStore } from "@/shared/stores";
 import type { Application } from "@/types";
 
 import {
@@ -75,8 +75,9 @@ export default function ProfilePage() {
   const install = useInstallPrompt();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const pointsName = usePointsNameStore((s) => s.pointsName);
-  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
+  const pointsName = usePointsConfigStore((s) => s.pointsName);
+  const pointsEnabled = usePointsConfigStore((s) => s.pointsEnabled);
+  const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
 
   const [application, setApplication] = useState<Application | null>(null);
   const [resumeBusy, setResumeBusy] = useState(false);
@@ -97,9 +98,9 @@ export default function ProfilePage() {
       }
     };
     load();
-    fetchPointsName(controller.signal);
+    fetchPointsConfig(controller.signal);
     return () => controller.abort();
-  }, [fetchPointsName]);
+  }, [fetchPointsConfig]);
 
   const name = displayName(application);
   const canEditResume = application?.status === "draft";
@@ -264,18 +265,20 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Points */}
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
-        <div>
-          <p className="text-sm font-normal text-black">{pointsName}</p>
-          <p className="text-xs font-light text-[#8A8A8A]">
-            Earned from check-ins and events
-          </p>
+      {/* Points — hidden entirely when super admins turn the system off */}
+      {pointsEnabled && (
+        <div className="mt-6 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
+          <div>
+            <p className="text-sm font-normal text-black">{pointsName}</p>
+            <p className="text-xs font-light text-[#8A8A8A]">
+              Earned from check-ins and events
+            </p>
+          </div>
+          <span className="text-2xl font-light text-black tabular-nums">
+            {application?.points ?? 0}
+          </span>
         </div>
-        <span className="text-2xl font-light text-black tabular-nums">
-          {application?.points ?? 0}
-        </span>
-      </div>
+      )}
 
       {/* Settings */}
       <section className="mt-6">
