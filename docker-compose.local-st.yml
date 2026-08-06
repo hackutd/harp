@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: adminpassword
     volumes:
       - dev-db-data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
       - "5432:5432"
     healthcheck:
@@ -18,12 +18,31 @@ services:
       timeout: 3s
       retries: 5
 
+  db-init:
+    container_name: harp-dev-db-init
+    image: postgres:16.3
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPASSWORD: adminpassword
+      POSTGRES_DB: portal
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+    volumes:
+      - ./scripts/init-db.sh:/init-db.sh:ro
+    entrypoint: ["bash", "-c", "cp /init-db.sh /tmp/init-db.sh && sed -i 's/\\r$//' /tmp/init-db.sh && bash /tmp/init-db.sh"]
+    restart: "no"
+
   supertokens:
     image: registry.supertokens.io/supertokens/supertokens-postgresql:11.4.5
     container_name: harp-dev-supertokens
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       POSTGRESQL_CONNECTION_URI: "postgresql://admin:adminpassword@db:5432/supertokens"
       API_KEYS: "dev-api-key-that-is-long-enough"
