@@ -66,15 +66,6 @@ export default function AllApplicantsPage() {
     return () => clearTimeout(timer);
   }, [searchInput, fetchApplications]);
 
-  const prevLoading = useRef(false);
-  const initialLoadDone = useRef(false);
-  useEffect(() => {
-    if (prevLoading.current && !loading) {
-      initialLoadDone.current = true;
-    }
-    prevLoading.current = loading;
-  }, [loading]);
-
   const handleClosePanel = useCallback(() => {
     setSelectedApplicationId(null);
     clearDetail();
@@ -100,10 +91,7 @@ export default function AllApplicantsPage() {
   }, [prevCursor, fetchApplications]);
 
   const isInitialLoad =
-    !initialLoadDone.current &&
-    loading &&
-    applications.length === 0 &&
-    !searchInput;
+    statsLoading && loading && applications.length === 0 && !searchInput;
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
