@@ -258,13 +258,14 @@ export function NotificationsTable({
                     <TableHead className="w-32 text-right">
                       Recipients
                     </TableHead>
+                    <TableHead className="w-32 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sent.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={5}
                         className="h-24 text-center text-muted-foreground"
                       >
                         No notifications sent yet
@@ -290,6 +291,20 @@ export function NotificationsTable({
                           <Badge className="bg-green-100 font-light text-green-800">
                             {n.recipient_count}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={saving}
+                              onClick={() => setDeleteTarget(n)}
+                              className="cursor-pointer text-muted-foreground hover:text-red-500"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -344,7 +359,7 @@ export function NotificationsTable({
             <AlertDialogTitle>Delete notification?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove &ldquo;{deleteTarget?.title}&rdquo;.
-              Already-sent notifications cannot be deleted.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

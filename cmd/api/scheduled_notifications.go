@@ -219,17 +219,16 @@ func (app *application) updateScheduledNotificationHandler(w http.ResponseWriter
 	}
 }
 
-// deleteScheduledNotificationHandler deletes a pending scheduled notification.
+// deleteScheduledNotificationHandler deletes a scheduled notification.
 //
 //	@Summary		Delete scheduled notification (Super Admin)
-//	@Description	Deletes a pending notification. Returns 409 if already sent.
+//	@Description	Deletes a notification, whether pending or already sent.
 //	@Tags			superadmin/notifications
 //	@Param			notificationID	path	string	true	"Notification ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}
 //	@Failure		404	{object}	object{error=string}
-//	@Failure		409	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/superadmin/notifications/{notificationID} [delete]
@@ -244,9 +243,6 @@ func (app *application) deleteScheduledNotificationHandler(w http.ResponseWriter
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			app.notFoundResponse(w, r, errors.New("notification not found"))
-			return
-		case errors.Is(err, store.ErrConflict):
-			app.conflictResponse(w, r, errors.New("notification already sent"))
 			return
 		}
 		app.internalServerError(w, r, err)

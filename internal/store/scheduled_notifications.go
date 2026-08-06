@@ -173,7 +173,7 @@ func (s *ScheduledNotificationsStore) Delete(ctx context.Context, id string) err
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	result, err := s.db.ExecContext(ctx, `DELETE FROM scheduled_notifications WHERE id = $1 AND sent_at IS NULL`, id)
+	result, err := s.db.ExecContext(ctx, `DELETE FROM scheduled_notifications WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
@@ -184,13 +184,6 @@ func (s *ScheduledNotificationsStore) Delete(ctx context.Context, id string) err
 	}
 
 	if rows == 0 {
-		var exists bool
-		if err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM scheduled_notifications WHERE id = $1)`, id).Scan(&exists); err != nil {
-			return err
-		}
-		if exists {
-			return ErrConflict
-		}
 		return ErrNotFound
 	}
 

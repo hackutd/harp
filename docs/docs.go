@@ -3984,7 +3984,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Deletes a pending notification. Returns 409 if already sent.",
+                "description": "Deletes a notification, whether pending or already sent.",
                 "tags": [
                     "superadmin/notifications"
                 ],
@@ -4026,17 +4026,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "properties": {

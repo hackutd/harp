@@ -282,11 +282,11 @@ func TestDeleteScheduledNotification(t *testing.T) {
 		mockNotifs.AssertExpectations(t)
 	})
 
-	t.Run("returns 409 if already sent", func(t *testing.T) {
+	t.Run("deletes a sent notification", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
 
-		mockNotifs.On("Delete", "n-1").Return(store.ErrConflict).Once()
+		mockNotifs.On("Delete", "n-1").Return(nil).Once()
 
 		req, err := http.NewRequest(http.MethodDelete, "/", nil)
 		require.NoError(t, err)
@@ -294,7 +294,7 @@ func TestDeleteScheduledNotification(t *testing.T) {
 		req = withNotificationRouteParam(req, "n-1")
 
 		rr := executeRequest(req, http.HandlerFunc(app.deleteScheduledNotificationHandler))
-		checkResponseCode(t, http.StatusConflict, rr.Code)
+		checkResponseCode(t, http.StatusNoContent, rr.Code)
 
 		mockNotifs.AssertExpectations(t)
 	})
