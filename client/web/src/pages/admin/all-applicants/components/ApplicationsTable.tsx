@@ -36,25 +36,25 @@ export const ApplicationsTable = memo(function ApplicationsTable({
       {loading && (
         <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+      <Table className="border-collapse table-fixed min-w-[1400px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
-            <TableHead>Status</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Age</TableHead>
-            <TableHead>Country</TableHead>
-            <TableHead>Gender</TableHead>
-            <TableHead>University</TableHead>
-            <TableHead>Major</TableHead>
-            <TableHead>Level of Study</TableHead>
-            <TableHead>Hackathons</TableHead>
-            <TableHead>Submitted</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead>AI Percent</TableHead>
-            <TableHead>{pointsName}</TableHead>
+            <TableHead className="w-28">Status</TableHead>
+            <TableHead className="w-48">Name</TableHead>
+            <TableHead className="w-56">Email</TableHead>
+            <TableHead className="w-36">Phone</TableHead>
+            <TableHead className="w-16">Age</TableHead>
+            <TableHead className="w-32">Country</TableHead>
+            <TableHead className="w-28">Gender</TableHead>
+            <TableHead className="w-48">University</TableHead>
+            <TableHead className="w-40">Major</TableHead>
+            <TableHead className="w-40">Level of Study</TableHead>
+            <TableHead className="w-28">Hackathons</TableHead>
+            <TableHead className="w-28">Submitted</TableHead>
+            <TableHead className="w-28">Created</TableHead>
+            <TableHead className="w-28">Updated</TableHead>
+            <TableHead className="w-24">AI Percent</TableHead>
+            <TableHead className="w-24">{pointsName}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

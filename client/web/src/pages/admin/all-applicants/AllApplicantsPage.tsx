@@ -66,6 +66,15 @@ export default function AllApplicantsPage() {
     return () => clearTimeout(timer);
   }, [searchInput, fetchApplications]);
 
+  const prevLoading = useRef(false);
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (prevLoading.current && !loading) {
+      initialLoadDone.current = true;
+    }
+    prevLoading.current = loading;
+  }, [loading]);
+
   const handleClosePanel = useCallback(() => {
     setSelectedApplicationId(null);
     clearDetail();
@@ -90,12 +99,16 @@ export default function AllApplicantsPage() {
     }
   }, [prevCursor, fetchApplications]);
 
-  const isInitialLoad = loading && applications.length === 0 && !searchInput;
+  const isInitialLoad =
+    !initialLoadDone.current &&
+    loading &&
+    applications.length === 0 &&
+    !searchInput;
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
       <div className="shrink-0">
-        <SectionCards stats={stats} loading={statsLoading || isInitialLoad} />
+        <SectionCards stats={stats} loading={statsLoading} />
       </div>
 
       <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
