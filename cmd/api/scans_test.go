@@ -49,8 +49,8 @@ func TestGetScanTypes(t *testing.T) {
 
 func TestCreateScan(t *testing.T) {
 	scanTypes := []store.ScanType{
-		{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true},
-		{Name: "lunch", DisplayName: "Lunch", Category: store.ScanCategoryMeal, IsActive: true},
+		{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true, Points: 10},
+		{Name: "lunch", DisplayName: "Lunch", Category: store.ScanCategoryMeal, IsActive: true, Points: 5},
 		{Name: "inactive_item", DisplayName: "Inactive", Category: store.ScanCategorySwag, IsActive: false},
 	}
 
@@ -69,7 +69,9 @@ func TestCreateScan(t *testing.T) {
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
 		mockApps.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).
 			Return(&groups[0], nil).Once()
-		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockScans.On("Create", mock.MatchedBy(func(s *store.Scan) bool {
+			return s.Points == 10
+		})).Return(nil).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -87,6 +89,43 @@ func TestCreateScan(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, resp.Data.MealGroup)
 		assert.Contains(t, groups, *resp.Data.MealGroup)
+		assert.Equal(t, 10, resp.Data.Points)
+
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("item scan awards the scan type's configured points", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mealGroup := "A"
+
+		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(true, nil).Once()
+		mockScans.On("Create", mock.MatchedBy(func(s *store.Scan) bool {
+			return s.Points == 5
+		})).Return(nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return(&mealGroup, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"lunch"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		var resp struct {
+			Data CreateScanResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&resp)
+		require.NoError(t, err)
+		assert.Equal(t, 5, resp.Data.Points)
 
 		mockSettings.AssertExpectations(t)
 		mockScans.AssertExpectations(t)
@@ -284,6 +323,103 @@ func TestCreateScan(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	shopScanTypes := []store.ScanType{
+		{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true, Points: 10},
+		{Name: "hoodie", DisplayName: "Hoodie", Category: store.ScanCategoryShop, IsActive: true, Points: 50},
+	}
+
+	t.Run("shop scan deducts points and returns balance", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mealGroup := "A"
+
+		mockSettings.On("GetScanTypes").Return(shopScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(true, nil).Once()
+		mockScans.On("CreatePurchase", mock.MatchedBy(func(s *store.Scan) bool {
+			return s.Points == -50
+		})).Return(70, nil).Once()
+		mockApps.On("GetMealGroupByUserID", "user-1").Return(&mealGroup, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"hoodie"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		var resp struct {
+			Data CreateScanResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&resp)
+		require.NoError(t, err)
+		assert.Equal(t, -50, resp.Data.Points)
+		require.NotNil(t, resp.Data.Balance)
+		assert.Equal(t, 70, *resp.Data.Balance)
+
+		// Shop scans go through CreatePurchase so the balance check is atomic.
+		mockScans.AssertNotCalled(t, "Create", mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("402 when insufficient points for shop scan", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		mockSettings.On("GetScanTypes").Return(shopScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(true, nil).Once()
+		mockScans.On("CreatePurchase", mock.AnythingOfType("*store.Scan")).
+			Return(30, store.ErrInsufficientPoints).Once()
+
+		body := `{"user_id":"user-1","scan_type":"hoodie"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusPaymentRequired, rr.Code)
+
+		var errBody struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&errBody)
+		require.NoError(t, err)
+		assert.Contains(t, errBody.Error, "insufficient points")
+
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("403 shop scan without check-in", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		mockSettings.On("GetScanTypes").Return(shopScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"hoodie"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+
+		mockScans.AssertNotCalled(t, "CreatePurchase", mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	walkInScanTypes := []store.ScanType{
@@ -617,6 +753,66 @@ func TestUpdateScanTypes(t *testing.T) {
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("accepts scan types with points", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		types := []store.ScanType{
+			{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true, Points: 10},
+			{Name: "walk_in", DisplayName: "Walk-In", Category: store.ScanCategoryWalkIn, IsActive: true},
+		}
+
+		mockSettings.On("UpdateScanTypes", types).Return(nil).Once()
+
+		body := `{"scan_types":[{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true,"points":10},{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true}]}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScanTypesHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("accepts shop category", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		types := []store.ScanType{
+			{Name: "check_in", DisplayName: "Check In", Category: store.ScanCategoryCheckIn, IsActive: true},
+			{Name: "walk_in", DisplayName: "Walk-In", Category: store.ScanCategoryWalkIn, IsActive: true},
+			{Name: "hoodie", DisplayName: "Hoodie", Category: store.ScanCategoryShop, IsActive: true, Points: 50},
+		}
+
+		mockSettings.On("UpdateScanTypes", types).Return(nil).Once()
+
+		body := `{"scan_types":[{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true},{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true},{"name":"hoodie","display_name":"Hoodie","category":"shop","is_active":true,"points":50}]}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScanTypesHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("400 negative points", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		body := `{"scan_types":[{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true,"points":-5},{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true}]}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScanTypesHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("400 duplicate names", func(t *testing.T) {

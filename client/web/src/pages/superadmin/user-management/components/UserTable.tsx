@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -198,7 +197,7 @@ export function UserTable({
                           );
                         })}
                         {updatingRoleId === user.id && (
-                          <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                          <Skeleton className="size-3 rounded-full" />
                         )}
                       </div>
                     ) : (
@@ -231,7 +230,7 @@ export function UserTable({
                             : "Disabled"}
                         </span>
                         {togglingId === user.id && (
-                          <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                          <Skeleton className="size-3 rounded-full" />
                         )}
                       </div>
                     ) : (

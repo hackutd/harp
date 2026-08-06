@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import {
   buildDefaultValues,
@@ -258,18 +259,21 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     }, AUTOSAVE_DEBOUNCE_MS);
   }, [cancelPendingAutosave, saveDraft]);
 
-  // Autosave whenever the user edits a field. (form.watch returns an RHF
-  // subscription; the React Compiler flags it as a non-memoizable library
-  // call, which is a benign informational warning here.)
+  // Autosave whenever the user edits a field. Uses form.subscribe rather than
+  // form.watch: watch() returns a non-memoizable value that makes the React
+  // Compiler skip optimizing this component entirely.
   useEffect(() => {
     if (loading || !applicationsEnabled || !isDraft) return;
-    const subscription = form.watch((_, { name }) => {
-      // Ignore programmatic bulk updates like form.reset
-      if (!name) return;
-      scheduleAutosave();
+    const unsubscribe = form.subscribe({
+      formState: { values: true },
+      callback: ({ name }) => {
+        // Ignore programmatic bulk updates like form.reset
+        if (!name) return;
+        scheduleAutosave();
+      },
     });
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
       cancelPendingAutosave();
     };
   }, [
@@ -379,7 +383,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       if (application?.id) {
         localStorage.removeItem(stepStorageKey(application.id));
       }
-      navigate("/app/status");
+      navigate("/app/status", {
+        state: { justSubmitted: submitRes.data.id },
+      });
     } else {
       setApiError(submitRes.error || "Failed to submit application");
       errorAlert(submitRes);
@@ -480,11 +486,18 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Loading state
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <div className="size-10 animate-spin rounded-full border-b-2 border-black"></div>
-        <p className="mt-4 text-sm font-light text-[#8A8A8A]">
-          Loading your application...
-        </p>
+      <div className="mx-auto max-w-md space-y-6 px-5 py-10 md:max-w-5xl">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-9 w-64" />
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-11 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-12 w-full rounded-full" />
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { Code, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Code, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -137,9 +138,7 @@ export function FAQTable({
             {faqs.length} FAQ(s) configured
           </CardDescription>
           <div className="flex items-center gap-2">
-            {saving && (
-              <Loader2 className="size-4 animate-spin text-muted-foreground" />
-            )}
+            {saving && <Skeleton className="size-4 rounded-full" />}
             <Popover
               open={jsonPopoverOpen}
               onOpenChange={handleJsonPopoverOpenChange}

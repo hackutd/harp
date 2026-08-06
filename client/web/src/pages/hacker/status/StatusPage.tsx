@@ -1,8 +1,9 @@
 import { format, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
+import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
@@ -31,6 +32,16 @@ const STATUS_MESSAGES: Record<ApplicationStatus, string> = {
     "Your application is on the waitlist. We'll notify you if a spot becomes available.",
 };
 
+// Muted, desaturated tints so the pill reads as an outcome without shouting
+// over the card behind it. Pre-decision states stay neutral gray.
+const STATUS_PILL_COLORS: Record<ApplicationStatus, string> = {
+  draft: "bg-[#7A7973]",
+  submitted: "bg-[#7A7973]",
+  accepted: "bg-[#5A7D63]",
+  rejected: "bg-[#8F5F5A]",
+  waitlisted: "bg-[#8A7444]",
+};
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
@@ -42,9 +53,20 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 export default function StatusPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<Application | null>(null);
   const [showFullApplication, setShowFullApplication] = useState(false);
+
+  // Grab the "justSubmitted" ID from navigation state then clear it
+  // so back-navigation doesn't re-trigger the submit celebration.
+  const justSubmittedId = (location.state as { justSubmitted?: string })
+    ?.justSubmitted;
+  useEffect(() => {
+    if (justSubmittedId) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [justSubmittedId, navigate, location.pathname]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,17 +140,31 @@ export default function StatusPage() {
       </button>
 
       {/* Status card */}
-      <div className="mt-3 rounded-xl bg-[#3A3A38] p-5 text-white">
-        <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-widest uppercase">
+      <div className="mt-3 rounded-xl border border-white/10 bg-[#46453F]/90 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(255,255,255,0.14),rgba(255,255,255,0)_55%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_28px_rgba(0,0,0,0.10)] backdrop-blur-xl">
+        <span
+          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${STATUS_PILL_COLORS[application.status]}`}
+        >
           {STATUS_LABELS[application.status]}
         </span>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+        <h1 className="mt-3 text-xl font-light tracking-tight">
           Application status
         </h1>
         <p className="mt-2 text-sm font-light text-white/70">
           {STATUS_MESSAGES[application.status]}
         </p>
       </div>
+
+      {/* Celebration effects — fire once based on localStorage */}
+
+      {/* Submit celebration: fires when the user was just redirected from submit */}
+      {justSubmittedId === application.id && (
+        <CelebrationEffect id={application.id} type="submit" />
+      )}
+
+      {/* Accepted celebration: fires once when an accepted hacker opens their status */}
+      {application.status === "accepted" && (
+        <CelebrationEffect id={application.id} type="accepted" />
+      )}
 
       {/* Details */}
       <section className="mt-5">

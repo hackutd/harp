@@ -1,5 +1,4 @@
 import {
-  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -29,6 +28,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePointsNameStore } from "@/shared/stores";
 
 import type { ScanStat, ScanType, ScanTypeCategory } from "../types";
 import {
@@ -72,10 +73,12 @@ export function ScanTypesTable({
 }: ScanTypesTableProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editDisplayName, setEditDisplayName] = useState("");
+  const [editPoints, setEditPoints] = useState("0");
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [pendingNew, setPendingNew] = useState<ScanType | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const editRowRef = useRef<HTMLTableRowElement>(null);
+  const pointsName = usePointsNameStore((s) => s.pointsName);
 
   // When there's a pending new row, append it so it renders in the table
   const effectiveTypes = pendingNew ? [...scanTypes, pendingNew] : scanTypes;
@@ -90,6 +93,7 @@ export function ScanTypesTable({
     setEditingIndex(index);
     if (scanTypes[index]) {
       setEditDisplayName(scanTypes[index].display_name);
+      setEditPoints(String(scanTypes[index].points ?? 0));
     }
   };
 
@@ -97,6 +101,8 @@ export function ScanTypesTable({
     if (editingIndex === null) return;
 
     const trimmed = editDisplayName.trim();
+    const parsedPoints = Number.parseInt(editPoints, 10);
+    const points = Number.isNaN(parsedPoints) ? 0 : parsedPoints;
 
     // Pending new row — save only if user typed something, otherwise no-op
     if (pendingNew) {
@@ -105,6 +111,7 @@ export function ScanTypesTable({
         ...pendingNew,
         display_name: trimmed,
         name: toSnakeCase(trimmed),
+        points,
       };
       const updated = [...scanTypes, newType];
 
@@ -124,11 +131,20 @@ export function ScanTypesTable({
     if (!current) return;
 
     // No change — skip save
-    if (trimmed === current.display_name) return;
+    const nameChanged = trimmed !== current.display_name;
+    if (!nameChanged && points === current.points) return;
 
+    // Only re-derive `name` when the display name actually changed — it's the
+    // key historical scans and scan_stats are keyed by, so a points-only edit
+    // must not rename the scan type.
     const updated = scanTypes.map((st, i) =>
       i === editingIndex
-        ? { ...st, display_name: trimmed, name: toSnakeCase(trimmed) }
+        ? {
+            ...st,
+            display_name: trimmed,
+            name: nameChanged ? toSnakeCase(trimmed) : st.name,
+            points,
+          }
         : st,
     );
 
@@ -139,7 +155,14 @@ export function ScanTypesTable({
     }
 
     onSave(updated);
-  }, [editingIndex, editDisplayName, scanTypes, pendingNew, onSave]);
+  }, [
+    editingIndex,
+    editDisplayName,
+    editPoints,
+    scanTypes,
+    pendingNew,
+    onSave,
+  ]);
 
   // Ref to avoid stale closures in event listeners
   const saveDisplayNameRef = useRef(saveDisplayName);
@@ -197,10 +220,12 @@ export function ScanTypesTable({
       display_name: "",
       category: "other",
       is_active: true,
+      points: 0,
     };
     setPendingNew(newType);
     setEditingIndex(scanTypes.length);
     setEditDisplayName("");
+    setEditPoints("0");
   };
 
   const handleDelete = (index: number) => {
@@ -268,21 +293,15 @@ export function ScanTypesTable({
           {isSuperAdmin ? "configured" : "available"}
         </CardDescription>
         <div className="flex items-center gap-2">
-          {saving && (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-          )}
+          {saving && <Skeleton className="size-4 rounded-full" />}
           <Button
             variant="outline"
             size="sm"
             className="cursor-pointer"
-            disabled={rebalancing}
+            loading={rebalancing}
             onClick={() => setRebalanceOpen(true)}
           >
-            {rebalancing ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="size-3.5" />
-            )}
+            {!rebalancing && <RefreshCw className="size-3.5" />}
             Rebalance
           </Button>
         </div>
@@ -295,6 +314,7 @@ export function ScanTypesTable({
                 <TableHead className="w-24">Action</TableHead>
                 <TableHead className="w-48">Name</TableHead>
                 <TableHead className="w-150">Category</TableHead>
+                <TableHead className="w-24">{pointsName}</TableHead>
                 <TableHead className="w-24">Scans</TableHead>
                 {isSuperAdmin && <TableHead>Active</TableHead>}
               </TableRow>
@@ -374,6 +394,29 @@ export function ScanTypesTable({
                             );
                           })}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={editPoints}
+                          onChange={(e) => setEditPoints(e.target.value)}
+                          onBlur={(e) => {
+                            if (
+                              editRowRef.current?.contains(
+                                e.relatedTarget as Node,
+                              )
+                            )
+                              return;
+                            saveDisplayName();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              closeEditing();
+                            }
+                          }}
+                          className="h-8 w-20 text-sm font-light shadow-none bg-transparent pl-2 rounded-sm focus-visible:ring-1"
+                        />
                       </TableCell>
                       <TableCell className="tabular-nums">{count}</TableCell>
                       <TableCell>
@@ -460,6 +503,9 @@ export function ScanTypesTable({
                           {scanType.category.replace("_", " ")}
                         </Badge>
                       </div>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {scanType.points ?? 0}
                     </TableCell>
                     <TableCell className="tabular-nums">{count}</TableCell>
                     {isSuperAdmin && (

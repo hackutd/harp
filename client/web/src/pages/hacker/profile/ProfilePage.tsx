@@ -2,8 +2,9 @@ import {
   Bell,
   Eye,
   FileText,
-  Loader2,
   LogOut,
+  Share,
+  SmartphoneNfc,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -26,9 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { useInstallPrompt } from "@/shared/install";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
-import { useUserStore } from "@/shared/stores";
+import { usePointsNameStore, useUserStore } from "@/shared/stores";
 import type { Application } from "@/types";
 
 import {
@@ -70,7 +72,11 @@ export default function ProfilePage() {
   const { user, clearUser } = useUserStore();
   const navigate = useNavigate();
   const push = usePushSubscription();
+  const install = useInstallPrompt();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const pointsName = usePointsNameStore((s) => s.pointsName);
+  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
 
   const [application, setApplication] = useState<Application | null>(null);
   const [resumeBusy, setResumeBusy] = useState(false);
@@ -91,8 +97,9 @@ export default function ProfilePage() {
       }
     };
     load();
+    fetchPointsName(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [fetchPointsName]);
 
   const name = displayName(application);
   const canEditResume = application?.status === "draft";
@@ -120,6 +127,37 @@ export default function ProfilePage() {
     } else {
       await push.disable();
       toast.success("Notifications disabled");
+    }
+  };
+
+  const handleInstallClick = () => {
+    if (install.platform === "ios") {
+      toast("Add HARP to your home screen", {
+        description: (
+          <span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              Tap <Share className="size-3.5" strokeWidth={2} />
+            </span>{" "}
+            then "Add to Home Screen" to install and get notified.
+          </span>
+        ),
+      });
+      return;
+    }
+    if (install.platform === "desktop") {
+      toast("Open HARP on your phone", {
+        description:
+          "Add HARP to your phone's home screen to get notified about your application status.",
+      });
+      return;
+    }
+    if (install.canPromptNatively) {
+      void install.promptInstall();
+    } else {
+      toast("Install not available yet", {
+        description:
+          'Look for "Install app" or "Add to Home Screen" in your browser\'s menu.',
+      });
     }
   };
 
@@ -226,13 +264,17 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Tavern points placeholder */}
+      {/* Points */}
       <div className="mt-6 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
         <div>
-          <p className="text-sm font-normal text-black">Tavern Points</p>
-          <p className="text-xs font-light text-[#8A8A8A]">Coming soon</p>
+          <p className="text-sm font-normal text-black">{pointsName}</p>
+          <p className="text-xs font-light text-[#8A8A8A]">
+            Earned from check-ins and events
+          </p>
         </div>
-        <span className="text-2xl font-light text-[#B8B8B8]">—</span>
+        <span className="text-2xl font-light text-black tabular-nums">
+          {application?.points ?? 0}
+        </span>
       </div>
 
       {/* Settings */}
@@ -241,6 +283,30 @@ export default function ProfilePage() {
           Settings
         </h2>
         <div className="divide-y divide-[#F0F0F0] rounded-xl border border-[#E5E5E5]">
+          {/* Install app */}
+          {!install.installed && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="flex min-h-[68px] w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+            >
+              <div className="flex items-center gap-3">
+                <SmartphoneNfc
+                  className="size-4.5 text-black"
+                  strokeWidth={1.5}
+                />
+                <div>
+                  <p className="text-sm font-normal text-black">Install app</p>
+                  <p className="text-xs font-light text-[#8A8A8A]">
+                    {install.platform === "desktop"
+                      ? "Add it to your phone's home screen for the full experience"
+                      : "Add to home screen for the full experience"}
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
+
           {/* Push notifications */}
           <div className="flex min-h-[68px] items-center justify-between px-5 py-4">
             <div className="flex items-center gap-3">
@@ -297,13 +363,9 @@ export default function ProfilePage() {
                       onClick={handleDeleteResume}
                       disabled={resumeBusy}
                       aria-label="Delete resume"
-                      className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
+                      className={`flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50 ${resumeBusy ? "animate-pulse" : ""}`}
                     >
-                      {resumeBusy ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" strokeWidth={1.5} />
-                      )}
+                      <Trash2 className="size-4" strokeWidth={1.5} />
                     </button>
                   ) : (
                     <button
@@ -311,13 +373,9 @@ export default function ProfilePage() {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={resumeBusy}
                       aria-label="Upload resume"
-                      className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
+                      className={`flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50 ${resumeBusy ? "animate-pulse" : ""}`}
                     >
-                      {resumeBusy ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Upload className="size-4" strokeWidth={1.5} />
-                      )}
+                      <Upload className="size-4" strokeWidth={1.5} />
                     </button>
                   ))}
               </div>

@@ -44,14 +44,21 @@ export default function NotificationsPage() {
 
   if (loading && notifications.length === 0) {
     return (
-      <div className="space-y-6 overflow-auto">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-40" />
+      <div className="flex flex-col gap-3 h-full min-h-0">
+        <Card className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+          <CardHeader className="shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-9 w-56" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
+          <hr className="border-border" />
+          <CardContent className="min-h-0 flex-1 space-y-3 overflow-hidden p-6 pt-0">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </CardContent>
         </Card>
@@ -60,7 +67,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex flex-col gap-3 h-full min-h-0">
       <NotificationsTable
         notifications={notifications}
         saving={saving}

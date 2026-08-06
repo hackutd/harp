@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	ErrNotFound          = errors.New("resource not found")
-	ErrConflict          = errors.New("resource already exists")
-	QueryTimeoutDuration = time.Second * 5
+	ErrNotFound           = errors.New("resource not found")
+	ErrConflict           = errors.New("resource already exists")
+	ErrInsufficientPoints = errors.New("insufficient points")
+	QueryTimeoutDuration  = time.Second * 5
 )
 
 type Storage struct {
@@ -56,6 +57,8 @@ type Storage struct {
 		SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error
 		GetHackerPackURL(ctx context.Context) (string, error)
 		SetHackerPackURL(ctx context.Context, url string) error
+		GetPointsName(ctx context.Context) (string, error)
+		SetPointsName(ctx context.Context, name string) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
@@ -74,9 +77,11 @@ type Storage struct {
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
+		CreatePurchase(ctx context.Context, scan *Scan) (int, error)
 		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
 		GetStats(ctx context.Context) ([]ScanStat, error)
 		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)
+		GetTotalPointsByUserID(ctx context.Context, userID string) (int, error)
 		RebalanceStats(ctx context.Context) ([]ScanStat, error)
 	}
 	ApplicationReviews interface {

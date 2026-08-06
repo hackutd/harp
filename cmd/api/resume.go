@@ -149,6 +149,7 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            app.userPoints(r, user.ID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

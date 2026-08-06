@@ -1201,7 +1201,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.",
+                "description": "Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1243,6 +1243,17 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Insufficient points for shop scan",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -3201,6 +3212,53 @@ const docTemplate = `{
                     },
                     "503": {
                         "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/points-name": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configured display name of the points system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get points system name",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PointsNameResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -5309,6 +5367,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/points-name": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates the display name of the points system shown to hackers and admins",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set points system name (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Points system name",
+                        "name": "name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetPointsNamePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PointsNameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/review-assignment-toggle": {
             "put": {
                 "security": [
@@ -6136,6 +6277,10 @@ const docTemplate = `{
                 "meal_group": {
                     "type": "string"
                 },
+                "points": {
+                    "description": "Points is the user's total scan points; populated on read endpoints only.",
+                    "type": "integer"
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -6219,6 +6364,10 @@ const docTemplate = `{
         "main.CreateScanResponse": {
             "type": "object",
             "properties": {
+                "balance": {
+                    "description": "Balance is the user's remaining points; populated only for shop scans.",
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -6227,6 +6376,9 @@ const docTemplate = `{
                 },
                 "meal_group": {
                     "type": "string"
+                },
+                "points": {
+                    "type": "integer"
                 },
                 "scan_type": {
                     "type": "string"
@@ -6441,6 +6593,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/store.ApplicationReviewWithDetails"
                     }
+                }
+            }
+        },
+        "main.PointsNameResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -6718,6 +6878,19 @@ const docTemplate = `{
             "properties": {
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "main.SetPointsNamePayload": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "minLength": 1
                 }
             }
         },
@@ -7130,6 +7303,9 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
+                "points": {
+                    "type": "integer"
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -7431,6 +7607,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "points": {
+                    "type": "integer"
+                },
                 "scan_type": {
                     "type": "string"
                 },
@@ -7470,7 +7649,8 @@ const docTemplate = `{
                         "meal",
                         "swag",
                         "other",
-                        "walk_in"
+                        "walk_in",
+                        "shop"
                     ],
                     "allOf": [
                         {
@@ -7490,6 +7670,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 1
+                },
+                "points": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -7500,14 +7684,16 @@ const docTemplate = `{
                 "meal",
                 "swag",
                 "other",
-                "walk_in"
+                "walk_in",
+                "shop"
             ],
             "x-enum-varnames": [
                 "ScanCategoryCheckIn",
                 "ScanCategoryMeal",
                 "ScanCategorySwag",
                 "ScanCategoryOther",
-                "ScanCategoryWalkIn"
+                "ScanCategoryWalkIn",
+                "ScanCategoryShop"
             ]
         },
         "store.ScheduleItem": {

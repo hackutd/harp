@@ -5,6 +5,7 @@ import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
 
 import googleIcon from "@/assets/google_icon.webp";
+import logo from "@/assets/logo.webp";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { isGoogleAuthEnabled } from "@/shared/auth";
@@ -119,11 +120,26 @@ export default function Login() {
     <div className="flex min-h-svh items-center justify-center bg-white px-6">
       <div className="w-full max-w-xs space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-semibold tracking-tight text-black">
-            HARP
-          </h1>
-          <p className="mt-2 text-sm font-light text-[#8A8A8A]">
-            Sign in to continue
+          <div className="flex items-center justify-center gap-4">
+            <img src={logo} alt="" className="h-18 w-18 shrink-0" />
+            <h1 className="text-left text-sm leading-snug font-medium text-[#8A8A8A]">
+              <span className="block">
+                <span className="text-black">H</span>ackathon
+              </span>
+              <span className="block">
+                <span className="text-black">A</span>pplication
+              </span>
+              <span className="block">
+                <span className="text-black">R</span>eview
+              </span>
+              <span className="block">
+                <span className="text-black">P</span>latform
+              </span>
+            </h1>
+          </div>
+          <span className="mx-auto mt-4 block h-px w-10 bg-[#E5E5E5]" />
+          <p className="mt-4 text-sm font-light text-[#8A8A8A]">
+            Login or create an account
           </p>
         </div>
 
@@ -136,29 +152,31 @@ export default function Login() {
 
           {/* Magic Link Form */}
           <form onSubmit={handleEmailSubmit} className="space-y-5">
-            <input
-              id="email"
-              type="email"
-              placeholder="you@school.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={state === "sending"}
-              className="h-11 w-full border-b border-[#E5E5E5] bg-transparent text-sm font-light text-black placeholder:text-[#B8B8B8] focus:border-black focus:outline-none"
-            />
+            <div className="relative">
+              <input
+                id="email"
+                type="email"
+                placeholder="caleb@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={state === "sending"}
+                className="peer block h-11 w-full border-b border-[#E5E5E5] bg-transparent text-sm font-light text-black placeholder:text-[#B8B8B8] focus:outline-none"
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute right-0 bottom-0 left-0 h-px origin-left scale-x-0 bg-black transition-transform duration-500 ease-out peer-focus:scale-x-100"
+              />
+            </div>
             <Button
               type="submit"
               className="h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
-              disabled={state === "sending" || !email}
+              disabled={!email}
+              loading={state === "sending"}
             >
-              {state === "sending" ? (
-                <span className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
-                  Sending magic link...
-                </span>
-              ) : (
-                "Send magic link"
-              )}
+              {state === "sending"
+                ? "Sending magic link..."
+                : "Send magic link"}
             </Button>
           </form>
 

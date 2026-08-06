@@ -1,4 +1,4 @@
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import {
@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { requestResumeDownloadURL } from "../api";
 
@@ -73,8 +74,12 @@ export function ResumePreviewDialog({ trigger }: ResumePreviewDialogProps) {
 
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]">
           {loading && (
-            <div className="flex h-full items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-[#8A8A8A]" />
+            <div className="h-full space-y-3 p-6">
+              <Skeleton className="h-6 w-1/2" />
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-4 w-full" />
+              ))}
+              <Skeleton className="h-40 w-full rounded-lg" />
             </div>
           )}
           {!loading && error && (

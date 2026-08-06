@@ -1,4 +1,4 @@
-import { CalendarClock, Loader2 } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getLocalTimeZoneLabel } from "@/shared/lib/datetime";
 import type { UserRole } from "@/types";
 
@@ -188,9 +189,10 @@ function GenerateFromScheduleForm({
 
         <div className="max-h-56 overflow-auto rounded-md border">
           {loading ? (
-            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Loading schedule…
+            <div className="space-y-2 p-3">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full" />
+              ))}
             </div>
           ) : loadError ? (
             <div className="flex h-24 items-center justify-center text-sm text-destructive">
@@ -245,8 +247,12 @@ function GenerateFromScheduleForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={!canSubmit} className="cursor-pointer">
-          {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+        <Button
+          type="submit"
+          disabled={!canSubmit}
+          loading={saving}
+          className="cursor-pointer"
+        >
           {willAdd > 0
             ? `Add ${willAdd} reminder${willAdd === 1 ? "" : "s"}`
             : "Add reminders"}

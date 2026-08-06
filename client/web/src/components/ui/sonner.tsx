@@ -1,7 +1,6 @@
 import {
   CircleCheckIcon,
   InfoIcon,
-  Loader2Icon,
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react";
@@ -20,7 +19,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
         info: <InfoIcon className="size-4" />,
         warning: <TriangleAlertIcon className="size-4" />,
         error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+        loading: (
+          <span className="size-3 animate-pulse rounded-full bg-current" />
+        ),
       }}
       // On mobile the hacker layout renders a floating bottom nav bar, so lift
       // toasts above it. Desktop keeps sonner's default offset.

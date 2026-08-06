@@ -2,6 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import { Bell, CalendarDays, House, ScanLine, User } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
+import { InstallPromptHost } from "@/components/InstallPromptHost";
+import { PushPromptHost } from "@/components/PushPromptHost";
 import {
   Sidebar,
   SidebarContent,
@@ -88,6 +90,10 @@ export default function HackerLayout() {
 
   return (
     <SidebarProvider className="min-h-svh bg-white">
+      {/* Onboarding prompts live here, not in providers.tsx, so they never
+          appear on the admin portal or the public auth pages. */}
+      <InstallPromptHost />
+      <PushPromptHost />
       <HackerSidebar />
 
       {/* Page content */}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -39,6 +40,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockScans := app.store.Scans.(*store.MockScansStore)
 
 	t.Run("should return existing application", func(t *testing.T) {
 		user := newTestUser()
@@ -47,6 +49,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(15, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -55,8 +58,17 @@ func TestGetOrCreateApplication(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getOrCreateApplicationHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 15, envelope.Data.Points)
+
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	t.Run("should create draft when no application exists", func(t *testing.T) {
@@ -66,6 +78,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 		mockApps.On("GetByUserID", user.ID).Return(nil, store.ErrNotFound).Once()
 		mockApps.On("Create", mock.AnythingOfType("*store.Application")).Return(nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -76,6 +89,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	t.Run("should handle race condition on create conflict", func(t *testing.T) {
@@ -87,6 +101,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 		mockApps.On("Create", mock.AnythingOfType("*store.Application")).Return(store.ErrConflict).Once()
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -97,6 +112,7 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 }
 
@@ -116,6 +132,7 @@ func TestUpdateApplication(t *testing.T) {
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 		mockApps.On("Update", mock.AnythingOfType("*store.Application")).Return(nil).Once()
+		app.store.Scans.(*store.MockScansStore).On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		body := `{"responses": {"first_name": "Jane", "last_name": "Doe"}}`
 		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
@@ -580,6 +597,86 @@ func TestListApplications(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
+func TestGetApplication(t *testing.T) {
+	schema := []store.ApplicationSchemaField{{ID: "first_name", Type: "text", Label: "First Name"}}
+
+	newRequest := func(t *testing.T, applicationID string) *http.Request {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", applicationID)
+		return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	}
+
+	t.Run("should return application with points", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		existing := newCompleteApplication("user-1")
+		mockApps.On("GetByID", "app-1").Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", "user-1").Return(42, nil).Once()
+
+		rr := executeRequest(newRequest(t, "app-1"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 42, envelope.Data.Points)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+	})
+
+	// Points are cosmetic — a failed lookup must not fail the whole read.
+	t.Run("should still return 200 with 0 points when lookup fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		existing := newCompleteApplication("user-1")
+		mockApps.On("GetByID", "app-1").Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", "user-1").
+			Return(0, errors.New("scans unavailable")).Once()
+
+		rr := executeRequest(newRequest(t, "app-1"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 0, envelope.Data.Points)
+
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mockApps.On("GetByID", "nonexistent").Return(nil, store.ErrNotFound).Once()
+
+		rr := executeRequest(newRequest(t, "nonexistent"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
 		mockApps.AssertExpectations(t)
 	})

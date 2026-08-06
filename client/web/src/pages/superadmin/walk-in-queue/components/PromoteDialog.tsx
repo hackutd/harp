@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { ArrowUpFromLine } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -69,7 +69,15 @@ export function PromoteDialog({ pending, onSuccess }: PromoteDialogProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button disabled={pending === 0}>Promote next walk-ins</Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="cursor-pointer font-light"
+          disabled={pending === 0}
+        >
+          <ArrowUpFromLine className="size-3.5" />
+          Promote next walk-ins
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -100,10 +108,11 @@ export function PromoteDialog({ pending, onSuccess }: PromoteDialogProps) {
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                )}
+              <Button
+                type="submit"
+                className="cursor-pointer"
+                loading={form.formState.isSubmitting}
+              >
                 Promote &amp; send emails
               </Button>
             </DialogFooter>

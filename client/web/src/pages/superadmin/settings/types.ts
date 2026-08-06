@@ -26,3 +26,7 @@ export interface MealGroupStatsResult {
 export interface HackerPackURLResult {
   url: string;
 }
+
+export interface PointsNameResult {
+  name: string;
+}

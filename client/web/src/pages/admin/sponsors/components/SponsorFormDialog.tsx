@@ -1,4 +1,4 @@
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -229,10 +229,10 @@ function SponsorForm({
         </Button>
         <Button
           type="submit"
-          disabled={saving || !name.trim()}
+          loading={saving}
+          disabled={!name.trim()}
           className="cursor-pointer"
         >
-          {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
           {sponsor ? "Save" : "Create"}
         </Button>
       </DialogFooter>

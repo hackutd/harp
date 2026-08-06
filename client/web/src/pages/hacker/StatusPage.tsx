@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import type { Application } from "@/types";
 
@@ -71,10 +72,25 @@ export default function Status() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto space-y-6">
+            <Skeleton className="h-9 w-40" />
+            <div className="rounded-xl border bg-white p-6 space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <Skeleton className="h-6 w-28 rounded-full" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

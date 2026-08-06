@@ -21,6 +21,20 @@ type UpdateApplicationPayload struct {
 type ApplicationWithSchema struct {
 	*store.Application
 	ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+	// Points is the user's total scan points; populated on read endpoints only.
+	Points int `json:"points"`
+}
+
+// userPoints returns the user's total scan points. Points are cosmetic, so a
+// lookup failure is logged and reported as 0 rather than failing the request.
+func (app *application) userPoints(r *http.Request, userID string) int {
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), userID)
+	if err != nil {
+		app.logger.Warnw("failed to fetch scan points", "user_id", userID, "error", err)
+		return 0
+	}
+
+	return points
 }
 
 // getOrCreateApplicationHandler returns or creates the user's hackathon application
@@ -76,6 +90,7 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            app.userPoints(r, user.ID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -162,6 +177,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            app.userPoints(r, user.ID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -596,6 +612,7 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 	response := ApplicationWithSchema{
 		Application:       application,
 		ApplicationSchema: schema,
+		Points:            app.userPoints(r, application.UserID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

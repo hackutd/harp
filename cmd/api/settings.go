@@ -232,6 +232,14 @@ type HackerPackURLResponse struct {
 	URL string `json:"url"`
 }
 
+type SetPointsNamePayload struct {
+	Name string `json:"name" validate:"required,min=1,max=30"`
+}
+
+type PointsNameResponse struct {
+	Name string `json:"name"`
+}
+
 // setReviewAssignmentToggle updates the review assignment enabled setting
 //
 //	@Summary		Set review assignment enabled state for a user (Super Admin)
@@ -654,6 +662,68 @@ func (app *application) getHackerPackHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, HackerPackURLResponse{URL: url}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setPointsName updates the points system display name
+//
+//	@Summary		Set points system name (Super Admin)
+//	@Description	Updates the display name of the points system shown to hackers and admins
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			name	body		SetPointsNamePayload	true	"Points system name"
+//	@Success		200		{object}	PointsNameResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/points-name [post]
+func (app *application) setPointsName(w http.ResponseWriter, r *http.Request) {
+	var req SetPointsNamePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// Trim before validating so a whitespace-only name still fails min=1.
+	req.Name = strings.TrimSpace(req.Name)
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetPointsName(r.Context(), req.Name); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, PointsNameResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getPointsNameHandler returns the configured points system name for any authenticated user.
+//
+//	@Summary		Get points system name
+//	@Description	Returns the configured display name of the points system
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	PointsNameResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/points-name [get]
+func (app *application) getPointsNameHandler(w http.ResponseWriter, r *http.Request) {
+	name, err := app.store.Settings.GetPointsName(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, PointsNameResponse{Name: name}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

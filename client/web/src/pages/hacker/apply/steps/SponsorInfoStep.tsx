@@ -1,4 +1,4 @@
-import { Eye, FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { Eye, FileText, Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useRef } from "react";
 
 import type { ApplicationSchemaField } from "@/types";
@@ -86,13 +86,9 @@ export function SponsorInfoStep({
                 onClick={onDeleteResume}
                 disabled={isResumeBusy}
                 aria-label="Delete resume"
-                className="flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50"
+                className={`flex size-9 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F5F5F5] hover:text-black disabled:opacity-50 ${isDeletingResume ? "animate-pulse" : ""}`}
               >
-                {isDeletingResume ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="size-4" strokeWidth={1.5} />
-                )}
+                <Trash2 className="size-4" strokeWidth={1.5} />
               </button>
             </div>
           </div>
@@ -101,13 +97,9 @@ export function SponsorInfoStep({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isResumeBusy}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-[#C9C9C9] px-4 py-8 text-center transition-colors hover:border-black disabled:opacity-50"
+            className={`flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-[#C9C9C9] px-4 py-8 text-center transition-colors hover:border-black disabled:opacity-50 ${isUploadingResume ? "animate-pulse" : ""}`}
           >
-            {isUploadingResume ? (
-              <Loader2 className="size-6 animate-spin text-black" />
-            ) : (
-              <Upload className="size-6 text-black" strokeWidth={1.5} />
-            )}
+            <Upload className="size-6 text-black" strokeWidth={1.5} />
             <span className="text-sm font-light text-black">
               {isUploadingResume ? "Uploading..." : "Upload your resume"}
             </span>

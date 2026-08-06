@@ -3,13 +3,15 @@ export type ScanTypeCategory =
   | "meal"
   | "swag"
   | "other"
-  | "walk_in";
+  | "walk_in"
+  | "shop";
 
 export interface ScanType {
   name: string;
   display_name: string;
   category: ScanTypeCategory;
   is_active: boolean;
+  points: number;
 }
 
 export interface Scan {
@@ -17,8 +19,11 @@ export interface Scan {
   user_id: string;
   scan_type: string;
   scanned_by: string;
+  points: number;
   scanned_at: string;
   created_at: string;
+  /** Remaining points balance; present only on shop scans. */
+  balance?: number;
 }
 
 export interface ScanStat {

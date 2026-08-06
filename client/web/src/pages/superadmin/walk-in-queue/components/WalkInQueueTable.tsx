@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { memo } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -12,90 +12,76 @@ import {
 
 import type { WalkIn } from "../types";
 
-const PAGE_SIZE = 20;
-
 interface WalkInQueueTableProps {
   queue: WalkIn[];
+  loading: boolean;
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
-export function WalkInQueueTable({ queue }: WalkInQueueTableProps) {
-  const [page, setPage] = useState(0);
-
-  if (queue.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-        No walk-ins in queue.
-      </div>
-    );
-  }
-
-  const totalPages = Math.ceil(queue.length / PAGE_SIZE);
-  // Clamp in case the queue shrank (auto-refresh) while on a later page.
-  const safePage = Math.min(page, totalPages - 1);
-  const start = safePage * PAGE_SIZE;
-  const paginated = queue.slice(start, start + PAGE_SIZE);
-
+export const WalkInQueueTable = memo(function WalkInQueueTable({
+  queue,
+  loading,
+}: WalkInQueueTableProps) {
   return (
-    <div className="flex flex-col px-4 py-2">
-      <div className="overflow-y-auto max-h-[520px] rounded-md border">
-        <Table className="border-collapse">
-          <TableHeader className="sticky top-0 bg-background z-10">
-            <TableRow className="border-b">
-              <TableHead className="w-16 text-left px-4 py-3 border-r">
-                #
-              </TableHead>
-              <TableHead className="text-left px-4 py-3 border-r">
-                Email
-              </TableHead>
-              <TableHead className="text-left px-4 py-3">Arrived</TableHead>
+    <div className="relative overflow-auto h-full p-6 pt-0">
+      <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+        <TableHeader className="sticky top-0 bg-card z-10">
+          <TableRow>
+            <TableHead className="w-16">#</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Arrived</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            [...Array(6)].map((_, i) => (
+              <TableRow key={i} className="[&>td]:py-3">
+                <TableCell className="w-16">
+                  <Skeleton className="h-4 w-6" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-48" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-28" />
+                </TableCell>
+              </TableRow>
+            ))
+          ) : queue.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={3}
+                className="text-center text-muted-foreground h-24"
+              >
+                No walk-ins in queue
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginated.map((entry) => (
-              <TableRow key={entry.id} className="border-b last:border-0">
-                <TableCell className="text-left font-semibold tabular-nums text-foreground px-4 py-3 border-r">
+          ) : (
+            queue.map((entry) => (
+              <TableRow
+                key={entry.id}
+                className="hover:bg-muted/50 [&>td]:py-3"
+              >
+                <TableCell className="w-16 tabular-nums text-muted-foreground">
                   {entry.position}
                 </TableCell>
-                <TableCell className="font-medium px-4 py-3 border-r">
-                  {entry.email}
-                </TableCell>
-                <TableCell className="text-left text-muted-foreground text-sm tabular-nums px-4 py-3">
+                <TableCell className="truncate">{entry.email}</TableCell>
+                <TableCell className="tabular-nums text-muted-foreground">
                   {formatTime(entry.queued_at)}
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="flex items-center justify-between px-1 py-3 text-sm text-muted-foreground">
-        <span>
-          {start + 1}–{Math.min(start + PAGE_SIZE, queue.length)} of{" "}
-          {queue.length}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(safePage - 1)}
-            disabled={safePage === 0}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(safePage + 1)}
-            disabled={safePage >= totalPages - 1}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
-}
+});

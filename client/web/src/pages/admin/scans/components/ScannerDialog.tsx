@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { usePointsNameStore } from "@/shared/stores";
 
 import { useScansStore } from "../store";
 import { useQrScanner } from "./useQrScanner";
@@ -23,6 +24,7 @@ export function ScannerDialog() {
     performScan,
     clearLastResult,
   } = useScansStore();
+  const pointsName = usePointsNameStore((s) => s.pointsName);
 
   const handleScan = useCallback(
     (decodedText: string) => {
@@ -103,6 +105,21 @@ export function ScannerDialog() {
                 <XCircle className="size-12" />
               )}
               <p className="text-lg font-medium">{lastScanResult.message}</p>
+              {lastScanResult.success &&
+                (lastScanResult.scan?.points ?? 0) !== 0 && (
+                  <p className="text-sm font-medium">
+                    {(lastScanResult.scan?.points ?? 0) > 0
+                      ? `+${lastScanResult.scan?.points}`
+                      : `−${Math.abs(lastScanResult.scan?.points ?? 0)}`}{" "}
+                    {pointsName}
+                  </p>
+                )}
+              {lastScanResult.success &&
+                lastScanResult.scan?.balance !== undefined && (
+                  <p className="text-sm font-light">
+                    Balance: {lastScanResult.scan.balance} {pointsName}
+                  </p>
+                )}
               <Button variant="outline" onClick={handleResume}>
                 <ScanLine className="mr-2 size-4" />
                 Scan Next

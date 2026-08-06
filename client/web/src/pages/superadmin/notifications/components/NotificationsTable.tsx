@@ -13,7 +13,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -53,11 +58,18 @@ function formatTarget(role: string | null): string {
 }
 
 function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString();
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 const SENT_PAGE_SIZE = 20;
+
+const tableClasses =
+  "border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0";
 
 export function NotificationsTable({
   notifications,
@@ -96,16 +108,18 @@ export function NotificationsTable({
     setFormOpen(true);
   };
 
+  const visibleSent = sent.slice(0, sentLimit);
+
   return (
-    <Card className="flex h-full flex-col overflow-hidden py-3">
-      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2">
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as "scheduled" | "sent")}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className="flex flex-row items-center justify-between gap-4">
-            <div className="flex flex-row items-center gap-4">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as "scheduled" | "sent")}
+        className="flex min-h-0 flex-1 flex-col gap-3"
+      >
+        <CardHeader className="shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
               <TabsList className="h-9 gap-0 rounded-md border p-0.5">
                 <TabsTrigger
                   value="scheduled"
@@ -120,21 +134,38 @@ export function NotificationsTable({
                   Sent ({sent.length})
                 </TabsTrigger>
               </TabsList>
-              <CardDescription>
-                Schedule push notifications to be delivered at a specific time.
+              <div className="h-5 w-px shrink-0 bg-border" />
+              <CardDescription className="flex flex-wrap items-center gap-1.5 font-light">
+                {tab === "scheduled" ? (
+                  <span>
+                    Push notifications delivered at their scheduled time
+                  </span>
+                ) : (
+                  <>
+                    <span>
+                      Showing {visibleSent.length} of {sent.length} sent
+                    </span>
+                    <Badge className="bg-green-100 text-xs font-light text-green-800">
+                      {sent.reduce((acc, n) => acc + n.recipient_count, 0)}{" "}
+                      recipients
+                    </Badge>
+                  </>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button
-                variant="secondary"
+                variant="outline"
+                size="sm"
                 onClick={() => setGenerateOpen(true)}
                 disabled={saving}
-                className="cursor-pointer"
+                className="cursor-pointer font-light"
               >
                 <CalendarClock className="mr-1 size-4" />
                 From schedule
               </Button>
               <Button
+                size="sm"
                 onClick={openCreate}
                 disabled={saving}
                 className="cursor-pointer"
@@ -144,15 +175,13 @@ export function NotificationsTable({
               </Button>
             </div>
           </div>
-
-          <TabsContent value="scheduled" className="min-h-0 overflow-auto">
-            {scheduled.length === 0 ? (
-              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                No scheduled notifications.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
+        </CardHeader>
+        <hr className="border-border" />
+        <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
+          <TabsContent value="scheduled" className="h-full">
+            <div className="relative h-full overflow-auto p-6 pt-0 pb-3">
+              <Table className={tableClasses}>
+                <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Target</TableHead>
@@ -161,107 +190,130 @@ export function NotificationsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {scheduled.map((n) => (
-                    <TableRow key={n.id}>
-                      <TableCell className="max-w-xs">
-                        <div className="font-medium">{n.title}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {n.body}
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatTarget(n.target_role)}</TableCell>
-                      <TableCell>{formatDateTime(n.scheduled_at)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            disabled={saving}
-                            onClick={() => openEdit(n)}
-                            className="cursor-pointer"
-                            aria-label="Edit"
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            disabled={saving}
-                            onClick={() => setDeleteTarget(n)}
-                            className="cursor-pointer text-destructive hover:text-destructive"
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </TabsContent>
-
-          <TabsContent value="sent" className="min-h-0 overflow-auto">
-            {sent.length === 0 ? (
-              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                No notifications sent yet.
-              </div>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
+                  {scheduled.length === 0 ? (
                     <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Target</TableHead>
-                      <TableHead>Sent</TableHead>
-                      <TableHead className="text-right">Recipients</TableHead>
+                      <TableCell
+                        colSpan={4}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No scheduled notifications
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sent.slice(0, sentLimit).map((n) => (
-                      <TableRow key={n.id}>
+                  ) : (
+                    scheduled.map((n) => (
+                      <TableRow
+                        key={n.id}
+                        className="hover:bg-muted/50 [&>td]:py-3"
+                      >
                         <TableCell className="max-w-xs">
-                          <div className="font-medium">{n.title}</div>
+                          <div>{n.title}</div>
                           <div className="truncate text-xs text-muted-foreground">
                             {n.body}
                           </div>
                         </TableCell>
                         <TableCell>{formatTarget(n.target_role)}</TableCell>
-                        <TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {formatDateTime(n.scheduled_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={saving}
+                              onClick={() => openEdit(n)}
+                              className="cursor-pointer text-muted-foreground"
+                              aria-label="Edit"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={saving}
+                              onClick={() => setDeleteTarget(n)}
+                              className="cursor-pointer text-muted-foreground hover:text-red-500"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="sent" className="h-full">
+            <div className="relative h-full overflow-auto p-6 pt-0 pb-3">
+              <Table className={tableClasses}>
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Sent</TableHead>
+                    <TableHead className="w-32 text-right">
+                      Recipients
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sent.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No notifications sent yet
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    visibleSent.map((n) => (
+                      <TableRow
+                        key={n.id}
+                        className="hover:bg-muted/50 [&>td]:py-3"
+                      >
+                        <TableCell className="max-w-xs">
+                          <div>{n.title}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {n.body}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatTarget(n.target_role)}</TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
                           {formatDateTime(n.sent_at ?? n.scheduled_at)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-100 text-green-800"
-                          >
+                          <Badge className="bg-green-100 font-light text-green-800">
                             {n.recipient_count}
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {sent.length > sentLimit && (
-                  <div className="flex justify-center py-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer"
-                      onClick={() =>
-                        setSentLimit((prev) => prev + SENT_PAGE_SIZE)
-                      }
-                    >
-                      Show more ({sent.length - sentLimit} remaining)
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              {sent.length > sentLimit && (
+                <div className="flex justify-center py-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer font-light"
+                    onClick={() =>
+                      setSentLimit((prev) => prev + SENT_PAGE_SIZE)
+                    }
+                  >
+                    Show more ({sent.length - sentLimit} remaining)
+                  </Button>
+                </div>
+              )}
+            </div>
           </TabsContent>
-        </Tabs>
-      </CardContent>
+        </CardContent>
+      </Tabs>
 
       <GenerateFromScheduleDialog
         open={generateOpen}
@@ -300,7 +352,7 @@ export function NotificationsTable({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="cursor-pointer bg-destructive text-white hover:bg-destructive/90"
               disabled={saving}
               onClick={async () => {
                 if (deleteTarget && !saving) {

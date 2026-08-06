@@ -3,7 +3,6 @@ import {
   Code,
   ExternalLink,
   ImagePlus,
-  Loader2,
   Pencil,
   Plus,
   Trash2,
@@ -35,6 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -329,9 +329,7 @@ export function SponsorsTable({
       title="Click to upload logo"
     >
       {uploadingLogoId === sponsor.id ? (
-        <div className="size-10 rounded border flex items-center justify-center">
-          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-        </div>
+        <Skeleton className="size-10 rounded border" />
       ) : sponsor.logo_data ? (
         <div className="relative">
           <img
@@ -367,9 +365,7 @@ export function SponsorsTable({
             {sponsors.length} sponsor(s) configured
           </CardDescription>
           <div className="flex items-center gap-2">
-            {saving && (
-              <Loader2 className="size-4 animate-spin text-muted-foreground" />
-            )}
+            {saving && <Skeleton className="size-4 rounded-full" />}
             <Popover
               open={jsonPopoverOpen}
               onOpenChange={handleJsonPopoverOpenChange}
