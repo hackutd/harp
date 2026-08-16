@@ -13,10 +13,11 @@ type SMTPMailer struct {
 	fromEmail     string
 	fromName      string
 	hackathonName string
+	portalURL     string
 	client        *mail.Client
 }
 
-func NewSMTP(host string, port int, username, password, fromEmail, fromName, hackathonName string) (*SMTPMailer, error) {
+func NewSMTP(host string, port int, username, password, fromEmail, fromName, hackathonName, portalURL string) (*SMTPMailer, error) {
 	if port == 0 {
 		port = 587
 	}
@@ -47,8 +48,61 @@ func NewSMTP(host string, port int, username, password, fromEmail, fromName, hac
 		fromEmail:     fromEmail,
 		fromName:      fromName,
 		hackathonName: hackathonName,
+		portalURL:     portalURL,
 		client:        client,
 	}, nil
+}
+
+// send delivers a rendered HTML email to a single recipient.
+func (m *SMTPMailer) send(toEmail, toName, subject, htmlBody string) error {
+	msg := mail.NewMsg()
+	if err := msg.FromFormat(m.fromName, m.fromEmail); err != nil {
+		return fmt.Errorf("setting from address: %w", err)
+	}
+	if err := msg.AddToFormat(toName, toEmail); err != nil {
+		return fmt.Errorf("setting to address: %w", err)
+	}
+	msg.Subject(subject)
+	msg.SetBodyString(mail.TypeTextHTML, htmlBody)
+
+	if err := m.client.DialAndSend(msg); err != nil {
+		return fmt.Errorf("sending email: %w", err)
+	}
+
+	return nil
+}
+
+func (m *SMTPMailer) SendDecisionEmail(toEmail, toName string, decision Decision) error {
+	tmplName, subjectFormat, err := decisionTemplate(decision)
+	if err != nil {
+		return err
+	}
+
+	htmlBody, err := renderTemplate(tmplName, decisionEmailData{
+		Name:          toName,
+		HackathonName: m.hackathonName,
+		PortalURL:     m.portalURL,
+		From:          m.fromName,
+	})
+	if err != nil {
+		return err
+	}
+
+	return m.send(toEmail, toName, fmt.Sprintf(subjectFormat, m.hackathonName), htmlBody)
+}
+
+func (m *SMTPMailer) SendDecisionsReleasedEmail(toEmail, toName string) error {
+	htmlBody, err := renderTemplate("decisions_released", decisionEmailData{
+		Name:          toName,
+		HackathonName: m.hackathonName,
+		PortalURL:     m.portalURL,
+		From:          m.fromName,
+	})
+	if err != nil {
+		return err
+	}
+
+	return m.send(toEmail, toName, fmt.Sprintf("%s decisions are out", m.hackathonName), htmlBody)
 }
 
 func (m *SMTPMailer) SendQREmail(toEmail, toName, userID string) error {
@@ -68,7 +122,7 @@ func (m *SMTPMailer) SendQREmail(toEmail, toName, userID string) error {
 	}
 
 	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, map[string]string{"Name": toName, "HackathonName": m.hackathonName}); err != nil {
+	if err := tmpl.Execute(&htmlBody, qrEmailData{Name: toName, HackathonName: m.hackathonName, From: m.fromName}); err != nil {
 		return fmt.Errorf("executing email template: %w", err)
 	}
 
@@ -79,7 +133,7 @@ func (m *SMTPMailer) SendQREmail(toEmail, toName, userID string) error {
 	if err := msg.AddToFormat(toName, toEmail); err != nil {
 		return fmt.Errorf("setting to address: %w", err)
 	}
-	msg.Subject(fmt.Sprintf("Your %s QR Code", m.hackathonName))
+	msg.Subject(fmt.Sprintf("Your %s QR code", m.hackathonName))
 	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
 	if err := msg.AttachReader("hackutd-qrcode.png", bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
 		return fmt.Errorf("attaching QR code: %w", err)
@@ -104,7 +158,7 @@ func (m *SMTPMailer) SendWalkInQueuedEmail(toEmail string, position int) error {
 	}
 
 	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, walkInQueuedData{Email: toEmail, Position: position, HackathonName: m.hackathonName}); err != nil {
+	if err := tmpl.Execute(&htmlBody, walkInQueuedData{Email: toEmail, Position: position, HackathonName: m.hackathonName, From: m.fromName}); err != nil {
 		return fmt.Errorf("executing walk_in_queued template: %w", err)
 	}
 
@@ -142,7 +196,7 @@ func (m *SMTPMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	}
 
 	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, walkInAcceptedData{Email: toEmail, HackathonName: m.hackathonName}); err != nil {
+	if err := tmpl.Execute(&htmlBody, walkInAcceptedData{Email: toEmail, HackathonName: m.hackathonName, From: m.fromName}); err != nil {
 		return fmt.Errorf("executing walk_in_accepted template: %w", err)
 	}
 
@@ -153,7 +207,7 @@ func (m *SMTPMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	if err := msg.AddToFormat(toEmail, toEmail); err != nil {
 		return fmt.Errorf("setting to address: %w", err)
 	}
-	msg.Subject(fmt.Sprintf("You're in — %s Walk-In Acceptance", m.hackathonName))
+	msg.Subject(fmt.Sprintf("You're in for %s", m.hackathonName))
 	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
 	if err := msg.AttachReader("hackutd-qrcode.png", bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
 		return fmt.Errorf("attaching QR code: %w", err)

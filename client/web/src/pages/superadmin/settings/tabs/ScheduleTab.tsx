@@ -132,13 +132,7 @@ export default function ScheduleTab() {
       setEndDate(res.data.end_date);
 
       if (clearSchedule) {
-        const clearRes = await resetHackathon({
-          reset_applications: false,
-          reset_scans: false,
-          reset_schedule: true,
-          reset_settings: false,
-          reset_notifications: false,
-        });
+        const clearRes = await resetHackathon({ reset_schedule: true });
 
         if (clearRes.error) {
           toast.error(

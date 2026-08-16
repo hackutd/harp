@@ -96,6 +96,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/sponsors",
 		"admin/faq",
 		"superadmin/applications",
+		"superadmin/emails",
 		"superadmin/settings",
 		"superadmin/users"
 	];
@@ -316,6 +317,12 @@ func (app *application) mount() http.Handler {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+					})
+
+					// Outbound decision emails
+					r.Route("/emails", func(r chi.Router) {
+						r.Get("/decisions/stats", app.getDecisionEmailStatsHandler)
+						r.Post("/decisions", app.sendDecisionEmailsHandler)
 					})
 
 					// User Management

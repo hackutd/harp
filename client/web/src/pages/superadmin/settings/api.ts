@@ -10,8 +10,10 @@ import type {
   ResetHackathonResult,
 } from "./types";
 
+// Partial: omitted domains default to false server-side, which lets targeted
+// callers (e.g. "clear the schedule") name only what they mean to reset.
 export async function resetHackathon(
-  options: ResetHackathonOptions,
+  options: Partial<ResetHackathonOptions>,
 ): Promise<ApiResponse<ResetHackathonResult>> {
   return postRequest<ResetHackathonResult>(
     "/superadmin/reset-hackathon",

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your {{.HackathonName}} QR code</title>
+    <title>Welcome to {{.HackathonName}}</title>
   </head>
   <body
     style="
@@ -46,13 +46,33 @@
             </tr>
             <tr>
               <td style="padding: 40px 30px">
-                <h2 style="color: #333333; margin: 0 0 20px">Hi {{.Name}}</h2>
+                <h2 style="color: #333333; margin: 0 0 20px">
+                  Congratulations, {{.Name}} - you're in!
+                </h2>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
-                  Your QR code for {{.HackathonName}} check-in is attached.
-                  Have it ready when you arrive.
+                  We read your application and we want you at
+                  {{.HackathonName}}.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  Log in to the portal to confirm your spot.
+                </p>
+                <p style="text-align: center; margin: 32px 0">
+                  <a
+                    href="{{.PortalURL}}"
+                    style="
+                      background-color: #1a1a2e;
+                      color: #ffffff;
+                      text-decoration: none;
+                      padding: 14px 32px;
+                      border-radius: 6px;
+                      font-size: 16px;
+                      display: inline-block;
+                    "
+                    >Confirm your spot</a
+                  >
                 </p>
                 <p style="color: #555555; font-size: 14px; line-height: 1.6">
-                  This code is yours. Please don't share it with anyone else.
+                  We'll send your check-in QR code closer to the event.
                 </p>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
                   {{.From}}

@@ -45,6 +45,7 @@ func main() {
 
 	// Init configs
 	appURL := env.GetString("APP_URL", "http://localhost:8080")
+	frontendURL := env.GetString("FRONTEND_URL", appURL)
 
 	cfg := config{
 		addr:   env.GetString("ADDR", ":8080"),
@@ -69,6 +70,7 @@ func main() {
 			FromEmail:     env.GetString("EMAIL_FROM", "noreply@example.com"),
 			FromName:      env.GetString("EMAIL_FROM_NAME", env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName)),
 			HackathonName: env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName),
+			PortalURL:     frontendURL,
 		},
 		gcs: gcsConfig{
 			bucketName: env.GetString("GCS_BUCKET_NAME", ""),
@@ -86,7 +88,7 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL:      env.GetString("FRONTEND_URL", appURL),
+		frontendURL:      frontendURL,
 		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),

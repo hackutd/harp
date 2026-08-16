@@ -20,3 +20,13 @@ func (m *MockClient) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	args := m.Called(toEmail, userID)
 	return args.Error(0)
 }
+
+func (m *MockClient) SendDecisionEmail(toEmail, toName string, decision Decision) error {
+	args := m.Called(toEmail, toName, decision)
+	return args.Error(0)
+}
+
+func (m *MockClient) SendDecisionsReleasedEmail(toEmail, toName string) error {
+	args := m.Called(toEmail, toName)
+	return args.Error(0)
+}

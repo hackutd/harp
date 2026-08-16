@@ -3755,6 +3755,147 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/emails/decisions": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background; the response reports how many were queued.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/emails"
+                ],
+                "summary": "Send decision emails (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Send options",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SendDecisionEmailsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.SendDecisionEmailsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/emails/decisions/stats": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns how many applicants in each decided status have already been emailed and how many are still pending, for both the decision and announcement emails",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/emails"
+                ],
+                "summary": "Get decision email stats (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DecisionEmailStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/notifications": {
             "get": {
                 "security": [
@@ -4177,7 +4318,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Resets selected hackathon data (applications, scans, schedule, settings). Operations are performed in a single transaction.",
+                "description": "Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, settings, per-cycle config). Resetting config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6427,6 +6568,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.DecisionEmailStatsResponse": {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "$ref": "#/definitions/store.DecisionEmailStats"
+                }
+            }
+        },
         "main.EmailListResponse": {
             "type": "object",
             "properties": {
@@ -6636,7 +6785,16 @@ const docTemplate = `{
                 "reset_applications": {
                     "type": "boolean"
                 },
+                "reset_config": {
+                    "type": "boolean"
+                },
+                "reset_faqs": {
+                    "type": "boolean"
+                },
                 "reset_notifications": {
+                    "type": "boolean"
+                },
+                "reset_scan_types": {
                     "type": "boolean"
                 },
                 "reset_scans": {
@@ -6646,6 +6804,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "reset_settings": {
+                    "type": "boolean"
+                },
+                "reset_sponsors": {
                     "type": "boolean"
                 }
             }
@@ -6656,7 +6817,16 @@ const docTemplate = `{
                 "reset_applications": {
                     "type": "boolean"
                 },
+                "reset_config": {
+                    "type": "boolean"
+                },
+                "reset_faqs": {
+                    "type": "boolean"
+                },
                 "reset_notifications": {
+                    "type": "boolean"
+                },
+                "reset_scan_types": {
                     "type": "boolean"
                 },
                 "reset_scans": {
@@ -6668,7 +6838,11 @@ const docTemplate = `{
                 "reset_settings": {
                     "type": "boolean"
                 },
+                "reset_sponsors": {
+                    "type": "boolean"
+                },
                 "resumes_deleted": {
+                    "description": "ResumesDeleted counts the resume files queued for removal from object\nstorage. Deletion happens in the background, so a file may still fail;\nfailures are logged server-side.",
                     "type": "integer"
                 }
             }
@@ -6813,6 +6987,44 @@ const docTemplate = `{
                 },
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "main.SendDecisionEmailsPayload": {
+            "type": "object",
+            "required": [
+                "mode"
+            ],
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "decision",
+                        "announcement"
+                    ]
+                },
+                "resend_all": {
+                    "type": "boolean"
+                },
+                "statuses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationStatus"
+                    }
+                }
+            }
+        },
+        "main.SendDecisionEmailsResponse": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string"
+                },
+                "queued": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
                 }
             }
         },
@@ -7541,6 +7753,37 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "reviews_created": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.DecisionEmailStats": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "$ref": "#/definitions/store.EmailSendCounts"
+                },
+                "announcement": {
+                    "$ref": "#/definitions/store.EmailSendCounts"
+                },
+                "rejected": {
+                    "$ref": "#/definitions/store.EmailSendCounts"
+                },
+                "waitlisted": {
+                    "$ref": "#/definitions/store.EmailSendCounts"
+                }
+            }
+        },
+        "store.EmailSendCounts": {
+            "type": "object",
+            "properties": {
+                "pending": {
+                    "type": "integer"
+                },
+                "sent": {
+                    "type": "integer"
+                },
+                "total": {
                     "type": "integer"
                 }
             }
