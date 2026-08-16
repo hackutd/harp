@@ -2,13 +2,11 @@ import {
   ArrowDown,
   ClipboardCheck,
   ClipboardList,
-  Download,
   Mail,
   Minus,
   Plus,
   Shuffle,
   ToggleRight,
-  TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -33,12 +31,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { SearchBar } from "@/pages/admin/_shared";
@@ -60,9 +52,9 @@ import {
 } from "@/shared/lib/api";
 import { useUserStore } from "@/shared/stores/user";
 
-import { fetchApplicantEmails } from "./api";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { ReviewStatusTabs } from "./components/ReviewStatusTabs";
+import { SendEmailsDialog } from "./components/SendEmailsDialog";
 import { useReviewApplicationsStore } from "./store";
 
 export default function ReviewsPage() {
@@ -95,10 +87,7 @@ export default function ReviewsPage() {
   );
   const fetchStats = useReviewApplicationsStore((s) => s.fetchStats);
 
-  const [emailStatus, setEmailStatus] = useState<ApplicationStatus | null>(
-    null,
-  );
-  const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [sendEmailsOpen, setSendEmailsOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
     string | null
@@ -249,41 +238,6 @@ export default function ReviewsPage() {
       errorAlert(res);
     }
     setTogglingAssignment(false);
-  }
-
-  async function handleGenerateCsv() {
-    if (!emailStatus) return;
-    setDownloadingCsv(true);
-    const res = await fetchApplicantEmails(emailStatus);
-    if (res.status !== 200 || !res.data) {
-      errorAlert(res);
-      setDownloadingCsv(false);
-      return;
-    }
-
-    const csvEscape = (value: string | null) => {
-      const str = value ?? "";
-      if (/[",\n\r]/.test(str)) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const header = "email,first_name,last_name";
-    const rows = res.data.applicants.map(
-      (a) =>
-        `${csvEscape(a.email)},${csvEscape(a.first_name)},${csvEscape(a.last_name)}`,
-    );
-    const csv = [header, ...rows].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${emailStatus}_applicants.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setDownloadingCsv(false);
   }
 
   if (loading) {
@@ -459,81 +413,15 @@ export default function ReviewsPage() {
                   <ClipboardCheck className="size-3.5" />
                   Start Grading
                 </Button>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer font-light"
-                    >
-                      <Mail className="size-3.5" />
-                      Grab Emails
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="end"
-                    sideOffset={0}
-                    className="w-64 p-3 border"
-                  >
-                    <p className="text-sm font-normal mb-2">
-                      Select status to export
-                    </p>
-                    <RadioGroup
-                      value={emailStatus ?? ""}
-                      onValueChange={(value) =>
-                        setEmailStatus(value as ApplicationStatus)
-                      }
-                      className="gap-2"
-                    >
-                      {(
-                        [
-                          { key: "accepted", label: "Accepted" },
-                          { key: "waitlisted", label: "Waitlisted" },
-                          { key: "rejected", label: "Rejected" },
-                        ] as const
-                      ).map(({ key, label }) => (
-                        <label
-                          key={key}
-                          className="flex items-center justify-between cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <RadioGroupItem value={key} />
-                            <span className="text-sm font-light">{label}</span>
-                          </div>
-                          <Badge
-                            variant="secondary"
-                            className="text-xs font-light"
-                          >
-                            {stats?.[key] ?? 0}
-                          </Badge>
-                        </label>
-                      ))}
-                    </RadioGroup>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-3 cursor-pointer font-light"
-                      disabled={!emailStatus}
-                      loading={downloadingCsv}
-                      onClick={handleGenerateCsv}
-                    >
-                      {!downloadingCsv && <Download className="size-3.5" />}
-                      {downloadingCsv ? "Generating..." : "Generate CSV"}
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      email, first name, last name
-                    </p>
-                    {stats && stats.submitted > 0 && (
-                      <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
-                        <TriangleAlert className="size-3.5 shrink-0 mt-0.5" />
-                        <p className="text-xs">
-                          {stats.submitted} application(s) still in submitted
-                          status
-                        </p>
-                      </div>
-                    )}
-                  </PopoverContent>
-                </Popover>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer font-light"
+                  onClick={() => setSendEmailsOpen(true)}
+                >
+                  <Mail className="size-3.5" />
+                  Send Emails
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -566,6 +454,12 @@ export default function ReviewsPage() {
           />
         )}
       </div>
+
+      <SendEmailsDialog
+        open={sendEmailsOpen}
+        onOpenChange={setSendEmailsOpen}
+        stats={stats}
+      />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

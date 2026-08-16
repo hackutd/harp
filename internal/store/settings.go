@@ -268,6 +268,50 @@ func resetReviewAssignmentToggle(ctx context.Context, tx *sql.Tx) error {
 	return err
 }
 
+// DefaultScanTypes mirrors the seeded scan_types setting (migrations 000006 and
+// 000021). These two are structural — check-in gates the event and walk-in
+// drives the walk-in queue — so a reset restores them rather than emptying the
+// list. Meal, swag, and shop types are per-hackathon config and are dropped.
+const DefaultScanTypes = `[` +
+	`{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true,"points":0},` +
+	`{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true,"points":0}` +
+	`]`
+
+// resetScanTypes restores the default scan types within an existing transaction.
+func resetScanTypes(ctx context.Context, tx *sql.Tx) error {
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyScanTypes, DefaultScanTypes)
+	return err
+}
+
+// resetHackathonConfig clears the per-cycle hackathon configuration within an
+// existing transaction.
+func resetHackathonConfig(ctx context.Context, tx *sql.Tx) error {
+	// Deleting these rows returns each getter to its documented "not
+	// configured" default — empty date range, "Points", empty hacker pack URL —
+	// so the defaults live in exactly one place.
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM settings WHERE key IN ($1, $2, $3)`,
+		SettingsKeyHackathonDateRange, SettingsKeyPointsName, SettingsKeyHackerPackURL,
+	); err != nil {
+		return err
+	}
+
+	// applications_enabled is written explicitly rather than deleted:
+	// GetApplicationsEnabled treats a missing row as enabled, so deleting it
+	// would throw the public application form open on a freshly wiped
+	// hackathon. Closed is the safe resting state — reopen it deliberately.
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, 'false'::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyApplicationsEnabled)
+	return err
+}
+
 // parseReviewAssignmentEntries tries the new object format first, then falls back to legacy []string.
 func parseReviewAssignmentEntries(value []byte) ([]ReviewAssignmentEntry, error) {
 	var entries []ReviewAssignmentEntry

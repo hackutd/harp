@@ -24,24 +24,108 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { resetHackathon } from "../api";
+import type { ResetHackathonOptions } from "../types";
+
+const RESET_ITEMS: {
+  id: keyof ResetHackathonOptions;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    id: "reset_applications",
+    label: "Applications",
+    desc: "Deletes all hacker applications, reviews, walk-in queue entries, and resume files.",
+  },
+  {
+    id: "reset_scans",
+    label: "Scans",
+    desc: "Deletes all check-in, meal, and event scan records, and clears the cached scan stats.",
+  },
+  {
+    id: "reset_scan_types",
+    label: "Scan Types",
+    desc: "Restores scan types to the defaults (Check In, Walk-In). Removes custom meal, swag, and shop types along with their point values.",
+  },
+  {
+    id: "reset_schedule",
+    label: "Schedule",
+    desc: "Deletes all schedule events and the notifications attached to them.",
+  },
+  {
+    id: "reset_notifications",
+    label: "Notifications",
+    desc: "Deletes all scheduled and sent notifications.",
+  },
+  {
+    id: "reset_sponsors",
+    label: "Sponsors",
+    desc: "Deletes all sponsors, including their uploaded logos.",
+  },
+  {
+    id: "reset_faqs",
+    label: "FAQs",
+    desc: "Deletes all FAQ questions and answers.",
+  },
+  {
+    id: "reset_config",
+    label: "Hackathon Config",
+    desc: "Clears the hackathon dates, points name, and hacker pack link, and closes applications so nobody can apply to a half-configured hackathon.",
+  },
+  {
+    id: "reset_settings",
+    label: "Settings Stats",
+    desc: "Resets scan stats and review assignment toggles.",
+  },
+];
+
+// Everything is selected by default — a reset is normally a full wipe between
+// hackathons, and leaving a domain behind orphans data in the others.
+const ALL_SELECTED: ResetHackathonOptions = {
+  reset_applications: true,
+  reset_scans: true,
+  reset_scan_types: true,
+  reset_schedule: true,
+  reset_settings: true,
+  reset_notifications: true,
+  reset_sponsors: true,
+  reset_faqs: true,
+  reset_config: true,
+};
+
+const NONE_SELECTED: ResetHackathonOptions = {
+  reset_applications: false,
+  reset_scans: false,
+  reset_scan_types: false,
+  reset_schedule: false,
+  reset_settings: false,
+  reset_notifications: false,
+  reset_sponsors: false,
+  reset_faqs: false,
+  reset_config: false,
+};
 
 export function ResetHackathonCard() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState("");
-  const [options, setOptions] = useState({
-    reset_applications: false,
-    reset_scans: false,
-    reset_schedule: false,
-    reset_settings: false,
-    reset_notifications: false,
-  });
+  const [options, setOptions] = useState<ResetHackathonOptions>(ALL_SELECTED);
+
+  const allSelected = Object.values(options).every(Boolean);
+  const noneSelected = !Object.values(options).some(Boolean);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setConfirmText("");
+      setOptions(ALL_SELECTED);
+    }
+  };
 
   const handleReset = async () => {
     if (confirmText !== "RESET HACKATHON") return;
 
     // Ensure at least one option is selected
-    if (!Object.values(options).some(Boolean)) {
+    if (noneSelected) {
       toast.error("Please select at least one item to reset");
       return;
     }
@@ -55,16 +139,22 @@ export function ResetHackathonCard() {
         return;
       }
 
-      toast.success("Hackathon data reset successfully");
-      setOpen(false);
-      setConfirmText("");
-      setOptions({
-        reset_applications: false,
-        reset_scans: false,
-        reset_schedule: false,
-        reset_settings: false,
-        reset_notifications: false,
-      });
+      const resumes = res.data?.resumes_deleted ?? 0;
+      const notes = [
+        resumes > 0
+          ? `removing ${resumes} resume file${resumes === 1 ? "" : "s"} from storage`
+          : null,
+        // Closing applications is a side effect of the config reset that a
+        // super admin has to know about — it silently takes the public form down.
+        res.data?.reset_config ? "applications are now closed" : null,
+      ].filter(Boolean);
+
+      toast.success(
+        notes.length > 0
+          ? `Hackathon data reset successfully — ${notes.join("; ")}`
+          : "Hackathon data reset successfully",
+      );
+      handleOpenChange(false);
     } catch (err) {
       toast.error(
         "An unexpected error occurred" +
@@ -87,14 +177,14 @@ export function ResetHackathonCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto cursor-pointer bg-white text-black hover:bg-zinc-200">
               <Trash2 className="mr-2 size-4" />
               Reset Options
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-zinc-100">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-800 text-zinc-100">
             <DialogHeader>
               <DialogTitle className="text-red-400 flex items-center gap-2">
                 <AlertTriangle className="size-5" />
@@ -107,38 +197,27 @@ export function ResetHackathonCard() {
             </DialogHeader>
 
             <div className="py-4 space-y-4">
-              <div className="space-y-3 border border-zinc-800 rounded-md p-4 bg-zinc-950/50">
-                {[
-                  {
-                    id: "reset_applications",
-                    label: "Applications",
-                    desc: "Deletes all hacker applications, reviews, and resume files.",
-                  },
-                  {
-                    id: "reset_scans",
-                    label: "Scans",
-                    desc: "Deletes all check-in, meal, and event scan records.",
-                  },
-                  {
-                    id: "reset_schedule",
-                    label: "Schedule",
-                    desc: "Deletes all schedule events.",
-                  },
-                  {
-                    id: "reset_notifications",
-                    label: "Notifications",
-                    desc: "Deletes all scheduled and sent notifications.",
-                  },
-                  {
-                    id: "reset_settings",
-                    label: "Settings Stats",
-                    desc: "Resets scan stats and review assignment toggles.",
-                  },
-                ].map((item) => (
+              <div className="space-y-3 border border-zinc-800 rounded-md p-4 bg-zinc-950/50 max-h-[45vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <span className="text-xs uppercase tracking-wide text-zinc-500">
+                    Everything is selected by default
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOptions(allSelected ? NONE_SELECTED : ALL_SELECTED)
+                    }
+                    className="text-xs font-medium text-zinc-300 hover:text-zinc-100 underline underline-offset-2 cursor-pointer"
+                  >
+                    {allSelected ? "Deselect all" : "Select all"}
+                  </button>
+                </div>
+
+                {RESET_ITEMS.map((item) => (
                   <div key={item.id} className="flex items-start space-x-3">
                     <Checkbox
                       id={item.id}
-                      checked={options[item.id as keyof typeof options]}
+                      checked={options[item.id]}
                       onCheckedChange={(c) =>
                         setOptions((prev) => ({
                           ...prev,
@@ -178,7 +257,7 @@ export function ResetHackathonCard() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => handleOpenChange(false)}
                 disabled={loading}
                 className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
               >
@@ -188,10 +267,7 @@ export function ResetHackathonCard() {
                 variant="destructive"
                 onClick={handleReset}
                 loading={loading}
-                disabled={
-                  confirmText !== "RESET HACKATHON" ||
-                  !Object.values(options).some(Boolean)
-                }
+                disabled={confirmText !== "RESET HACKATHON" || noneSelected}
               >
                 Reset Data
               </Button>

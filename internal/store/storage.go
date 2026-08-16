@@ -40,6 +40,9 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
+		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
+		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)
 		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
@@ -85,7 +88,7 @@ type Storage struct {
 		SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
-		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error)
+		Reset(ctx context.Context, opts ResetOptions) ([]string, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error

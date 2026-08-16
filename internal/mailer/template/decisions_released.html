@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your {{.HackathonName}} QR code</title>
+    <title>{{.HackathonName}} decisions are out</title>
   </head>
   <body
     style="
@@ -48,11 +48,30 @@
               <td style="padding: 40px 30px">
                 <h2 style="color: #333333; margin: 0 0 20px">Hi {{.Name}}</h2>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
-                  Your QR code for {{.HackathonName}} check-in is attached.
-                  Have it ready when you arrive.
+                  {{.HackathonName}} decisions are out.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  Log in to the portal to see your result. Your status page
+                  is always the place to check.
+                </p>
+                <p style="text-align: center; margin: 32px 0">
+                  <a
+                    href="{{.PortalURL}}"
+                    style="
+                      background-color: #1a1a2e;
+                      color: #ffffff;
+                      text-decoration: none;
+                      padding: 14px 32px;
+                      border-radius: 6px;
+                      font-size: 16px;
+                      display: inline-block;
+                    "
+                    >View your decision</a
+                  >
                 </p>
                 <p style="color: #555555; font-size: 14px; line-height: 1.6">
-                  This code is yours. Please don't share it with anyone else.
+                  Thanks for applying, and thanks for your patience while we
+                  read every application.
                 </p>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
                   {{.From}}

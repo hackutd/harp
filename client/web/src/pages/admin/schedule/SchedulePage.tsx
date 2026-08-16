@@ -220,6 +220,12 @@ export default function SchedulePage() {
     [clearSelection, closeComposer],
   );
 
+  const handleScheduleCleared = useCallback(() => {
+    setScheduleItems([]);
+    closeComposer();
+    clearSelection();
+  }, [clearSelection, closeComposer, setScheduleItems]);
+
   const composerRangeText = useMemo(() => {
     if (!composerSession) return "";
     return `${formatQuarterTime(composerSession.startQuarter)} - ${formatQuarterTime(
@@ -263,6 +269,7 @@ export default function SchedulePage() {
         configuredStartDate={configuredStartDate}
         configuredEndDate={configuredEndDate}
         scheduleDaysLength={scheduleDays.length}
+        onScheduleCleared={handleScheduleCleared}
       />
 
       {schedulingEnabled ? (

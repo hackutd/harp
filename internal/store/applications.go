@@ -355,18 +355,24 @@ func (s *ApplicationsStore) List(
 		searchParam = filters.Search
 	}
 
+	// responses is free-text JSONB, so a hacker can store any string in a
+	// numeric field. A bare ::smallint cast makes one out-of-range value fail
+	// the whole query and 500 the list for every admin, so only values that
+	// provably fit are cast; anything else reads as NULL.
 	selectCols := `
 		SELECT a.id, a.user_id, u.email, a.status,
 		       a.responses->>'first_name' AS first_name,
 		       a.responses->>'last_name' AS last_name,
 		       a.responses->>'phone' AS phone,
-		       NULLIF(a.responses->>'age', '')::smallint AS age,
+		       CASE WHEN a.responses->>'age' ~ '^[0-9]{1,3}$'
+		            THEN (a.responses->>'age')::smallint END AS age,
 		       a.responses->>'country_of_residence' AS country_of_residence,
 		       a.responses->>'gender' AS gender,
 		       a.responses->>'university' AS university,
 		       a.responses->>'major' AS major,
 		       a.responses->>'level_of_study' AS level_of_study,
-		       NULLIF(a.responses->>'hackathons_attended', '')::smallint AS hackathons_attended,
+		       CASE WHEN a.responses->>'hackathons_attended' ~ '^[0-9]{1,4}$'
+		            THEN (a.responses->>'hackathons_attended')::smallint END AS hackathons_attended,
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
 		       a.resume_path IS NOT NULL AS has_resume, a.meal_group,
@@ -680,4 +686,186 @@ func (s *ApplicationsStore) GetMealGroupByUserID(ctx context.Context, userID str
 		return nil, ErrNotFound
 	}
 	return mealGroup, err
+}
+
+// DecisionEmailKind identifies which outbound email blast a send belongs to.
+// Each kind is tracked in its own column so an announcement never suppresses
+// the per-decision email, or vice versa.
+type DecisionEmailKind string
+
+const (
+	// DecisionEmailKindDecision is the per-status email that tells an applicant
+	// whether they were accepted, waitlisted, or rejected.
+	DecisionEmailKindDecision DecisionEmailKind = "decision"
+	// DecisionEmailKindAnnouncement is the neutral "decisions are out" blast that
+	// deliberately does not reveal the outcome.
+	DecisionEmailKindAnnouncement DecisionEmailKind = "announcement"
+)
+
+// DecisionEmailStatuses are the only statuses a decision email may be sent to.
+// Draft and submitted applicants have no decision to communicate.
+var DecisionEmailStatuses = []ApplicationStatus{StatusAccepted, StatusWaitlisted, StatusRejected}
+
+// decisionEmailColumn maps a kind to its tracking column. The value is
+// interpolated into SQL, so only whitelisted kinds are accepted to prevent
+// SQL injection.
+func decisionEmailColumn(kind DecisionEmailKind) (string, error) {
+	switch kind {
+	case DecisionEmailKindDecision:
+		return "decision_email_sent_at", nil
+	case DecisionEmailKindAnnouncement:
+		return "announcement_email_sent_at", nil
+	}
+	return "", fmt.Errorf("unknown decision email kind: %q", kind)
+}
+
+type DecisionEmailRecipient struct {
+	ApplicationID string            `json:"application_id"`
+	UserID        string            `json:"user_id"`
+	Email         string            `json:"email"`
+	FirstName     *string           `json:"first_name"`
+	LastName      *string           `json:"last_name"`
+	Status        ApplicationStatus `json:"status"`
+}
+
+type EmailSendCounts struct {
+	Total   int64 `json:"total"`
+	Sent    int64 `json:"sent"`
+	Pending int64 `json:"pending"`
+}
+
+type DecisionEmailStats struct {
+	Accepted     EmailSendCounts `json:"accepted"`
+	Waitlisted   EmailSendCounts `json:"waitlisted"`
+	Rejected     EmailSendCounts `json:"rejected"`
+	Announcement EmailSendCounts `json:"announcement"`
+}
+
+// GetDecisionEmailRecipients returns applicants in the given statuses. When
+// onlyUnsent is true, anyone already emailed for this kind is excluded.
+func (s *ApplicationsStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
+	defer cancel()
+
+	if len(statuses) == 0 {
+		return nil, nil
+	}
+
+	column, err := decisionEmailColumn(kind)
+	if err != nil {
+		return nil, err
+	}
+
+	statusValues := make([]string, len(statuses))
+	for i, status := range statuses {
+		statusValues[i] = string(status)
+	}
+
+	query := `
+		SELECT a.id, a.user_id, u.email,
+		       a.responses->>'first_name' AS first_name,
+		       a.responses->>'last_name' AS last_name,
+		       a.status
+		FROM applications a
+		INNER JOIN users u ON a.user_id = u.id
+		WHERE a.status = ANY($1::application_status[])`
+
+	if onlyUnsent {
+		query += "\n\t\t  AND a." + column + " IS NULL"
+	}
+
+	query += "\n\t\tORDER BY u.email"
+
+	rows, err := s.db.QueryContext(ctx, query, statusValues)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var recipients []DecisionEmailRecipient
+	for rows.Next() {
+		var recipient DecisionEmailRecipient
+		if err := rows.Scan(
+			&recipient.ApplicationID,
+			&recipient.UserID,
+			&recipient.Email,
+			&recipient.FirstName,
+			&recipient.LastName,
+			&recipient.Status,
+		); err != nil {
+			return nil, err
+		}
+		recipients = append(recipients, recipient)
+	}
+
+	return recipients, rows.Err()
+}
+
+// SetDecisionEmailSent stamps (sent=true) or clears (sent=false) the tracking
+// column for the given applications. Clearing is how failed sends are handed
+// back so a later run retries only them.
+func (s *ApplicationsStore) SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
+	defer cancel()
+
+	if len(applicationIDs) == 0 {
+		return nil
+	}
+
+	column, err := decisionEmailColumn(kind)
+	if err != nil {
+		return err
+	}
+
+	value := "NULL"
+	if sent {
+		value = "NOW()"
+	}
+
+	query := `
+		UPDATE applications
+		SET ` + column + ` = ` + value + `
+		WHERE id = ANY($1::uuid[])`
+
+	_, err = s.db.ExecContext(ctx, query, applicationIDs)
+	return err
+}
+
+// GetDecisionEmailStats returns per-status sent/pending counts for both email
+// kinds, so the Send Emails dialog can show what a run would actually do.
+func (s *ApplicationsStore) GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'accepted') AS accepted_total,
+			COUNT(*) FILTER (WHERE status = 'accepted' AND decision_email_sent_at IS NOT NULL) AS accepted_sent,
+			COUNT(*) FILTER (WHERE status = 'waitlisted') AS waitlisted_total,
+			COUNT(*) FILTER (WHERE status = 'waitlisted' AND decision_email_sent_at IS NOT NULL) AS waitlisted_sent,
+			COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_total,
+			COUNT(*) FILTER (WHERE status = 'rejected' AND decision_email_sent_at IS NOT NULL) AS rejected_sent,
+			COUNT(*) FILTER (WHERE status IN ('accepted', 'waitlisted', 'rejected')) AS announcement_total,
+			COUNT(*) FILTER (WHERE status IN ('accepted', 'waitlisted', 'rejected') AND announcement_email_sent_at IS NOT NULL) AS announcement_sent
+		FROM applications
+	`
+
+	var stats DecisionEmailStats
+	err := s.db.QueryRowContext(ctx, query).Scan(
+		&stats.Accepted.Total, &stats.Accepted.Sent,
+		&stats.Waitlisted.Total, &stats.Waitlisted.Sent,
+		&stats.Rejected.Total, &stats.Rejected.Sent,
+		&stats.Announcement.Total, &stats.Announcement.Sent,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, counts := range []*EmailSendCounts{
+		&stats.Accepted, &stats.Waitlisted, &stats.Rejected, &stats.Announcement,
+	} {
+		counts.Pending = counts.Total - counts.Sent
+	}
+
+	return &stats, nil
 }

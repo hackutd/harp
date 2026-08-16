@@ -1,5 +1,17 @@
+import { Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +25,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { resetHackathon } from "@/pages/superadmin/settings/api";
 import { getLocalTimeZoneLabel } from "@/shared/lib/datetime";
+import { useUserStore } from "@/shared/stores";
 
 import { fetchScheduleItems } from "../api";
 
@@ -23,6 +37,7 @@ type ScheduleHeaderCardProps = {
   configuredStartDate: string | null;
   configuredEndDate: string | null;
   scheduleDaysLength: number;
+  onScheduleCleared: () => void;
 };
 
 export function ScheduleHeaderCard({
@@ -31,11 +46,18 @@ export function ScheduleHeaderCard({
   configuredStartDate,
   configuredEndDate,
   scheduleDaysLength,
+  onScheduleCleared,
 }: ScheduleHeaderCardProps) {
   const [jsonPopoverOpen, setJsonPopoverOpen] = useState(false);
   const [loadingJsonResponse, setLoadingJsonResponse] = useState(false);
   const [jsonResponse, setJsonResponse] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [eventCount, setEventCount] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  // The reset endpoint is super admin only, so admins would only get a 403.
+  const isSuperAdmin = useUserStore((s) => s.user?.role === "super_admin");
 
   const loadJsonResponse = useCallback(async () => {
     setLoadingJsonResponse(true);
@@ -48,9 +70,11 @@ export function ScheduleHeaderCard({
       setJsonResponse(
         JSON.stringify({ data: { schedule: response.data.schedule } }, null, 2),
       );
+      setEventCount(response.data.schedule.length);
       setJsonError(null);
     } else {
       setJsonResponse("");
+      setEventCount(0);
       setJsonError(response.error ?? "Failed to fetch schedule response.");
     }
 
@@ -67,6 +91,31 @@ export function ScheduleHeaderCard({
     },
     [loadJsonResponse],
   );
+
+  // The confirm dialog is portaled outside the popover, so opening it counts as
+  // an outside interaction — close the popover first instead of fighting it.
+  const openClearConfirm = useCallback(() => {
+    setJsonPopoverOpen(false);
+    setConfirmOpen(true);
+  }, []);
+
+  const handleClearSchedule = useCallback(async () => {
+    setClearing(true);
+
+    const res = await resetHackathon({ reset_schedule: true });
+
+    if (res.error) {
+      toast.error(`Failed to clear the schedule: ${res.error}`);
+    } else {
+      setJsonResponse("");
+      setEventCount(0);
+      onScheduleCleared();
+      toast.success("Schedule cleared.");
+      setConfirmOpen(false);
+    }
+
+    setClearing(false);
+  }, [onScheduleCleared]);
 
   const timeZoneLabel = getLocalTimeZoneLabel().label;
 
@@ -92,9 +141,30 @@ export function ScheduleHeaderCard({
           </PopoverTrigger>
           <PopoverContent align="end" className="w-[min(90vw,640px)] p-3">
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                <code>GET /v1/public/schedule</code>
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  <code>GET /v1/public/schedule</code>
+                  {!loadingJsonResponse && !jsonError ? (
+                    <>
+                      {" · "}
+                      {eventCount} event{eventCount === 1 ? "" : "s"}
+                    </>
+                  ) : null}
+                </p>
+                {isSuperAdmin ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={openClearConfirm}
+                    disabled={loadingJsonResponse || eventCount === 0}
+                    className="h-7 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="mr-1 size-3.5" />
+                    Clear All
+                  </Button>
+                ) : null}
+              </div>
               {loadingJsonResponse ? (
                 <p className="text-sm text-muted-foreground">
                   Loading JSON response...
@@ -106,6 +176,13 @@ export function ScheduleHeaderCard({
                   {jsonResponse}
                 </pre>
               )}
+              {isSuperAdmin ? (
+                <p className="text-xs text-muted-foreground">
+                  Events created under a previous date range still show up here.
+                  Clearing removes every event, including those outside the
+                  current range.
+                </p>
+              ) : null}
             </div>
           </PopoverContent>
         </Popover>
@@ -129,6 +206,39 @@ export function ScheduleHeaderCard({
           </p>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => !clearing && setConfirmOpen(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear the entire schedule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes all {eventCount} schedule event
+              {eventCount === 1 ? "" : "s"} — including any left over from a
+              previous date range — along with the notifications attached to
+              them. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer" disabled={clearing}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer bg-destructive text-white hover:bg-destructive/90"
+              disabled={clearing}
+              onClick={(event) => {
+                // Keep the dialog mounted until the request resolves.
+                event.preventDefault();
+                void handleClearSchedule();
+              }}
+            >
+              {clearing ? "Clearing..." : "Clear Schedule"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your {{.HackathonName}} QR code</title>
+    <title>You're on the {{.HackathonName}} waitlist</title>
   </head>
   <body
     style="
@@ -48,11 +48,31 @@
               <td style="padding: 40px 30px">
                 <h2 style="color: #333333; margin: 0 0 20px">Hi {{.Name}}</h2>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
-                  Your QR code for {{.HackathonName}} check-in is attached.
-                  Have it ready when you arrive.
+                  You're on the {{.HackathonName}} waitlist. We had more
+                  strong applications than spots.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  This is not a no. Spots open up, and we email people on the
+                  waitlist as they do.
+                </p>
+                <p style="text-align: center; margin: 32px 0">
+                  <a
+                    href="{{.PortalURL}}"
+                    style="
+                      background-color: #1a1a2e;
+                      color: #ffffff;
+                      text-decoration: none;
+                      padding: 14px 32px;
+                      border-radius: 6px;
+                      font-size: 16px;
+                      display: inline-block;
+                    "
+                    >View your status</a
+                  >
                 </p>
                 <p style="color: #555555; font-size: 14px; line-height: 1.6">
-                  This code is yours. Please don't share it with anyone else.
+                  Keep the event dates open if you can. Waitlist spots often
+                  open up in the final days.
                 </p>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
                   {{.From}}
