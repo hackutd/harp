@@ -341,16 +341,6 @@ func (m *MockSettingsStore) SetApplicationDueDate(ctx context.Context, date stri
 	return args.Error(0)
 }
 
-func (m *MockSettingsStore) GetDecisionReleaseDate(ctx context.Context) (string, error) {
-	args := m.Called()
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetDecisionReleaseDate(ctx context.Context, date string) error {
-	args := m.Called(date)
-	return args.Error(0)
-}
-
 func (m *MockSettingsStore) GetScanTypes(ctx context.Context) ([]ScanType, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

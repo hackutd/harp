@@ -313,8 +313,6 @@ func (app *application) mount() http.Handler {
 						r.Post("/from-name", app.setFromName)
 						r.Get("/application-due-date", app.getApplicationDueDate)
 						r.Post("/application-due-date", app.setApplicationDueDate)
-						r.Get("/decision-release-date", app.getDecisionReleaseDate)
-						r.Post("/decision-release-date", app.setDecisionReleaseDate)
 						r.Get("/onboarding-status", app.getOnboardingStatus)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)

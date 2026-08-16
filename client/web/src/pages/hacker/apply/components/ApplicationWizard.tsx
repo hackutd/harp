@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
+import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-defaults";
 import {
   buildDefaultValues,
   deriveSections,
@@ -100,7 +101,9 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
-  const [applicationsEnabled, setApplicationsEnabled] = useState(true);
+  const [applicationsEnabled, setApplicationsEnabled] = useState<boolean>(
+    DEFAULT_FEATURE_FLAGS.applicationsEnabled,
+  );
   // Schema is captured once from the initial load; mutation responses
   // (PATCH/DELETE) don't embed it and must not wipe it.
   const [schemaFields, setSchemaFields] = useState<ApplicationSchemaField[]>(

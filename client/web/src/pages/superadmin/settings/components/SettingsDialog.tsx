@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   BookOpen,
-  CalendarRange,
   Rocket,
   ShieldCheck,
   UtensilsCrossed,
@@ -28,12 +27,10 @@ import HackerPackTab from "../tabs/HackerPackTab";
 import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
-import ScheduleTab from "../tabs/ScheduleTab";
 
 type SettingsTab =
   | "hackathon"
   | "permissions"
-  | "schedule"
   | "meal-groups"
   | "hacker-pack"
   | "reset";
@@ -41,7 +38,6 @@ type SettingsTab =
 const settingsTabs = [
   { id: "hackathon" as const, label: "Hackathon", icon: Rocket },
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
-  { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
   { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
   { id: "hacker-pack" as const, label: "Hacker Pack", icon: BookOpen },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
@@ -100,7 +96,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
               <div className="p-8">
                 {activeTab === "hackathon" && <HackathonTab />}
                 {activeTab === "permissions" && <PermissionsTab />}
-                {activeTab === "schedule" && <ScheduleTab />}
                 {activeTab === "meal-groups" && <MealGroupsTab />}
                 {activeTab === "hacker-pack" && <HackerPackTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}

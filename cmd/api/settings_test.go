@@ -926,7 +926,6 @@ func TestGetOnboardingStatus(t *testing.T) {
 		mockSettings.On("GetHackathonName").Return("HackUTD 2026", nil).Once()
 		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{StartDate: &start, EndDate: &end}, nil).Once()
 		mockSettings.On("GetApplicationDueDate").Return("2026-03-14", nil).Once()
-		mockSettings.On("GetDecisionReleaseDate").Return("2026-03-20", nil).Once()
 		mockSettings.On("GetContactEmail").Return("hello@hackutd.co", nil).Once()
 		mockSettings.On("GetFromEmail").Return("noreply@hackutd.co", nil).Once()
 
@@ -954,7 +953,6 @@ func TestGetOnboardingStatus(t *testing.T) {
 		mockSettings.On("GetHackathonName").Return("", nil).Once()
 		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{}, nil).Once()
 		mockSettings.On("GetApplicationDueDate").Return("", nil).Once()
-		mockSettings.On("GetDecisionReleaseDate").Return("", nil).Once()
 		mockSettings.On("GetContactEmail").Return("", nil).Once()
 		mockSettings.On("GetFromEmail").Return("", nil).Once()
 

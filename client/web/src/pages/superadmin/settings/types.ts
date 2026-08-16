@@ -62,7 +62,6 @@ export interface OnboardingStatus {
   hackathon_name: boolean;
   hackathon_date_range: boolean;
   application_due_date: boolean;
-  decision_release_date: boolean;
   contact_email: boolean;
   from_email: boolean;
   complete: boolean;
@@ -74,7 +73,6 @@ export interface OnboardingValues {
   start_date: string;
   end_date: string;
   application_due_date: string;
-  decision_release_date: string;
   contact_email: string;
   from_email: string;
   from_name: string;

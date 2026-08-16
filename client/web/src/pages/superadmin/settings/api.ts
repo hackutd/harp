@@ -207,26 +207,6 @@ export async function updateApplicationDueDate(
   );
 }
 
-export async function fetchDecisionReleaseDate(
-  signal?: AbortSignal,
-): Promise<ApiResponse<DateSettingResult>> {
-  return getRequest<DateSettingResult>(
-    "/superadmin/settings/decision-release-date",
-    "decision release date",
-    signal,
-  );
-}
-
-export async function updateDecisionReleaseDate(
-  date: string,
-): Promise<ApiResponse<DateSettingResult>> {
-  return postRequest<DateSettingResult>(
-    "/superadmin/settings/decision-release-date",
-    { date },
-    "decision release date",
-  );
-}
-
 // Reads go through usePointsConfigStore — the points config is visible to every
 // authenticated user, so only the writes are super admin gated.
 export async function updatePointsName(

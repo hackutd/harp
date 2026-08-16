@@ -71,8 +71,6 @@ type Storage struct {
 		SetFromName(ctx context.Context, name string) error
 		GetApplicationDueDate(ctx context.Context) (string, error)
 		SetApplicationDueDate(ctx context.Context, date string) error
-		GetDecisionReleaseDate(ctx context.Context) (string, error)
-		SetDecisionReleaseDate(ctx context.Context, date string) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)

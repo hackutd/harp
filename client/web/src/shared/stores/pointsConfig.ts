@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { getRequest } from "@/shared/lib/api";
+import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-defaults";
 
 interface PointsConfigResponse {
   name: string;
@@ -20,11 +21,10 @@ export interface PointsConfigState {
 
 // Matches the backend defaults when the settings have never been configured.
 const DEFAULT_POINTS_NAME = "Points";
-const DEFAULT_POINTS_ENABLED = true;
 
 export const usePointsConfigStore = create<PointsConfigState>((set) => ({
   pointsName: DEFAULT_POINTS_NAME,
-  pointsEnabled: DEFAULT_POINTS_ENABLED,
+  pointsEnabled: DEFAULT_FEATURE_FLAGS.pointsEnabled,
   loading: false,
   fetchPointsConfig: async (signal) => {
     set({ loading: true });

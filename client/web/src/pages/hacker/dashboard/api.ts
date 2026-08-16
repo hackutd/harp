@@ -7,7 +7,6 @@ export interface HackathonConfig {
   hackathon_name: string;
   contact_email: string;
   application_due_date: string;
-  decision_release_date: string;
   start_date: string | null;
   end_date: string | null;
 }

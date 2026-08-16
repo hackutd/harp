@@ -1018,25 +1018,23 @@ type SetDateSettingPayload struct {
 // OnboardingStatusResponse reports which required hackathon settings are
 // configured. The SuperAdmin onboarding form is shown until complete is true.
 type OnboardingStatusResponse struct {
-	HackathonName       bool `json:"hackathon_name"`
-	HackathonDateRange  bool `json:"hackathon_date_range"`
-	ApplicationDueDate  bool `json:"application_due_date"`
-	DecisionReleaseDate bool `json:"decision_release_date"`
-	ContactEmail        bool `json:"contact_email"`
-	FromEmail           bool `json:"from_email"`
-	Complete            bool `json:"complete"`
+	HackathonName      bool `json:"hackathon_name"`
+	HackathonDateRange bool `json:"hackathon_date_range"`
+	ApplicationDueDate bool `json:"application_due_date"`
+	ContactEmail       bool `json:"contact_email"`
+	FromEmail          bool `json:"from_email"`
+	Complete           bool `json:"complete"`
 }
 
 // HackathonConfigResponse exposes the hackathon identity and key dates to any
 // authenticated user so hacker-facing pages don't hardcode them. Kickoff is the
 // hackathon start date, so it isn't configured (or returned) separately.
 type HackathonConfigResponse struct {
-	HackathonName       string  `json:"hackathon_name"`
-	ContactEmail        string  `json:"contact_email"`
-	ApplicationDueDate  string  `json:"application_due_date"`
-	DecisionReleaseDate string  `json:"decision_release_date"`
-	StartDate           *string `json:"start_date"`
-	EndDate             *string `json:"end_date"`
+	HackathonName      string  `json:"hackathon_name"`
+	ContactEmail       string  `json:"contact_email"`
+	ApplicationDueDate string  `json:"application_due_date"`
+	StartDate          *string `json:"start_date"`
+	EndDate            *string `json:"end_date"`
 }
 
 // parseDateOnly validates a YYYY-MM-DD date string.
@@ -1358,68 +1356,6 @@ func (app *application) setApplicationDueDate(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// getDecisionReleaseDate returns the decision release date
-//
-//	@Summary		Get decision release date (Super Admin)
-//	@Description	Returns the configured decision release date
-//	@Tags			superadmin/settings
-//	@Produce		json
-//	@Success		200	{object}	DateSettingResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/decision-release-date [get]
-func (app *application) getDecisionReleaseDate(w http.ResponseWriter, r *http.Request) {
-	date, err := app.store.Settings.GetDecisionReleaseDate(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, DateSettingResponse{Date: date, Configured: date != ""}); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
-// setDecisionReleaseDate updates the decision release date
-//
-//	@Summary		Set decision release date (Super Admin)
-//	@Description	Updates the decision release date (YYYY-MM-DD)
-//	@Tags			superadmin/settings
-//	@Accept			json
-//	@Produce		json
-//	@Param			date	body		SetDateSettingPayload	true	"Decision release date"
-//	@Success		200		{object}	DateSettingResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/decision-release-date [post]
-func (app *application) setDecisionReleaseDate(w http.ResponseWriter, r *http.Request) {
-	var req SetDateSettingPayload
-	if err := readJSON(w, r, &req); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	date, err := parseDateOnly(req.Date)
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	if err := app.store.Settings.SetDecisionReleaseDate(r.Context(), date); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, DateSettingResponse{Date: date, Configured: true}); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
 // getOnboardingStatus reports which required hackathon settings are configured
 //
 //	@Summary		Get onboarding status (Super Admin)
@@ -1453,12 +1389,6 @@ func (app *application) getOnboardingStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	decisionDate, err := app.store.Settings.GetDecisionReleaseDate(ctx)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
 	contactEmail, err := app.store.Settings.GetContactEmail(ctx)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -1472,17 +1402,15 @@ func (app *application) getOnboardingStatus(w http.ResponseWriter, r *http.Reque
 	}
 
 	response := OnboardingStatusResponse{
-		HackathonName:       name != "",
-		HackathonDateRange:  dateRange.StartDate != nil && dateRange.EndDate != nil,
-		ApplicationDueDate:  appDue != "",
-		DecisionReleaseDate: decisionDate != "",
-		ContactEmail:        contactEmail != "",
-		FromEmail:           fromEmail != "",
+		HackathonName:      name != "",
+		HackathonDateRange: dateRange.StartDate != nil && dateRange.EndDate != nil,
+		ApplicationDueDate: appDue != "",
+		ContactEmail:       contactEmail != "",
+		FromEmail:          fromEmail != "",
 	}
 	response.Complete = response.HackathonName &&
 		response.HackathonDateRange &&
 		response.ApplicationDueDate &&
-		response.DecisionReleaseDate &&
 		response.ContactEmail &&
 		response.FromEmail
 
@@ -1523,12 +1451,6 @@ func (app *application) getHackathonConfigHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	decisionDate, err := app.store.Settings.GetDecisionReleaseDate(ctx)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
 	dateRange, err := app.store.Settings.GetHackathonDateRange(ctx)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -1536,12 +1458,11 @@ func (app *application) getHackathonConfigHandler(w http.ResponseWriter, r *http
 	}
 
 	response := HackathonConfigResponse{
-		HackathonName:       name,
-		ContactEmail:        contactEmail,
-		ApplicationDueDate:  appDue,
-		DecisionReleaseDate: decisionDate,
-		StartDate:           dateRange.StartDate,
-		EndDate:             dateRange.EndDate,
+		HackathonName:      name,
+		ContactEmail:       contactEmail,
+		ApplicationDueDate: appDue,
+		StartDate:          dateRange.StartDate,
+		EndDate:            dateRange.EndDate,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

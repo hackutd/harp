@@ -63,5 +63,5 @@ INSERT INTO settings (key, value) VALUES ('hackathon_date_range', '{"start_date"
 ON CONFLICT (key) DO NOTHING;
 
 -- Applications enabled toggle
-INSERT INTO settings (key, value) VALUES ('applications_enabled', 'true'::jsonb)
+INSERT INTO settings (key, value) VALUES ('applications_enabled', 'false'::jsonb)
 ON CONFLICT (key) DO NOTHING;

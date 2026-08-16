@@ -31,7 +31,6 @@ const SettingsKeyContactEmail = "contact_email"
 const SettingsKeyFromEmail = "from_email"
 const SettingsKeyFromName = "from_name"
 const SettingsKeyApplicationDueDate = "application_due_date"
-const SettingsKeyDecisionReleaseDate = "decision_release_date"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -620,7 +619,7 @@ func (s *SettingsStore) SetPointsName(ctx context.Context, name string) error {
 }
 
 // GetPointsEnabled returns whether the points system is enabled.
-// Defaults to true if the setting row does not exist.
+// Defaults to false if the setting row does not exist.
 func (s *SettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -635,7 +634,7 @@ func (s *SettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyPointsEnabled).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return true, nil
+			return false, nil
 		}
 		return false, err
 	}
@@ -762,7 +761,7 @@ func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return true, nil
+			return false, nil
 		}
 		return false, err
 	}
@@ -986,14 +985,4 @@ func (s *SettingsStore) GetApplicationDueDate(ctx context.Context) (string, erro
 // SetApplicationDueDate updates the application deadline (YYYY-MM-DD).
 func (s *SettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
 	return s.setStringSetting(ctx, SettingsKeyApplicationDueDate, date)
-}
-
-// GetDecisionReleaseDate returns the decision release date as YYYY-MM-DD.
-func (s *SettingsStore) GetDecisionReleaseDate(ctx context.Context) (string, error) {
-	return s.getStringSetting(ctx, SettingsKeyDecisionReleaseDate)
-}
-
-// SetDecisionReleaseDate updates the decision release date (YYYY-MM-DD).
-func (s *SettingsStore) SetDecisionReleaseDate(ctx context.Context, date string) error {
-	return s.setStringSetting(ctx, SettingsKeyDecisionReleaseDate, date)
 }

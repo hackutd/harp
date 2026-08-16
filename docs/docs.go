@@ -5217,145 +5217,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings/decision-release-date": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Returns the configured decision release date",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Get decision release date (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DateSettingResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Updates the decision release date (YYYY-MM-DD)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Set decision release date (Super Admin)",
-                "parameters": [
-                    {
-                        "description": "Decision release date",
-                        "name": "date",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.SetDateSettingPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DateSettingResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/superadmin/settings/from-email": {
             "get": {
                 "security": [
@@ -7618,9 +7479,6 @@ const docTemplate = `{
                 "contact_email": {
                     "type": "string"
                 },
-                "decision_release_date": {
-                    "type": "string"
-                },
                 "end_date": {
                     "type": "string"
                 },
@@ -7731,9 +7589,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "contact_email": {
-                    "type": "boolean"
-                },
-                "decision_release_date": {
                     "type": "boolean"
                 },
                 "from_email": {

@@ -22,7 +22,6 @@ const CHECKLIST: { key: keyof OnboardingStatus; label: string }[] = [
   { key: "hackathon_name", label: "Hackathon name" },
   { key: "hackathon_date_range", label: "Hackathon dates" },
   { key: "application_due_date", label: "Applications due" },
-  { key: "decision_release_date", label: "Decisions released" },
   { key: "contact_email", label: "Contact email" },
   { key: "from_email", label: "Sender email" },
 ];

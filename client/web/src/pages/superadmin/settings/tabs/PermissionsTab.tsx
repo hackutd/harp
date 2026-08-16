@@ -19,6 +19,7 @@ import {
   postRequest,
   putRequest,
 } from "@/shared/lib/api";
+import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-defaults";
 
 interface PermissionToggleProps {
   id: string;
@@ -62,7 +63,9 @@ function PermissionToggle({
 }
 
 export default function PermissionsTab() {
-  const [applicationsEnabled, setApplicationsEnabled] = useState(true);
+  const [applicationsEnabled, setApplicationsEnabled] = useState<boolean>(
+    DEFAULT_FEATURE_FLAGS.applicationsEnabled,
+  );
   const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
     useState(true);
   const [adminSponsorEditEnabled, setAdminSponsorEditEnabled] = useState(true);
