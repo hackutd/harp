@@ -96,6 +96,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/sponsors",
 		"admin/faq",
 		"superadmin/applications",
+		"superadmin/emails",
 		"superadmin/settings",
 		"superadmin/users"
 	];
@@ -180,7 +181,8 @@ func (app *application) mount() http.Handler {
 			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
 			r.Get("/faq", app.getHackerFAQHandler)
 			r.Get("/hacker-pack", app.getHackerPackHandler)
-			r.Get("/points-name", app.getPointsNameHandler)
+			r.Get("/points-config", app.getPointsConfigHandler)
+			r.Get("/hackathon-config", app.getHackathonConfigHandler)
 			r.Delete("/users/me", app.deleteMyAccountHandler)
 			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
 			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
@@ -300,6 +302,19 @@ func (app *application) mount() http.Handler {
 						r.Get("/hacker-pack-url", app.getHackerPackURL)
 						r.Post("/hacker-pack-url", app.setHackerPackURL)
 						r.Post("/points-name", app.setPointsName)
+						r.Get("/points-enabled", app.getPointsEnabled)
+						r.Post("/points-enabled", app.setPointsEnabled)
+						r.Get("/hackathon-name", app.getHackathonName)
+						r.Post("/hackathon-name", app.setHackathonName)
+						r.Get("/contact-email", app.getContactEmail)
+						r.Post("/contact-email", app.setContactEmail)
+						r.Get("/from-email", app.getFromEmail)
+						r.Post("/from-email", app.setFromEmail)
+						r.Get("/from-name", app.getFromName)
+						r.Post("/from-name", app.setFromName)
+						r.Get("/application-due-date", app.getApplicationDueDate)
+						r.Post("/application-due-date", app.setApplicationDueDate)
+						r.Get("/onboarding-status", app.getOnboardingStatus)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)
 						r.Put("/meal-groups", app.updateMealGroups)
@@ -316,6 +331,12 @@ func (app *application) mount() http.Handler {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+					})
+
+					// Outbound decision emails
+					r.Route("/emails", func(r chi.Router) {
+						r.Get("/decisions/stats", app.getDecisionEmailStatsHandler)
+						r.Post("/decisions", app.sendDecisionEmailsHandler)
 					})
 
 					// User Management

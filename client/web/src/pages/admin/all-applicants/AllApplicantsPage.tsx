@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchBar } from "@/pages/admin/_shared";
-import { usePointsNameStore } from "@/shared/stores";
+import { usePointsConfigStore } from "@/shared/stores";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
 import { ApplicationsTable } from "./components/ApplicationsTable";
@@ -32,7 +32,7 @@ export default function AllApplicantsPage() {
   const statsLoading = useApplicationsStore((s) => s.statsLoading);
   const fetchApplications = useApplicationsStore((s) => s.fetchApplications);
   const fetchStats = useApplicationsStore((s) => s.fetchStats);
-  const fetchPointsName = usePointsNameStore((s) => s.fetchPointsName);
+  const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
 
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
@@ -48,9 +48,9 @@ export default function AllApplicantsPage() {
     const controller = new AbortController();
     fetchApplications(undefined, controller.signal);
     fetchStats(controller.signal);
-    fetchPointsName(controller.signal);
+    fetchPointsConfig(controller.signal);
     return () => controller.abort();
-  }, [fetchApplications, fetchStats, fetchPointsName]);
+  }, [fetchApplications, fetchStats, fetchPointsConfig]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -90,12 +90,13 @@ export default function AllApplicantsPage() {
     }
   }, [prevCursor, fetchApplications]);
 
-  const isInitialLoad = loading && applications.length === 0 && !searchInput;
+  const isInitialLoad =
+    statsLoading && loading && applications.length === 0 && !searchInput;
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
       <div className="shrink-0">
-        <SectionCards stats={stats} loading={statsLoading || isInitialLoad} />
+        <SectionCards stats={stats} loading={statsLoading} />
       </div>
 
       <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">

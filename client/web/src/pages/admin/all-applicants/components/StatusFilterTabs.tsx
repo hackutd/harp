@@ -29,7 +29,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
       onValueChange={handleValueChange}
       className="min-w-0"
     >
-      <TabsList className="h-auto w-full flex-wrap rounded-md border justify-start gap-1 p-1 2xl:h-9 2xl:flex-nowrap 2xl:gap-0 2xl:p-0.5">
+      <TabsList className="h-auto min-h-9 w-full flex-wrap rounded-md border justify-start gap-1 p-1 2xl:h-9 2xl:flex-nowrap 2xl:gap-0 2xl:p-0.5">
         <TabsTrigger
           value="all"
           disabled={loading}
@@ -48,7 +48,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
           className="font-light cursor-pointer"
         >
           Draft
-          {stats && stats.draft > 0 && (
+          {stats && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
               {stats.draft}
             </Badge>
@@ -60,7 +60,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
           className="font-light cursor-pointer"
         >
           Submitted
-          {stats && stats.submitted > 0 && (
+          {stats && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
               {stats.submitted}
             </Badge>
@@ -72,7 +72,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
           className="font-light cursor-pointer"
         >
           Accepted
-          {stats && stats.accepted > 0 && (
+          {stats && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
               {stats.accepted}
             </Badge>
@@ -84,7 +84,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
           className="font-light cursor-pointer"
         >
           Waitlisted
-          {stats && stats.waitlisted > 0 && (
+          {stats && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
               {stats.waitlisted}
             </Badge>
@@ -96,7 +96,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
           className="font-light cursor-pointer"
         >
           Rejected
-          {stats && stats.rejected > 0 && (
+          {stats && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
               {stats.rejected}
             </Badge>

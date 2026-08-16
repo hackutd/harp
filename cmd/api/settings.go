@@ -240,6 +240,21 @@ type PointsNameResponse struct {
 	Name string `json:"name"`
 }
 
+type SetPointsEnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type PointsEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// PointsConfigResponse is the points system state every authenticated user
+// needs: what points are called, and whether they are used at all.
+type PointsConfigResponse struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
 // setReviewAssignmentToggle updates the review assignment enabled setting
 //
 //	@Summary		Set review assignment enabled state for a user (Super Admin)
@@ -705,25 +720,91 @@ func (app *application) setPointsName(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getPointsNameHandler returns the configured points system name for any authenticated user.
+// getPointsEnabled returns whether the points system is enabled
 //
-//	@Summary		Get points system name
-//	@Description	Returns the configured display name of the points system
-//	@Tags			hackers
+//	@Summary		Get points system enabled state (Super Admin)
+//	@Description	Returns whether the points system is enabled
+//	@Tags			superadmin/settings
 //	@Produce		json
-//	@Success		200	{object}	PointsNameResponse
+//	@Success		200	{object}	PointsEnabledResponse
 //	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/points-name [get]
-func (app *application) getPointsNameHandler(w http.ResponseWriter, r *http.Request) {
-	name, err := app.store.Settings.GetPointsName(r.Context())
+//	@Router			/superadmin/settings/points-enabled [get]
+func (app *application) getPointsEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetPointsEnabled(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, PointsNameResponse{Name: name}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, PointsEnabledResponse{Enabled: enabled}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setPointsEnabled updates whether the points system is enabled
+//
+//	@Summary		Set points system enabled state (Super Admin)
+//	@Description	Updates whether the points system is enabled. When disabled it is hidden from the hacker portal.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetPointsEnabledPayload	true	"Points system enabled state"
+//	@Success		200		{object}	PointsEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/points-enabled [post]
+func (app *application) setPointsEnabled(w http.ResponseWriter, r *http.Request) {
+	var req SetPointsEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetPointsEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, PointsEnabledResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getPointsConfigHandler returns the points system config for any authenticated user.
+//
+//	@Summary		Get points system config
+//	@Description	Returns the display name of the points system and whether it is enabled
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	PointsConfigResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/points-config [get]
+func (app *application) getPointsConfigHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	name, err := app.store.Settings.GetPointsName(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	enabled, err := app.store.Settings.GetPointsEnabled(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := PointsConfigResponse{Name: name, Enabled: enabled}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -895,6 +976,494 @@ func (app *application) setApplicationsEnabled(w http.ResponseWriter, r *http.Re
 	}
 
 	response := ApplicationsEnabledResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type HackathonNameResponse struct {
+	Name string `json:"name"`
+}
+
+type SetHackathonNamePayload struct {
+	Name string `json:"name" validate:"required,min=1,max=100"`
+}
+
+type EmailSettingResponse struct {
+	Email string `json:"email"`
+}
+
+type SetEmailSettingPayload struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type FromNameResponse struct {
+	Name string `json:"name"`
+}
+
+type SetFromNamePayload struct {
+	Name string `json:"name" validate:"required,min=1,max=100"`
+}
+
+type DateSettingResponse struct {
+	Date       string `json:"date"`
+	Configured bool   `json:"configured"`
+}
+
+type SetDateSettingPayload struct {
+	Date string `json:"date" validate:"required"`
+}
+
+// OnboardingStatusResponse reports which required hackathon settings are
+// configured. The SuperAdmin onboarding form is shown until complete is true.
+type OnboardingStatusResponse struct {
+	HackathonName      bool `json:"hackathon_name"`
+	HackathonDateRange bool `json:"hackathon_date_range"`
+	ApplicationDueDate bool `json:"application_due_date"`
+	ContactEmail       bool `json:"contact_email"`
+	FromEmail          bool `json:"from_email"`
+	Complete           bool `json:"complete"`
+}
+
+// HackathonConfigResponse exposes the hackathon identity and key dates to any
+// authenticated user so hacker-facing pages don't hardcode them. Kickoff is the
+// hackathon start date, so it isn't configured (or returned) separately.
+type HackathonConfigResponse struct {
+	HackathonName      string  `json:"hackathon_name"`
+	ContactEmail       string  `json:"contact_email"`
+	ApplicationDueDate string  `json:"application_due_date"`
+	StartDate          *string `json:"start_date"`
+	EndDate            *string `json:"end_date"`
+}
+
+// parseDateOnly validates a YYYY-MM-DD date string.
+func parseDateOnly(value string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if _, err := time.Parse("2006-01-02", trimmed); err != nil {
+		return "", errors.New("date must be YYYY-MM-DD")
+	}
+	return trimmed, nil
+}
+
+// getHackathonName returns the configured hackathon name
+//
+//	@Summary		Get hackathon name (Super Admin)
+//	@Description	Returns the configured hackathon name
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	HackathonNameResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hackathon-name [get]
+func (app *application) getHackathonName(w http.ResponseWriter, r *http.Request) {
+	name, err := app.store.Settings.GetHackathonName(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, HackathonNameResponse{Name: name}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setHackathonName updates the configured hackathon name
+//
+//	@Summary		Set hackathon name (Super Admin)
+//	@Description	Updates the hackathon name shown across the portal and in emails
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			name	body		SetHackathonNamePayload	true	"Hackathon name"
+//	@Success		200		{object}	HackathonNameResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/hackathon-name [post]
+func (app *application) setHackathonName(w http.ResponseWriter, r *http.Request) {
+	var req SetHackathonNamePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetHackathonName(r.Context(), req.Name); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, HackathonNameResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getContactEmail returns the configured public contact email
+//
+//	@Summary		Get contact email (Super Admin)
+//	@Description	Returns the configured public contact email
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	EmailSettingResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/contact-email [get]
+func (app *application) getContactEmail(w http.ResponseWriter, r *http.Request) {
+	email, err := app.store.Settings.GetContactEmail(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, EmailSettingResponse{Email: email}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setContactEmail updates the public contact email
+//
+//	@Summary		Set contact email (Super Admin)
+//	@Description	Updates the public contact email shown to hackers
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			email	body		SetEmailSettingPayload	true	"Contact email"
+//	@Success		200		{object}	EmailSettingResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/contact-email [post]
+func (app *application) setContactEmail(w http.ResponseWriter, r *http.Request) {
+	var req SetEmailSettingPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	req.Email = strings.TrimSpace(req.Email)
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetContactEmail(r.Context(), req.Email); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, EmailSettingResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getFromEmail returns the configured sender email
+//
+//	@Summary		Get sender email (Super Admin)
+//	@Description	Returns the configured from-address for outgoing email
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	EmailSettingResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/from-email [get]
+func (app *application) getFromEmail(w http.ResponseWriter, r *http.Request) {
+	email, err := app.store.Settings.GetFromEmail(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, EmailSettingResponse{Email: email}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setFromEmail updates the sender email
+//
+//	@Summary		Set sender email (Super Admin)
+//	@Description	Updates the from-address used for outgoing email
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			email	body		SetEmailSettingPayload	true	"Sender email"
+//	@Success		200		{object}	EmailSettingResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/from-email [post]
+func (app *application) setFromEmail(w http.ResponseWriter, r *http.Request) {
+	var req SetEmailSettingPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	req.Email = strings.TrimSpace(req.Email)
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetFromEmail(r.Context(), req.Email); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, EmailSettingResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getFromName returns the configured sender display name
+//
+//	@Summary		Get sender name (Super Admin)
+//	@Description	Returns the configured display name for outgoing email
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	FromNameResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/from-name [get]
+func (app *application) getFromName(w http.ResponseWriter, r *http.Request) {
+	name, err := app.store.Settings.GetFromName(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, FromNameResponse{Name: name}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setFromName updates the sender display name
+//
+//	@Summary		Set sender name (Super Admin)
+//	@Description	Updates the display name used for outgoing email
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			name	body		SetFromNamePayload	true	"Sender display name"
+//	@Success		200		{object}	FromNameResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/from-name [post]
+func (app *application) setFromName(w http.ResponseWriter, r *http.Request) {
+	var req SetFromNamePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetFromName(r.Context(), req.Name); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, FromNameResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getApplicationDueDate returns the application deadline
+//
+//	@Summary		Get application due date (Super Admin)
+//	@Description	Returns the configured application deadline
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	DateSettingResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/application-due-date [get]
+func (app *application) getApplicationDueDate(w http.ResponseWriter, r *http.Request) {
+	date, err := app.store.Settings.GetApplicationDueDate(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, DateSettingResponse{Date: date, Configured: date != ""}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setApplicationDueDate updates the application deadline
+//
+//	@Summary		Set application due date (Super Admin)
+//	@Description	Updates the application deadline (YYYY-MM-DD)
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			date	body		SetDateSettingPayload	true	"Application due date"
+//	@Success		200		{object}	DateSettingResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/application-due-date [post]
+func (app *application) setApplicationDueDate(w http.ResponseWriter, r *http.Request) {
+	var req SetDateSettingPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	date, err := parseDateOnly(req.Date)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetApplicationDueDate(r.Context(), date); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, DateSettingResponse{Date: date, Configured: true}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getOnboardingStatus reports which required hackathon settings are configured
+//
+//	@Summary		Get onboarding status (Super Admin)
+//	@Description	Returns which required hackathon settings are configured and whether onboarding is complete
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	OnboardingStatusResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/onboarding-status [get]
+func (app *application) getOnboardingStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	name, err := app.store.Settings.GetHackathonName(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	dateRange, err := app.store.Settings.GetHackathonDateRange(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	appDue, err := app.store.Settings.GetApplicationDueDate(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	contactEmail, err := app.store.Settings.GetContactEmail(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	fromEmail, err := app.store.Settings.GetFromEmail(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := OnboardingStatusResponse{
+		HackathonName:      name != "",
+		HackathonDateRange: dateRange.StartDate != nil && dateRange.EndDate != nil,
+		ApplicationDueDate: appDue != "",
+		ContactEmail:       contactEmail != "",
+		FromEmail:          fromEmail != "",
+	}
+	response.Complete = response.HackathonName &&
+		response.HackathonDateRange &&
+		response.ApplicationDueDate &&
+		response.ContactEmail &&
+		response.FromEmail
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getHackathonConfigHandler returns hackathon identity and key dates
+//
+//	@Summary		Get hackathon config
+//	@Description	Returns the configured hackathon name, contact email and key dates for hacker-facing pages
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	HackathonConfigResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/hackathon-config [get]
+func (app *application) getHackathonConfigHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	name, err := app.store.Settings.GetHackathonName(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	contactEmail, err := app.store.Settings.GetContactEmail(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	appDue, err := app.store.Settings.GetApplicationDueDate(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	dateRange, err := app.store.Settings.GetHackathonDateRange(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonConfigResponse{
+		HackathonName:      name,
+		ContactEmail:       contactEmail,
+		ApplicationDueDate: appDue,
+		StartDate:          dateRange.StartDate,
+		EndDate:            dateRange.EndDate,
+	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

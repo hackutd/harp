@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { usePointsNameStore } from "@/shared/stores";
+import { usePointsConfigStore } from "@/shared/stores";
 
 import { useScansStore } from "../store";
 import { useQrScanner } from "./useQrScanner";
@@ -24,7 +24,7 @@ export function ScannerDialog() {
     performScan,
     clearLastResult,
   } = useScansStore();
-  const pointsName = usePointsNameStore((s) => s.pointsName);
+  const pointsName = usePointsConfigStore((s) => s.pointsName);
 
   const handleScan = useCallback(
     (decodedText: string) => {

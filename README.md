@@ -22,8 +22,8 @@ Uses a managed SuperTokens instance. Requires `SUPERTOKENS_CONNECTION_URI` and `
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-| Service      | URL                                 |
-| ------------ | ----------------------------------- |
+| Service      | URL                                   |
+| ------------ | ------------------------------------- |
 | Frontend     | `http://localhost:3000`               |
 | Backend API  | `http://localhost:8080/v1`            |
 | PostgreSQL   | `localhost:5432`                      |
@@ -38,8 +38,8 @@ Runs a self-hosted SuperTokens instance in Docker. No API key needed.
 docker compose -f docker-compose.local-st.yml up --build
 ```
 
-| Service      | URL                                 |
-| ------------ | ----------------------------------- |
+| Service      | URL                                   |
+| ------------ | ------------------------------------- |
 | Frontend     | `http://localhost:3000`               |
 | Backend API  | `http://localhost:8080/v1`            |
 | SuperTokens  | `localhost:3567`                      |
@@ -56,6 +56,17 @@ The backend runs database migrations automatically on startup. Both the frontend
 **Frontend:** React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui
 
 **Deployment:** GCP (GCR, GCS), multi-stage Docker (scratch), Neon DB
+
+## Production database migrations
+
+The production image starts the API but does not run database migrations. Run
+`task migrate-up` from a trusted migration job or workstation with `DB_ADDR`
+configured before the first API deployment and before deploying releases that
+include new migrations.
+
+On a fresh database, application submissions and the points system are disabled
+until a super admin enables them. Admin schedule, sponsor, and FAQ editing
+permissions remain enabled by default.
 
 ## Apple Wallet passes
 

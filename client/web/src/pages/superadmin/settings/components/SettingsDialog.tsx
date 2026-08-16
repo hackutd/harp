@@ -3,8 +3,7 @@
 import {
   AlertTriangle,
   BookOpen,
-  CalendarRange,
-  ScanLine,
+  Rocket,
   ShieldCheck,
   UtensilsCrossed,
 } from "lucide-react";
@@ -23,26 +22,23 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
+import HackathonTab from "../tabs/HackathonTab";
 import HackerPackTab from "../tabs/HackerPackTab";
 import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
-import ScansTab from "../tabs/ScansTab";
-import ScheduleTab from "../tabs/ScheduleTab";
 
 type SettingsTab =
+  | "hackathon"
   | "permissions"
-  | "schedule"
   | "meal-groups"
-  | "scans"
   | "hacker-pack"
   | "reset";
 
 const settingsTabs = [
+  { id: "hackathon" as const, label: "Hackathon", icon: Rocket },
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
-  { id: "schedule" as const, label: "Schedule", icon: CalendarRange },
   { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
-  { id: "scans" as const, label: "Points System", icon: ScanLine },
   { id: "hacker-pack" as const, label: "Hacker Pack", icon: BookOpen },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];
@@ -53,7 +49,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>("permissions");
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>("hackathon");
 
   const handleClose = () => {
     setOpen(false);
@@ -98,10 +94,9 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
             <ScrollArea className="flex-1 min-h-0">
               <div className="p-8">
+                {activeTab === "hackathon" && <HackathonTab />}
                 {activeTab === "permissions" && <PermissionsTab />}
-                {activeTab === "schedule" && <ScheduleTab />}
                 {activeTab === "meal-groups" && <MealGroupsTab />}
-                {activeTab === "scans" && <ScansTab />}
                 {activeTab === "hacker-pack" && <HackerPackTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>

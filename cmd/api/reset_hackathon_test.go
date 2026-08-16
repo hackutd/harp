@@ -5,29 +5,50 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sync"
 	"testing"
 
+	"github.com/hackutd/portal/internal/gcs"
 	"github.com/hackutd/portal/internal/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestResetHackathon(t *testing.T) {
 	t.Run("should allow super admin to reset data", func(t *testing.T) {
 		app := newTestApplication(t)
-		app.gcsClient = nil // Ensure GCS client is nil to skip file deletion logic
+		mockGCS := app.gcsClient.(*gcs.MockClient)
 
 		payload := ResetHackathonPayload{
 			ResetApplications:  true,
 			ResetScans:         true,
+			ResetScanTypes:     true,
 			ResetSchedule:      true,
 			ResetSettings:      true,
 			ResetNotifications: true,
+			ResetSponsors:      true,
+			ResetFAQs:          true,
+			ResetConfig:        true,
 		}
 
 		// Mock successful reset
 		app.store.Hackathon.(*store.MockHackathonStore).
-			On("Reset", true, true, true, true, true).
+			On("Reset", store.ResetOptions{
+				Applications: true, Scans: true, ScanTypes: true, Schedule: true,
+				Notifications: true, Settings: true, Sponsors: true, FAQs: true,
+				Config: true,
+			}).
 			Return([]string{"resume1.pdf", "resume2.pdf"}, nil)
+
+		// Resume cleanup runs in the background; wait for both deletes.
+		var deletions sync.WaitGroup
+		deletions.Add(2)
+		for _, path := range []string{"resume1.pdf", "resume2.pdf"} {
+			mockGCS.On("DeleteObject", mock.Anything, path).
+				Return(nil).
+				Once().
+				Run(func(mock.Arguments) { deletions.Done() })
+		}
 
 		reqBody, _ := json.Marshal(payload)
 		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
@@ -44,6 +65,95 @@ func TestResetHackathon(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 2, respBody.Data.ResumesDeleted)
 
+		deletions.Wait()
+		mockGCS.AssertExpectations(t)
+		app.store.Hackathon.(*store.MockHackathonStore).AssertExpectations(t)
+	})
+
+	t.Run("should not claim resume deletions when storage is unavailable", func(t *testing.T) {
+		app := newTestApplication(t)
+		app.gcsClient = nil
+
+		app.store.Hackathon.(*store.MockHackathonStore).
+			On("Reset", store.ResetOptions{Applications: true}).
+			Return([]string{"resume1.pdf", "resume2.pdf"}, nil)
+
+		reqBody, _ := json.Marshal(ResetHackathonPayload{ResetApplications: true})
+		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetHackathonHandler))
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data ResetHackathonResponse `json:"data"`
+		}
+		err := json.Unmarshal(rr.Body.Bytes(), &respBody)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, respBody.Data.ResumesDeleted)
+
+		app.store.Hackathon.(*store.MockHackathonStore).AssertExpectations(t)
+	})
+
+	t.Run("should reset content-only domains without touching applications", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		payload := ResetHackathonPayload{
+			ResetScanTypes: true,
+			ResetSponsors:  true,
+			ResetFAQs:      true,
+		}
+
+		app.store.Hackathon.(*store.MockHackathonStore).
+			On("Reset", store.ResetOptions{ScanTypes: true, Sponsors: true, FAQs: true}).
+			Return([]string(nil), nil)
+
+		reqBody, _ := json.Marshal(payload)
+		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetHackathonHandler))
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data ResetHackathonResponse `json:"data"`
+		}
+		err := json.Unmarshal(rr.Body.Bytes(), &respBody)
+		assert.NoError(t, err)
+		assert.True(t, respBody.Data.ResetScanTypes)
+		assert.True(t, respBody.Data.ResetSponsors)
+		assert.True(t, respBody.Data.ResetFAQs)
+		assert.False(t, respBody.Data.ResetApplications)
+		assert.Equal(t, 0, respBody.Data.ResumesDeleted)
+
+		app.store.Hackathon.(*store.MockHackathonStore).AssertExpectations(t)
+	})
+
+	t.Run("should reset per-cycle config on its own", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		app.store.Hackathon.(*store.MockHackathonStore).
+			On("Reset", store.ResetOptions{Config: true}).
+			Return([]string(nil), nil)
+
+		reqBody, _ := json.Marshal(ResetHackathonPayload{ResetConfig: true})
+		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetHackathonHandler))
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data ResetHackathonResponse `json:"data"`
+		}
+		err := json.Unmarshal(rr.Body.Bytes(), &respBody)
+		assert.NoError(t, err)
+		assert.True(t, respBody.Data.ResetConfig)
+		assert.False(t, respBody.Data.ResetSettings)
+
 		app.store.Hackathon.(*store.MockHackathonStore).AssertExpectations(t)
 	})
 
@@ -57,7 +167,7 @@ func TestResetHackathon(t *testing.T) {
 
 		// Simulate partial failure/rollback by returning error from store
 		app.store.Hackathon.(*store.MockHackathonStore).
-			On("Reset", true, false, false, false, false).
+			On("Reset", store.ResetOptions{Applications: true}).
 			Return([]string(nil), errors.New("db transaction failed"))
 
 		reqBody, _ := json.Marshal(payload)

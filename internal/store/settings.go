@@ -25,6 +25,12 @@ const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
 const SettingsKeyHackerPackURL = "hacker_pack_url"
 const SettingsKeyPointsName = "points_name"
+const SettingsKeyPointsEnabled = "points_enabled"
+const SettingsKeyHackathonName = "hackathon_name"
+const SettingsKeyContactEmail = "contact_email"
+const SettingsKeyFromEmail = "from_email"
+const SettingsKeyFromName = "from_name"
+const SettingsKeyApplicationDueDate = "application_due_date"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -259,6 +265,50 @@ func resetScanStats(ctx context.Context, tx *sql.Tx) error {
 func resetReviewAssignmentToggle(ctx context.Context, tx *sql.Tx) error {
 	query := `UPDATE settings SET value = '[]', updated_at = NOW() WHERE key = $1`
 	_, err := tx.ExecContext(ctx, query, SettingsKeyReviewAssignmentToggle)
+	return err
+}
+
+// DefaultScanTypes mirrors the seeded scan_types setting (migrations 000006 and
+// 000021). These two are structural — check-in gates the event and walk-in
+// drives the walk-in queue — so a reset restores them rather than emptying the
+// list. Meal, swag, and shop types are per-hackathon config and are dropped.
+const DefaultScanTypes = `[` +
+	`{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true,"points":0},` +
+	`{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true,"points":0}` +
+	`]`
+
+// resetScanTypes restores the default scan types within an existing transaction.
+func resetScanTypes(ctx context.Context, tx *sql.Tx) error {
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyScanTypes, DefaultScanTypes)
+	return err
+}
+
+// resetHackathonConfig clears the per-cycle hackathon configuration within an
+// existing transaction.
+func resetHackathonConfig(ctx context.Context, tx *sql.Tx) error {
+	// Deleting these rows returns each getter to its documented "not
+	// configured" default — empty date range, "Points", empty hacker pack URL —
+	// so the defaults live in exactly one place.
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM settings WHERE key IN ($1, $2, $3)`,
+		SettingsKeyHackathonDateRange, SettingsKeyPointsName, SettingsKeyHackerPackURL,
+	); err != nil {
+		return err
+	}
+
+	// applications_enabled is written explicitly rather than deleted:
+	// GetApplicationsEnabled treats a missing row as enabled, so deleting it
+	// would throw the public application form open on a freshly wiped
+	// hackathon. Closed is the safe resting state — reopen it deliberately.
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, 'false'::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyApplicationsEnabled)
 	return err
 }
 
@@ -612,6 +662,56 @@ func (s *SettingsStore) SetPointsName(ctx context.Context, name string) error {
 	return err
 }
 
+// GetPointsEnabled returns whether the points system is enabled.
+// Defaults to false if the setting row does not exist.
+func (s *SettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyPointsEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetPointsEnabled updates whether the points system is enabled. When disabled
+// the points system is hidden from the hacker-facing portal.
+func (s *SettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyPointsEnabled, string(jsonValue))
+	return err
+}
+
 // GetMealGroups returns the configured list of meal group names (e.g., ["A", "B", "C", "D"])
 func (s *SettingsStore) GetMealGroups(ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -705,7 +805,7 @@ func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return true, nil
+			return false, nil
 		}
 		return false, err
 	}
@@ -827,4 +927,106 @@ func (s *SettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled bool
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminFAQEditEnabled, string(jsonValue))
 	return err
+}
+
+// getStringSetting returns the string value stored under key, or an empty
+// string when the row does not exist or holds a JSON null.
+func (s *SettingsStore) getStringSetting(ctx context.Context, key string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, key).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	var parsed *string
+	if err := json.Unmarshal(value, &parsed); err != nil {
+		return "", err
+	}
+	if parsed == nil {
+		return "", nil
+	}
+
+	return *parsed, nil
+}
+
+// setStringSetting upserts a string value under key.
+func (s *SettingsStore) setStringSetting(ctx context.Context, key, value string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, key, string(jsonValue))
+	return err
+}
+
+// GetHackathonName returns the configured hackathon name (empty when unset).
+func (s *SettingsStore) GetHackathonName(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyHackathonName)
+}
+
+// SetHackathonName updates the hackathon name shown across the portal and emails.
+func (s *SettingsStore) SetHackathonName(ctx context.Context, name string) error {
+	return s.setStringSetting(ctx, SettingsKeyHackathonName, name)
+}
+
+// GetContactEmail returns the configured public contact email (empty when unset).
+func (s *SettingsStore) GetContactEmail(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyContactEmail)
+}
+
+// SetContactEmail updates the public contact email surfaced to hackers.
+func (s *SettingsStore) SetContactEmail(ctx context.Context, email string) error {
+	return s.setStringSetting(ctx, SettingsKeyContactEmail, email)
+}
+
+// GetFromEmail returns the configured sender email for outgoing mail.
+func (s *SettingsStore) GetFromEmail(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyFromEmail)
+}
+
+// SetFromEmail updates the sender email for outgoing mail.
+func (s *SettingsStore) SetFromEmail(ctx context.Context, email string) error {
+	return s.setStringSetting(ctx, SettingsKeyFromEmail, email)
+}
+
+// GetFromName returns the configured sender display name for outgoing mail.
+func (s *SettingsStore) GetFromName(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyFromName)
+}
+
+// SetFromName updates the sender display name for outgoing mail.
+func (s *SettingsStore) SetFromName(ctx context.Context, name string) error {
+	return s.setStringSetting(ctx, SettingsKeyFromName, name)
+}
+
+// GetApplicationDueDate returns the application deadline as YYYY-MM-DD.
+func (s *SettingsStore) GetApplicationDueDate(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyApplicationDueDate)
+}
+
+// SetApplicationDueDate updates the application deadline (YYYY-MM-DD).
+func (s *SettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
+	return s.setStringSetting(ctx, SettingsKeyApplicationDueDate, date)
 }

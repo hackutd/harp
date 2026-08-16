@@ -156,6 +156,27 @@ func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status App
 	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error) {
+	args := m.Called(statuses, kind, onlyUnsent)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DecisionEmailRecipient), args.Error(1)
+}
+
+func (m *MockApplicationStore) SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error {
+	args := m.Called(applicationIDs, kind, sent)
+	return args.Error(0)
+}
+
+func (m *MockApplicationStore) GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DecisionEmailStats), args.Error(1)
+}
+
 func (m *MockApplicationStore) SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error) {
 	args := m.Called(id, mealGroup)
 	if args.Get(0) == nil {
@@ -276,8 +297,68 @@ func (m *MockSettingsStore) GetPointsName(ctx context.Context) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockSettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) SetPointsName(ctx context.Context, name string) error {
 	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetHackathonName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetHackathonName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetContactEmail(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetContactEmail(ctx context.Context, email string) error {
+	args := m.Called(email)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetFromEmail(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetFromEmail(ctx context.Context, email string) error {
+	args := m.Called(email)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetFromName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetFromName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetApplicationDueDate(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
+	args := m.Called(date)
 	return args.Error(0)
 }
 
@@ -338,8 +419,8 @@ type MockHackathonStore struct {
 	mock.Mock
 }
 
-func (m *MockHackathonStore) Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error) {
-	args := m.Called(resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications)
+func (m *MockHackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string, error) {
+	args := m.Called(opts)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

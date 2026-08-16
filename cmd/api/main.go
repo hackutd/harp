@@ -45,6 +45,7 @@ func main() {
 
 	// Init configs
 	appURL := env.GetString("APP_URL", "http://localhost:8080")
+	frontendURL := env.GetString("FRONTEND_URL", appURL)
 
 	cfg := config{
 		addr:   env.GetString("ADDR", ":8080"),
@@ -69,6 +70,7 @@ func main() {
 			FromEmail:     env.GetString("EMAIL_FROM", "noreply@example.com"),
 			FromName:      env.GetString("EMAIL_FROM_NAME", env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName)),
 			HackathonName: env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName),
+			PortalURL:     frontendURL,
 		},
 		gcs: gcsConfig{
 			bucketName: env.GetString("GCS_BUCKET_NAME", ""),
@@ -86,7 +88,7 @@ func main() {
 			TimeFrame:           time.Second * 5,
 			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
-		frontendURL:      env.GetString("FRONTEND_URL", appURL),
+		frontendURL:      frontendURL,
 		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
 			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
@@ -155,6 +157,28 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to initialize mailer", zap.Error(err))
 	}
+
+	// Settings configured through the SuperAdmin onboarding form win over the
+	// env defaults above, so renaming the event never needs a redeploy.
+	mailClient.SetIdentityResolver(func() mailer.Identity {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		name, err := store.Settings.GetHackathonName(ctx)
+		if err != nil {
+			logger.Warnw("failed to read hackathon name setting", "error", err)
+		}
+		fromEmail, err := store.Settings.GetFromEmail(ctx)
+		if err != nil {
+			logger.Warnw("failed to read from email setting", "error", err)
+		}
+		fromName, err := store.Settings.GetFromName(ctx)
+		if err != nil {
+			logger.Warnw("failed to read from name setting", "error", err)
+		}
+
+		return mailer.Identity{HackathonName: name, FromEmail: fromEmail, FromName: fromName}
+	})
 
 	// Init GCS (optional in local/dev)
 	var gcsClient gcs.Client

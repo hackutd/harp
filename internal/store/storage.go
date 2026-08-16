@@ -40,6 +40,9 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
+		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
+		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)
 		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
@@ -59,6 +62,18 @@ type Storage struct {
 		SetHackerPackURL(ctx context.Context, url string) error
 		GetPointsName(ctx context.Context) (string, error)
 		SetPointsName(ctx context.Context, name string) error
+		GetPointsEnabled(ctx context.Context) (bool, error)
+		SetPointsEnabled(ctx context.Context, enabled bool) error
+		GetHackathonName(ctx context.Context) (string, error)
+		SetHackathonName(ctx context.Context, name string) error
+		GetContactEmail(ctx context.Context) (string, error)
+		SetContactEmail(ctx context.Context, email string) error
+		GetFromEmail(ctx context.Context) (string, error)
+		SetFromEmail(ctx context.Context, email string) error
+		GetFromName(ctx context.Context) (string, error)
+		SetFromName(ctx context.Context, name string) error
+		GetApplicationDueDate(ctx context.Context) (string, error)
+		SetApplicationDueDate(ctx context.Context, date string) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
@@ -73,7 +88,7 @@ type Storage struct {
 		SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
-		Reset(ctx context.Context, resetApplications, resetScans, resetSchedule, resetSettings, resetNotifications bool) ([]string, error)
+		Reset(ctx context.Context, opts ResetOptions) ([]string, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error

@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePointsNameStore } from "@/shared/stores";
+import { usePointsConfigStore } from "@/shared/stores";
 
 import type { ScanStat, ScanType, ScanTypeCategory } from "../types";
 import {
@@ -78,7 +78,7 @@ export function ScanTypesTable({
   const [pendingNew, setPendingNew] = useState<ScanType | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const editRowRef = useRef<HTMLTableRowElement>(null);
-  const pointsName = usePointsNameStore((s) => s.pointsName);
+  const pointsName = usePointsConfigStore((s) => s.pointsName);
 
   // When there's a pending new row, append it so it renders in the table
   const effectiveTypes = pendingNew ? [...scanTypes, pendingNew] : scanTypes;

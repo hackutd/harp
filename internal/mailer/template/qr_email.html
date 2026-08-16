@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your {{.HackathonName}} QR Code</title>
+    <title>Your {{.HackathonName}} QR code</title>
   </head>
   <body
     style="
@@ -46,15 +46,16 @@
             </tr>
             <tr>
               <td style="padding: 40px 30px">
-                <h2 style="color: #333333; margin: 0 0 20px">Hey {{.Name}},</h2>
+                <h2 style="color: #333333; margin: 0 0 20px">Hi {{.Name}}</h2>
                 <p style="color: #555555; font-size: 16px; line-height: 1.6">
-                  Congratulations on your acceptance! Your personal QR code for
-                  check-in is attached to this email. Please have this ready
-                  when you arrive.
+                  Your QR code for {{.HackathonName}} check-in is attached.
+                  Have it ready when you arrive.
                 </p>
                 <p style="color: #555555; font-size: 14px; line-height: 1.6">
-                  This QR code is unique to you. Do not share it with anyone
-                  else.
+                  This code is yours. Please don't share it with anyone else.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  {{.From}}
                 </p>
               </td>
             </tr>

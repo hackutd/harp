@@ -12,6 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate database migrations
+        run: ./scripts/check-migrations.sh
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
