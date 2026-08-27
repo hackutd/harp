@@ -22,6 +22,16 @@ is a file that will conflict on every future upgrade, forever. If you find
 yourself wanting to change application logic, that is a gap in Harp — open an
 issue or a pull request upstream rather than patching your fork.
 
+### But it is your copy
+
+Harp is MIT licensed — fork it, rewrite it, rename it, take it somewhere we
+would not recognise. No permission required.
+
+So treat the rule above as a price list, not a restriction. A branding-only fork
+pulls in a year of upstream work in minutes; one that rewrote the review flow
+pays for that on every release, and may be better off maintaining its own copy
+outright. Both are fine — just choose deliberately.
+
 ## What you change, and where
 
 | Tier              | Where                                          | Examples                                                                                                                     |
