@@ -7,6 +7,9 @@
 
 > Harp is under active development.
 
+**Running a hackathon at your school?** [ADOPTING.md](ADOPTING.md) is the whole
+setup path — fork, brand, deploy, configure, and upgrade.
+
 ## What is Harp?
 
 Running a hackathon often means piecing together forms, spreadsheets, email tools, schedules, and check-in systems. Harp brings that work into one place. It helps organizers manage the event from the moment applications open through the final day of the hackathon.
