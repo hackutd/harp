@@ -22,15 +22,13 @@ import (
 
 var version = "dev"
 
-// @title						HackPortal API
+// @title						Harp API
 // @version					1.0
-// @description				API for HackPortal
-// @termsOfService				http://swagger.io/terms/
-// @contact.name				API Support
-// @contact.url				http://www.swagger.io/support
-// @contact.email				support@swagger.io
-// @license.name				Apache 2.0
-// @license.url				http://www.apache.org/licenses/LICENSE-2.0.html
+// @description				API for Harp, the hackathon applications and review platform
+// @contact.name				Harp maintainers
+// @contact.url				https://github.com/hackutd/harp/issues
+// @license.name				MIT
+// @license.url				https://github.com/hackutd/harp/blob/main/LICENSE
 // @BasePath					/v1
 // @securityDefinitions.apikey	CookieAuth
 // @in							cookie

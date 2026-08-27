@@ -9,15 +9,13 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
         "contact": {
-            "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
+            "name": "Harp maintainers",
+            "url": "https://github.com/hackutd/harp/issues"
         },
         "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "name": "MIT",
+            "url": "https://github.com/hackutd/harp/blob/main/LICENSE"
         },
         "version": "{{.Version}}"
     },
@@ -9275,8 +9273,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/v1",
 	Schemes:          []string{},
-	Title:            "HackPortal API",
-	Description:      "API for HackPortal",
+	Title:            "Harp API",
+	Description:      "API for Harp, the hackathon applications and review platform",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
