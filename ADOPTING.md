@@ -24,11 +24,11 @@ issue or a pull request upstream rather than patching your fork.
 
 ## What you change, and where
 
-| Tier | Where | Examples |
-| --- | --- | --- |
-| **Event content** | Super-admin UI, at runtime | Hackathon name, dates, application questions, FAQ, sponsors, schedule, scan types, meal groups, points naming, contact email |
-| **Brand** | `client/portal/branding/` in your fork | Logo, colour palette, product name, PWA manifest |
-| **Deployment** | Environment variables + your own cloud account | Database URL, auth keys, email provider, file storage |
+| Tier              | Where                                          | Examples                                                                                                                     |
+| ----------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Event content** | Super-admin UI, at runtime                     | Hackathon name, dates, application questions, FAQ, sponsors, schedule, scan types, meal groups, points naming, contact email |
+| **Brand**         | `client/portal/branding/` in your fork         | Logo, colour palette, product name, PWA manifest                                                                             |
+| **Deployment**    | Environment variables + your own cloud account | Database URL, auth keys, email provider, file storage                                                                        |
 
 There is no fourth tier. Notice how little of it is code: renaming the event or
 rewriting the application form is something an organizer does in a browser, with
@@ -123,17 +123,17 @@ so renaming the event never needs a redeploy.
 
 Everything below is likewise edited in the portal, not in code:
 
-| What | Where |
-| --- | --- |
-| Application questions, sections, and validation | Super admin → **Application** |
-| FAQ, sponsors, schedule | Admin → **FAQ**, **Sponsors**, **Schedule** (super admins control who may edit each) |
-| Scan types for check-in, meals, and workshops | Settings dialog |
-| Meal groups | Settings → **Meal Groups** |
-| Points naming, and whether points appear at all | Settings dialog |
-| Hacker pack URL | Settings → **Hacker Pack** |
-| Reviews required per application, reviewer assignment | Settings dialog |
-| Whether applications are open | Settings dialog |
-| Clearing last year's data for a new cycle | Settings → **Reset Hackathon** |
+| What                                                  | Where                                                                                |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Application questions, sections, and validation       | Super admin → **Application**                                                        |
+| FAQ, sponsors, schedule                               | Admin → **FAQ**, **Sponsors**, **Schedule** (super admins control who may edit each) |
+| Scan types for check-in, meals, and workshops         | Settings dialog                                                                      |
+| Meal groups                                           | Settings → **Meal Groups**                                                           |
+| Points naming, and whether points appear at all       | Settings dialog                                                                      |
+| Hacker pack URL                                       | Settings → **Hacker Pack**                                                           |
+| Reviews required per application, reviewer assignment | Settings dialog                                                                      |
+| Whether applications are open                         | Settings dialog                                                                      |
+| Clearing last year's data for a new cycle             | Settings → **Reset Hackathon**                                                       |
 
 If you catch yourself hardcoding one of these, stop — it is already a setting.
 
