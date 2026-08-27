@@ -34,22 +34,6 @@ below with:
 
 _Demo GIF coming soon._
 
-## One platform for the full event lifecycle
-
-```mermaid
-flowchart LR
-    configure["Configure the event"] --> apply["Collect applications"]
-    apply --> review["Assign and review applications"]
-    review --> decide["Accept, reject, and notify"]
-    decide --> operate["Run check-in and event operations"]
-    operate --> reset["Reset for the next hackathon"]
-
-    configure -.-> publish["Publish schedules, FAQs, and sponsors"]
-    publish -.-> operate
-```
-
-Harp is useful for more than registration. Organizers can set up a new event, work through admissions, run the hackathon in real time, and prepare the platform for the next year.
-
 ## What the platform offers
 
 ### Hacker experience
@@ -129,10 +113,10 @@ This repository contains the shared backend and the authenticated portal. The ma
 
 ## The three core services
 
-| Service                    | Location                           | Responsibility                                                                                                           |
-| -------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Go backend**             | This repository: `cmd/api`, `internal` | Owns business logic, authorization, applications, reviews, decisions, event operations, public content, and persistence. |
-| **React portal**           | This repository: `client/portal`   | Provides the authenticated hacker, admin, and super-admin experience as a Vite-powered PWA.                              |
+| Service                    | Location                                                              | Responsibility                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Go backend**             | This repository: `cmd/api`, `internal`                                | Owns business logic, authorization, applications, reviews, decisions, event operations, public content, and persistence. |
+| **React portal**           | This repository: `client/portal`                                      | Provides the authenticated hacker, admin, and super-admin experience as a Vite-powered PWA.                              |
 | **Next.js marketing site** | [`hackutd/harp-marketing`](https://github.com/hackutd/harp-marketing) | Provides the public event website and renders frequently updated content from the Go public API.                         |
 
 ## Marketing site template
