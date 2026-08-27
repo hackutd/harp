@@ -40,6 +40,8 @@ import {
   fetchFromName,
   fetchHackathonDateRange,
   fetchHackathonName,
+  fetchPrivacyPolicyURL,
+  fetchTermsURL,
   resetHackathon,
   updateApplicationDueDate,
   updateContactEmail,
@@ -47,11 +49,22 @@ import {
   updateFromName,
   updateHackathonDateRange,
   updateHackathonName,
+  updatePrivacyPolicyURL,
+  updateTermsURL,
 } from "../api";
 import type { OnboardingValues } from "../types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const URL_PATTERN = /^https?:\/\//i;
+
+// Legal links are optional here on purpose: they do not count toward onboarding
+// completion, so a deployment is never blocked on publishing them. When one is
+// supplied it still has to be a real link.
+function isValidOptionalURL(value: string): boolean {
+  const trimmed = value.trim();
+  return !trimmed || URL_PATTERN.test(trimmed);
+}
 
 const EMPTY_VALUES: OnboardingValues = {
   hackathon_name: "",
@@ -61,6 +74,8 @@ const EMPTY_VALUES: OnboardingValues = {
   contact_email: "",
   from_email: "",
   from_name: "",
+  privacy_policy_url: "",
+  terms_url: "",
 };
 
 interface OnboardingDialogProps {
@@ -165,14 +180,17 @@ export function OnboardingDialog({
     const load = async () => {
       setLoading(true);
       setSavedDateRange(null);
-      const [name, range, appDue, contact, from, fromName] = await Promise.all([
-        fetchHackathonName(controller.signal),
-        fetchHackathonDateRange(controller.signal),
-        fetchApplicationDueDate(controller.signal),
-        fetchContactEmail(controller.signal),
-        fetchFromEmail(controller.signal),
-        fetchFromName(controller.signal),
-      ]);
+      const [name, range, appDue, contact, from, fromName, privacy, terms] =
+        await Promise.all([
+          fetchHackathonName(controller.signal),
+          fetchHackathonDateRange(controller.signal),
+          fetchApplicationDueDate(controller.signal),
+          fetchContactEmail(controller.signal),
+          fetchFromEmail(controller.signal),
+          fetchFromName(controller.signal),
+          fetchPrivacyPolicyURL(controller.signal),
+          fetchTermsURL(controller.signal),
+        ]);
       if (controller.signal.aborted) return;
 
       setValues({
@@ -183,6 +201,8 @@ export function OnboardingDialog({
         contact_email: contact.data?.email ?? "",
         from_email: from.data?.email ?? "",
         from_name: fromName.data?.name ?? "",
+        privacy_policy_url: privacy.data?.url ?? "",
+        terms_url: terms.data?.url ?? "",
       });
       setSavedDateRange(
         range.data?.start_date && range.data.end_date
@@ -229,6 +249,10 @@ export function OnboardingDialog({
     if (!EMAIL_PATTERN.test(values.from_email.trim()))
       return "Enter a valid sender email.";
     if (!values.from_name.trim()) return "Sender name is required.";
+    if (!isValidOptionalURL(values.terms_url))
+      return "Terms of Service link must start with http:// or https://.";
+    if (!isValidOptionalURL(values.privacy_policy_url))
+      return "Privacy Policy link must start with http:// or https://.";
     return null;
   }, [parsedAppDue, parsedEnd, parsedStart, values]);
 
@@ -266,6 +290,8 @@ export function OnboardingDialog({
       updateContactEmail(values.contact_email.trim()),
       updateFromEmail(values.from_email.trim()),
       updateFromName(values.from_name.trim()),
+      updatePrivacyPolicyURL(values.privacy_policy_url.trim()),
+      updateTermsURL(values.terms_url.trim()),
     ]);
 
     const failed = responses.find((res) => res.status !== 200);
@@ -314,9 +340,9 @@ export function OnboardingDialog({
           <DialogOverlay className="bg-black/60 backdrop-blur-sm" />
           <DialogPrimitive.Content
             onInteractOutside={(event) => event.preventDefault()}
-            className="fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+            className="fixed top-1/2 left-1/2 z-50 flex max-h-[92vh] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           >
-            <div className="flex items-start gap-3 border-b border-zinc-800 p-6">
+            <div className="flex items-start gap-3 border-b border-zinc-800 px-6 py-4">
               <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-900">
                 <Rocket className="size-4 text-zinc-300" />
               </span>
@@ -450,6 +476,59 @@ export function OnboardingDialog({
                   Email credentials (SendGrid / SMTP) stay in your deployment
                   environment — only the visible sender identity lives here.
                 </p>
+
+                <div className="space-y-3 border-t border-zinc-800 pt-4">
+                  <div className="space-y-1">
+                    <Label className="text-zinc-300">
+                      Legal links{" "}
+                      <span className="text-xs text-zinc-500">(optional)</span>
+                    </Label>
+                    <p className="text-xs text-zinc-500">
+                      The sign-in page tells hackers they agree to these before
+                      they apply, and shows that notice only once a link is set.
+                      Harp cannot provide the documents — they describe how your
+                      organization handles applicant data, including the
+                      demographic fields on the application form.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="onboarding-terms-url"
+                        className="text-zinc-300"
+                      >
+                        Terms of Service URL
+                      </Label>
+                      <Input
+                        id="onboarding-terms-url"
+                        placeholder="https://yourhackathon.com/terms"
+                        value={values.terms_url}
+                        disabled={loading || saving}
+                        onChange={(e) => setField("terms_url", e.target.value)}
+                        className="border-zinc-800 bg-zinc-950 text-zinc-100 placeholder:text-zinc-600"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="onboarding-privacy-url"
+                        className="text-zinc-300"
+                      >
+                        Privacy Policy URL
+                      </Label>
+                      <Input
+                        id="onboarding-privacy-url"
+                        placeholder="https://yourhackathon.com/privacy"
+                        value={values.privacy_policy_url}
+                        disabled={loading || saving}
+                        onChange={(e) =>
+                          setField("privacy_policy_url", e.target.value)
+                        }
+                        className="border-zinc-800 bg-zinc-950 text-zinc-100 placeholder:text-zinc-600"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </ScrollArea>
 

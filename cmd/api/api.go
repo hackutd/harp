@@ -150,6 +150,10 @@ func (app *application) mount() http.Handler {
 			r.Get("/faq", app.getPublicFAQHandler)
 		})
 
+		// Legal document links. Unauthenticated on purpose: the login page
+		// tells hackers they agree to these before they have a session.
+		r.Get("/legal", app.getLegalConfigHandler)
+
 		// Auth endpoints not handled by SuperTokens
 		r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
 		r.With(app.AuthRequiredMiddleware).Get("/auth/me", app.getCurrentUserHandler)
@@ -314,6 +318,10 @@ func (app *application) mount() http.Handler {
 						r.Post("/from-name", app.setFromName)
 						r.Get("/application-due-date", app.getApplicationDueDate)
 						r.Post("/application-due-date", app.setApplicationDueDate)
+						r.Get("/privacy-policy-url", app.getPrivacyPolicyURL)
+						r.Post("/privacy-policy-url", app.setPrivacyPolicyURL)
+						r.Get("/terms-url", app.getTermsURL)
+						r.Post("/terms-url", app.setTermsURL)
 						r.Get("/onboarding-status", app.getOnboardingStatus)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)

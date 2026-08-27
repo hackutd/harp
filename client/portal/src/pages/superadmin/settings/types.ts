@@ -26,6 +26,10 @@ export interface HackerPackURLResult {
   url: string;
 }
 
+export interface URLSettingResult {
+  url: string;
+}
+
 export interface PointsNameResult {
   name: string;
 }
@@ -75,4 +79,6 @@ export interface OnboardingValues {
   contact_email: string;
   from_email: string;
   from_name: string;
+  privacy_policy_url: string;
+  terms_url: string;
 }

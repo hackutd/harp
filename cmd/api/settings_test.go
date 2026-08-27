@@ -974,3 +974,178 @@ func TestGetOnboardingStatus(t *testing.T) {
 		mockSettings.AssertExpectations(t)
 	})
 }
+
+func TestGetLegalConfig(t *testing.T) {
+	t.Run("should return both links without a session", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		mockSettings.On("GetPrivacyPolicyURL").Return("https://example.com/privacy", nil).Once()
+		mockSettings.On("GetTermsURL").Return("https://example.com/terms", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		// Deliberately no setUserContext: the login page calls this before
+		// anyone is signed in.
+
+		rr := executeRequest(req, http.HandlerFunc(app.getLegalConfigHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data LegalConfigResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Equal(t, "https://example.com/privacy", respBody.Data.PrivacyPolicyURL)
+		assert.Equal(t, "https://example.com/terms", respBody.Data.TermsURL)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return empty strings when unconfigured", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+		mockSettings.On("GetPrivacyPolicyURL").Return("", nil).Once()
+		mockSettings.On("GetTermsURL").Return("", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getLegalConfigHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data LegalConfigResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Empty(t, respBody.Data.PrivacyPolicyURL)
+		assert.Empty(t, respBody.Data.TermsURL)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestSetPrivacyPolicyURL(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should store a valid https url", func(t *testing.T) {
+		mockSettings.On("SetPrivacyPolicyURL", "https://example.com/privacy").Return(nil).Once()
+
+		body := `{"url":"  https://example.com/privacy  "}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPrivacyPolicyURL))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var respBody struct {
+			Data URLSettingResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&respBody)
+		require.NoError(t, err)
+		assert.Equal(t, "https://example.com/privacy", respBody.Data.URL)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should accept an empty url to clear the link", func(t *testing.T) {
+		mockSettings.On("SetPrivacyPolicyURL", "").Return(nil).Once()
+
+		body := `{"url":""}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPrivacyPolicyURL))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject a url without an http scheme", func(t *testing.T) {
+		body := `{"url":"example.com/privacy"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPrivacyPolicyURL))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should reject a javascript scheme", func(t *testing.T) {
+		body := `{"url":"javascript:alert(1)"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setPrivacyPolicyURL))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
+func TestSetTermsURL(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("should store a valid url", func(t *testing.T) {
+		mockSettings.On("SetTermsURL", "https://example.com/terms").Return(nil).Once()
+
+		body := `{"url":"https://example.com/terms"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setTermsURL))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject a relative url", func(t *testing.T) {
+		body := `{"url":"/terms"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.setTermsURL))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+}
+
+// The whole point of /v1/legal is that it answers before anyone has a session.
+// Exercise it through the real router so a future refactor that moves the route
+// inside the authenticated group fails here rather than in production.
+func TestLegalConfigRouteIsUnauthenticated(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockSettings.On("GetPrivacyPolicyURL").Return("https://example.com/privacy", nil).Once()
+	mockSettings.On("GetTermsURL").Return("", nil).Once()
+
+	mux := app.mount()
+
+	req, err := http.NewRequest(http.MethodGet, "/v1/legal", nil)
+	require.NoError(t, err)
+
+	rr := executeRequest(req, mux)
+	checkResponseCode(t, http.StatusOK, rr.Code)
+
+	var respBody struct {
+		Data LegalConfigResponse `json:"data"`
+	}
+	err = json.NewDecoder(rr.Body).Decode(&respBody)
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/privacy", respBody.Data.PrivacyPolicyURL)
+	assert.Empty(t, respBody.Data.TermsURL)
+
+	mockSettings.AssertExpectations(t)
+}

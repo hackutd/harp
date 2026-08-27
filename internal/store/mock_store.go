@@ -332,6 +332,26 @@ func (m *MockSettingsStore) SetContactEmail(ctx context.Context, email string) e
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetPrivacyPolicyURL(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPrivacyPolicyURL(ctx context.Context, url string) error {
+	args := m.Called(url)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetTermsURL(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetTermsURL(ctx context.Context, url string) error {
+	args := m.Called(url)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetFromEmail(ctx context.Context) (string, error) {
 	args := m.Called()
 	return args.String(0), args.Error(1)
