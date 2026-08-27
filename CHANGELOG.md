@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/hackutd/harp/compare/v0.10.0...v0.11.0) (2026-08-27)
+
+
+### Features
+
+* hide "is required" error text and lower answer text toward underline ([#132](https://github.com/hackutd/harp/issues/132)) ([54ab604](https://github.com/hackutd/harp/commit/54ab60498c9223d924267e97207db52df95b13bf))
+
+
+### Bug Fixes
+
+* debrand for adopters ([#133](https://github.com/hackutd/harp/issues/133)) ([a805705](https://github.com/hackutd/harp/commit/a8057052cc6cac4001f591555138fc2e1e1d5fbc))
+
 ## [0.10.0](https://github.com/hackutd/harp/compare/v0.9.0...v0.10.0) (2026-08-24)
 
 
