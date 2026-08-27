@@ -130,19 +130,15 @@ This repository contains the shared backend and the authenticated portal. The ma
 | -------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | **Go backend**             | This repository: `cmd/api`, `internal` | Owns business logic, authorization, applications, reviews, decisions, event operations, public content, and persistence. |
 | **React portal**           | This repository: `client/portal`   | Provides the authenticated hacker, admin, and super-admin experience as a Vite-powered PWA.                              |
-| **Next.js marketing site** | Separate template repository       | Provides the public event website and renders frequently updated content from the Go public API.                         |
+| **Next.js marketing site** | [`hackutd/harp-marketing`](https://github.com/hackutd/harp-marketing) | Provides the public event website and renders frequently updated content from the Go public API.                         |
 
 ## Marketing site template
 
-The reusable Next.js marketing template is maintained in a separate GitHub repository. Start from that template for each hackathon, then redesign it around the new event's theme while keeping the public API connection in place.
+The reusable Next.js marketing template lives in its own repository:
 
-<!--
-Replace the line below with a link when the marketing template repository is ready:
+**[hackutd/harp-marketing](https://github.com/hackutd/harp-marketing)**
 
-[Marketing site base template](https://github.com/your-organization/your-marketing-template)
--->
-
-_Marketing site base template repository link coming soon._
+Start from it for each hackathon, then redesign it around the new event's theme while keeping the public API connection in place. It deploys independently to Vercel and reads schedules, FAQs, and sponsors from `/v1/public/*` using a shared `PUBLIC_API_KEY`, so a redesign never touches the backend.
 
 ## Technology at a glance
 
