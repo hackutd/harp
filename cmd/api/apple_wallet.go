@@ -18,7 +18,7 @@ const appleWalletPassMIMEType = "application/vnd.apple.pkpass"
 const defaultAppleWalletPassFilename = "hacker-pass.pkpass"
 
 // appleWalletPassFilename names the download after the configured event, so a
-// hacker ends up with hackutd-2027-hacker-pass.pkpass rather than a file named
+// hacker ends up with a pass named after their own event rather than a file named
 // after whoever happens to run the upstream project.
 //
 // Content-Disposition filenames must be ASCII (RFC 6266) and the slug is
