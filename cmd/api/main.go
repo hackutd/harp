@@ -47,6 +47,14 @@ func main() {
 	appURL := env.GetString("APP_URL", "http://localhost:8080")
 	frontendURL := env.GetString("FRONTEND_URL", appURL)
 
+	// Wallet passes carry the organizer's name, so fall back through
+	// HACKATHON_NAME rather than making every deployment set a second variable
+	// with the same answer. These cannot default to "": applewallet.New rejects
+	// an empty organization name or description, which would turn
+	// APPLE_WALLET_ENABLED=true into a boot failure.
+	walletOrganizationName := env.GetString("APPLE_WALLET_ORGANIZATION_NAME",
+		env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName))
+
 	cfg := config{
 		addr:   env.GetString("ADDR", ":8080"),
 		appURL: appURL,
@@ -91,7 +99,7 @@ func main() {
 		frontendURL:      frontendURL,
 		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
-			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
+			appName:            env.GetString("APP_NAME", "Harp Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),
 			apiKey:             env.GetRequiredString("SUPERTOKENS_API_KEY"),
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
@@ -106,8 +114,8 @@ func main() {
 			enabled:               env.GetBool("APPLE_WALLET_ENABLED", false),
 			passTypeIdentifier:    env.GetString("APPLE_WALLET_PASS_TYPE_IDENTIFIER", ""),
 			teamIdentifier:        env.GetString("APPLE_WALLET_TEAM_IDENTIFIER", ""),
-			organizationName:      env.GetString("APPLE_WALLET_ORGANIZATION_NAME", "HackUTD"),
-			description:           env.GetString("APPLE_WALLET_DESCRIPTION", "HackUTD Hacker Pass"),
+			organizationName:      walletOrganizationName,
+			description:           env.GetString("APPLE_WALLET_DESCRIPTION", walletOrganizationName+" Hacker Pass"),
 			certificateBase64:     env.GetString("APPLE_WALLET_CERTIFICATE_BASE64", ""),
 			privateKeyBase64:      env.GetString("APPLE_WALLET_PRIVATE_KEY_BASE64", ""),
 			wwdrCertificateBase64: env.GetString("APPLE_WALLET_WWDR_CERTIFICATE_BASE64", ""),
