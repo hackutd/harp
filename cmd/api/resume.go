@@ -7,18 +7,17 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"unicode"
 
 	"github.com/go-chi/chi"
+	"github.com/hackutd/portal/internal/slug"
 	"github.com/hackutd/portal/internal/store"
 )
 
 const randomResumeObjectIDBytes = 16
 
 const (
-	maxHackathonStorageSlugRunes = 80
-	hackathonStorageRootPrefix   = "hackathons/"
-	legacyResumeStoragePrefix    = "resumes/"
+	hackathonStorageRootPrefix = "hackathons/"
+	legacyResumeStoragePrefix  = "resumes/"
 )
 
 type ResumeUploadURLResponse struct {
@@ -105,7 +104,7 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 }
 
 func resumeStoragePrefix(hackathonName string) string {
-	return fmt.Sprintf("hackathons/%s/resumes/", hackathonStorageSlug(hackathonName))
+	return fmt.Sprintf("hackathons/%s/resumes/", slug.Hackathon(hackathonName))
 }
 
 // resumeStoragePrefixFromPath recognizes both current namespaced object paths
@@ -157,47 +156,6 @@ func validResumeObjectPath(objectPath, userID string) bool {
 	}
 	_, err := hex.DecodeString(objectID)
 	return err == nil
-}
-
-// hackathonStorageSlug turns the organizer-controlled display name into one
-// safe object-prefix segment. A year in the configured name (for example,
-// "HackUTD 2027") naturally creates a new per-cycle prefix.
-func hackathonStorageSlug(name string) string {
-	var (
-		builder      strings.Builder
-		writtenRunes int
-		separatorDue bool
-	)
-
-	for _, r := range strings.TrimSpace(name) {
-		if unicode.IsLetter(r) || unicode.IsNumber(r) {
-			runesNeeded := 1
-			if separatorDue && writtenRunes > 0 {
-				runesNeeded++
-			}
-			if writtenRunes+runesNeeded > maxHackathonStorageSlugRunes {
-				break
-			}
-
-			if separatorDue && writtenRunes > 0 {
-				builder.WriteByte('-')
-				writtenRunes++
-			}
-			separatorDue = false
-			builder.WriteRune(unicode.ToLower(r))
-			writtenRunes++
-			continue
-		}
-
-		if writtenRunes > 0 {
-			separatorDue = true
-		}
-	}
-
-	if builder.Len() == 0 {
-		return "unconfigured-hackathon"
-	}
-	return builder.String()
 }
 
 // deleteResumeHandler removes the resume path from the draft application and best-effort deletes from GCS.

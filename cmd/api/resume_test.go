@@ -123,25 +123,6 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 	})
 }
 
-func TestHackathonStorageSlug(t *testing.T) {
-	tests := map[string]struct {
-		name string
-		want string
-	}{
-		"name and year":     {name: "HackUTD 2027", want: "hackutd-2027"},
-		"unsafe separators": {name: "  Pearl / Hacks: 2027!  ", want: "pearl-hacks-2027"},
-		"unicode name":      {name: "Hackatón México 2027", want: "hackatón-méxico-2027"},
-		"unconfigured":      {name: "", want: "unconfigured-hackathon"},
-		"punctuation only":  {name: "///", want: "unconfigured-hackathon"},
-	}
-
-	for testName, tt := range tests {
-		t.Run(testName, func(t *testing.T) {
-			assert.Equal(t, tt.want, hackathonStorageSlug(tt.name))
-		})
-	}
-}
-
 func TestResumeStoragePrefixFromPath(t *testing.T) {
 	tests := map[string]struct {
 		path string

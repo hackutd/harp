@@ -5,13 +5,33 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+
+	"github.com/hackutd/portal/internal/slug"
 )
 
 const (
 	// DefaultHackathonName is the fallback event name used in email subjects
 	// and bodies when HACKATHON_NAME is unset.
 	DefaultHackathonName = "Hackathon"
+
+	// defaultQRAttachmentFilename is used when the configured event name has no
+	// ASCII characters to build a filename from.
+	defaultQRAttachmentFilename = "qr-code.png"
 )
+
+// qrAttachmentFilename names the attached QR image after the configured event,
+// so a hacker saves smu-hacks-2027-qr-code.png rather than a file named after
+// whoever happens to run the upstream project.
+//
+// Mail clients handle non-ASCII attachment names inconsistently, so the slug is
+// reduced to ASCII the same way download filenames are.
+func qrAttachmentFilename(hackathonName string) string {
+	name := slug.ASCII(slug.Hackathon(hackathonName))
+	if name == "" || name == slug.UnconfiguredHackathon {
+		return defaultQRAttachmentFilename
+	}
+	return name + "-qr-code.png"
+}
 
 //go:embed template/*
 var FS embed.FS
