@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hackutd/portal/internal/auth"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/auth"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 

@@ -10,7 +10,7 @@ import (
 	"unicode"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 const randomResumeObjectIDBytes = 16

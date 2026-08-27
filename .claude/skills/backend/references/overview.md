@@ -200,7 +200,7 @@ When you do log: include `"method", r.Method, "path", r.URL.Path` and any contex
 
 ### Imports & Tooling
 
-- Module path: `github.com/hackutd/portal/...`
+- Module path: `github.com/hackutd/harp/...`
 - Routing: `github.com/go-chi/chi`
 - Validation: `github.com/go-playground/validator/v10`
 - Tests: `github.com/stretchr/testify/{mock,assert,require}`
