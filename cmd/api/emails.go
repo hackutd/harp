@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/hackutd/portal/internal/mailer"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/mailer"
+	"github.com/hackutd/harp/internal/store"
 )
 
 // decisionEmailConcurrency bounds how many emails are in flight at once. Both

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/hackutd/portal/internal/applewallet"
-	"github.com/hackutd/portal/internal/slug"
+	"github.com/hackutd/harp/internal/applewallet"
+	"github.com/hackutd/harp/internal/slug"
 )
 
 const appleWalletPassMIMEType = "application/vnd.apple.pkpass"

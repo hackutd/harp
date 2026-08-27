@@ -10,11 +10,11 @@ conflict on every single upgrade. Nothing upstream touches these files, so
 
 ## What to change
 
-| File | What it controls |
-| --- | --- |
-| `index.ts` | Product name, PWA manifest text, SuperTokens app name, browser theme colour |
-| `theme.css` | The full colour palette, light and dark |
-| `assets/logo.webp` | Sign-in page logo and browser favicon |
+| File               | What it controls                                                            |
+| ------------------ | --------------------------------------------------------------------------- |
+| `index.ts`         | Product name, PWA manifest text, SuperTokens app name, browser theme colour |
+| `theme.css`        | The full colour palette, light and dark                                     |
+| `assets/logo.webp` | Sign-in page logo and browser favicon                                       |
 
 Start with `--primary` and `--primary-foreground` in `theme.css` and `appName`
 in `index.ts`. That covers most of what a hacker actually sees.

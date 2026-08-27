@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/gcs"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/gcs"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

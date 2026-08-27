@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 func (app *application) internalServerError(w http.ResponseWriter, r *http.Request, err error) {

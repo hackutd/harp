@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/hackutd/portal/internal/slug"
+	"github.com/hackutd/harp/internal/slug"
 )
 
 const (

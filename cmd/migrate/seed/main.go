@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/hackutd/portal/internal/db"
-	"github.com/hackutd/portal/internal/env"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/db"
+	"github.com/hackutd/harp/internal/env"
+	"github.com/hackutd/harp/internal/store"
 )
 
 func main() {
