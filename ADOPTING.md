@@ -22,22 +22,35 @@ is a file that will conflict on every future upgrade, forever. If you find
 yourself wanting to change application logic, that is a gap in Harp — open an
 issue or a pull request upstream rather than patching your fork.
 
+### The one exception
+
+The sign-in page is not yet fully brandable, and Harp's own wordmark is
+hardcoded into it. Until that is fixed you should edit
+`client/portal/src/pages/public/LoginPage.tsx` directly — do not ship an
+applicant a login screen with someone else's branding on it.
+
+That is a deliberate exception, not the rule loosening. It is one file, it will
+conflict on every upgrade, and the file contains real sign-in logic underneath
+the markup, so resolving that conflict carelessly can silently drop an auth fix.
+[`client/portal/branding/README.md`](client/portal/branding/README.md) covers
+how to make the change survive a merge. Read it before you start.
+
+The wider point stands: the branding directory is still growing, and gaps like
+this one are being closed. If you hit another, treat it as a bug in Harp worth
+reporting rather than a second file to patch.
+
 ### But it is your copy
 
-Harp is MIT licensed — fork it, rewrite it, rename it, take it somewhere we
-would not recognise. No permission required.
+At the end of the day Harp is MIT licensed — do whatever you'd like with it.
 
-So treat the rule above as a price list, not a restriction. A branding-only fork
-pulls in a year of upstream work in minutes; one that rewrote the review flow
-pays for that on every release, and may be better off maintaining its own copy
-outright. Both are fine — just choose deliberately.
+You might be better off maintaining your own copy rather than pulling each year. Both are fine, just choose deliberately. And don't blame me if it all falls apart (we do not have FDSE roles).
 
 ## What you change, and where
 
 | Tier              | Where                                          | Examples                                                                                                                     |
 | ----------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **Event content** | Super-admin UI, at runtime                     | Hackathon name, dates, application questions, FAQ, sponsors, schedule, scan types, meal groups, points naming, contact email |
-| **Brand**         | `client/portal/branding/` in your fork         | Logo, colour palette, product name, PWA manifest                                                                             |
+| **Brand**         | `client/portal/branding/` in your fork         | Logo, colour palette, product name, PWA manifest — plus the sign-in page, for now                                            |
 | **Deployment**    | Environment variables + your own cloud account | Database URL, auth keys, email provider, file storage                                                                        |
 
 There is no fourth tier. Notice how little of it is code: renaming the event or
@@ -76,8 +89,14 @@ The short version: `index.ts` for names and the theme colour, `theme.css` for
 the palette, `assets/logo.webp` for the logo. Swap `public/pwa-192x192.png` and
 `public/pwa-512x512.png` in place, keeping their filenames.
 
-Upstream will never edit those files again, so this commit is the only
-permanent difference between your fork and Harp.
+Upstream will never edit those files again, so that commit costs you nothing at
+upgrade time. Its README also documents what the directory does not yet reach —
+fonts, the applicant-facing palette, and the sign-in page — so read it before
+assuming a restyle is possible without touching `src/`.
+
+Then make your sign-in page edit as a **separate commit**, on its own, touching
+only `LoginPage.tsx`. Keeping it apart from the branding commit is what makes it
+findable next year.
 
 ### 3. Run it locally
 
@@ -171,20 +190,32 @@ git merge v0.10.0
 **Upgrade between events, never during one.** A hackathon weekend is the worst
 possible time to discover a migration surprise.
 
-If you kept to the one rule, the merge is clean: you own
+If you kept to the one rule, the merge is nearly clean: you own
 `client/portal/branding/`, upstream owns everything else, and the two do not
-overlap.
+overlap. Expect exactly one conflict — the sign-in page.
 
 ### When a merge does conflict
 
-The one case that needs real care is a **migration number collision** — you
-added `000032`, and so did upstream. `cmd/migrate/migrations/README.md` explains
+**`LoginPage.tsx`** is the expected one, if you restyled it. Diff upstream's
+side before you resolve, rather than keeping yours wholesale:
+
+```bash
+git diff v0.9.0..v0.10.0 -- client/portal/src/pages/public/LoginPage.tsx
+```
+
+The file holds magic-link creation, the wrong-sign-in-method check, third-party
+redirects, and error handling underneath the markup. Take upstream's logic and
+keep your layout; discarding its side silently reverts auth fixes, and you find
+out when a hacker cannot sign in.
+
+A **migration number collision** — you added `000032`, and so did upstream — is
+the other case that needs real care. `cmd/migrate/migrations/README.md` explains
 why the numbering is load-bearing and how to renumber safely. Read it before you
 touch anything; the obvious workaround of picking a very high number silently
 breaks every future upgrade.
 
-Otherwise, a conflict outside `branding/` is a signal that something drifted
-into your fork that should have gone upstream. Consider sending it there.
+Any other conflict outside `branding/` is a signal that something drifted into
+your fork that should have gone upstream. Consider sending it there.
 
 ## Contributing back
 
