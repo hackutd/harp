@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/hackutd/harp/compare/v0.11.0...v0.12.0) (2026-08-27)
+
+
+### Features
+
+* custom legal links ([#136](https://github.com/hackutd/harp/issues/136)) ([0767a6d](https://github.com/hackutd/harp/commit/0767a6dd7cfdda67979f691995ff4e9aafbfc151))
+
 ## [0.11.0](https://github.com/hackutd/harp/compare/v0.10.0...v0.11.0) (2026-08-27)
 
 
