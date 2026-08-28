@@ -29,36 +29,34 @@ export function PushPromptHost() {
 
   return (
     <Dialog open={shouldPrompt} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm rounded-xl p-5 sm:max-w-sm">
+      <DialogContent className="flex max-w-xs flex-col rounded-xl p-5 sm:max-w-xs">
         <DialogHeader>
-          <DialogTitle className="font-normal">
-            Get notified about your application status
-          </DialogTitle>
+          <DialogTitle className="font-normal">Get Notified</DialogTitle>
           <DialogDescription>
             Allow push notifications so we can let you know when reviews and
             announcements drop.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
-            variant="outline"
-            className="rounded-full"
-            disabled={enabling}
-            onClick={() => dismiss()}
-          >
-            Not now
-          </Button>
-          <Button
-            type="button"
-            className="rounded-full"
+            className="w-full rounded-full"
             loading={enabling}
             onClick={() => {
               void handleEnable();
             }}
           >
             Allow notifications
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-full"
+            disabled={enabling}
+            onClick={() => dismiss()}
+          >
+            Not now
           </Button>
         </div>
       </DialogContent>
