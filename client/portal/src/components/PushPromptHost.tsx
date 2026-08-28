@@ -29,7 +29,7 @@ export function PushPromptHost() {
 
   return (
     <Dialog open={shouldPrompt} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex min-h-72 max-w-xs flex-col rounded-xl p-5 sm:max-w-xs">
+      <DialogContent className="flex max-w-xs flex-col rounded-xl p-5 sm:max-w-xs">
         <DialogHeader>
           <DialogTitle className="font-normal">Get Notified</DialogTitle>
           <DialogDescription>
@@ -38,7 +38,7 @@ export function PushPromptHost() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
             className="w-full rounded-full"
