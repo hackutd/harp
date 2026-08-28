@@ -25,8 +25,7 @@ When the next cycle comes around, pick one:
   actually want it.
 
 What you should _not_ do is try to keep a year of your own design changes
-merging cleanly against upstream forever. That is a maintenance contract nobody
-staffed, and it is why this document used to be much stricter than it is now.
+merging cleanly against upstream forever.
 
 ## The one thing you cannot throw away
 
@@ -258,5 +257,5 @@ Design work is the exception. Your event's look is yours — keep it.
 ## It is your copy
 
 Harp is MIT licensed. Do whatever you like with it, including ignoring
-everything above. And don't blame me if it all falls apart; we do not have FDSE
-roles.
+everything above. And don't blame me if it all falls apart (there are no HackUTD FDSE
+roles)

@@ -36,7 +36,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
       {loading && (
         <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse table-fixed min-w-[1400px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+      <Table className="border-collapse table-fixed min-w-[1400px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-28">Status</TableHead>
@@ -65,55 +65,73 @@ export const ApplicationsTable = memo(function ApplicationsTable({
               </TableCell>
             </TableRow>
           ) : (
-            applications.map((app) => (
-              <TableRow
-                key={app.id}
-                className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
-              >
-                <TableCell>
-                  <Badge className={getStatusColor(app.status)}>
-                    {app.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <div className="flex items-center justify-between gap-4">
-                    <span>{formatName(app.first_name, app.last_name)}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="opacity-0 cursor-pointer group-hover:opacity-100 transition-opacity h-6 w-6"
-                      onClick={() => onSelectApplication(app.id)}
-                    >
-                      <Maximize2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </TableCell>
-                <TableCell>{app.email}</TableCell>
-                <TableCell>{app.phone ?? "-"}</TableCell>
-                <TableCell>{app.age ?? "-"}</TableCell>
-                <TableCell>{app.country_of_residence ?? "-"}</TableCell>
-                <TableCell>{app.gender ?? "-"}</TableCell>
-                <TableCell>{app.university ?? "-"}</TableCell>
-                <TableCell>{app.major ?? "-"}</TableCell>
-                <TableCell>{app.level_of_study ?? "-"}</TableCell>
-                <TableCell>{app.hackathons_attended ?? "-"}</TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {app.submitted_at
-                    ? new Date(app.submitted_at).toLocaleDateString()
-                    : "-"}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {new Date(app.created_at).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {new Date(app.updated_at).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
-                </TableCell>
-                <TableCell className="tabular-nums">{app.points}</TableCell>
-              </TableRow>
-            ))
+            applications.map((app) => {
+              const name = formatName(app.first_name, app.last_name);
+
+              return (
+                <TableRow
+                  key={app.id}
+                  className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
+                >
+                  <TableCell>
+                    <Badge className={getStatusColor(app.status)}>
+                      {app.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate" title={name}>
+                        {name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="opacity-0 cursor-pointer group-hover:opacity-100 transition-opacity h-6 w-6 shrink-0"
+                        onClick={() => onSelectApplication(app.id)}
+                      >
+                        <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell title={app.email}>{app.email}</TableCell>
+                  <TableCell title={app.phone ?? undefined}>
+                    {app.phone ?? "-"}
+                  </TableCell>
+                  <TableCell>{app.age ?? "-"}</TableCell>
+                  <TableCell title={app.country_of_residence ?? undefined}>
+                    {app.country_of_residence ?? "-"}
+                  </TableCell>
+                  <TableCell title={app.gender ?? undefined}>
+                    {app.gender ?? "-"}
+                  </TableCell>
+                  <TableCell title={app.university ?? undefined}>
+                    {app.university ?? "-"}
+                  </TableCell>
+                  <TableCell title={app.major ?? undefined}>
+                    {app.major ?? "-"}
+                  </TableCell>
+                  <TableCell title={app.level_of_study ?? undefined}>
+                    {app.level_of_study ?? "-"}
+                  </TableCell>
+                  <TableCell>{app.hackathons_attended ?? "-"}</TableCell>
+                  <TableCell>
+                    {app.submitted_at
+                      ? new Date(app.submitted_at).toLocaleDateString()
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(app.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(app.updated_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{app.points}</TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
