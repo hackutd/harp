@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchBar } from "@/pages/admin/_shared";
+import { useRedactApplicants } from "@/shared/hooks";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
@@ -33,6 +34,7 @@ export default function AllApplicantsPage() {
   const fetchApplications = useApplicationsStore((s) => s.fetchApplications);
   const fetchStats = useApplicationsStore((s) => s.fetchStats);
   const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
+  const redact = useRedactApplicants();
 
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [selectedApplicationId, setSelectedApplicationId] = useState<
@@ -117,8 +119,12 @@ export default function AllApplicantsPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-px bg-border shrink-0" />
-          <SearchBar value={searchInput} onChange={setSearchInput} />
+          {!redact && (
+            <>
+              <div className="h-5 w-px bg-border shrink-0" />
+              <SearchBar value={searchInput} onChange={setSearchInput} />
+            </>
+          )}
         </div>
         <div className="flex justify-end">
           <PaginationControls

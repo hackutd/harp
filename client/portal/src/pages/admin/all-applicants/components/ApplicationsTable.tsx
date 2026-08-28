@@ -11,6 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRedactApplicants } from "@/shared/hooks";
+import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import type { ApplicationListItem } from "../types";
@@ -30,6 +32,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
   onSelectApplication,
 }: ApplicationsTableProps) {
   const pointsName = usePointsConfigStore((s) => s.pointsName);
+  const redact = useRedactApplicants();
 
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
@@ -40,7 +43,9 @@ export const ApplicationsTable = memo(function ApplicationsTable({
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-28">Status</TableHead>
-            <TableHead className="w-48">Name</TableHead>
+            <TableHead className="w-48">
+              {redact ? "Applicant" : "Name"}
+            </TableHead>
             <TableHead className="w-56">Email</TableHead>
             <TableHead className="w-36">Phone</TableHead>
             <TableHead className="w-16">Age</TableHead>
@@ -66,7 +71,10 @@ export const ApplicationsTable = memo(function ApplicationsTable({
             </TableRow>
           ) : (
             applications.map((app) => {
-              const name = formatName(app.first_name, app.last_name);
+              const name = redact
+                ? formatApplicantLabel(app.id)
+                : formatName(app.first_name, app.last_name);
+              const email = redact ? maskEmail(app.email) : app.email;
 
               return (
                 <TableRow
@@ -93,7 +101,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell title={app.email}>{app.email}</TableCell>
+                  <TableCell title={email}>{email}</TableCell>
                   <TableCell title={app.phone ?? undefined}>
                     {app.phone ?? "-"}
                   </TableCell>

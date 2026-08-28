@@ -21,7 +21,9 @@ import { fetchApplicationById } from "@/pages/admin/all-applicants/api";
 import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
 import { useApplicationDetail } from "@/pages/admin/all-applicants/hooks/useApplicationDetail";
 import { formatName } from "@/pages/admin/all-applicants/utils";
+import { useRedactApplicants } from "@/shared/hooks";
 import { errorAlert } from "@/shared/lib/api";
+import { formatApplicantLabel } from "@/shared/lib/redaction";
 
 import { fetchReviewNotes as apiFetchReviewNotes } from "./api";
 import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
@@ -40,6 +42,7 @@ export default function ReviewsPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const redact = useRedactApplicants();
 
   const filteredReviews = (() => {
     const q = searchInput.trim().toLowerCase();
@@ -209,7 +212,10 @@ export default function ReviewsPage() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          Grade {formatName(reviews[0].first_name, reviews[0].last_name)}
+          Grade{" "}
+          {redact
+            ? formatApplicantLabel(reviews[0].application_id)
+            : formatName(reviews[0].first_name, reviews[0].last_name)}
         </TooltipContent>
       </Tooltip>
     ) : undefined;
@@ -246,7 +252,12 @@ export default function ReviewsPage() {
         <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
           <div className="flex items-center gap-2">
             <p className="font-semibold text-sm">
-              {formatName(selectedReview.first_name, selectedReview.last_name)}
+              {redact
+                ? formatApplicantLabel(selectedReview.application_id)
+                : formatName(
+                    selectedReview.first_name,
+                    selectedReview.last_name,
+                  )}
             </p>
             <VoteBadge vote={selectedReview.vote} />
           </div>
@@ -313,7 +324,9 @@ export default function ReviewsPage() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
-            <SearchBar value={searchInput} onChange={setSearchInput} />
+            {!redact && (
+              <SearchBar value={searchInput} onChange={setSearchInput} />
+            )}
             {headerActions}
           </div>
         </CardHeader>

@@ -10,6 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatName } from "@/pages/admin/all-applicants/utils";
+import { useRedactApplicants } from "@/shared/hooks";
+import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 
 import type { ReviewTab } from "../store";
 import type { Review } from "../types";
@@ -46,6 +48,7 @@ export const ReviewsTable = memo(function ReviewsTable({
   variant,
 }: ReviewsTableProps) {
   const { voteHeader, dateHeader, dateField, emptyText } = CONFIG[variant];
+  const redact = useRedactApplicants();
 
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
@@ -56,7 +59,7 @@ export const ReviewsTable = memo(function ReviewsTable({
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead>{voteHeader}</TableHead>
-            <TableHead>Name</TableHead>
+            <TableHead>{redact ? "Applicant" : "Name"}</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Age</TableHead>
             <TableHead>University</TableHead>
@@ -86,12 +89,16 @@ export const ReviewsTable = memo(function ReviewsTable({
                 <TableCell className="whitespace-nowrap">
                   <div className="flex items-center justify-between gap-4">
                     <span>
-                      {formatName(review.first_name, review.last_name)}
+                      {redact
+                        ? formatApplicantLabel(review.application_id)
+                        : formatName(review.first_name, review.last_name)}
                     </span>
                     <Maximize2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </TableCell>
-                <TableCell>{review.email}</TableCell>
+                <TableCell>
+                  {redact ? maskEmail(review.email) : review.email}
+                </TableCell>
                 <TableCell>{review.age ?? "-"}</TableCell>
                 <TableCell>{review.university ?? "-"}</TableCell>
                 <TableCell>{review.major ?? "-"}</TableCell>
