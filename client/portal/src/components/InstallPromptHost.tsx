@@ -23,7 +23,7 @@ export function InstallPromptHost() {
     }
 
     if (platform === "ios") {
-      toast(`Add ${branding.appName} to your home screen`, {
+      toast("Add to Home Screen", {
         id: TOAST_ID,
         description:
           "Install the app on your home screen to get notified about your application status.",
@@ -74,7 +74,7 @@ export function InstallPromptHost() {
       // here would strand push and the schedule tip behind a toast that never
       // appears. If the event does arrive later the effect re-runs and sonner
       // updates this toast in place, adding the one-tap Install action.
-      toast(`Add ${branding.appName} to your home screen`, {
+      toast("Add to Home Screen", {
         id: TOAST_ID,
         description:
           'Open your browser menu and choose "Install app" to get notified about your application status.',

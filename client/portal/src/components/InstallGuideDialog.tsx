@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { branding } from "@/branding";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,9 +61,7 @@ export function InstallGuideDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-sm rounded-xl p-5 sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-normal">
-            Add {branding.appName} to your home screen
-          </DialogTitle>
+          <DialogTitle className="font-normal">Add to Home Screen</DialogTitle>
           <DialogDescription className="min-h-10">
             {current.caption}
           </DialogDescription>
