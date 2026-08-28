@@ -8,7 +8,8 @@
 > Harp is under active development.
 
 **Running a hackathon at your school?** [ADOPTING.md](ADOPTING.md) is the whole
-setup path — fork, brand, deploy, configure, and upgrade.
+setup path — fork, deploy, configure, and redesign it as your own. Harp is a
+starting point, not an upstream you have to track.
 
 ## What is Harp?
 
@@ -20,6 +21,8 @@ The Go backend sits at the center of Harp. It handles the work behind applicatio
 - A **Next.js marketing site in a separate repository** introduces the event to the public and pulls changing schedules, FAQs, and sponsor information from the backend.
 
 The marketing site is deliberately kept outside this repository. Teams should begin with the base template and redesign it for every iteration of their hackathon so the site matches that year's theme and identity. The event data and organizer workflows stay in Harp, so creating a fresh public experience does not mean rebuilding the systems behind it.
+
+The same applies to the portal's own applicant-facing pages. What ships here is HackUTD's design, not a neutral baseline — treat it as a starting point and restyle it for your event. The backend, the settings, and your database carry over; the look does not have to.
 
 ## Application walkthrough
 

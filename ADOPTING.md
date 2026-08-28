@@ -1,104 +1,141 @@
 # Adopting Harp
 
-**Harp is built to be forked.** Your school runs its own copy, with its own
-database, its own domain, and its own branding. HackUTD runs it exactly the same
-way you will — there is no privileged deployment, and no "HackUTD version" that
+**Harp is a starting point, not a dependency.** Fork it, make it yours, and run
+your event. There is no upstream you are expected to track, no merge discipline
+to maintain across a year of officer turnover, and no "HackUTD version" that
 gets features first.
 
-This document is the whole adoption path: what you change, what you never
-change, and how to pull in upstream releases afterwards.
+Most hackathons redesign their site every year. Harp assumes you will too.
 
-## The one rule
+## The model
 
-> **Your fork contains branding and nothing else.**
+Take a release, deploy it, and treat the code as yours from that moment.
+Redesign the frontend as far as you like — rewrite pages, replace the component
+library, throw out the layout, change the fonts. None of it is precious, and
+none of it is a merge conflict waiting to happen, because you are not merging.
 
-Everything else — the event name, the application questions, the schedule, who
-can review what — is either a runtime setting you edit in the portal, or a
-feature that belongs upstream where every school gets it.
+When the next cycle comes around, pick one:
 
-This is not tidiness. It is the difference between `git merge v1.4.0` taking a
-minute and taking a weekend. Every file you edit outside `client/portal/branding/`
-is a file that will conflict on every future upgrade, forever. If you find
-yourself wanting to change application logic, that is a gap in Harp — open an
-issue or a pull request upstream rather than patching your fork.
+- **Stay put.** Your deployment already works. Not upgrading is a real option
+  and costs you nothing.
+- **Start fresh from a newer Harp.** Take the new release, design this year's
+  look on top of it, and point it at your existing database. You lose last
+  year's frontend code — which you were going to redo anyway.
+- **Cherry-pick.** Pull a specific upstream fix into your fork by hand, when you
+  actually want it.
 
-### The one exception
+What you should _not_ do is try to keep a year of your own design changes
+merging cleanly against upstream forever. That is a maintenance contract nobody
+staffed, and it is why this document used to be much stricter than it is now.
 
-The sign-in page is not yet fully brandable, and Harp's own wordmark is
-hardcoded into it. Until that is fixed you should edit
-`client/portal/src/pages/public/LoginPage.tsx` directly — do not ship an
-applicant a login screen with someone else's branding on it.
+## The one thing you cannot throw away
 
-That is a deliberate exception, not the rule loosening. It is one file, it will
-conflict on every upgrade, and the file contains real sign-in logic underneath
-the markup, so resolving that conflict carelessly can silently drop an auth fix.
-[`client/portal/branding/README.md`](client/portal/branding/README.md) covers
-how to make the change survive a merge. Read it before you start.
+> **The code is disposable. The database is not.**
 
-The wider point stands: the branding directory is still growing, and gaps like
-this one are being closed. If you hit another, treat it as a bug in Harp worth
-reporting rather than a second file to patch.
+Your Postgres database holds every application, review, score, scan, and setting
+your event has ever produced. The code gets replaced; that data has to survive
+the replacement. Two consequences follow, and they are the only real discipline
+this model asks of you.
 
-### But it is your copy
+**Keep event content in the database, not in code.** The hackathon name, dates,
+application questions, FAQ, sponsors, schedule, scan types, meal groups, points
+naming, and contact email are already runtime settings that a super admin edits
+in the browser. Anything you hardcode into a component dies the moment you start
+from a new release. Anything stored as a setting survives for free, and can be
+changed mid-event by an organizer with no developer, no deploy, and no downtime.
 
-At the end of the day Harp is MIT licensed — do whatever you'd like with it.
+**Keep your schema close to upstream's.** If you point newer Harp code at your
+existing database, the migrations have to line up. Adding a column is cheap;
+altering or dropping something upstream owns will hurt later.
+[`cmd/migrate/migrations/README.md`](cmd/migrate/migrations/README.md) explains
+the numbering rules and why they are load-bearing rather than cosmetic. Read it
+before you write a migration.
 
-You might be better off maintaining your own copy rather than pulling each year. Both are fine, just choose deliberately. And don't blame me if it all falls apart (we do not have FDSE roles).
+## Making it yours
 
-## What you change, and where
+### The quick path
 
-| Tier              | Where                                          | Examples                                                                                                                     |
-| ----------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Event content** | Super-admin UI, at runtime                     | Hackathon name, dates, application questions, FAQ, sponsors, schedule, scan types, meal groups, points naming, contact email |
-| **Brand**         | `client/portal/branding/` in your fork         | Logo, colour palette, product name, PWA manifest — plus the sign-in page, for now                                            |
-| **Deployment**    | Environment variables + your own cloud account | Database URL, auth keys, email provider, file storage                                                                        |
+`client/portal/branding/` holds the handful of values that are wired into more
+than one place at once, so setting them there saves you hunting through the
+codebase:
 
-There is no fourth tier. Notice how little of it is code: renaming the event or
-rewriting the application form is something an organizer does in a browser, with
-no developer, no deploy, and no downtime.
+| File               | What it controls                                                            |
+| ------------------ | --------------------------------------------------------------------------- |
+| `index.ts`         | Product name, PWA manifest text, SuperTokens app name, browser theme colour |
+| `theme.css`        | The colour palette                                                          |
+| `assets/logo.webp` | Sign-in page logo and browser favicon                                       |
+
+Change those three and the tab title, install prompt, magic-link emails,
+favicon, and the whole admin portal follow. It takes about five minutes, and it
+is a perfectly reasonable place to stop if you are short on people this year.
+
+The directory is a convenience, not a boundary — read
+[`client/portal/branding/README.md`](client/portal/branding/README.md) for what
+it reaches and, more usefully, what it does not.
+
+### The real path
+
+Go edit `src/`. All of it, if you want.
+
+The applicant-facing pages under `client/portal/src/pages/hacker/` and
+`src/pages/public/` are HackUTD's design, not a neutral baseline: black and
+white, heavy type, mobile-first. They were built for one specific event. There
+is no reason yours should look like them, and nothing bad happens when you
+replace them.
+
+Some honest notes on the terrain before you start:
+
+- **The sign-in page** (`src/pages/public/LoginPage.tsx`) still spells out
+  Harp's own wordmark letter by letter. Delete it. The same file also holds real
+  sign-in logic underneath the markup — magic-link creation, the
+  wrong-sign-in-method check, third-party redirects — so keep that part working.
+- **The hacker pages ignore the palette.** They were written with literal
+  Tailwind colours (`bg-white`, `text-black`, `text-[#8A8A8A]`) rather than
+  theme tokens, so editing `theme.css` will not recolour them. Restyle them
+  directly, or convert them to tokens as you go.
+- **There is no font hook.** No `--font-sans`, no `@font-face`, no webfont link
+  anywhere — everything renders in Tailwind's default system stack. Add fonts in
+  `src/index.css`. Self-host them into the app rather than linking a CDN: the
+  service worker already precaches `woff`/`woff2`, so self-hosted faces keep
+  working on bad venue wifi.
+- **Dark mode is not wired up.** `next-themes` is a dependency, but nothing
+  mounts a provider, so the `.dark` block never activates.
+
+### What is worth leaving alone
+
+Redesign the frontend freely. Be more deliberate about these, because they are
+load-bearing rather than cosmetic:
+
+- **The Go backend and its API shapes**, if you ever want to cherry-pick an
+  upstream fix. Divergence here is what makes that painful.
+- **`/v1/public/*` response shapes**, which the marketing site consumes.
+- **Migration numbering**, for the reasons above.
+- **Auth flow logic**, which is easy to break in ways that surface only when a
+  real person cannot sign in at 9am on event day.
 
 ## Setting up
 
 ### 1. Fork
 
-Fork `hackutd/harp` on GitHub, then point a remote at upstream so you can pull
-releases later:
+Fork `hackutd/harp` on GitHub, or use it as a template. Start from a release tag
+rather than `main` — tags are frozen, `main` moves under you:
 
 ```bash
 git clone https://github.com/YOUR-SCHOOL/harp.git
 cd harp
+git tag -l                      # see what has been released
+git checkout -b main v0.12.0    # whichever tag is newest
+```
+
+Adding an upstream remote is optional now, but useful if you ever want to read
+what changed or cherry-pick a fix:
+
+```bash
 git remote add upstream https://github.com/hackutd/harp.git
 git fetch upstream --tags
 ```
 
-Check out the latest release tag rather than tracking `main`. Tags are frozen;
-`main` moves under you.
-
-```bash
-git tag -l                      # see what has been released
-git checkout -b main v0.9.0     # whichever tag is newest
-```
-
-### 2. Brand it
-
-Everything you need is in **`client/portal/branding/`**. Read
-[`client/portal/branding/README.md`](client/portal/branding/README.md) — it
-explains each file and why the directory sits outside `src/`.
-
-The short version: `index.ts` for names and the theme colour, `theme.css` for
-the palette, `assets/logo.webp` for the logo. Swap `public/pwa-192x192.png` and
-`public/pwa-512x512.png` in place, keeping their filenames.
-
-Upstream will never edit those files again, so that commit costs you nothing at
-upgrade time. Its README also documents what the directory does not yet reach —
-fonts, the applicant-facing palette, and the sign-in page — so read it before
-assuming a restyle is possible without touching `src/`.
-
-Then make your sign-in page edit as a **separate commit**, on its own, touching
-only `LoginPage.tsx`. Keeping it apart from the branding commit is what makes it
-findable next year.
-
-### 3. Run it locally
+### 2. Run it locally
 
 Copy the environment templates and start the local stack:
 
@@ -118,16 +155,20 @@ air                        # backend on :8080
 cd client/portal && npm install && npm run dev   # portal on :3000
 ```
 
-`.env.example` documents all 38 variables with their defaults and explains
-which ones matter in production.
+`.env.example` documents all 38 variables with their defaults and explains which
+ones matter in production.
+
+### 3. Design it
+
+See [Making it yours](#making-it-yours). This is the part that takes real time,
+and the part that makes it your event rather than a copy of ours.
 
 ### 4. Deploy
 
 The `Dockerfile` builds the portal and the Go binary into a single container
-that serves everything on port 8080, so anything that runs a container will
-host Harp. HackUTD runs it on Google Cloud Run with Neon for PostgreSQL, Google
-Cloud Storage for resumes, and SendGrid for email; none of those are required
-choices.
+that serves everything on port 8080, so anything that runs a container will host
+Harp. HackUTD runs it on Google Cloud Run with Neon for PostgreSQL, Google Cloud
+Storage for resumes, and SendGrid for email; none of those are required choices.
 
 What you do need: a PostgreSQL database, a SuperTokens instance (managed or
 self-hosted), and an email provider — either SendGrid or plain SMTP.
@@ -147,8 +188,9 @@ values the platform cannot guess:
 - Contact email
 - Sender email and sender name for outgoing mail
 
-Once that is saved, these come from the database rather than your environment,
-so renaming the event never needs a redeploy.
+Once saved, these come from the database rather than your environment, so
+renaming the event never needs a redeploy — and they survive you replacing the
+entire frontend next year.
 
 Everything below is likewise edited in the portal, not in code:
 
@@ -164,62 +206,57 @@ Everything below is likewise edited in the portal, not in code:
 | Whether applications are open                         | Settings dialog                                                                      |
 | Clearing last year's data for a new cycle             | Settings → **Reset Hackathon**                                                       |
 
-If you catch yourself hardcoding one of these, stop — it is already a setting.
+If you catch yourself hardcoding one of these, stop. It is already a setting,
+and the hardcoded version will not survive your next redesign.
 
 ## The marketing site
 
 Harp's public site is a **separate repository**:
 [hackutd/harp-marketing](https://github.com/hackutd/harp-marketing). It is meant
-to be redesigned from scratch for every event, which is exactly why it is not
-in here — a yearly redesign should never touch the platform.
+to be redesigned from scratch for every event, which is exactly why it is not in
+here.
 
 It reads schedules, FAQs, and sponsors from `/v1/public/*` using a shared secret
 (`PUBLIC_API_KEY` here, `HARP_PUBLIC_API_KEY` there — the two must match), so
 organizers update content once and both sites reflect it.
 
-## Upgrading
+## Starting a new cycle
 
-Harp is released with semantic version tags. Pin to one, and move deliberately:
-
-```bash
-git fetch upstream --tags
-git log --oneline v0.9.0..v0.10.0      # read what changed
-git merge v0.10.0
-```
-
-**Upgrade between events, never during one.** A hackathon weekend is the worst
+**Do this between events, never during one.** A hackathon weekend is the worst
 possible time to discover a migration surprise.
 
-If you kept to the one rule, the merge is nearly clean: you own
-`client/portal/branding/`, upstream owns everything else, and the two do not
-overlap. Expect exactly one conflict — the sign-in page.
+If you are staying on your current version, there is nothing to do here: clear
+last year's data from Settings → **Reset Hackathon** and run it again.
 
-### When a merge does conflict
+If you are moving to a newer Harp:
 
-**`LoginPage.tsx`** is the expected one, if you restyled it. Diff upstream's
-side before you resolve, rather than keeping yours wholesale:
+1. Read what changed — `git log --oneline v0.12.0..v1.2.0` against upstream.
+2. **Check the migrations that landed in between.** This is the part that
+   touches your live data, and the only part that can genuinely go wrong.
+3. Start from the new release and build this year's design on it, rather than
+   merging a year of your changes into it.
+4. Point it at your existing database and run `task migrate-up`.
+5. Verify sign-in, an application submission, and a scan before you announce it.
 
-```bash
-git diff v0.9.0..v0.10.0 -- client/portal/src/pages/public/LoginPage.tsx
-```
+Step 2 is the whole risk. The rest is building a website, which you were going
+to do anyway.
 
-The file holds magic-link creation, the wrong-sign-in-method check, third-party
-redirects, and error handling underneath the markup. Take upstream's logic and
-keep your layout; discarding its side silently reverts auth fixes, and you find
-out when a hacker cannot sign in.
-
-A **migration number collision** — you added `000032`, and so did upstream — is
-the other case that needs real care. `cmd/migrate/migrations/README.md` explains
-why the numbering is load-bearing and how to renumber safely. Read it before you
-touch anything; the obvious workaround of picking a very high number silently
-breaks every future upgrade.
-
-Any other conflict outside `branding/` is a signal that something drifted into
-your fork that should have gone upstream. Consider sending it there.
+If you did add your own migrations, read
+[`cmd/migrate/migrations/README.md`](cmd/migrate/migrations/README.md) first —
+renumbering one that is already applied to a live database needs care, and
+picking a very high number to dodge collisions silently breaks every future
+upgrade.
 
 ## Contributing back
 
-If your school needs something Harp does not do, upstream is the right place for
-it. Every school gets the feature, you stop carrying a patch, and your next
-upgrade stays clean. Bug reports and pull requests are welcome at
-[hackutd/harp](https://github.com/hackutd/harp).
+If your school needs something Harp does not do, upstream is a good home for it.
+Every school gets the feature, and you stop carrying the patch. Bug reports and
+pull requests are welcome at [hackutd/harp](https://github.com/hackutd/harp).
+
+Design work is the exception. Your event's look is yours — keep it.
+
+## It is your copy
+
+Harp is MIT licensed. Do whatever you like with it, including ignoring
+everything above. And don't blame me if it all falls apart; we do not have FDSE
+roles.
