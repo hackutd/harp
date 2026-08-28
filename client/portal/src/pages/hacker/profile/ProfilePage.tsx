@@ -12,7 +12,6 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
-import { branding } from "@/branding";
 import { AdminPortalButton } from "@/components/AdminPortalButton";
 import { InstallGuideDialog } from "@/components/InstallGuideDialog";
 import {
@@ -134,24 +133,7 @@ export default function ProfilePage() {
   };
 
   const handleInstallClick = () => {
-    if (install.platform === "ios") {
-      setInstallGuideOpen(true);
-      return;
-    }
-    if (install.platform === "desktop") {
-      toast(`Open ${branding.appName} on your phone`, {
-        description: `Add ${branding.appName} to your phone's home screen to get notified about your application status.`,
-      });
-      return;
-    }
-    if (install.canPromptNatively) {
-      void install.promptInstall();
-    } else {
-      toast("Install not available yet", {
-        description:
-          'Look for "Install app" or "Add to Home Screen" in your browser\'s menu.',
-      });
-    }
+    setInstallGuideOpen(true);
   };
 
   const handleResumeFile = async (event: ChangeEvent<HTMLInputElement>) => {
