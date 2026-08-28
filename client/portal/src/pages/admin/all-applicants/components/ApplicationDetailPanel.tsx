@@ -1,4 +1,4 @@
-import { ClipboardPen, X } from "lucide-react";
+import { ClipboardPen, Utensils, X } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -86,6 +86,12 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
               <Badge variant="secondary" className="tabular-nums">
                 {application.points ?? 0} {pointsName}
               </Badge>
+              {application.meal_group && (
+                <Badge variant="outline" className="gap-1">
+                  <Utensils className="size-3" />
+                  {application.meal_group}
+                </Badge>
+              )}
             </>
           ) : null}
         </div>

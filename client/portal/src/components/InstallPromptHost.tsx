@@ -1,8 +1,8 @@
-import { Share } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { branding } from "@/branding";
+import { InstallGuideDialog } from "@/components/InstallGuideDialog";
 import { useInstallPrompt } from "@/shared/install";
 
 const TOAST_ID = "install-prompt";
@@ -11,6 +11,7 @@ export function InstallPromptHost() {
   const { shouldPrompt, platform, canPromptNatively, promptInstall, dismiss } =
     useInstallPrompt();
   const shown = useRef(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     if (!shouldPrompt) {
@@ -24,15 +25,13 @@ export function InstallPromptHost() {
     if (platform === "ios") {
       toast(`Add ${branding.appName} to your home screen`, {
         id: TOAST_ID,
-        description: (
-          <span>
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              Tap <Share className="size-3.5" strokeWidth={2} />
-            </span>{" "}
-            then "Add to Home Screen" to install and get notified.
-          </span>
-        ),
+        description:
+          "Install the app on your home screen to get notified about your application status.",
         duration: Infinity,
+        action: {
+          label: "Show me how",
+          onClick: () => setGuideOpen(true),
+        },
         cancel: {
           label: "Got it",
           onClick: () => dismiss(),
@@ -98,5 +97,13 @@ export function InstallPromptHost() {
     };
   }, []);
 
-  return null;
+  return (
+    <InstallGuideDialog
+      open={guideOpen}
+      onOpenChange={(open) => {
+        setGuideOpen(open);
+        if (!open) dismiss();
+      }}
+    />
+  );
 }
