@@ -280,6 +280,21 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Meal group — assigned at check-in, so absent until then */}
+      {application?.meal_group && (
+        <div className="mt-6 flex items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4">
+          <div>
+            <p className="text-sm font-normal text-black">Meal group</p>
+            <p className="text-xs font-light text-[#8A8A8A]">
+              Show this at meal lines
+            </p>
+          </div>
+          <span className="text-2xl font-light text-black">
+            {application.meal_group}
+          </span>
+        </div>
+      )}
+
       {/* Settings */}
       <section className="mt-6">
         <h2 className="mb-2 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
