@@ -3,7 +3,6 @@ import {
   Eye,
   FileText,
   LogOut,
-  Share,
   SmartphoneNfc,
   Trash2,
   Upload,
@@ -13,8 +12,8 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { signOut } from "supertokens-auth-react/recipe/session";
 
-import { branding } from "@/branding";
 import { AdminPortalButton } from "@/components/AdminPortalButton";
+import { InstallGuideDialog } from "@/components/InstallGuideDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +83,7 @@ export default function ProfilePage() {
   const [resumeBusy, setResumeBusy] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -133,33 +133,7 @@ export default function ProfilePage() {
   };
 
   const handleInstallClick = () => {
-    if (install.platform === "ios") {
-      toast(`Add ${branding.appName} to your home screen`, {
-        description: (
-          <span>
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              Tap <Share className="size-3.5" strokeWidth={2} />
-            </span>{" "}
-            then "Add to Home Screen" to install and get notified.
-          </span>
-        ),
-      });
-      return;
-    }
-    if (install.platform === "desktop") {
-      toast(`Open ${branding.appName} on your phone`, {
-        description: `Add ${branding.appName} to your phone's home screen to get notified about your application status.`,
-      });
-      return;
-    }
-    if (install.canPromptNatively) {
-      void install.promptInstall();
-    } else {
-      toast("Install not available yet", {
-        description:
-          'Look for "Install app" or "Add to Home Screen" in your browser\'s menu.',
-      });
-    }
+    setInstallGuideOpen(true);
   };
 
   const handleResumeFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -469,6 +443,11 @@ export default function ProfilePage() {
       <div className="mt-6">
         <AdminPortalButton />
       </div>
+
+      <InstallGuideDialog
+        open={installGuideOpen}
+        onOpenChange={setInstallGuideOpen}
+      />
     </div>
   );
 }
