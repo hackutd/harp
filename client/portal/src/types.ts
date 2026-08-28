@@ -125,6 +125,20 @@ export interface NotificationFeedItem {
   updated_at: string;
 }
 
+export interface HackerLink {
+  id: string;
+  label: string;
+  url: string;
+  icon: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HackerLinkListResponse {
+  hacker_links: HackerLink[];
+}
+
 export interface ApiResponse<T = unknown> {
   status: number;
   data?: T;

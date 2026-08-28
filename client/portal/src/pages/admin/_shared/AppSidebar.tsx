@@ -6,6 +6,7 @@ import {
   ClipboardList,
   DoorOpen,
   Handshake,
+  Link2,
   MessageSquare,
   ScanLine,
   Settings,
@@ -87,6 +88,11 @@ const superAdminNav = [
     name: "Notifications",
     url: "/admin/sa/notifications",
     icon: Bell,
+  },
+  {
+    name: "Hacker Links",
+    url: "/admin/sa/hacker-links",
+    icon: Link2,
   },
   {
     name: "Walk-In Queue",

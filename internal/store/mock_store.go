@@ -651,6 +651,34 @@ func (m *MockFAQsStore) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+// MockHackerLinksStore is a mock implementation of the HackerLinks interface
+type MockHackerLinksStore struct {
+	mock.Mock
+}
+
+func (m *MockHackerLinksStore) List(ctx context.Context) ([]HackerLink, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]HackerLink), args.Error(1)
+}
+
+func (m *MockHackerLinksStore) Create(ctx context.Context, link *HackerLink) error {
+	args := m.Called(link)
+	return args.Error(0)
+}
+
+func (m *MockHackerLinksStore) Update(ctx context.Context, link *HackerLink) error {
+	args := m.Called(link)
+	return args.Error(0)
+}
+
+func (m *MockHackerLinksStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 // MockPushSubscriptionsStore is a mock implementation of the PushSubscriptions interface
 type MockPushSubscriptionsStore struct {
 	mock.Mock
@@ -787,6 +815,7 @@ func NewMockStore() Storage {
 		Schedule:               &MockScheduleStore{},
 		Sponsors:               &MockSponsorsStore{},
 		FAQs:                   &MockFAQsStore{},
+		HackerLinks:            &MockHackerLinksStore{},
 		PushSubscriptions:      &MockPushSubscriptionsStore{},
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
 		WalkIns:                &MockWalkInsStore{},

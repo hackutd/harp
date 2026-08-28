@@ -58,6 +58,9 @@ const SuperAdminScansPage = lazy(
 const SuperAdminNotificationsPage = lazy(
   () => import("@/pages/superadmin/notifications/NotificationsPage"),
 );
+const SuperAdminHackerLinksPage = lazy(
+  () => import("@/pages/superadmin/hacker-links/HackerLinksPage"),
+);
 const SuperAdminWalkInQueuePage = lazy(
   () => import("@/pages/superadmin/walk-in-queue/WalkInQueuePage"),
 );
@@ -304,6 +307,16 @@ export const router = createBrowserRouter([
               <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
                   <SuperAdminNotificationsPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/hacker-links",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminHackerLinksPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),

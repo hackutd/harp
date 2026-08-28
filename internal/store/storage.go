@@ -132,6 +132,12 @@ type Storage struct {
 		Update(ctx context.Context, faq *FAQ) error
 		Delete(ctx context.Context, id string) error
 	}
+	HackerLinks interface {
+		List(ctx context.Context) ([]HackerLink, error)
+		Create(ctx context.Context, link *HackerLink) error
+		Update(ctx context.Context, link *HackerLink) error
+		Delete(ctx context.Context, id string) error
+	}
 	PushSubscriptions interface {
 		Upsert(ctx context.Context, sub *PushSubscription) error
 		DeleteByEndpoint(ctx context.Context, userID, endpoint string) error
@@ -168,6 +174,7 @@ func NewStorage(db *sql.DB) Storage {
 		Schedule:               &ScheduleStore{db: db},
 		Sponsors:               &SponsorsStore{db: db},
 		FAQs:                   &FAQsStore{db: db},
+		HackerLinks:            &HackerLinksStore{db: db},
 		PushSubscriptions:      &PushSubscriptionsStore{db: db},
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
 		WalkIns:                &WalkInsStore{db: db},

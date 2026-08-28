@@ -6,12 +6,17 @@ import { toast } from "sonner";
 
 import { getRequest } from "@/shared/lib/api";
 import { parseDateOnly } from "@/shared/lib/datetime";
-import type { Application, NotificationFeedItem } from "@/types";
+import { hackerLinkIcon } from "@/shared/lib/hacker-link-icons";
+import type { Application, HackerLink, NotificationFeedItem } from "@/types";
 
 import { fetchHackerPackURL } from "../hacker-pack/api";
 import { getNotificationFeed } from "../notifications/api";
 import type { HackathonConfig } from "./api";
-import { fetchApplicationsEnabled, fetchHackathonConfig } from "./api";
+import {
+  fetchApplicationsEnabled,
+  fetchHackathonConfig,
+  fetchHackerLinks,
+} from "./api";
 
 interface ImportantDate {
   month: string;
@@ -111,6 +116,7 @@ export default function DashboardPage() {
   const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
   const [hackerPackURL, setHackerPackURL] = useState("");
   const [config, setConfig] = useState<HackathonConfig | null>(null);
+  const [hackerLinks, setHackerLinks] = useState<HackerLink[]>([]);
   // null until the flag loads — the closed state only renders once we know
   // applications really are closed, so the card never flashes the wrong copy.
   const [applicationsEnabled, setApplicationsEnabled] = useState<
@@ -136,7 +142,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const [appRes, feedRes, packRes, configRes, enabledRes] =
+      const [appRes, feedRes, packRes, configRes, enabledRes, linksRes] =
         await Promise.all([
           getRequest<Application>(
             "/applications/me",
@@ -147,6 +153,7 @@ export default function DashboardPage() {
           fetchHackerPackURL(controller.signal),
           fetchHackathonConfig(controller.signal),
           fetchApplicationsEnabled(controller.signal),
+          fetchHackerLinks(controller.signal),
         ]);
       if (controller.signal.aborted) return;
       if (appRes.status === 200 && appRes.data) {
@@ -163,6 +170,13 @@ export default function DashboardPage() {
       }
       if (enabledRes.status === 200 && enabledRes.data) {
         setApplicationsEnabled(enabledRes.data.enabled);
+      }
+      if (linksRes.status === 200 && linksRes.data) {
+        setHackerLinks(
+          [...linksRes.data.hacker_links]
+            .filter((l) => l.url.trim() !== "")
+            .sort((a, b) => a.display_order - b.display_order),
+        );
       }
     };
     load();
@@ -368,6 +382,23 @@ export default function DashboardPage() {
               className={className}
             >
               {content}
+            </a>
+          );
+        })}
+        {hackerLinks.map((link) => {
+          const Icon = hackerLinkIcon(link.icon);
+          return (
+            <a
+              key={link.id}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]"
+            >
+              <Icon className="size-5 text-black" strokeWidth={1.5} />
+              <span className="text-sm font-normal text-black">
+                {link.label}
+              </span>
             </a>
           );
         })}
