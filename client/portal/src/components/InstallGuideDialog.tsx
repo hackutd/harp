@@ -65,16 +65,16 @@ export function InstallGuideDialog({
           <DialogTitle className="font-normal">
             Add {branding.appName} to your home screen
           </DialogTitle>
-          <DialogDescription>
-            Step {step + 1} of {IOS_STEPS.length} — {current.caption}
+          <DialogDescription className="min-h-10">
+            {current.caption}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-hidden rounded-xl border border-[#E5E5E5]">
+        <div className="flex h-[min(45vh,24rem)] items-center justify-center overflow-hidden rounded-xl border border-[#E5E5E5]">
           <img
             src={current.src}
             alt={current.caption}
-            className="max-h-[45vh] w-full object-contain"
+            className="max-h-full max-w-full object-contain"
           />
         </div>
 
