@@ -56,25 +56,14 @@ function requestFor(
         errorContext?: string,
         signal?: AbortSignal,
       ) =>
-        postRequest(
-          endpoint,
-          bodyOrErrorContext,
-          errorContext ?? "",
-          signal,
-        );
+        postRequest(endpoint, bodyOrErrorContext, errorContext ?? "", signal);
     case "PUT":
       return (
         endpoint: string,
         bodyOrErrorContext?: unknown,
         errorContext?: string,
         signal?: AbortSignal,
-      ) =>
-        putRequest(
-          endpoint,
-          bodyOrErrorContext,
-          errorContext ?? "",
-          signal,
-        );
+      ) => putRequest(endpoint, bodyOrErrorContext, errorContext ?? "", signal);
     case "PATCH":
       return (
         endpoint: string,
@@ -82,12 +71,7 @@ function requestFor(
         errorContext?: string,
         signal?: AbortSignal,
       ) =>
-        patchRequest(
-          endpoint,
-          bodyOrErrorContext,
-          errorContext ?? "",
-          signal,
-        );
+        patchRequest(endpoint, bodyOrErrorContext, errorContext ?? "", signal);
     default:
       return (endpoint: string, errorContext?: string, signal?: AbortSignal) =>
         deleteRequest(endpoint, errorContext ?? "", signal);
