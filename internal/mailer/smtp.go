@@ -129,7 +129,7 @@ func (m *SMTPMailer) SendQREmail(toEmail, toName, userID string) error {
 	}
 	msg.Subject(fmt.Sprintf("Your %s QR code", id.HackathonName))
 	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
-	if err := msg.AttachReader("hackutd-qrcode.png", bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
+	if err := msg.AttachReader(qrAttachmentFilename(id.HackathonName), bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
 		return fmt.Errorf("attaching QR code: %w", err)
 	}
 
@@ -207,7 +207,7 @@ func (m *SMTPMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	}
 	msg.Subject(fmt.Sprintf("You're in for %s", id.HackathonName))
 	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
-	if err := msg.AttachReader("hackutd-qrcode.png", bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
+	if err := msg.AttachReader(qrAttachmentFilename(id.HackathonName), bytes.NewReader(qrPNG), mail.WithFileContentType("image/png")); err != nil {
 		return fmt.Errorf("attaching QR code: %w", err)
 	}
 

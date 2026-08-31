@@ -66,7 +66,7 @@ function FAQForm({
           id="faq-answer"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
-          placeholder="Check-in opens at 9am. See the [schedule](https://hackutd.co) for details."
+          placeholder="Check-in opens at 9am. See the [schedule](https://example.com) for details."
           rows={5}
           required
         />

@@ -142,7 +142,7 @@ func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
 	attachment := mail.NewAttachment()
 	attachment.SetContent(qrBase64)
 	attachment.SetType("image/png")
-	attachment.SetFilename("hackutd-qrcode.png")
+	attachment.SetFilename(qrAttachmentFilename(id.HackathonName))
 	attachment.SetDisposition("attachment")
 	message.AddAttachment(attachment)
 
@@ -236,7 +236,7 @@ func (m *SendGridMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
 	attachment := mail.NewAttachment()
 	attachment.SetContent(qrBase64)
 	attachment.SetType("image/png")
-	attachment.SetFilename("hackutd-qrcode.png")
+	attachment.SetFilename(qrAttachmentFilename(id.HackathonName))
 	attachment.SetDisposition("attachment")
 	message.AddAttachment(attachment)
 

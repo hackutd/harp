@@ -1,39 +1,65 @@
-import { useEffect } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { usePushPrompt } from "@/shared/push/usePushPrompt";
-
-const TOAST_ID = "push-prompt";
 
 export function PushPromptHost() {
   const { shouldPrompt, accept, dismiss } = usePushPrompt();
+  const [enabling, setEnabling] = useState(false);
 
-  useEffect(() => {
-    if (!shouldPrompt) return;
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !enabling) dismiss();
+  };
 
-    toast("Get notified about your application status", {
-      id: TOAST_ID,
-      description:
-        "Allow push notifications so we can let you know when reviews and announcements drop.",
-      duration: Infinity,
-      action: {
-        label: "Enable",
-        onClick: () => {
-          void accept();
-        },
-      },
-      cancel: {
-        label: "Not now",
-        onClick: () => {
-          dismiss();
-        },
-      },
-    });
+  const handleEnable = async () => {
+    setEnabling(true);
+    try {
+      await accept();
+    } finally {
+      setEnabling(false);
+    }
+  };
 
-    return () => {
-      toast.dismiss(TOAST_ID);
-    };
-  }, [shouldPrompt, accept, dismiss]);
+  return (
+    <Dialog open={shouldPrompt} onOpenChange={handleOpenChange}>
+      <DialogContent className="flex max-w-xs flex-col rounded-xl p-5 sm:max-w-xs">
+        <DialogHeader>
+          <DialogTitle className="font-normal">Get Notified</DialogTitle>
+          <DialogDescription>
+            Allow push notifications so we can let you know when reviews and
+            announcements drop.
+          </DialogDescription>
+        </DialogHeader>
 
-  return null;
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            className="w-full rounded-full"
+            loading={enabling}
+            onClick={() => {
+              void handleEnable();
+            }}
+          >
+            Allow notifications
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-full"
+            disabled={enabling}
+            onClick={() => dismiss()}
+          >
+            Not now
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

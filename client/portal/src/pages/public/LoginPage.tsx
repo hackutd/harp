@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router";
 import { createCode } from "supertokens-auth-react/recipe/passwordless";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { isGoogleAuthEnabled } from "@/shared/auth";
 import { checkEmailAuthMethod } from "@/shared/lib/api";
 
+import { fetchLegalConfig } from "./api";
+import type { LegalConfig } from "./types";
+
 type LoginState = "email" | "sending" | "sent" | "error";
 
 export default function Login() {
@@ -18,6 +21,23 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<LoginState>("email");
   const [error, setError] = useState("");
+  const [legal, setLegal] = useState<LegalConfig | null>(null);
+
+  // Must run before the redirect below — hooks cannot sit after an early return.
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      const res = await fetchLegalConfig(controller.signal);
+      if (controller.signal.aborted) return;
+      if (res.status === 200 && res.data) {
+        setLegal(res.data);
+      }
+      // Deliberately silent: an operator that has published no policies should
+      // not greet every visitor with an error toast on the sign-in screen.
+    }
+    load();
+    return () => controller.abort();
+  }, []);
 
   // Redirect if already logged in
   if (!session.loading && session.doesSessionExist) {
@@ -201,9 +221,32 @@ export default function Login() {
             </>
           )}
 
-          <p className="text-center text-xs font-light text-[#B8B8B8]">
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </p>
+          {(legal?.terms_url || legal?.privacy_policy_url) && (
+            <p className="text-center text-xs font-light text-[#B8B8B8]">
+              By continuing, you agree to our{" "}
+              {legal.terms_url && (
+                <a
+                  href={legal.terms_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  Terms of Service
+                </a>
+              )}
+              {legal.terms_url && legal.privacy_policy_url && " and "}
+              {legal.privacy_policy_url && (
+                <a
+                  href={legal.privacy_policy_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  Privacy Policy
+                </a>
+              )}
+            </p>
+          )}
         </div>
       </div>
     </div>

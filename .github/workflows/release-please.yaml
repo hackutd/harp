@@ -12,6 +12,12 @@ name: release-please
 
 jobs:
   release-please:
+    # Upstream only. This workflow ships to every fork, and a fork that ran it
+    # would mint its own v0.11.0 tag alongside the one it merged from upstream,
+    # leaving "which version am I on" unanswerable. Guarding here rather than
+    # asking adopters to delete the file keeps forks free of a delete/modify
+    # conflict every time this workflow changes.
+    if: github.repository == 'hackutd/harp'
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4

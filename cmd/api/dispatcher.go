@@ -8,7 +8,7 @@ import (
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 const (

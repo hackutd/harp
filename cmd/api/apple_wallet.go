@@ -7,10 +7,29 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/hackutd/portal/internal/applewallet"
+	"github.com/hackutd/harp/internal/applewallet"
+	"github.com/hackutd/harp/internal/slug"
 )
 
 const appleWalletPassMIMEType = "application/vnd.apple.pkpass"
+
+// defaultAppleWalletPassFilename is used until a super admin names the event,
+// and whenever that name has no ASCII characters to build a filename from.
+const defaultAppleWalletPassFilename = "hacker-pass.pkpass"
+
+// appleWalletPassFilename names the download after the configured event, so a
+// hacker ends up with a pass named after their own event rather than a file named
+// after whoever happens to run the upstream project.
+//
+// Content-Disposition filenames must be ASCII (RFC 6266) and the slug is
+// Unicode-aware, hence the extra pass.
+func appleWalletPassFilename(hackathonName string) string {
+	name := slug.ASCII(slug.Hackathon(hackathonName))
+	if name == "" || name == slug.UnconfiguredHackathon {
+		return defaultAppleWalletPassFilename
+	}
+	return name + "-hacker-pass.pkpass"
+}
 
 type appleWalletConfig struct {
 	enabled               bool
@@ -133,8 +152,16 @@ func (app *application) getAppleWalletPassHandler(w http.ResponseWriter, r *http
 		return
 	}
 
+	// The pass is already signed and valid at this point, so a failure to read
+	// the event name only costs us a nicer filename — never the download.
+	hackathonName, err := app.store.Settings.GetHackathonName(r.Context())
+	if err != nil {
+		app.logger.Warnw("failed to read hackathon name for pass filename", "error", err)
+	}
+
 	w.Header().Set("Content-Type", appleWalletPassMIMEType)
-	w.Header().Set("Content-Disposition", `attachment; filename="hackutd-hacker-pass.pkpass"`)
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf("attachment; filename=%q", appleWalletPassFilename(hackathonName)))
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pass)))
 	w.WriteHeader(http.StatusOK)

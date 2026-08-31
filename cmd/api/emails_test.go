@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hackutd/portal/internal/mailer"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/mailer"
+	"github.com/hackutd/harp/internal/store"
 )
 
 func newDecisionRecipient(appID, email string, status store.ApplicationStatus) store.DecisionEmailRecipient {

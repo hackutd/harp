@@ -7,6 +7,10 @@
 
 > Harp is under active development.
 
+**Running a hackathon at your school?** [ADOPTING.md](ADOPTING.md) is the whole
+setup path — fork, deploy, configure, and redesign it as your own. Harp is a
+starting point, not an upstream you have to track.
+
 ## What is Harp?
 
 Running a hackathon often means piecing together forms, spreadsheets, email tools, schedules, and check-in systems. Harp brings that work into one place. It helps organizers manage the event from the moment applications open through the final day of the hackathon.
@@ -17,6 +21,8 @@ The Go backend sits at the center of Harp. It handles the work behind applicatio
 - A **Next.js marketing site in a separate repository** introduces the event to the public and pulls changing schedules, FAQs, and sponsor information from the backend.
 
 The marketing site is deliberately kept outside this repository. Teams should begin with the base template and redesign it for every iteration of their hackathon so the site matches that year's theme and identity. The event data and organizer workflows stay in Harp, so creating a fresh public experience does not mean rebuilding the systems behind it.
+
+The same applies to the portal's own applicant-facing pages. What ships here is HackUTD's design, not a neutral baseline — treat it as a starting point and restyle it for your event. The backend, the settings, and your database carry over; the look does not have to.
 
 ## Application walkthrough
 
@@ -30,22 +36,6 @@ below with:
 -->
 
 _Demo GIF coming soon._
-
-## One platform for the full event lifecycle
-
-```mermaid
-flowchart LR
-    configure["Configure the event"] --> apply["Collect applications"]
-    apply --> review["Assign and review applications"]
-    review --> decide["Accept, reject, and notify"]
-    decide --> operate["Run check-in and event operations"]
-    operate --> reset["Reset for the next hackathon"]
-
-    configure -.-> publish["Publish schedules, FAQs, and sponsors"]
-    publish -.-> operate
-```
-
-Harp is useful for more than registration. Organizers can set up a new event, work through admissions, run the hackathon in real time, and prepare the platform for the next year.
 
 ## What the platform offers
 
@@ -126,23 +116,19 @@ This repository contains the shared backend and the authenticated portal. The ma
 
 ## The three core services
 
-| Service                    | Location                           | Responsibility                                                                                                           |
-| -------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Go backend**             | This repository: `cmd/api`, `internal` | Owns business logic, authorization, applications, reviews, decisions, event operations, public content, and persistence. |
-| **React portal**           | This repository: `client/portal`   | Provides the authenticated hacker, admin, and super-admin experience as a Vite-powered PWA.                              |
-| **Next.js marketing site** | Separate template repository       | Provides the public event website and renders frequently updated content from the Go public API.                         |
+| Service                    | Location                                                              | Responsibility                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Go backend**             | This repository: `cmd/api`, `internal`                                | Owns business logic, authorization, applications, reviews, decisions, event operations, public content, and persistence. |
+| **React portal**           | This repository: `client/portal`                                      | Provides the authenticated hacker, admin, and super-admin experience as a Vite-powered PWA.                              |
+| **Next.js marketing site** | [`hackutd/harp-marketing`](https://github.com/hackutd/harp-marketing) | Provides the public event website and renders frequently updated content from the Go public API.                         |
 
 ## Marketing site template
 
-The reusable Next.js marketing template is maintained in a separate GitHub repository. Start from that template for each hackathon, then redesign it around the new event's theme while keeping the public API connection in place.
+The reusable Next.js marketing template lives in its own repository:
 
-<!--
-Replace the line below with a link when the marketing template repository is ready:
+**[hackutd/harp-marketing](https://github.com/hackutd/harp-marketing)**
 
-[Marketing site base template](https://github.com/your-organization/your-marketing-template)
--->
-
-_Marketing site base template repository link coming soon._
+Start from it for each hackathon, then redesign it around the new event's theme while keeping the public API connection in place. It deploys independently to Vercel and reads schedules, FAQs, and sponsors from `/v1/public/*` using a shared `PUBLIC_API_KEY`, so a redesign never touches the backend.
 
 ## Technology at a glance
 

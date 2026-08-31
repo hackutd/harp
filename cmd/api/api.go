@@ -13,10 +13,10 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-	"github.com/hackutd/portal/internal/gcs"
-	"github.com/hackutd/portal/internal/mailer"
-	"github.com/hackutd/portal/internal/ratelimiter"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/gcs"
+	"github.com/hackutd/harp/internal/mailer"
+	"github.com/hackutd/harp/internal/ratelimiter"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/supertokens"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
@@ -149,6 +149,10 @@ func (app *application) mount() http.Handler {
 			r.Get("/sponsors", app.getPublicSponsorsHandler)
 			r.Get("/faq", app.getPublicFAQHandler)
 		})
+
+		// Legal document links. Unauthenticated on purpose: the login page
+		// tells hackers they agree to these before they have a session.
+		r.Get("/legal", app.getLegalConfigHandler)
 
 		// Auth endpoints not handled by SuperTokens
 		r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
@@ -314,6 +318,10 @@ func (app *application) mount() http.Handler {
 						r.Post("/from-name", app.setFromName)
 						r.Get("/application-due-date", app.getApplicationDueDate)
 						r.Post("/application-due-date", app.setApplicationDueDate)
+						r.Get("/privacy-policy-url", app.getPrivacyPolicyURL)
+						r.Post("/privacy-policy-url", app.setPrivacyPolicyURL)
+						r.Get("/terms-url", app.getTermsURL)
+						r.Post("/terms-url", app.setTermsURL)
 						r.Get("/onboarding-status", app.getOnboardingStatus)
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)
