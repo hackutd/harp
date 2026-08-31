@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  MIN_SEARCH_LENGTH,
   allRoles,
   formatDate,
   formatUserName,
   getUserInitial,
+  MIN_SEARCH_LENGTH,
   roleLabels,
 } from "./utils";
 

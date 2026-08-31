@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { ScheduleItem } from "@/types";
 
 import {
+  type DayEvent,
   enumerateDays,
   formatClock,
   formatHourLabel,
   formatMonthTitle,
   layoutDayEvents,
   toDayEvent,
-  type DayEvent,
 } from "./utils";
 
 // Tests run under TZ=America/Chicago (pinned in package.json).

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useGradingStore } from "./store";
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
+
+import { useGradingStore } from "./store";
 
 const adminApi = vi.hoisted(() => ({
   fetchApplications: vi.fn(),

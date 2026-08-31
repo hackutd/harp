@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScheduledNotification } from "./types";
 import {
   DEFAULT_SCHEDULE_LEAD_MS,
-  MIN_SCHEDULE_LEAD_MS,
   getScheduledAtError,
+  MIN_SCHEDULE_LEAD_MS,
   normalizeNotificationUrlInput,
   sortScheduledNotifications,
   toLocalInputValue,

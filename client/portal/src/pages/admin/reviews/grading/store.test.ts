@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useAdminGradingStore } from "./store";
 import type { Review, ReviewNote } from "../types";
+import { useAdminGradingStore } from "./store";
 
 const reviewApi = vi.hoisted(() => ({
   fetchPendingReviews: vi.fn(),
