@@ -39,7 +39,7 @@ function errorResponse(error: string | null, status = 400): Response {
 /** Maps a method name to its exported request factory. */
 function requestFor(
   method: string,
-): (...args: unknown[]) => Promise<{ status: number }> {
+): (...args: any[]) => Promise<{ status: number }> {
   switch (method) {
     case "GET":
       return (endpoint: string, errorContext: string, signal?: AbortSignal) =>
