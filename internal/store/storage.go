@@ -36,9 +36,12 @@ type Storage struct {
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error
+		SubmitRSVP(ctx context.Context, app *Application) error
+		SubmitTravelRSVP(ctx context.Context, app *Application) error
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
+		SetTravelStatus(ctx context.Context, id string, status TravelStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
 		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
 		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
@@ -49,6 +52,14 @@ type Storage struct {
 	Settings interface {
 		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
 		UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		GetRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		GetRSVPEnabled(ctx context.Context) (bool, error)
+		SetRSVPEnabled(ctx context.Context, enabled bool) error
+		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		GetTravelRSVPEnabled(ctx context.Context) (bool, error)
+		SetTravelRSVPEnabled(ctx context.Context, enabled bool) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
@@ -104,7 +115,8 @@ type Storage struct {
 		RebalanceStats(ctx context.Context) ([]ScanStat, error)
 	}
 	ApplicationReviews interface {
-		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
+		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, travelVote *bool, notes *string) (*ApplicationReview, error)
+		GetTravelStatusByReviewID(ctx context.Context, reviewID string, adminID string) (TravelStatus, error)
 		GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error)
 		GetCompletedByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error)
 		GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error)

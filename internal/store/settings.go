@@ -13,6 +13,10 @@ type SettingsStore struct {
 }
 
 const SettingsKeyApplicationSchema = "application_schema"
+const SettingsKeyRSVPSchema = "rsvp_schema"
+const SettingsKeyRSVPEnabled = "rsvp_enabled"
+const SettingsKeyTravelRSVPSchema = "travel_rsvp_schema"
+const SettingsKeyTravelRSVPEnabled = "travel_rsvp_enabled"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
@@ -106,6 +110,102 @@ func (s *SettingsStore) UpdateApplicationSchema(ctx context.Context, fields []Ap
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationSchema, string(value))
+	return err
+}
+
+// GetRSVPSchema returns the parsed RSVP form schema fields
+func (s *SettingsStore) GetRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyRSVPSchema).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []ApplicationSchemaField{}, nil
+		}
+		return nil, err
+	}
+
+	var fields []ApplicationSchemaField
+	if err := json.Unmarshal(value, &fields); err != nil {
+		return nil, err
+	}
+
+	return fields, nil
+}
+
+// UpdateRSVPSchema replaces the RSVP form schema with the provided fields
+func (s *SettingsStore) UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyRSVPSchema, string(value))
+	return err
+}
+
+// GetTravelRSVPSchema returns the parsed travel RSVP form schema fields
+func (s *SettingsStore) GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyTravelRSVPSchema).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []ApplicationSchemaField{}, nil
+		}
+		return nil, err
+	}
+
+	var fields []ApplicationSchemaField
+	if err := json.Unmarshal(value, &fields); err != nil {
+		return nil, err
+	}
+
+	return fields, nil
+}
+
+// UpdateTravelRSVPSchema replaces the travel RSVP form schema with the provided fields
+func (s *SettingsStore) UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyTravelRSVPSchema, string(value))
 	return err
 }
 
@@ -852,6 +952,106 @@ func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationsEnabled, string(jsonValue))
+	return err
+}
+
+// GetRSVPEnabled returns whether accepted hackers can currently submit an RSVP.
+// Defaults to true so RSVPs open as soon as acceptances go out; super admins
+// flip it off once the RSVP deadline passes.
+func (s *SettingsStore) GetRSVPEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyRSVPEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetRSVPEnabled updates whether accepted hackers can currently submit an RSVP.
+func (s *SettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyRSVPEnabled, string(jsonValue))
+	return err
+}
+
+// GetTravelRSVPEnabled returns whether travel-approved hackers can currently
+// submit their travel RSVP. Defaults to true so the form opens as soon as
+// travel approvals go out; super admins flip it off once the deadline passes.
+func (s *SettingsStore) GetTravelRSVPEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyTravelRSVPEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetTravelRSVPEnabled updates whether travel-approved hackers can currently submit their travel RSVP.
+func (s *SettingsStore) SetTravelRSVPEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyTravelRSVPEnabled, string(jsonValue))
 	return err
 }
 

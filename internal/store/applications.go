@@ -21,6 +21,25 @@ const (
 	StatusWaitlisted ApplicationStatus = "waitlisted"
 )
 
+// RSVPStatus tracks whether an accepted hacker has claimed or declined their spot
+type RSVPStatus string
+
+const (
+	RSVPPending   RSVPStatus = "pending"
+	RSVPConfirmed RSVPStatus = "confirmed"
+	RSVPDeclined  RSVPStatus = "declined"
+)
+
+// TravelStatus tracks the travel reimbursement review state for an application
+type TravelStatus string
+
+const (
+	TravelNotRequested TravelStatus = "not_requested"
+	TravelPending      TravelStatus = "pending"
+	TravelApproved     TravelStatus = "approved"
+	TravelRejected     TravelStatus = "rejected"
+)
+
 // PaginationDirection for bidirectional cursor traversal
 type PaginationDirection string
 
@@ -33,10 +52,11 @@ const (
 type ApplicationSortBy string
 
 const (
-	SortByCreatedAt     ApplicationSortBy = "created_at"
-	SortByAcceptVotes   ApplicationSortBy = "accept_votes"
-	SortByRejectVotes   ApplicationSortBy = "reject_votes"
-	SortByWaitlistVotes ApplicationSortBy = "waitlist_votes"
+	SortByCreatedAt      ApplicationSortBy = "created_at"
+	SortByAcceptVotes    ApplicationSortBy = "accept_votes"
+	SortByRejectVotes    ApplicationSortBy = "reject_votes"
+	SortByWaitlistVotes  ApplicationSortBy = "waitlist_votes"
+	SortByTravelYesVotes ApplicationSortBy = "travel_yes_votes"
 )
 
 // ApplicationCursor represents pagination cursor
@@ -48,9 +68,10 @@ type ApplicationCursor struct {
 
 // ApplicationListFilters for query filtering
 type ApplicationListFilters struct {
-	Status *ApplicationStatus
-	Search *string
-	SortBy ApplicationSortBy
+	Status       *ApplicationStatus
+	TravelStatus *TravelStatus
+	Search       *string
+	SortBy       ApplicationSortBy
 }
 
 // ApplicationListItem is a lightweight view for admin listing
@@ -81,6 +102,9 @@ type ApplicationListItem struct {
 	HasResume          bool              `json:"has_resume"`
 	MealGroup          *string           `json:"meal_group"`
 	Points             int               `json:"points"`
+	TravelStatus       TravelStatus      `json:"travel_status"`
+	TravelYesVotes     int               `json:"travel_yes_votes"`
+	TravelNoVotes      int               `json:"travel_no_votes"`
 }
 
 // ApplicationListResult contains paginated results
@@ -155,6 +179,19 @@ type Application struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	MealGroup   *string    `json:"meal_group"`
+
+	RSVPStatus      RSVPStatus      `json:"rsvp_status"`
+	RSVPResponses   json.RawMessage `json:"rsvp_responses" swaggertype:"object"`
+	RSVPSubmittedAt *time.Time      `json:"rsvp_submitted_at"`
+
+	TravelStatus   TravelStatus `json:"travel_status"`
+	TravelYesVotes int          `json:"travel_yes_votes"`
+	TravelNoVotes  int          `json:"travel_no_votes"`
+
+	TravelRSVPStatus      RSVPStatus      `json:"travel_rsvp_status"`
+	TravelRSVPResponses   json.RawMessage `json:"travel_rsvp_responses" swaggertype:"object"`
+	TravelRSVPSubmittedAt *time.Time      `json:"travel_rsvp_submitted_at"`
+	TravelReceiptPaths    StringArray     `json:"travel_receipt_paths" swaggertype:"array,string"`
 }
 
 type ApplicationsStore struct {
@@ -165,7 +202,10 @@ type ApplicationsStore struct {
 const applicationSelectCols = `
 	id, user_id, status, responses, resume_path, ai_percent,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
-	submitted_at, created_at, updated_at, meal_group`
+	submitted_at, created_at, updated_at, meal_group,
+	rsvp_status, rsvp_responses, rsvp_submitted_at,
+	travel_status, travel_yes_votes, travel_no_votes,
+	travel_rsvp_status, travel_rsvp_responses, travel_rsvp_submitted_at, travel_receipt_paths`
 
 // scanApplication scans a row into an Application struct
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
@@ -173,6 +213,9 @@ func scanApplication(row interface{ Scan(dest ...any) error }, app *Application)
 		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
+		&app.RSVPStatus, &app.RSVPResponses, &app.RSVPSubmittedAt,
+		&app.TravelStatus, &app.TravelYesVotes, &app.TravelNoVotes,
+		&app.TravelRSVPStatus, &app.TravelRSVPResponses, &app.TravelRSVPSubmittedAt, &app.TravelReceiptPaths,
 	)
 }
 
@@ -219,12 +262,15 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 	query := `
 		INSERT INTO applications (user_id)
 		VALUES ($1)
-		RETURNING id, status, responses, created_at, updated_at
+		RETURNING id, status, responses, created_at, updated_at, rsvp_status, rsvp_responses, travel_status, travel_rsvp_status, travel_rsvp_responses
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.UserID).Scan(
 		&app.ID, &app.Status, &app.Responses,
 		&app.CreatedAt, &app.UpdatedAt,
+		&app.RSVPStatus, &app.RSVPResponses,
+		&app.TravelStatus,
+		&app.TravelRSVPStatus, &app.TravelRSVPResponses,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "applications_user_id_key") {
@@ -268,17 +314,75 @@ func (s *ApplicationsStore) Submit(ctx context.Context, app *Application) error 
 
 	query := `
 		UPDATE applications
-		SET status = 'submitted', submitted_at = NOW()
+		SET status = 'submitted', submitted_at = NOW(),
+		    travel_status = CASE
+		        WHEN responses->'travel_reimbursement' = 'true'::jsonb THEN 'pending'::travel_status
+		        ELSE 'not_requested'::travel_status
+		    END
 		WHERE id = $1 AND status = 'draft'
-		RETURNING status, submitted_at, updated_at
+		RETURNING status, submitted_at, updated_at, travel_status
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.ID).Scan(
-		&app.Status, &app.SubmittedAt, &app.UpdatedAt,
+		&app.Status, &app.SubmittedAt, &app.UpdatedAt, &app.TravelStatus,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrConflict // Already submitted or not found
+		}
+		return err
+	}
+	return nil
+}
+
+// SubmitRSVP records the hacker's one-shot RSVP decision. The WHERE clause
+// enforces the state machine in SQL: only accepted applications with a
+// pending RSVP can transition, so concurrent submits resolve to ErrConflict.
+func (s *ApplicationsStore) SubmitRSVP(ctx context.Context, app *Application) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET rsvp_status = $2, rsvp_responses = $3, rsvp_submitted_at = NOW()
+		WHERE id = $1 AND status = 'accepted' AND rsvp_status = 'pending'
+		RETURNING rsvp_status, rsvp_responses, rsvp_submitted_at, updated_at
+	`
+
+	err := s.db.QueryRowContext(ctx, query, app.ID, app.RSVPStatus, app.RSVPResponses).Scan(
+		&app.RSVPStatus, &app.RSVPResponses, &app.RSVPSubmittedAt, &app.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrConflict // Already RSVP'd or not accepted
+		}
+		return err
+	}
+	return nil
+}
+
+// SubmitTravelRSVP records the hacker's one-shot travel RSVP (proof of travel).
+// The WHERE clause enforces the state machine in SQL: only accepted hackers who
+// claimed their spot and have approved travel with a pending travel RSVP can
+// transition, so concurrent submits resolve to ErrConflict.
+func (s *ApplicationsStore) SubmitTravelRSVP(ctx context.Context, app *Application) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET travel_rsvp_status = $2, travel_rsvp_responses = $3, travel_receipt_paths = $4, travel_rsvp_submitted_at = NOW()
+		WHERE id = $1 AND status = 'accepted' AND rsvp_status = 'confirmed'
+		  AND travel_status = 'approved' AND travel_rsvp_status = 'pending'
+		RETURNING travel_rsvp_status, travel_rsvp_responses, travel_receipt_paths, travel_rsvp_submitted_at, updated_at
+	`
+
+	err := s.db.QueryRowContext(ctx, query, app.ID, app.TravelRSVPStatus, app.TravelRSVPResponses, app.TravelReceiptPaths).Scan(
+		&app.TravelRSVPStatus, &app.TravelRSVPResponses, &app.TravelReceiptPaths, &app.TravelRSVPSubmittedAt, &app.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrConflict // Already submitted or not eligible
 		}
 		return err
 	}
@@ -295,6 +399,8 @@ func sortColumnName(sortBy ApplicationSortBy) string {
 		return "a.reject_votes"
 	case SortByWaitlistVotes:
 		return "a.waitlist_votes"
+	case SortByTravelYesVotes:
+		return "a.travel_yes_votes"
 	default:
 		return "a.created_at"
 	}
@@ -303,7 +409,7 @@ func sortColumnName(sortBy ApplicationSortBy) string {
 // isVoteSort returns true if sorting by a vote column instead of created_at
 func isVoteSort(sortBy ApplicationSortBy) bool {
 	switch sortBy {
-	case SortByAcceptVotes, SortByRejectVotes, SortByWaitlistVotes:
+	case SortByAcceptVotes, SortByRejectVotes, SortByWaitlistVotes, SortByTravelYesVotes:
 		return true
 	default:
 		return false
@@ -319,6 +425,8 @@ func getVoteVal(item ApplicationListItem, sortBy ApplicationSortBy) int {
 		return item.RejectVotes
 	case SortByWaitlistVotes:
 		return item.WaitlistVotes
+	case SortByTravelYesVotes:
+		return item.TravelYesVotes
 	default:
 		return 0
 	}
@@ -376,7 +484,8 @@ func (s *ApplicationsStore) List(
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
 		       a.resume_path IS NOT NULL AS has_resume, a.meal_group,
-		       (SELECT COALESCE(SUM(s.points), 0) FROM scans s WHERE s.user_id = a.user_id) AS points
+		       (SELECT COALESCE(SUM(s.points), 0) FROM scans s WHERE s.user_id = a.user_id) AS points,
+		       a.travel_status, a.travel_yes_votes, a.travel_no_votes
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -384,7 +493,8 @@ func (s *ApplicationsStore) List(
 		    u.email ILIKE '%' || $5 || '%'
 		    OR a.responses->>'first_name' ILIKE '%' || $5 || '%'
 		    OR a.responses->>'last_name' ILIKE '%' || $5 || '%'
-		))`
+		))
+		  AND ($6::travel_status IS NULL OR a.travel_status = $6)`
 
 	// Fetch limit+1 to determine hasMore
 	queryLimit := limit + 1
@@ -392,6 +502,11 @@ func (s *ApplicationsStore) List(
 	var statusParam any
 	if filters.Status != nil {
 		statusParam = *filters.Status
+	}
+
+	var travelStatusParam any
+	if filters.TravelStatus != nil {
+		travelStatusParam = *filters.TravelStatus
 	}
 
 	var rows *sql.Rows
@@ -425,7 +540,7 @@ func (s *ApplicationsStore) List(
 				LIMIT $4`, selectCols, col, searchClause, col)
 		}
 
-		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorVal, cursorID, queryLimit, searchParam)
+		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorVal, cursorID, queryLimit, searchParam, travelStatusParam)
 	} else {
 		// Default created_at sorting
 		var cursorTime *time.Time
@@ -452,7 +567,7 @@ func (s *ApplicationsStore) List(
 				LIMIT $4`, selectCols, searchClause)
 		}
 
-		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam)
+		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam, travelStatusParam)
 	}
 
 	if err != nil {
@@ -472,6 +587,7 @@ func (s *ApplicationsStore) List(
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
 			&item.HasResume, &item.MealGroup, &item.Points,
+			&item.TravelStatus, &item.TravelYesVotes, &item.TravelNoVotes,
 		); err != nil {
 			return nil, err
 		}
@@ -550,6 +666,36 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 	err := scanApplication(s.db.QueryRowContext(ctx, query, id, status), &app)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &app, nil
+}
+
+// SetTravelStatus sets the travel reimbursement decision on an application.
+// Only applications that requested travel (travel_status != 'not_requested')
+// can be decided; ErrConflict is returned otherwise.
+func (s *ApplicationsStore) SetTravelStatus(ctx context.Context, id string, status TravelStatus) (*Application, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET travel_status = $2, updated_at = NOW()
+		WHERE id = $1 AND travel_status != 'not_requested'
+		RETURNING ` + applicationSelectCols
+
+	var app Application
+	err := scanApplication(s.db.QueryRowContext(ctx, query, id, status), &app)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Distinguish a missing application from one that never requested travel
+			var exists bool
+			if checkErr := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM applications WHERE id = $1)`, id).Scan(&exists); checkErr == nil && exists {
+				return nil, ErrConflict
+			}
 			return nil, ErrNotFound
 		}
 		return nil, err

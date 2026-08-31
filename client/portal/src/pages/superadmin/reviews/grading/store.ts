@@ -15,7 +15,7 @@ import { fetchReviewNotes } from "@/pages/admin/reviews/api";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
 import type { Application } from "@/types";
 
-import { setApplicationStatus } from "./api";
+import { setApplicationStatus, setApplicationTravelStatus } from "./api";
 
 interface FilterParams {
   status?: ApplicationStatus;
@@ -42,6 +42,10 @@ interface GradingState {
   gradeApplication: (
     applicationId: string,
     status: "accepted" | "rejected" | "waitlisted",
+  ) => Promise<void>;
+  gradeTravel: (
+    applicationId: string,
+    travelStatus: "approved" | "rejected" | "pending",
   ) => Promise<void>;
   reset: () => void;
 }
@@ -199,6 +203,32 @@ export const useGradingStore = create<GradingState>((set, get) => ({
     } else {
       set({ grading: false });
       toast.error(res.error ?? "Failed to update application status");
+    }
+  },
+
+  // Travel decisions are independent of the application status, so no
+  // auto-advance — the super admin usually still grades the application.
+  gradeTravel: async (
+    applicationId: string,
+    travelStatus: "approved" | "rejected" | "pending",
+  ) => {
+    set({ grading: true });
+
+    const res = await setApplicationTravelStatus(applicationId, travelStatus);
+
+    if (res.status === 200) {
+      const { applications } = get();
+      const updated = applications.map((app) =>
+        app.id === applicationId
+          ? { ...app, travel_status: travelStatus }
+          : app,
+      );
+      set({ applications: updated, grading: false });
+
+      toast.success(`Travel reimbursement ${travelStatus}`);
+    } else {
+      set({ grading: false });
+      toast.error(res.error ?? "Failed to update travel status");
     }
   },
 

@@ -32,6 +32,7 @@ const SORTABLE_COLUMNS: { key: SortableColumn; label: string }[] = [
   { key: "accept_votes", label: "Accept" },
   { key: "reject_votes", label: "Reject" },
   { key: "waitlist_votes", label: "Waitlist" },
+  { key: "travel_yes_votes", label: "Travel Y/N" },
 ];
 
 export const ReviewsTable = memo(function ReviewsTable({
@@ -77,6 +78,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                 </Button>
               </TableHead>
             ))}
+            <TableHead>Travel</TableHead>
             <TableHead>Reviews</TableHead>
             <TableHead>AI %</TableHead>
             <TableHead>Submitted</TableHead>
@@ -86,7 +88,7 @@ export const ReviewsTable = memo(function ReviewsTable({
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={10} className="text-center text-gray-500">
+              <TableCell colSpan={12} className="text-center text-gray-500">
                 No applications found
               </TableCell>
             </TableRow>
@@ -117,6 +119,28 @@ export const ReviewsTable = memo(function ReviewsTable({
                 </TableCell>
                 <TableCell className="text-center">
                   {app.waitlist_votes}
+                </TableCell>
+                <TableCell className="text-center">
+                  {app.travel_status === "not_requested"
+                    ? "-"
+                    : `${app.travel_yes_votes}/${app.travel_no_votes}`}
+                </TableCell>
+                <TableCell className="text-center whitespace-nowrap">
+                  {app.travel_status === "not_requested" ? (
+                    "-"
+                  ) : (
+                    <Badge
+                      className={
+                        app.travel_status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : app.travel_status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                      }
+                    >
+                      {app.travel_status}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-center whitespace-nowrap">
                   {app.reviews_completed}/{app.reviews_assigned}

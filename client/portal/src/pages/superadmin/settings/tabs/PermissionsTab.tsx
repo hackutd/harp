@@ -66,6 +66,8 @@ export default function PermissionsTab() {
   const [applicationsEnabled, setApplicationsEnabled] = useState<boolean>(
     DEFAULT_FEATURE_FLAGS.applicationsEnabled,
   );
+  const [rsvpEnabled, setRSVPEnabled] = useState(true);
+  const [travelRSVPEnabled, setTravelRSVPEnabled] = useState(true);
   const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
     useState(true);
   const [adminSponsorEditEnabled, setAdminSponsorEditEnabled] = useState(true);
@@ -73,6 +75,8 @@ export default function PermissionsTab() {
 
   const [loading, setLoading] = useState(true);
   const [applicationsSaving, setApplicationsSaving] = useState(false);
+  const [rsvpSaving, setRSVPSaving] = useState(false);
+  const [travelRSVPSaving, setTravelRSVPSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [sponsorSaving, setSponsorSaving] = useState(false);
   const [faqSaving, setFaqSaving] = useState(false);
@@ -80,30 +84,56 @@ export default function PermissionsTab() {
 
   useEffect(() => {
     async function fetchSettings() {
-      const [applicationsRes, scheduleRes, sponsorRes, faqRes] =
-        await Promise.all([
-          getRequest<{ enabled: boolean }>(
-            "/applications/enabled",
-            "applications enabled",
-          ),
-          getRequest<{ enabled: boolean }>(
-            "/superadmin/settings/admin-schedule-edit-toggle",
-            "admin schedule edit toggle",
-          ),
-          getRequest<{ enabled: boolean }>(
-            "/superadmin/settings/admin-sponsor-edit-toggle",
-            "admin sponsor edit toggle",
-          ),
-          getRequest<{ enabled: boolean }>(
-            "/superadmin/settings/admin-faq-edit-toggle",
-            "admin FAQ edit toggle",
-          ),
-        ]);
+      const [
+        applicationsRes,
+        rsvpRes,
+        travelRSVPRes,
+        scheduleRes,
+        sponsorRes,
+        faqRes,
+      ] = await Promise.all([
+        getRequest<{ enabled: boolean }>(
+          "/applications/enabled",
+          "applications enabled",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/rsvp-enabled",
+          "RSVP enabled",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/travel-rsvp-enabled",
+          "travel RSVP enabled",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/admin-schedule-edit-toggle",
+          "admin schedule edit toggle",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/admin-sponsor-edit-toggle",
+          "admin sponsor edit toggle",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/admin-faq-edit-toggle",
+          "admin FAQ edit toggle",
+        ),
+      ]);
 
       if (applicationsRes.status === 200 && applicationsRes.data) {
         setApplicationsEnabled(applicationsRes.data.enabled);
       } else {
         errorAlert(applicationsRes);
+      }
+
+      if (rsvpRes.status === 200 && rsvpRes.data) {
+        setRSVPEnabled(rsvpRes.data.enabled);
+      } else {
+        errorAlert(rsvpRes);
+      }
+
+      if (travelRSVPRes.status === 200 && travelRSVPRes.data) {
+        setTravelRSVPEnabled(travelRSVPRes.data.enabled);
+      } else {
+        errorAlert(travelRSVPRes);
       }
 
       if (scheduleRes.status === 200 && scheduleRes.data) {
@@ -158,6 +188,48 @@ export default function PermissionsTab() {
     }
 
     setApplicationsSaving(false);
+  }
+
+  async function handleRSVPToggle(nextValue: boolean) {
+    setRSVPSaving(true);
+    const res = await putRequest<{ enabled: boolean }>(
+      "/superadmin/settings/rsvp-enabled",
+      { enabled: nextValue },
+      "RSVP enabled",
+    );
+
+    if (res.status === 200 && res.data) {
+      setRSVPEnabled(res.data.enabled);
+      toast.success(
+        res.data.enabled ? "RSVPs are now open." : "RSVPs are now closed.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setRSVPSaving(false);
+  }
+
+  async function handleTravelRSVPToggle(nextValue: boolean) {
+    setTravelRSVPSaving(true);
+    const res = await putRequest<{ enabled: boolean }>(
+      "/superadmin/settings/travel-rsvp-enabled",
+      { enabled: nextValue },
+      "travel RSVP enabled",
+    );
+
+    if (res.status === 200 && res.data) {
+      setTravelRSVPEnabled(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Travel forms are now open."
+          : "Travel forms are now closed.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setTravelRSVPSaving(false);
   }
 
   async function handleScheduleToggle(nextValue: boolean) {
@@ -240,6 +312,24 @@ export default function PermissionsTab() {
         checked={applicationsEnabled}
         disabled={loading || applicationsSaving}
         onCheckedChange={handleApplicationsToggle}
+      />
+
+      <PermissionToggle
+        id="rsvp-toggle"
+        label="RSVP Submissions"
+        description="When enabled, accepted hackers can RSVP to claim or decline their spot."
+        checked={rsvpEnabled}
+        disabled={loading || rsvpSaving}
+        onCheckedChange={handleRSVPToggle}
+      />
+
+      <PermissionToggle
+        id="travel-rsvp-toggle"
+        label="Travel Form Submissions"
+        description="When enabled, hackers with approved travel reimbursement can submit their travel details and receipts."
+        checked={travelRSVPEnabled}
+        disabled={loading || travelRSVPSaving}
+        onCheckedChange={handleTravelRSVPToggle}
       />
 
       <PermissionToggle

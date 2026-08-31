@@ -29,6 +29,14 @@ export type ApplicationStatus =
   | "rejected"
   | "waitlisted";
 
+export type RSVPStatus = "pending" | "confirmed" | "declined";
+
+export type TravelStatus =
+  | "not_requested"
+  | "pending"
+  | "approved"
+  | "rejected";
+
 export type ReviewVote = "accept" | "waitlist" | "reject";
 
 export interface Review {
@@ -36,6 +44,7 @@ export interface Review {
   admin_id: string;
   application_id: string;
   vote: ReviewVote | null;
+  travel_vote: boolean | null;
   notes: string | null;
   assigned_at: string;
   reviewed_at: string | null;
@@ -49,6 +58,7 @@ export interface Review {
   major: string | null;
   country_of_residence: string | null;
   hackathons_attended: number | null;
+  travel_status: TravelStatus;
 }
 
 export interface PendingReviewsResponse {
@@ -96,6 +106,19 @@ export interface Application {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  /** RSVP decision for accepted hackers; "pending" until they claim/decline their spot. */
+  rsvp_status: RSVPStatus;
+  rsvp_responses: Record<string, unknown>;
+  rsvp_submitted_at: string | null;
+  /** Travel reimbursement review state; "pending" once submitted with the travel opt-in. */
+  travel_status: TravelStatus;
+  travel_yes_votes: number;
+  travel_no_votes: number;
+  /** Travel RSVP (proof of travel) for hackers with approved travel; "pending" until they submit. */
+  travel_rsvp_status: RSVPStatus;
+  travel_rsvp_responses: Record<string, unknown>;
+  travel_rsvp_submitted_at: string | null;
+  travel_receipt_paths: string[] | null;
 }
 
 export interface ScheduleItem {
@@ -166,6 +189,9 @@ export interface ApplicationListItem {
   ai_percent: number | null;
   has_resume: boolean;
   points: number;
+  travel_status: TravelStatus;
+  travel_yes_votes: number;
+  travel_no_votes: number;
 }
 
 // Paginated response from admin applications endpoint

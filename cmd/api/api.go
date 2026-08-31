@@ -198,6 +198,23 @@ func (app *application) mount() http.Handler {
 				// even after applications close.
 				r.Get("/me/resume-url", app.getMyResumeDownloadURLHandler)
 
+				// RSVP is gated by its own toggle, not ApplicationsEnabled:
+				// applications are typically closed by the time acceptances go out.
+				r.Get("/me/rsvp", app.getMyRSVPHandler)
+				r.Group(func(r chi.Router) {
+					r.Use(app.RSVPEnabledMiddleware)
+					r.Post("/me/rsvp", app.submitMyRSVPHandler)
+				})
+
+				// Travel RSVP (proof of travel) mirrors the RSVP gating with its own toggle
+				r.Get("/me/travel-rsvp", app.getMyTravelRSVPHandler)
+				r.Get("/me/travel-rsvp/receipt-url", app.getMyTravelReceiptURLHandler)
+				r.Group(func(r chi.Router) {
+					r.Use(app.TravelRSVPEnabledMiddleware)
+					r.Post("/me/travel-rsvp", app.submitMyTravelRSVPHandler)
+					r.Post("/me/travel-rsvp/receipt-upload-url", app.generateTravelReceiptUploadURLHandler)
+				})
+
 				r.Group(func(r chi.Router) {
 					r.Use(app.ApplicationsEnabledMiddleware)
 					r.Patch("/me", app.updateApplicationHandler)
@@ -218,6 +235,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/stats", app.getApplicationStatsHandler)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
+						r.Get("/{applicationID}/travel-receipt-urls", app.getTravelReceiptURLsHandler)
 
 						// Assigned Applications
 						r.Get("/{applicationID}/notes", app.getApplicationNotes)
@@ -292,6 +310,14 @@ func (app *application) mount() http.Handler {
 					r.Route("/settings", func(r chi.Router) {
 						r.Get("/application-schema", app.getApplicationSchema)
 						r.Put("/application-schema", app.updateApplicationSchema)
+						r.Get("/rsvp-schema", app.getRSVPSchema)
+						r.Put("/rsvp-schema", app.updateRSVPSchema)
+						r.Get("/rsvp-enabled", app.getRSVPEnabled)
+						r.Put("/rsvp-enabled", app.setRSVPEnabled)
+						r.Get("/travel-rsvp-schema", app.getTravelRSVPSchema)
+						r.Put("/travel-rsvp-schema", app.updateTravelRSVPSchema)
+						r.Get("/travel-rsvp-enabled", app.getTravelRSVPEnabled)
+						r.Put("/travel-rsvp-enabled", app.setTravelRSVPEnabled)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
@@ -339,6 +365,7 @@ func (app *application) mount() http.Handler {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+						r.Patch("/{applicationID}/travel-status", app.setApplicationTravelStatus)
 					})
 
 					// Outbound decision emails

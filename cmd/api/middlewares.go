@@ -233,6 +233,64 @@ func (app *application) ApplicationsEnabledMiddleware(next http.Handler) http.Ha
 	})
 }
 
+// Checks whether RSVPs are enabled. If not, blocks RSVP submission for non-super-admins.
+func (app *application) RSVPEnabledMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetRSVPEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("rsvps are currently closed"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Checks whether travel RSVPs are enabled. If not, blocks travel RSVP submission for non-super-admins.
+func (app *application) TravelRSVPEnabledMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetTravelRSVPEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("travel rsvps are currently closed"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (app *application) AdminSponsorEditPermissionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := getUserFromContext(r.Context())

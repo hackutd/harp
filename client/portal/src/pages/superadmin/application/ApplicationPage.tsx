@@ -66,7 +66,10 @@ export default function ApplicationPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <SchemaEditor />
+              <SchemaEditor
+                store={useApplicationSchemaStore}
+                description="Configure the fields that appear on hacker applications. Fields are grouped by section."
+              />
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>

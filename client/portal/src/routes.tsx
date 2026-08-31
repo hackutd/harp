@@ -25,6 +25,10 @@ const DashboardPage = lazy(
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
 const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
+const HackerRSVPPage = lazy(() => import("@/pages/hacker/rsvp/RSVPPage"));
+const HackerTravelRSVPPage = lazy(
+  () => import("@/pages/hacker/travel-rsvp/TravelRSVPPage"),
+);
 const HackerLayout = lazy(() => import("@/layouts/HackerLayout"));
 const HackerScanPage = lazy(() => import("@/pages/hacker/scan/ScanPage"));
 const HackerSchedulePage = lazy(
@@ -45,6 +49,12 @@ const SuperAdminUserManagementPage = lazy(
 );
 const SuperAdminApplicationPage = lazy(
   () => import("@/pages/superadmin/application/ApplicationPage"),
+);
+const SuperAdminRSVPPage = lazy(
+  () => import("@/pages/superadmin/rsvp/RSVPPage"),
+);
+const SuperAdminTravelRSVPPage = lazy(
+  () => import("@/pages/superadmin/travel-rsvp/TravelRSVPPage"),
 );
 const SuperAdminReviewsPage = lazy(
   () => import("@/pages/superadmin/reviews/ReviewsPage"),
@@ -122,6 +132,22 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <StatusPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "rsvp",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerRSVPPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "travel-rsvp",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerTravelRSVPPage />
               </Suspense>
             ),
           },
@@ -264,6 +290,26 @@ export const router = createBrowserRouter([
               <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
                   <SuperAdminApplicationPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/rsvp",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminRSVPPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/travel-rsvp",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminTravelRSVPPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),

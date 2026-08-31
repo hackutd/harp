@@ -2,6 +2,7 @@ import {
   deriveSections,
   formatResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
@@ -97,15 +98,17 @@ export function ApplicationSummary({
               {sectionId === "personal" && userEmail && (
                 <SummaryRow label="Email" value={userEmail} />
               )}
-              {fields.map((field) => (
-                <SummaryRow
-                  key={field.id}
-                  label={stripLabelLinks(field.label)}
-                  value={formatResponseValue(responses[field.id], field)}
-                  truncateLabel={field.type === "checkbox"}
-                  stacked={field.type === "textarea"}
-                />
-              ))}
+              {fields.map((field) =>
+                isFieldVisible(field, responses) ? (
+                  <SummaryRow
+                    key={field.id}
+                    label={stripLabelLinks(field.label)}
+                    value={formatResponseValue(responses[field.id], field)}
+                    truncateLabel={field.type === "checkbox"}
+                    stacked={field.type === "textarea"}
+                  />
+                ) : null,
+              )}
               {sectionId === resumeSectionId && (
                 <SummaryRow
                   label="Resume"

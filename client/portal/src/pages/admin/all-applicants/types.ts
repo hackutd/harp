@@ -1,3 +1,5 @@
+import type { TravelStatus } from "@/types";
+
 export type ApplicationStatus =
   | "draft"
   | "submitted"
@@ -31,6 +33,9 @@ export interface ApplicationListItem {
   reviews_completed: number;
   has_resume: boolean;
   points: number;
+  travel_status: TravelStatus;
+  travel_yes_votes: number;
+  travel_no_votes: number;
 }
 
 export interface ApplicationListResult {
@@ -54,11 +59,13 @@ export type ApplicationSortBy =
   | "created_at"
   | "accept_votes"
   | "reject_votes"
-  | "waitlist_votes";
+  | "waitlist_votes"
+  | "travel_yes_votes";
 
 export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
+  travel_status?: TravelStatus;
   direction?: "forward" | "backward";
   search?: string;
   sort_by?: ApplicationSortBy;

@@ -25,6 +25,10 @@ export async function fetchApplications(
     queryParams.set("status", params.status);
   }
 
+  if (params?.travel_status) {
+    queryParams.set("travel_status", params.travel_status);
+  }
+
   if (params?.cursor) {
     queryParams.set("cursor", params.cursor);
   }

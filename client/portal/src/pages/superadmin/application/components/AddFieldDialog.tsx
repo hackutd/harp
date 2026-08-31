@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import type { ApplicationSchemaField, FieldType } from "@/types";
 
 import { FIELD_TYPE_LABELS } from "../constants";
-import { useApplicationSchemaStore } from "../store";
+import type { SchemaStore } from "../createSchemaStore";
 import { OptionsEditor } from "./OptionsEditor";
 
 const FIELD_TYPES: FieldType[] = [
@@ -37,10 +37,14 @@ const FIELD_TYPES: FieldType[] = [
 ];
 
 interface AddFieldDialogProps {
+  store: SchemaStore;
   defaultSection?: string;
 }
 
-export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
+export function AddFieldDialog({
+  store: useStore,
+  defaultSection,
+}: AddFieldDialogProps) {
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState(defaultSection ?? "");
   const [type, setType] = useState<FieldType>("text");
@@ -48,9 +52,9 @@ export function AddFieldDialog({ defaultSection }: AddFieldDialogProps) {
   const [required, setRequired] = useState(false);
   const [options, setOptions] = useState<string[]>([""]);
 
-  const fields = useApplicationSchemaStore((s) => s.fields);
-  const sections = useApplicationSchemaStore((s) => s.sections);
-  const addField = useApplicationSchemaStore((s) => s.addField);
+  const fields = useStore((s) => s.fields);
+  const sections = useStore((s) => s.sections);
+  const addField = useStore((s) => s.addField);
 
   const hasOptions = type === "select" || type === "multi_select";
 

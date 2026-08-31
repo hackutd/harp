@@ -16,6 +16,7 @@ import type {
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
 
 import { GradingPanel } from "./components/GradingPanel";
+import { TravelRSVPSection } from "./components/TravelRSVPSection";
 import { useGradingStore } from "./store";
 
 export default function GradingPage() {
@@ -37,6 +38,7 @@ export default function GradingPage() {
   const navigateNext = useGradingStore((s) => s.navigateNext);
   const navigatePrev = useGradingStore((s) => s.navigatePrev);
   const gradeApplication = useGradingStore((s) => s.gradeApplication);
+  const gradeTravel = useGradingStore((s) => s.gradeTravel);
   const reset = useGradingStore((s) => s.reset);
 
   const currentApp = applications[currentIndex] ?? null;
@@ -80,6 +82,15 @@ export default function GradingPage() {
       }
     },
     [currentApp, gradeApplication],
+  );
+
+  const handleGradeTravel = useCallback(
+    (travelStatus: "approved" | "rejected" | "pending") => {
+      if (currentApp) {
+        gradeTravel(currentApp.id, travelStatus);
+      }
+    },
+    [currentApp, gradeTravel],
   );
 
   useGradingKeyboardShortcuts({
@@ -145,9 +156,24 @@ export default function GradingPage() {
                     </Badge>
                   )}
                 </div>
+                {currentApp.travel_status !== "not_requested" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-blue-100 text-blue-800">
+                      travel: {currentApp.travel_status}
+                    </Badge>
+                    <Badge className="bg-green-100 text-green-800">
+                      {currentApp.travel_yes_votes} travel yes
+                    </Badge>
+                    <Badge className="bg-red-100 text-red-800">
+                      {currentApp.travel_no_votes} travel no
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
           )}
+          {/* Keyed by application so receipt/schema state resets between applicants */}
+          {detail && <TravelRSVPSection key={detail.id} application={detail} />}
         </GradingDetailsPanel>
       }
       actionPanel={
@@ -157,6 +183,7 @@ export default function GradingPage() {
           notesLoading={notesLoading}
           grading={grading}
           onGrade={handleGrade}
+          onGradeTravel={handleGradeTravel}
         />
       }
       emptyState={

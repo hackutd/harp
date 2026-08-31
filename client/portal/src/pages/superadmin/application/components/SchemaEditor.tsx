@@ -11,20 +11,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { useApplicationSchemaStore } from "../store";
+import type { SchemaStore } from "../createSchemaStore";
 import { AddFieldDialog } from "./AddFieldDialog";
 import { AddSectionDialog } from "./AddSectionDialog";
 import { FieldCard } from "./FieldCard";
 
-export function SchemaEditor() {
-  const fields = useApplicationSchemaStore((s) => s.fields);
-  const sections = useApplicationSchemaStore((s) => s.sections);
-  const updateField = useApplicationSchemaStore((s) => s.updateField);
-  const removeField = useApplicationSchemaStore((s) => s.removeField);
-  const moveField = useApplicationSchemaStore((s) => s.moveField);
-  const removeSection = useApplicationSchemaStore((s) => s.removeSection);
-  const renameSection = useApplicationSchemaStore((s) => s.renameSection);
-  const moveSection = useApplicationSchemaStore((s) => s.moveSection);
+interface SchemaEditorProps {
+  store: SchemaStore;
+  description: string;
+}
+
+export function SchemaEditor({
+  store: useStore,
+  description,
+}: SchemaEditorProps) {
+  const fields = useStore((s) => s.fields);
+  const sections = useStore((s) => s.sections);
+  const updateField = useStore((s) => s.updateField);
+  const removeField = useStore((s) => s.removeField);
+  const moveField = useStore((s) => s.moveField);
+  const removeSection = useStore((s) => s.removeSection);
+  const renameSection = useStore((s) => s.renameSection);
+  const moveSection = useStore((s) => s.moveSection);
 
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
@@ -52,10 +60,7 @@ export function SchemaEditor() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-light text-muted-foreground">
-        Configure the fields that appear on hacker applications. Fields are
-        grouped by section.
-      </p>
+      <p className="text-sm font-light text-muted-foreground">{description}</p>
 
       <Accordion type="multiple" className="space-y-2">
         {fieldsBySection.map(
@@ -152,7 +157,7 @@ export function SchemaEditor() {
                       />
                     ))
                   )}
-                  <AddFieldDialog defaultSection={section} />
+                  <AddFieldDialog store={useStore} defaultSection={section} />
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -160,7 +165,7 @@ export function SchemaEditor() {
         )}
       </Accordion>
 
-      <AddSectionDialog />
+      <AddSectionDialog store={useStore} />
     </div>
   );
 }

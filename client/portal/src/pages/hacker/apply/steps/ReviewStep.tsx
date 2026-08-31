@@ -5,6 +5,7 @@ import {
   deriveSections,
   formatResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
@@ -134,6 +135,7 @@ export function ReviewStep({
                 <ReviewField label="Email" value={userEmail} />
               )}
               {fields.map((field) => {
+                if (!isFieldVisible(field, values)) return null;
                 const isAgreement = field.type === "checkbox";
                 const isLongAnswer = field.type === "textarea";
                 return (

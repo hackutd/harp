@@ -6,6 +6,7 @@ import {
   formatResponseValue,
   getResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
 } from "@/shared/lib/schema-utils";
 import type { Application } from "@/types";
 
@@ -34,7 +35,9 @@ export function SchemaDetailRenderer({
       {sections
         .filter((s) => !skipSections.includes(s.id))
         .map((section) => {
-          const fields = grouped[section.id];
+          const fields = grouped[section.id]?.filter((f) =>
+            isFieldVisible(f, responses),
+          );
           if (!fields || fields.length === 0) return null;
 
           return (

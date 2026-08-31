@@ -147,7 +147,8 @@ func TestSubmitVote(t *testing.T) {
 			AdminID:       admin.ID,
 		}
 
-		mockReviews.On("SubmitVote", "rev-1", admin.ID, store.ReviewVoteAccept, (*string)(nil)).Return(review, nil).Once()
+		mockReviews.On("GetTravelStatusByReviewID", "rev-1", admin.ID).Return(store.TravelNotRequested, nil).Once()
+		mockReviews.On("SubmitVote", "rev-1", admin.ID, store.ReviewVoteAccept, (*bool)(nil), (*string)(nil)).Return(review, nil).Once()
 
 		body := `{"vote":"accept"}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
@@ -173,7 +174,8 @@ func TestSubmitVote(t *testing.T) {
 			Notes:   &notes,
 		}
 
-		mockReviews.On("SubmitVote", "rev-1", admin.ID, store.ReviewVoteReject, &notes).Return(review, nil).Once()
+		mockReviews.On("GetTravelStatusByReviewID", "rev-1", admin.ID).Return(store.TravelNotRequested, nil).Once()
+		mockReviews.On("SubmitVote", "rev-1", admin.ID, store.ReviewVoteReject, (*bool)(nil), &notes).Return(review, nil).Once()
 
 		body := `{"vote":"reject","notes":"Strong candidate"}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
@@ -186,6 +188,74 @@ func TestSubmitVote(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.submitVote))
 		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockReviews.AssertExpectations(t)
+	})
+
+	t.Run("should submit a travel vote when applicant requested travel", func(t *testing.T) {
+		admin := newAdminUser()
+		travelYes := true
+		review := &store.ApplicationReview{
+			ID:            "rev-1",
+			ApplicationID: "app-1",
+			AdminID:       admin.ID,
+			TravelVote:    &travelYes,
+		}
+
+		mockReviews.On("GetTravelStatusByReviewID", "rev-1", admin.ID).Return(store.TravelPending, nil).Once()
+		mockReviews.On("SubmitVote", "rev-1", admin.ID, store.ReviewVoteAccept, &travelYes, (*string)(nil)).Return(review, nil).Once()
+
+		body := `{"vote":"accept","travel_vote":true}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, admin)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("reviewID", "rev-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitVote))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockReviews.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 when travel vote missing but applicant requested travel", func(t *testing.T) {
+		admin := newAdminUser()
+
+		mockReviews.On("GetTravelStatusByReviewID", "rev-1", admin.ID).Return(store.TravelPending, nil).Once()
+
+		body := `{"vote":"accept"}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, admin)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("reviewID", "rev-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitVote))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockReviews.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 when travel vote provided but applicant did not request travel", func(t *testing.T) {
+		admin := newAdminUser()
+
+		mockReviews.On("GetTravelStatusByReviewID", "rev-1", admin.ID).Return(store.TravelNotRequested, nil).Once()
+
+		body := `{"vote":"accept","travel_vote":false}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, admin)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("reviewID", "rev-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitVote))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 
 		mockReviews.AssertExpectations(t)
 	})
@@ -207,7 +277,7 @@ func TestSubmitVote(t *testing.T) {
 	t.Run("should return 404 when review not found", func(t *testing.T) {
 		admin := newAdminUser()
 
-		mockReviews.On("SubmitVote", "nonexistent", admin.ID, store.ReviewVoteAccept, (*string)(nil)).Return(nil, store.ErrNotFound).Once()
+		mockReviews.On("GetTravelStatusByReviewID", "nonexistent", admin.ID).Return(store.TravelStatus(""), store.ErrNotFound).Once()
 
 		body := `{"vote":"accept"}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))

@@ -42,6 +42,77 @@ const STATUS_PILL_COLORS: Record<ApplicationStatus, string> = {
   waitlisted: "bg-[#8A7444]",
 };
 
+interface TravelCard {
+  pill: string;
+  pillColor: string;
+  message: string;
+  /** Show the "Complete your travel form" CTA linking to /app/travel-rsvp. */
+  showTravelForm?: boolean;
+}
+
+// Travel reimbursement card copy, shown only when the hacker opted in. Once
+// travel is approved, the card follows the travel RSVP (proof of travel) state.
+function travelCardContent(application: Application): TravelCard | null {
+  if (
+    application.travel_status === "not_requested" ||
+    application.status === "rejected"
+  ) {
+    return null;
+  }
+
+  switch (application.travel_status) {
+    case "pending":
+      return {
+        pill: "Travel under review",
+        pillColor: "bg-[#7A7973]",
+        message:
+          "We're reviewing your travel reimbursement request. You'll see the decision here once it's made.",
+      };
+    case "rejected":
+      return {
+        pill: "Travel not approved",
+        pillColor: "bg-[#8F5F5A]",
+        message:
+          "We couldn't approve your travel reimbursement request this time. This doesn't affect your application decision.",
+      };
+    default:
+      break;
+  }
+
+  // Approved: the next step is the travel RSVP form.
+  if (application.travel_rsvp_status === "confirmed") {
+    return {
+      pill: "Travel details submitted",
+      pillColor: "bg-[#5A7D63]",
+      message:
+        "We received your travel details and receipts. The organizing team will follow up about your reimbursement.",
+    };
+  }
+  if (application.travel_rsvp_status === "declined") {
+    return {
+      pill: "Reimbursement declined",
+      pillColor: "bg-[#7A7973]",
+      message:
+        "You've declined the travel reimbursement. See you at the event!",
+    };
+  }
+  if (application.rsvp_status !== "confirmed") {
+    return {
+      pill: "Travel approved",
+      pillColor: "bg-[#5A7D63]",
+      message:
+        "Your travel reimbursement was approved! Claim your spot first, then complete the travel form with your travel details and receipts.",
+    };
+  }
+  return {
+    pill: "Travel approved",
+    pillColor: "bg-[#5A7D63]",
+    message:
+      "Your travel reimbursement was approved! Complete the travel form with your travel details, ticket receipts, and payment info.",
+    showTravelForm: true,
+  };
+}
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
@@ -127,6 +198,7 @@ export default function StatusPage() {
   const schema = application.application_schema ?? [];
   const hasResume = Boolean(application.resume_path);
   const resumeSectionId = resolveResumeSectionId(schema);
+  const travelCard = travelCardContent(application);
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8">
@@ -164,6 +236,72 @@ export default function StatusPage() {
       {/* Accepted celebration: fires once when an accepted hacker opens their status */}
       {application.status === "accepted" && (
         <CelebrationEffect id={application.id} type="accepted" />
+      )}
+
+      {/* RSVP: accepted hackers claim (or decline) their spot */}
+      {application.status === "accepted" &&
+        application.rsvp_status === "pending" && (
+          <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
+            <p className="text-sm font-normal text-black">Claim your spot</p>
+            <p className="mt-1 text-xs font-light text-[#8A8A8A]">
+              Confirm you&apos;re coming so we can save you a seat.
+            </p>
+            <Button
+              onClick={() => navigate("/app/rsvp")}
+              className="mt-4 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+            >
+              RSVP to claim your spot
+            </Button>
+          </div>
+        )}
+      {application.status === "accepted" &&
+        application.rsvp_status === "confirmed" && (
+          <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
+            <span className="inline-block rounded-full bg-[#5A7D63] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
+              Spot claimed
+            </span>
+            <p className="mt-3 text-sm font-light text-[#8A8A8A]">
+              Your RSVP is confirmed. We can&apos;t wait to see you at the
+              event!
+            </p>
+          </div>
+        )}
+      {application.status === "accepted" &&
+        application.rsvp_status === "declined" && (
+          <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
+            <span className="inline-block rounded-full bg-[#7A7973] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
+              Spot declined
+            </span>
+            <p className="mt-3 text-sm font-light text-[#8A8A8A]">
+              You&apos;ve declined your spot. Sorry you can&apos;t make it — we
+              hope to see you next time!
+            </p>
+          </div>
+        )}
+
+      {/* Travel reimbursement: reviewed separately from the application */}
+      {travelCard && (
+        <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
+          <span
+            className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${travelCard.pillColor}`}
+          >
+            {travelCard.pill}
+          </span>
+          <h2 className="mt-3 text-sm font-normal text-black">
+            Travel reimbursement
+          </h2>
+          <p className="mt-1 text-sm font-light text-[#8A8A8A]">
+            {travelCard.message}
+          </p>
+          {travelCard.showTravelForm && (
+            <Button
+              onClick={() => navigate("/app/travel-rsvp")}
+              className="mt-4 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+            >
+              Complete your travel form
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Details */}

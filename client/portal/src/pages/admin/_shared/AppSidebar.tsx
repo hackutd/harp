@@ -3,10 +3,12 @@
 import {
   Bell,
   Calendar,
+  CalendarCheck,
   ClipboardList,
   DoorOpen,
   Handshake,
   MessageSquare,
+  Plane,
   ScanLine,
   Settings,
   Star,
@@ -82,6 +84,16 @@ const superAdminNav = [
     name: "Application",
     url: "/admin/sa/application",
     icon: ClipboardList,
+  },
+  {
+    name: "RSVP",
+    url: "/admin/sa/rsvp",
+    icon: CalendarCheck,
+  },
+  {
+    name: "Travel RSVP",
+    url: "/admin/sa/travel-rsvp",
+    icon: Plane,
   },
   {
     name: "Notifications",

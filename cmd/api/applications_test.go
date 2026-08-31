@@ -758,3 +758,77 @@ func TestSetApplicationStatus(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 }
+
+func TestSetApplicationTravelStatus(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+
+	t.Run("should set travel status to approved", func(t *testing.T) {
+		returned := &store.Application{ID: "app-1", TravelStatus: store.TravelApproved}
+		mockApps.On("SetTravelStatus", "app-1", store.TravelApproved).Return(returned, nil).Once()
+
+		body := `{"travel_status":"approved"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 for invalid travel status value", func(t *testing.T) {
+		body := `{"travel_status":"not_requested"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		mockApps.On("SetTravelStatus", "nonexistent", store.TravelRejected).Return(nil, store.ErrNotFound).Once()
+
+		body := `{"travel_status":"rejected"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "nonexistent")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should return 409 when applicant did not request travel", func(t *testing.T) {
+		mockApps.On("SetTravelStatus", "app-1", store.TravelApproved).Return(nil, store.ErrConflict).Once()
+
+		body := `{"travel_status":"approved"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusConflict, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}

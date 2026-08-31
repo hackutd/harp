@@ -21,12 +21,14 @@ interface GradingState {
   notesLoading: boolean;
   submitting: boolean;
   localNotes: string;
+  localTravelVote: boolean | null;
   fetchReviews: () => Promise<void>;
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
   navigatePrev: () => void;
   submitVote: (reviewId: string, vote: ReviewVote) => Promise<void>;
   setLocalNotes: (notes: string) => void;
+  setLocalTravelVote: (vote: boolean) => void;
   reset: () => void;
 }
 
@@ -40,6 +42,7 @@ const initialState = {
   notesLoading: false,
   submitting: false,
   localNotes: "",
+  localTravelVote: null as boolean | null,
 };
 
 let loadDetailSeq = 0;
@@ -66,6 +69,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
       detail: null,
       notes: [],
       localNotes: "",
+      localTravelVote: null,
     });
 
     const [detailRes, notesRes] = await Promise.all([
@@ -110,9 +114,16 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   submitVote: async (reviewId: string, vote: ReviewVote) => {
     set({ submitting: true });
 
-    const { localNotes } = get();
+    const { localNotes, localTravelVote, reviews: allReviews } = get();
+    const review = allReviews.find((r) => r.id === reviewId);
+    const travelRequested =
+      !!review && review.travel_status !== "not_requested";
     const result = await submitReviewVote(reviewId, {
       vote,
+      travel_vote:
+        travelRequested && localTravelVote !== null
+          ? localTravelVote
+          : undefined,
       notes: localNotes || undefined,
     });
 
@@ -126,6 +137,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
         currentIndex: Math.max(0, newIndex),
         submitting: false,
         localNotes: "",
+        localTravelVote: null,
       });
 
       toast.success(`Vote submitted: ${vote}`);
@@ -143,6 +155,10 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
 
   setLocalNotes: (notes: string) => {
     set({ localNotes: notes });
+  },
+
+  setLocalTravelVote: (vote: boolean) => {
+    set({ localTravelVote: vote });
   },
 
   reset: () => {

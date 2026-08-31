@@ -9,8 +9,9 @@ import (
 )
 
 type SubmitVotePayload struct {
-	Vote  store.ReviewVote `json:"vote" validate:"required,oneof=accept reject waitlist"`
-	Notes *string          `json:"notes" validate:"omitempty,max=1000"`
+	Vote       store.ReviewVote `json:"vote" validate:"required,oneof=accept reject waitlist"`
+	TravelVote *bool            `json:"travel_vote"`
+	Notes      *string          `json:"notes" validate:"omitempty,max=1000"`
 }
 
 type ReviewResponse struct {
@@ -208,12 +209,12 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 // submitVote records the admin's vote on an assigned application review
 //
 //	@Summary		Submit vote on a review (Admin)
-//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
+//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise.
 //	@Tags			admin/reviews
 //	@Accept			json
 //	@Produce		json
 //	@Param			reviewID	path		string				true	"Review ID"
-//	@Param			vote		body		SubmitVotePayload	true	"Vote and optional notes"
+//	@Param			vote		body		SubmitVotePayload	true	"Vote, optional travel vote, and optional notes"
 //	@Success		200			{object}	ReviewResponse
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
@@ -242,7 +243,27 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := app.store.ApplicationReviews.SubmitVote(r.Context(), reviewID, user.ID, req.Vote, req.Notes)
+	travelStatus, err := app.store.ApplicationReviews.GetTravelStatusByReviewID(r.Context(), reviewID, user.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if travelStatus == store.TravelNotRequested && req.TravelVote != nil {
+		app.badRequestResponse(w, r, errors.New("travel_vote is not allowed: applicant did not request travel reimbursement"))
+		return
+	}
+	if travelStatus != store.TravelNotRequested && req.TravelVote == nil {
+		app.badRequestResponse(w, r, errors.New("travel_vote is required: applicant requested travel reimbursement"))
+		return
+	}
+
+	review, err := app.store.ApplicationReviews.SubmitVote(r.Context(), reviewID, user.ID, req.Vote, req.TravelVote, req.Notes)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
