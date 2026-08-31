@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type ReviewsState,useReviewsStore } from "./store";
+import { type ReviewsState, useReviewsStore } from "./store";
 import type { Review } from "./types";
 
 const reviewsApi = vi.hoisted(() => ({
