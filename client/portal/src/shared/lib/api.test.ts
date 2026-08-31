@@ -39,35 +39,58 @@ function errorResponse(error: string | null, status = 400): Response {
 /** Maps a method name to its exported request factory. */
 function requestFor(
   method: string,
-): (...args: any[]) => Promise<{ status: number }> {
+): (
+  endpoint: string,
+  bodyOrErrorContext?: unknown | string,
+  maybeErrorContext?: string,
+  maybeSignal?: AbortSignal,
+) => Promise<{ status: number }> {
   switch (method) {
     case "GET":
-      return (endpoint: string, errorContext: string, signal?: AbortSignal) =>
-        getRequest(endpoint, errorContext, signal);
+      return (endpoint: string, errorContext?: string, signal?: AbortSignal) =>
+        getRequest(endpoint, errorContext ?? "", signal);
     case "POST":
       return (
         endpoint: string,
-        body: unknown,
-        errorContext: string,
+        bodyOrErrorContext?: unknown,
+        errorContext?: string,
         signal?: AbortSignal,
-      ) => postRequest(endpoint, body, errorContext, signal);
+      ) =>
+        postRequest(
+          endpoint,
+          bodyOrErrorContext,
+          errorContext ?? "",
+          signal,
+        );
     case "PUT":
       return (
         endpoint: string,
-        body: unknown,
-        errorContext: string,
+        bodyOrErrorContext?: unknown,
+        errorContext?: string,
         signal?: AbortSignal,
-      ) => putRequest(endpoint, body, errorContext, signal);
+      ) =>
+        putRequest(
+          endpoint,
+          bodyOrErrorContext,
+          errorContext ?? "",
+          signal,
+        );
     case "PATCH":
       return (
         endpoint: string,
-        body: unknown,
-        errorContext: string,
+        bodyOrErrorContext?: unknown,
+        errorContext?: string,
         signal?: AbortSignal,
-      ) => patchRequest(endpoint, body, errorContext, signal);
+      ) =>
+        patchRequest(
+          endpoint,
+          bodyOrErrorContext,
+          errorContext ?? "",
+          signal,
+        );
     default:
-      return (endpoint: string, errorContext: string, signal?: AbortSignal) =>
-        deleteRequest(endpoint, errorContext, signal);
+      return (endpoint: string, errorContext?: string, signal?: AbortSignal) =>
+        deleteRequest(endpoint, errorContext ?? "", signal);
   }
 }
 
