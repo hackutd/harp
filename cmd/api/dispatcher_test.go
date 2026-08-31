@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

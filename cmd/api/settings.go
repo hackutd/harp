@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type UpdateApplicationSchemaPayload struct {
@@ -1466,6 +1466,197 @@ func (app *application) getHackathonConfigHandler(w http.ResponseWriter, r *http
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type SetURLSettingPayload struct {
+	URL string `json:"url"`
+}
+
+type URLSettingResponse struct {
+	URL string `json:"url"`
+}
+
+// LegalConfigResponse carries the operator's own policy links. It is served
+// unauthenticated because the login page asserts agreement to both documents
+// before anyone has a session, and a claim we cannot link is worse than no
+// claim at all.
+type LegalConfigResponse struct {
+	PrivacyPolicyURL string `json:"privacy_policy_url"`
+	TermsURL         string `json:"terms_url"`
+}
+
+// normalizeOptionalURL trims a user-supplied link and rejects anything that is
+// not http(s). Empty is valid and means "not configured" — the login page hides
+// the link rather than pointing at a document that does not exist.
+func normalizeOptionalURL(raw string) (string, error) {
+	url := strings.TrimSpace(raw)
+	if url == "" {
+		return "", nil
+	}
+
+	lower := strings.ToLower(url)
+	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+		return "", errors.New("url must start with http:// or https://")
+	}
+	return url, nil
+}
+
+// getLegalConfigHandler returns the operator's policy links for the login page.
+//
+//	@Summary		Get legal document links
+//	@Description	Returns the configured privacy policy and terms of service URLs. Unauthenticated so the login page can link them before sign-in. Empty values mean the operator has not configured that document.
+//	@Tags			public
+//	@Produce		json
+//	@Success		200	{object}	LegalConfigResponse
+//	@Failure		500	{object}	object{error=string}
+//	@Router			/legal [get]
+func (app *application) getLegalConfigHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	privacyURL, err := app.store.Settings.GetPrivacyPolicyURL(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	termsURL, err := app.store.Settings.GetTermsURL(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := LegalConfigResponse{
+		PrivacyPolicyURL: privacyURL,
+		TermsURL:         termsURL,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getPrivacyPolicyURL returns the configured privacy policy link
+//
+//	@Summary		Get privacy policy URL (Super Admin)
+//	@Description	Returns the configured privacy policy link
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	URLSettingResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/privacy-policy-url [get]
+func (app *application) getPrivacyPolicyURL(w http.ResponseWriter, r *http.Request) {
+	url, err := app.store.Settings.GetPrivacyPolicyURL(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, URLSettingResponse{URL: url}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setPrivacyPolicyURL updates the privacy policy link
+//
+//	@Summary		Set privacy policy URL (Super Admin)
+//	@Description	Updates the privacy policy link shown on the login page. Send an empty string to hide it.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			url	body		SetURLSettingPayload	true	"Privacy policy URL"
+//	@Success		200	{object}	URLSettingResponse
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/privacy-policy-url [post]
+func (app *application) setPrivacyPolicyURL(w http.ResponseWriter, r *http.Request) {
+	var req SetURLSettingPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	url, err := normalizeOptionalURL(req.URL)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetPrivacyPolicyURL(r.Context(), url); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, URLSettingResponse{URL: url}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getTermsURL returns the configured terms of service link
+//
+//	@Summary		Get terms of service URL (Super Admin)
+//	@Description	Returns the configured terms of service link
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	URLSettingResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/terms-url [get]
+func (app *application) getTermsURL(w http.ResponseWriter, r *http.Request) {
+	url, err := app.store.Settings.GetTermsURL(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, URLSettingResponse{URL: url}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setTermsURL updates the terms of service link
+//
+//	@Summary		Set terms of service URL (Super Admin)
+//	@Description	Updates the terms of service link shown on the login page. Send an empty string to hide it.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			url	body		SetURLSettingPayload	true	"Terms of service URL"
+//	@Success		200	{object}	URLSettingResponse
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/terms-url [post]
+func (app *application) setTermsURL(w http.ResponseWriter, r *http.Request) {
+	var req SetURLSettingPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	url, err := normalizeOptionalURL(req.URL)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetTermsURL(r.Context(), url); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, URLSettingResponse{URL: url}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

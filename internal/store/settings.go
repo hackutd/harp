@@ -31,6 +31,8 @@ const SettingsKeyContactEmail = "contact_email"
 const SettingsKeyFromEmail = "from_email"
 const SettingsKeyFromName = "from_name"
 const SettingsKeyApplicationDueDate = "application_due_date"
+const SettingsKeyPrivacyPolicyURL = "privacy_policy_url"
+const SettingsKeyTermsURL = "terms_url"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
@@ -1045,4 +1047,24 @@ func (s *SettingsStore) GetApplicationDueDate(ctx context.Context) (string, erro
 // SetApplicationDueDate updates the application deadline (YYYY-MM-DD).
 func (s *SettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
 	return s.setStringSetting(ctx, SettingsKeyApplicationDueDate, date)
+}
+
+// GetPrivacyPolicyURL returns the operator's privacy policy link (empty when unset).
+func (s *SettingsStore) GetPrivacyPolicyURL(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyPrivacyPolicyURL)
+}
+
+// SetPrivacyPolicyURL updates the privacy policy link shown on the login page.
+func (s *SettingsStore) SetPrivacyPolicyURL(ctx context.Context, url string) error {
+	return s.setStringSetting(ctx, SettingsKeyPrivacyPolicyURL, url)
+}
+
+// GetTermsURL returns the operator's terms of service link (empty when unset).
+func (s *SettingsStore) GetTermsURL(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyTermsURL)
+}
+
+// SetTermsURL updates the terms of service link shown on the login page.
+func (s *SettingsStore) SetTermsURL(ctx context.Context, url string) error {
+	return s.setStringSetting(ctx, SettingsKeyTermsURL, url)
 }

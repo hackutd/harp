@@ -15,6 +15,7 @@ import type {
   PointsNameResult,
   ResetHackathonOptions,
   ResetHackathonResult,
+  URLSettingResult,
 } from "./types";
 
 // Partial: omitted domains default to false server-side, which lets targeted
@@ -228,5 +229,45 @@ export async function updatePointsEnabled(
     "/superadmin/settings/points-enabled",
     { enabled },
     "points system enabled",
+  );
+}
+
+export async function fetchPrivacyPolicyURL(
+  signal?: AbortSignal,
+): Promise<ApiResponse<URLSettingResult>> {
+  return getRequest<URLSettingResult>(
+    "/superadmin/settings/privacy-policy-url",
+    "privacy policy URL",
+    signal,
+  );
+}
+
+export async function updatePrivacyPolicyURL(
+  url: string,
+): Promise<ApiResponse<URLSettingResult>> {
+  return postRequest<URLSettingResult>(
+    "/superadmin/settings/privacy-policy-url",
+    { url },
+    "privacy policy URL",
+  );
+}
+
+export async function fetchTermsURL(
+  signal?: AbortSignal,
+): Promise<ApiResponse<URLSettingResult>> {
+  return getRequest<URLSettingResult>(
+    "/superadmin/settings/terms-url",
+    "terms of service URL",
+    signal,
+  );
+}
+
+export async function updateTermsURL(
+  url: string,
+): Promise<ApiResponse<URLSettingResult>> {
+  return postRequest<URLSettingResult>(
+    "/superadmin/settings/terms-url",
+    { url },
+    "terms of service URL",
   );
 }

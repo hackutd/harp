@@ -7,30 +7,28 @@ import (
 	"runtime"
 	"time"
 
-	_ "github.com/hackutd/portal/docs"
-	"github.com/hackutd/portal/internal/auth"
-	"github.com/hackutd/portal/internal/db"
-	"github.com/hackutd/portal/internal/env"
-	"github.com/hackutd/portal/internal/gcs"
-	"github.com/hackutd/portal/internal/logger"
-	"github.com/hackutd/portal/internal/mailer"
-	"github.com/hackutd/portal/internal/ratelimiter"
-	"github.com/hackutd/portal/internal/store"
+	_ "github.com/hackutd/harp/docs"
+	"github.com/hackutd/harp/internal/auth"
+	"github.com/hackutd/harp/internal/db"
+	"github.com/hackutd/harp/internal/env"
+	"github.com/hackutd/harp/internal/gcs"
+	"github.com/hackutd/harp/internal/logger"
+	"github.com/hackutd/harp/internal/mailer"
+	"github.com/hackutd/harp/internal/ratelimiter"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
 
 var version = "dev"
 
-// @title						HackPortal API
+// @title						Harp API
 // @version					1.0
-// @description				API for HackPortal
-// @termsOfService				http://swagger.io/terms/
-// @contact.name				API Support
-// @contact.url				http://www.swagger.io/support
-// @contact.email				support@swagger.io
-// @license.name				Apache 2.0
-// @license.url				http://www.apache.org/licenses/LICENSE-2.0.html
+// @description				API for Harp, the hackathon applications and review platform
+// @contact.name				Harp maintainers
+// @contact.url				https://github.com/hackutd/harp/issues
+// @license.name				MIT
+// @license.url				https://github.com/hackutd/harp/blob/main/LICENSE
 // @BasePath					/v1
 // @securityDefinitions.apikey	CookieAuth
 // @in							cookie
@@ -46,6 +44,14 @@ func main() {
 	// Init configs
 	appURL := env.GetString("APP_URL", "http://localhost:8080")
 	frontendURL := env.GetString("FRONTEND_URL", appURL)
+
+	// Wallet passes carry the organizer's name, so fall back through
+	// HACKATHON_NAME rather than making every deployment set a second variable
+	// with the same answer. These cannot default to "": applewallet.New rejects
+	// an empty organization name or description, which would turn
+	// APPLE_WALLET_ENABLED=true into a boot failure.
+	walletOrganizationName := env.GetString("APPLE_WALLET_ORGANIZATION_NAME",
+		env.GetString("HACKATHON_NAME", mailer.DefaultHackathonName))
 
 	cfg := config{
 		addr:   env.GetString("ADDR", ":8080"),
@@ -91,7 +97,7 @@ func main() {
 		frontendURL:      frontendURL,
 		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
-			appName:            env.GetString("APP_NAME", "HackUTD Portal"),
+			appName:            env.GetString("APP_NAME", "Harp Portal"),
 			connectionURI:      env.GetRequiredString("SUPERTOKENS_CONNECTION_URI"),
 			apiKey:             env.GetRequiredString("SUPERTOKENS_API_KEY"),
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
@@ -106,8 +112,8 @@ func main() {
 			enabled:               env.GetBool("APPLE_WALLET_ENABLED", false),
 			passTypeIdentifier:    env.GetString("APPLE_WALLET_PASS_TYPE_IDENTIFIER", ""),
 			teamIdentifier:        env.GetString("APPLE_WALLET_TEAM_IDENTIFIER", ""),
-			organizationName:      env.GetString("APPLE_WALLET_ORGANIZATION_NAME", "HackUTD"),
-			description:           env.GetString("APPLE_WALLET_DESCRIPTION", "HackUTD Hacker Pass"),
+			organizationName:      walletOrganizationName,
+			description:           env.GetString("APPLE_WALLET_DESCRIPTION", walletOrganizationName+" Hacker Pass"),
 			certificateBase64:     env.GetString("APPLE_WALLET_CERTIFICATE_BASE64", ""),
 			privateKeyBase64:      env.GetString("APPLE_WALLET_PRIVATE_KEY_BASE64", ""),
 			wwdrCertificateBase64: env.GetString("APPLE_WALLET_WWDR_CERTIFICATE_BASE64", ""),

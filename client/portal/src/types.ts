@@ -84,6 +84,8 @@ export interface Application {
   application_schema?: ApplicationSchemaField[];
   /** Total scan points; populated on read endpoints. */
   points?: number;
+  /** Assigned at check-in; null until the hacker has checked in. */
+  meal_group: string | null;
   resume_path: string | null;
   ai_percent: number | null;
   accept_votes: number;

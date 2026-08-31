@@ -1,4 +1,4 @@
-import { ClipboardPen, X } from "lucide-react";
+import { ClipboardPen, Utensils, X } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,7 +11,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useRedactApplicants } from "@/shared/hooks";
 import { errorAlert } from "@/shared/lib/api";
+import { formatApplicantLabel } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
 import type { Application } from "@/types";
 
@@ -36,6 +38,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
 }: ApplicationDetailPanelProps) {
   const [isOpeningResume, setIsOpeningResume] = useState(false);
   const pointsName = usePointsConfigStore((s) => s.pointsName);
+  const redact = useRedactApplicants();
 
   const handleViewResume = useCallback(async () => {
     if (!application || !application.resume_path || isOpeningResume) {
@@ -70,10 +73,12 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
           ) : application ? (
             <>
               <p className="font-semibold">
-                {formatName(
-                  application.responses?.first_name as string | null,
-                  application.responses?.last_name as string | null,
-                )}
+                {redact
+                  ? formatApplicantLabel(application.id)
+                  : formatName(
+                      application.responses?.first_name as string | null,
+                      application.responses?.last_name as string | null,
+                    )}
               </p>
               <Badge className={getStatusColor(application.status)}>
                 {application.status}
@@ -81,6 +86,12 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
               <Badge variant="secondary" className="tabular-nums">
                 {application.points ?? 0} {pointsName}
               </Badge>
+              {application.meal_group && (
+                <Badge variant="outline" className="gap-1">
+                  <Utensils className="size-3" />
+                  {application.meal_group}
+                </Badge>
+              )}
             </>
           ) : null}
         </div>

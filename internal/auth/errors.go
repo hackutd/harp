@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type AuthMethodMismatchError struct {

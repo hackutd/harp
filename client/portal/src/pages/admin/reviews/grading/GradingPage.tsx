@@ -9,6 +9,8 @@ import {
   useGradingKeyboardShortcuts,
 } from "@/pages/admin/_shared/grading";
 import { formatName } from "@/pages/admin/all-applicants/utils";
+import { useRedactApplicants } from "@/shared/hooks";
+import { formatApplicantLabel } from "@/shared/lib/redaction";
 
 import { VoteBadge } from "../components/VoteBadge";
 import type { ReviewVote } from "../types";
@@ -37,6 +39,7 @@ export default function GradingPage() {
   const reset = useAdminGradingStore((s) => s.reset);
 
   const [aiPercent, setAiPercent] = useState<number | null>(null);
+  const redact = useRedactApplicants();
 
   const currentReview = reviews[currentIndex] ?? null;
 
@@ -92,7 +95,9 @@ export default function GradingPage() {
         currentReview ? (
           <>
             <p className="font-semibold">
-              {formatName(currentReview.first_name, currentReview.last_name)}
+              {redact
+                ? formatApplicantLabel(currentReview.application_id)
+                : formatName(currentReview.first_name, currentReview.last_name)}
             </p>
             <VoteBadge vote={currentReview.vote} />
           </>

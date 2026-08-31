@@ -1,5 +1,71 @@
 # Changelog
 
+## [0.12.0](https://github.com/hackutd/harp/compare/v0.11.0...v0.12.0) (2026-08-27)
+
+
+### Features
+
+* custom legal links ([#136](https://github.com/hackutd/harp/issues/136)) ([0767a6d](https://github.com/hackutd/harp/commit/0767a6dd7cfdda67979f691995ff4e9aafbfc151))
+
+## [0.11.0](https://github.com/hackutd/harp/compare/v0.10.0...v0.11.0) (2026-08-27)
+
+
+### Features
+
+* hide "is required" error text and lower answer text toward underline ([#132](https://github.com/hackutd/harp/issues/132)) ([54ab604](https://github.com/hackutd/harp/commit/54ab60498c9223d924267e97207db52df95b13bf))
+
+
+### Bug Fixes
+
+* debrand for adopters ([#133](https://github.com/hackutd/harp/issues/133)) ([a805705](https://github.com/hackutd/harp/commit/a8057052cc6cac4001f591555138fc2e1e1d5fbc))
+
+## [0.10.0](https://github.com/hackutd/harp/compare/v0.9.0...v0.10.0) (2026-08-24)
+
+
+### Features
+
+* add admin-configurable Hacker Pack Notion embed page ([#104](https://github.com/hackutd/harp/issues/104)) ([33502d4](https://github.com/hackutd/harp/commit/33502d4913c7abdc43a79ca6e53728f4c71c7300))
+* add mailer client - sendgrid & smtp ([#87](https://github.com/hackutd/harp/issues/87)) ([8fd268a](https://github.com/hackutd/harp/commit/8fd268a5d6242df1e3bbadfd7b9c3d078f6514f3))
+* add marketing site and rename client/web to client/portal ([c394170](https://github.com/hackutd/harp/commit/c394170ff841348996ea671baaa19a84eff5614f))
+* add points system for scan types with shop purchases ([#112](https://github.com/hackutd/harp/issues/112)) ([60a39b0](https://github.com/hackutd/harp/commit/60a39b0b73063f8287fbb30901b397bdbcdd4f52))
+* application card homepage minor UI changes ([d73a78f](https://github.com/hackutd/harp/commit/d73a78f438607e68fb328a1446582d3da01b7d89))
+* ci versioning ([53a86cf](https://github.com/hackutd/harp/commit/53a86cf1e2aa86680205b2445ab9b7c0aa7878df))
+* complete mobile-first hacker-side redesign ([#89](https://github.com/hackutd/harp/issues/89)) ([49e1e7c](https://github.com/hackutd/harp/commit/49e1e7ca2653bb3bb6df2e40ff21e2b65b1914e7))
+* confetti celebration UI on application submit and acceptance ([#106](https://github.com/hackutd/harp/issues/106)) ([478578b](https://github.com/hackutd/harp/commit/478578b2906536e77d9251d4d65a3784b252e262))
+* configurable FAQs and new logo ([#102](https://github.com/hackutd/harp/issues/102)) ([53e2f59](https://github.com/hackutd/harp/commit/53e2f595c21fd0c5d108ee766daecc288f4bd993))
+* convert race and ethnicity fields to dropdowns with the option of custom answers ([#108](https://github.com/hackutd/harp/issues/108)) ([d26887f](https://github.com/hackutd/harp/commit/d26887ff0e77b66599513fe33dacd392869995ad))
+* emails for application decisions ([#128](https://github.com/hackutd/harp/issues/128)) ([e36311a](https://github.com/hackutd/harp/commit/e36311a7134c0aeff1c18322b14a6ac20bea1ec1))
+* **FE:** admin side UI changes ([b5eb33a](https://github.com/hackutd/harp/commit/b5eb33ac7e41ea7f0ac62de13ebb4d218b5ab4f3))
+* fix up the application process ([#100](https://github.com/hackutd/harp/issues/100)) ([4b329a3](https://github.com/hackutd/harp/commit/4b329a31bde6d05d106a507fe7fc113830aa82eb))
+* make admin portal scan-only on mobile with back button ([68ec7ad](https://github.com/hackutd/harp/commit/68ec7ad08cb64844ebc77d88b3faf8e9762ee639))
+* namespace resume storage per hackathon cycle ([7f3e483](https://github.com/hackutd/harp/commit/7f3e48374337139c51b3b9344266df51df07d302))
+* **onboarding:** install prompt, push notification prompt, and schedule tip ([#119](https://github.com/hackutd/harp/issues/119)) ([36f1149](https://github.com/hackutd/harp/commit/36f1149c431e2e5b0d5db6022b3955bdb9201f75))
+* rebalance scan stats ([#83](https://github.com/hackutd/harp/issues/83)) ([2c77392](https://github.com/hackutd/harp/commit/2c773920b943f63bdeb622a99b900b4f17a329db))
+* replace all loading spinners with skeleton UI and pulse buttons ([#124](https://github.com/hackutd/harp/issues/124)) ([5d2a0ef](https://github.com/hackutd/harp/commit/5d2a0efe1a52818f06d8ff37e833b81c3769cf4a))
+* superadmin-managed hackathon identity and date settings with onboarding form ([#125](https://github.com/hackutd/harp/issues/125)) ([b469507](https://github.com/hackutd/harp/commit/b4695072dd3d195d9b671673c99bb7a4d7fd2b04))
+* walk-in queue for hackathon day check-in ([#88](https://github.com/hackutd/harp/issues/88)) ([9520d75](https://github.com/hackutd/harp/commit/9520d75ee7ee8e6d01772deb989ebd3ed8106af4))
+
+
+### Bug Fixes
+
+* add UI fixes on application status page ([6ece9e5](https://github.com/hackutd/harp/commit/6ece9e55df91720bad5b6a7c70cd76aad642f3f1))
+* added single delete ([#127](https://github.com/hackutd/harp/issues/127)) ([47ff468](https://github.com/hackutd/harp/commit/47ff468aaaf4468084e06bf610510e8cfb385fc9))
+* centeralize time with UTC and client side timezone veiws ([#105](https://github.com/hackutd/harp/issues/105)) ([502716d](https://github.com/hackutd/harp/commit/502716d8ee17ff797e2acd8476e5c2fcc88fb4c1))
+* component's don't unmount on filter change when filter = 0 ([#126](https://github.com/hackutd/harp/issues/126)) ([cff8eeb](https://github.com/hackutd/harp/commit/cff8eeb32e1b6b027d2711062525d6c8419a19dc))
+* delete button color ([#123](https://github.com/hackutd/harp/issues/123)) ([d201fd7](https://github.com/hackutd/harp/commit/d201fd7b6629c716405070b1aecfccd0acb02cdb))
+* desktop contact button is a dead click ([#122](https://github.com/hackutd/harp/issues/122)) ([72ddb21](https://github.com/hackutd/harp/commit/72ddb21523a854b33a9b0b0cf4b13933d049b1a8))
+* Improve dropdown selection for mobile ([#115](https://github.com/hackutd/harp/issues/115)) ([49d97d2](https://github.com/hackutd/harp/commit/49d97d25ce2e626d8c01c99d7d0c5b3326d3a6e0))
+* **marketing:** pin Vercel framework preset to nextjs ([b2a0846](https://github.com/hackutd/harp/commit/b2a084654a50b918aaeaa47c3ece62010c2a632a))
+* **marketing:** run next typegen before tsc in typecheck ([1df6388](https://github.com/hackutd/harp/commit/1df6388c51ec919621dd1a8c4e432302f1be5b72))
+* **marketing:** warn of public endpoint caching data ([813817f](https://github.com/hackutd/harp/commit/813817f0cb2bd6d64deb9f80f608ef9dd166da62))
+* migrate react-router to v8 and patch postcss advisory ([#113](https://github.com/hackutd/harp/issues/113)) ([84c12fb](https://github.com/hackutd/harp/commit/84c12fb7808fbc9d0b0dd900fdaa165ee0628079))
+* migrations and add migration ci checks ([3fc2ebe](https://github.com/hackutd/harp/commit/3fc2ebe70b5cf9e5c601e4739a48f462d821b215))
+* **portal:** remove hardcoded event name from hacker-facing copy ([42d1d00](https://github.com/hackutd/harp/commit/42d1d00ac59587b8d0f265e3a8dbbb7c33b246f9))
+* regenerate lockfile with missing [@emnapi](https://github.com/emnapi) entries ([6f5e182](https://github.com/hackutd/harp/commit/6f5e18214a928eb9b6f04d7f75af843bd23582b1))
+* remove confusing mailto: in task gen-vapid script ([5ba2278](https://github.com/hackutd/harp/commit/5ba2278198a6cb37893e82fcac6c5851e1197691))
+* small_UI_tweaks ([#121](https://github.com/hackutd/harp/issues/121)) ([ca5d302](https://github.com/hackutd/harp/commit/ca5d302b80e73e726a50c2fa621f96f6e75a3bc1))
+* **UI:** reset hackathon UI changes ([ba0e9ee](https://github.com/hackutd/harp/commit/ba0e9eebde6d14ad12349d62d4455a1389e8b295))
+
 ## 0.9.0 (2026-06-21)
 
 This release consolidates all previous work under a pre-1.0 version line.

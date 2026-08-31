@@ -24,6 +24,8 @@ export interface Scan {
   created_at: string;
   /** Remaining points balance; present only on shop scans. */
   balance?: number;
+  /** Hacker's meal group; assigned on check-in scans, echoed on others. */
+  meal_group?: string;
 }
 
 export interface ScanStat {

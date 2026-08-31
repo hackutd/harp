@@ -39,3 +39,24 @@ func TestDecisionTemplatesRender(t *testing.T) {
 		t.Error("expected error for unknown decision")
 	}
 }
+
+func TestQRAttachmentFilename(t *testing.T) {
+	tests := map[string]struct {
+		hackathonName string
+		want          string
+	}{
+		"name and year":  {hackathonName: "HackUTD 2027", want: "hackutd-2027-qr-code.png"},
+		"another school": {hackathonName: "SMU Hacks 2027", want: "smu-hacks-2027-qr-code.png"},
+		"accents shed":   {hackathonName: "Hackatón México", want: "hackatn-mxico-qr-code.png"},
+		"unset":          {hackathonName: "", want: defaultQRAttachmentFilename},
+		"no ascii":       {hackathonName: "日本ハッカソン", want: defaultQRAttachmentFilename},
+	}
+
+	for testName, tt := range tests {
+		t.Run(testName, func(t *testing.T) {
+			if got := qrAttachmentFilename(tt.hackathonName); got != tt.want {
+				t.Errorf("qrAttachmentFilename(%q) = %q, want %q", tt.hackathonName, got, tt.want)
+			}
+		})
+	}
+}

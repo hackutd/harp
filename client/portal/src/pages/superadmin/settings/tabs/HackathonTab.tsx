@@ -15,6 +15,7 @@ import {
   updatePointsEnabled,
   updatePointsName,
 } from "../api";
+import { LegalSection } from "../components/LegalSection";
 import { OnboardingDialog } from "../components/OnboardingDialog";
 import type { OnboardingStatus } from "../types";
 
@@ -218,6 +219,8 @@ export default function HackathonTab() {
           )}
         </div>
       </div>
+
+      <LegalSection />
 
       <OnboardingDialog
         open={formOpen}

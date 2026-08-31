@@ -1,4 +1,6 @@
 import { Label } from "@/components/ui/label";
+import { useRedactApplicants } from "@/shared/hooks";
+import { isRedactedField } from "@/shared/lib/redaction";
 import {
   deriveSections,
   formatResponseValue,
@@ -17,7 +19,12 @@ export function SchemaDetailRenderer({
   application,
   skipSections = [],
 }: SchemaDetailRendererProps) {
-  const schema = application.application_schema ?? [];
+  const redact = useRedactApplicants();
+  const allFields = application.application_schema ?? [];
+  // Admins grade blind: name, race, and ethnicity never reach the panel.
+  const schema = redact
+    ? allFields.filter((f) => !isRedactedField(f.id))
+    : allFields;
   const responses = application.responses ?? {};
   const sections = deriveSections(schema);
   const grouped = groupFieldsBySection(schema);

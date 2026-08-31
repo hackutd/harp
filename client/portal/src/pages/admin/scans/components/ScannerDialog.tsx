@@ -120,6 +120,11 @@ export function ScannerDialog() {
                     Balance: {lastScanResult.scan.balance} {pointsName}
                   </p>
                 )}
+              {lastScanResult.success && lastScanResult.scan?.meal_group && (
+                <p className="text-sm font-medium">
+                  Meal group: {lastScanResult.scan.meal_group}
+                </p>
+              )}
               <Button variant="outline" onClick={handleResume}>
                 <ScanLine className="mr-2 size-4" />
                 Scan Next

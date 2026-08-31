@@ -23,6 +23,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,7 +42,7 @@ type ApplicationFormValues = FieldValues & Record<string, unknown>;
 type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
 
 const underlineField =
-  "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
+  "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 pt-3.5 pb-1 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
 
 const fieldLabel = "text-xs font-light text-[#8A8A8A]";
 
@@ -113,6 +114,18 @@ export function SchemaStepRenderer({
   );
 }
 
+/**
+ * Error message that stays silent for empty-required errors — the red label,
+ * asterisk, and underline already signal those — while still surfacing
+ * format errors (e.g. an invalid phone number).
+ */
+function FieldMessage() {
+  const { error } = useFormField();
+  const message = error ? String(error.message ?? "") : "";
+  if (!message || message.endsWith("is required")) return null;
+  return <FormMessage />;
+}
+
 function SchemaFormField({
   field,
   form,
@@ -155,7 +168,7 @@ function SchemaFormField({
                   />
                 </FormControl>
               )}
-              <FormMessage />
+              <FieldMessage />
             </FormItem>
           )}
         />
@@ -174,7 +187,7 @@ function SchemaFormField({
                 {requiredMark}
               </FormLabel>
               <PhoneInput formField={formField} />
-              <FormMessage />
+              <FieldMessage />
             </FormItem>
           )}
         />
@@ -213,7 +226,7 @@ function SchemaFormField({
                   }}
                 />
               </FormControl>
-              <FormMessage />
+              <FieldMessage />
             </FormItem>
           )}
         />
@@ -243,7 +256,7 @@ function SchemaFormField({
                   Max {validation.maxLength} characters
                 </FormDescription>
               )}
-              <FormMessage />
+              <FieldMessage />
             </FormItem>
           )}
         />
@@ -261,7 +274,7 @@ function SchemaFormField({
                 {requiredMark}
               </FormLabel>
               <SchemaSelect field={field} formField={formField} />
-              <FormMessage />
+              <FieldMessage />
             </FormItem>
           )}
         />
@@ -311,7 +324,7 @@ function SchemaFormField({
                   />
                 ))}
               </div>
-              <FormMessage />
+              <FieldMessage />
             </FormItem>
           )}
         />
@@ -336,7 +349,7 @@ function SchemaFormField({
                   {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>
-                <FormMessage />
+                <FieldMessage />
               </div>
             </FormItem>
           )}
