@@ -553,115 +553,105 @@ func (s *ApplicationsStore) List(
 		       a.rsvp_status, a.travel_rsvp_status,
 		       a.rsvp_submitted_at, a.travel_rsvp_submitted_at,
 		       CARDINALITY(a.travel_receipt_paths) AS receipt_count,
-		       CASE WHEN a.responses->>'travel_estimated_cost' ~ '^[0-9]+([.][0-9]{1,2})?$'
-		            THEN ROUND((a.responses->>'travel_estimated_cost')::numeric * 100)::bigint END AS estimated_travel_cost_cents
+		       a.travel_estimated_cost_cents AS estimated_travel_cost_cents
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
-	filterClause := `AND ($5::text IS NULL OR (
-		    u.email ILIKE '%' || $5 || '%'
-		    OR a.responses->>'first_name' ILIKE '%' || $5 || '%'
-		    OR a.responses->>'last_name' ILIKE '%' || $5 || '%'
-		))
-		  AND ($6::travel_status IS NULL OR a.travel_status = $6)
-		  AND ($7::rsvp_status IS NULL OR a.rsvp_status = $7)
-		  AND ($8::rsvp_status IS NULL OR a.travel_rsvp_status = $8)
-		  AND ($9::boolean IS NULL OR (CARDINALITY(a.travel_receipt_paths) > 0) = $9)
-		  AND ($10::boolean IS NULL OR (a.travel_status != 'not_requested') = $10)`
+	// Each predicate is appended only when the caller actually set it. The old
+	// shape ran every filter as ($6::travel_status IS NULL OR a.travel_status = $6),
+	// which Postgres can only fold away while it is still building custom plans --
+	// once a cached statement settles on a generic plan the OR stops being an
+	// index condition and the partial indexes on these columns go unused.
+	conds := make([]string, 0, 8)
+	args := make([]any, 0, 10)
+
+	// param binds a value and returns the placeholder that refers to it, so the
+	// numbering stays correct however many filters are present.
+	param := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if filters.Status != nil {
+		conds = append(conds, "a.status = "+param(*filters.Status)+"::application_status")
+	}
+
+	// A backward page walks ASC from the cursor and is reversed after scanning.
+	asc := direction == DirectionBackward && cursor != nil
+
+	cmp := "<"
+	if asc {
+		cmp = ">"
+	}
+	if cursor != nil {
+		if voteSort {
+			// Vote-column sorting pages on (sort_val, id); an older cursor
+			// minted before a vote sort was picked has no sort value.
+			if cursor.SortVal != nil {
+				conds = append(conds, fmt.Sprintf("(%s, a.id) %s (%s, %s::uuid)",
+					col, cmp, param(*cursor.SortVal), param(cursor.ID)))
+			}
+		} else {
+			conds = append(conds, fmt.Sprintf("(a.created_at, a.id) %s (%s, %s::uuid)",
+				cmp, param(cursor.CreatedAt), param(cursor.ID)))
+		}
+	}
+
+	if searchParam != nil {
+		p := param(*searchParam) + "::text"
+		conds = append(conds, fmt.Sprintf(`(
+			    u.email ILIKE '%%' || %s || '%%'
+			    OR a.responses->>'first_name' ILIKE '%%' || %s || '%%'
+			    OR a.responses->>'last_name' ILIKE '%%' || %s || '%%'
+			)`, p, p, p))
+	}
+
+	if filters.TravelStatus != nil {
+		conds = append(conds, "a.travel_status = "+param(*filters.TravelStatus)+"::travel_status")
+	}
+	if filters.RSVPStatus != nil {
+		conds = append(conds, "a.rsvp_status = "+param(*filters.RSVPStatus)+"::rsvp_status")
+	}
+	if filters.TravelRSVPStatus != nil {
+		conds = append(conds, "a.travel_rsvp_status = "+param(*filters.TravelRSVPStatus)+"::rsvp_status")
+	}
+	// The receipt and travel-requested filters become literal predicates rather
+	// than bound booleans: written this way, travel_status != 'not_requested'
+	// matches idx_applications_travel_status's own predicate exactly.
+	if filters.HasReceipts != nil {
+		if *filters.HasReceipts {
+			conds = append(conds, "CARDINALITY(a.travel_receipt_paths) > 0")
+		} else {
+			conds = append(conds, "CARDINALITY(a.travel_receipt_paths) = 0")
+		}
+	}
+	if filters.TravelRequested != nil {
+		if *filters.TravelRequested {
+			conds = append(conds, "a.travel_status != 'not_requested'")
+		} else {
+			conds = append(conds, "a.travel_status = 'not_requested'")
+		}
+	}
+
+	where := ""
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, "\n\t\t\t  AND ")
+	}
+
+	orderDir := "DESC"
+	if asc {
+		orderDir = "ASC"
+	}
 
 	// Fetch limit+1 to determine hasMore
 	queryLimit := limit + 1
 
-	var statusParam any
-	if filters.Status != nil {
-		statusParam = *filters.Status
-	}
+	query := fmt.Sprintf(`%s
+			%s
+			ORDER BY %s %s, a.id %s
+			LIMIT %s`, selectCols, where, col, orderDir, orderDir, param(queryLimit))
 
-	var travelStatusParam any
-	if filters.TravelStatus != nil {
-		travelStatusParam = *filters.TravelStatus
-	}
-
-	var rsvpStatusParam any
-	if filters.RSVPStatus != nil {
-		rsvpStatusParam = *filters.RSVPStatus
-	}
-
-	var travelRSVPStatusParam any
-	if filters.TravelRSVPStatus != nil {
-		travelRSVPStatusParam = *filters.TravelRSVPStatus
-	}
-
-	var hasReceiptsParam any
-	if filters.HasReceipts != nil {
-		hasReceiptsParam = *filters.HasReceipts
-	}
-
-	var travelRequestedParam any
-	if filters.TravelRequested != nil {
-		travelRequestedParam = *filters.TravelRequested
-	}
-
-	var rows *sql.Rows
-	var err error
-
-	if voteSort {
-		// Vote-column sorting: cursor uses (sort_val, id)
-		var cursorVal *int
-		var cursorID *string
-		if cursor != nil {
-			cursorVal = cursor.SortVal
-			cursorID = &cursor.ID
-		}
-
-		var query string
-		if direction == DirectionBackward && cursor != nil {
-			// Backward: fetch items AFTER cursor in ASC order, then reverse
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND ($2::int IS NULL OR (%s, a.id) > ($2, $3::uuid))
-				  %s
-				ORDER BY %s ASC, a.id ASC
-				LIMIT $4`, selectCols, col, filterClause, col)
-		} else {
-			// Forward (default): DESC order
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND ($2::int IS NULL OR (%s, a.id) < ($2, $3::uuid))
-				  %s
-				ORDER BY %s DESC, a.id DESC
-				LIMIT $4`, selectCols, col, filterClause, col)
-		}
-
-		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorVal, cursorID, queryLimit, searchParam, travelStatusParam, rsvpStatusParam, travelRSVPStatusParam, hasReceiptsParam, travelRequestedParam)
-	} else {
-		// Default created_at sorting
-		var cursorTime *time.Time
-		var cursorID *string
-		if cursor != nil {
-			cursorTime = &cursor.CreatedAt
-			cursorID = &cursor.ID
-		}
-
-		var query string
-		if direction == DirectionBackward && cursor != nil {
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND (a.created_at, a.id) > ($2, $3::uuid)
-				  %s
-				ORDER BY a.created_at ASC, a.id ASC
-				LIMIT $4`, selectCols, filterClause)
-		} else {
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND ($2::timestamptz IS NULL OR (a.created_at, a.id) < ($2, $3::uuid))
-				  %s
-				ORDER BY a.created_at DESC, a.id DESC
-				LIMIT $4`, selectCols, filterClause)
-		}
-
-		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam, travelStatusParam, rsvpStatusParam, travelRSVPStatusParam, hasReceiptsParam, travelRequestedParam)
-	}
+	rows, err := s.db.QueryContext(ctx, query, args...)
 
 	if err != nil {
 		return nil, err
@@ -967,13 +957,6 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 	defer cancel()
 
 	query := `
-		WITH normalized AS (
-			SELECT *,
-				CASE WHEN responses->>'travel_estimated_cost' ~ '^[0-9]+([.][0-9]{1,2})?$'
-					THEN ROUND((responses->>'travel_estimated_cost')::numeric * 100)::bigint
-					ELSE 0 END AS requested_cents
-			FROM applications
-		)
 		SELECT
 			COUNT(*),
 			COUNT(*) FILTER (WHERE status = 'draft'),
@@ -1000,10 +983,10 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 			COUNT(*) FILTER (WHERE travel_rsvp_status = 'declined'),
 			COUNT(*) FILTER (WHERE CARDINALITY(travel_receipt_paths) > 0),
 			COALESCE(SUM(CARDINALITY(travel_receipt_paths)), 0),
-			COALESCE(SUM(requested_cents) FILTER (WHERE travel_status != 'not_requested'), 0),
+			COALESCE(SUM(travel_estimated_cost_cents) FILTER (WHERE travel_status != 'not_requested'), 0),
 			COALESCE(SUM(travel_approved_amount_cents) FILTER (WHERE travel_status = 'approved'), 0),
 			MAX(travel_rsvp_submitted_at)
-		FROM normalized`
+		FROM applications`
 
 	var stats FormOperationsStats
 	err := s.db.QueryRowContext(ctx, query).Scan(
