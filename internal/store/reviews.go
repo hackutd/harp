@@ -59,18 +59,33 @@ type ApplicationReviewsStore struct {
 	db *sql.DB
 }
 
+// ErrVoteNotApplied means the vote UPDATE matched no row: either the review
+// does not exist for this admin, or travelVote disagreed with the application's
+// travel status. The two are indistinguishable from the statement itself, so a
+// caller that needs to tell them apart follows up with
+// GetTravelStatusByReviewID -- only on this error path, never on a good vote.
+var ErrVoteNotApplied = errors.New("vote not applied")
+
 // SubmitVote records an admin's vote on an assigned review. travelVote is the
 // admin's yes/no travel reimbursement recommendation; nil when the applicant
 // did not request travel.
+//
+// The join onto applications makes the travel agreement part of the write
+// itself rather than a separate read beforehand, which halves the queries on
+// the review path and closes the window where travel_status could change
+// between the check and the update.
 func (s *ApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, travelVote *bool, notes *string) (*ApplicationReview, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-		UPDATE application_reviews
+		UPDATE application_reviews ar
 		SET vote = $3, travel_vote = $4, notes = $5, reviewed_at = NOW(), updated_at = NOW()
-		WHERE id = $1 AND admin_id = $2
-		RETURNING id, application_id, admin_id, vote, travel_vote, notes, assigned_at, reviewed_at, created_at, updated_at
+		FROM applications a
+		WHERE ar.id = $1 AND ar.admin_id = $2 AND a.id = ar.application_id
+		  AND ((a.travel_status = 'not_requested') = ($4::boolean IS NULL))
+		RETURNING ar.id, ar.application_id, ar.admin_id, ar.vote, ar.travel_vote, ar.notes,
+		          ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at
 	`
 
 	var review ApplicationReview
@@ -82,7 +97,7 @@ func (s *ApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID strin
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrVoteNotApplied
 		}
 		return nil, err
 	}

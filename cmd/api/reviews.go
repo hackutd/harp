@@ -220,6 +220,7 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		404			{object}	object{error=string}
+//	@Failure		409			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/reviews/{reviewID} [put]
@@ -243,29 +244,14 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	travelStatus, err := app.store.ApplicationReviews.GetTravelStatusByReviewID(r.Context(), reviewID, user.ID)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, err)
-		default:
-			app.internalServerError(w, r, err)
-		}
-		return
-	}
-
-	if travelStatus == store.TravelNotRequested && req.TravelVote != nil {
-		app.badRequestResponse(w, r, errors.New("travel_vote is not allowed: applicant did not request travel reimbursement"))
-		return
-	}
-	if travelStatus != store.TravelNotRequested && req.TravelVote == nil {
-		app.badRequestResponse(w, r, errors.New("travel_vote is required: applicant requested travel reimbursement"))
-		return
-	}
-
+	// SubmitVote checks the travel agreement in the UPDATE itself, so a valid
+	// vote costs one query. Only a rejected one pays a second to work out
+	// whether the review was missing or the travel vote was wrong.
 	review, err := app.store.ApplicationReviews.SubmitVote(r.Context(), reviewID, user.ID, req.Vote, req.TravelVote, req.Notes)
 	if err != nil {
 		switch {
+		case errors.Is(err, store.ErrVoteNotApplied):
+			app.explainRejectedVote(w, r, reviewID, user.ID, req.TravelVote)
 		case errors.Is(err, store.ErrNotFound):
 			app.notFoundResponse(w, r, err)
 		default:
@@ -281,6 +267,36 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// explainRejectedVote turns a vote that matched no row into the right response.
+// The UPDATE cannot say which of the two reasons applied, so this re-reads the
+// travel status -- scoped to the admin, so it doubles as the ownership check
+// that decides 404 versus 400.
+func (app *application) explainRejectedVote(w http.ResponseWriter, r *http.Request, reviewID, adminID string, travelVote *bool) {
+	travelStatus, err := app.store.ApplicationReviews.GetTravelStatusByReviewID(r.Context(), reviewID, adminID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if travelStatus == store.TravelNotRequested && travelVote != nil {
+		app.badRequestResponse(w, r, errors.New("travel_vote is not allowed: applicant did not request travel reimbursement"))
+		return
+	}
+	if travelStatus != store.TravelNotRequested && travelVote == nil {
+		app.badRequestResponse(w, r, errors.New("travel_vote is required: applicant requested travel reimbursement"))
+		return
+	}
+
+	// The review exists and the travel vote agrees with it, so the row must
+	// have changed underneath us between the update and this read.
+	app.conflictResponse(w, r, errors.New("vote could not be recorded, please retry"))
 }
 
 // setAIPercent records the AI-generated content percent for an assigned application review
