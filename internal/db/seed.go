@@ -2,8 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -11,66 +9,85 @@ import (
 	"github.com/hackutd/harp/internal/store"
 )
 
+// hackerCount is the number of hacker users (and therefore applications) the
+// seed creates. Every bucket boundary in seed_applications.go is expressed as
+// an absolute index into this range, so changing it means revisiting them.
+const hackerCount = 200
+
+// seedUserPrefix marks every user row the seeder owns. clean() deletes users by
+// this prefix rather than truncating the table, so a real SuperTokens account
+// used for manual testing survives a re-seed.
+const seedUserPrefix = "seed-st-"
+
 var rng = rand.New(rand.NewSource(42))
 
-func pick(opts []string) string { return opts[rng.Intn(len(opts))] }
+func pick[T any](opts []T) T { return opts[rng.Intn(len(opts))] }
 
 func ptr[T any](v T) *T { return &v }
 
-func randomPastTime(maxDaysAgo int) time.Time {
-	return time.Now().Add(-time.Duration(rng.Intn(maxDaysAgo*24)) * time.Hour)
+// chance reports true with the given percentage probability.
+func chance(percent int) bool { return rng.Intn(100) < percent }
+
+// between returns a random time in [start, end).
+func between(start, end time.Time) time.Time {
+	d := end.Sub(start)
+	if d <= 0 {
+		return start
+	}
+	return start.Add(time.Duration(rng.Int63n(int64(d))))
 }
 
-var (
-	firstNames = []string{
-		"Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Hank",
-		"Ivy", "Jack", "Karen", "Leo", "Mia", "Noah", "Olivia", "Paul",
-		"Quinn", "Ruby", "Sam", "Tina", "Uma", "Victor", "Wendy", "Xander",
-		"Yara", "Zane", "Aria", "Blake", "Cora", "Derek",
-	}
-	lastNames = []string{
-		"Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
-		"Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez",
-		"Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
-		"Lee", "Perez", "White", "Harris", "Sanchez", "Clark", "Ramirez",
-		"Lewis", "Robinson", "Walker",
-	}
-	universities = []string{
-		"UT Dallas", "UT Austin", "Texas A&M", "Rice University", "SMU",
-		"UNT", "Texas Tech", "Baylor", "UT Arlington", "University of Houston",
-	}
-	majors = []string{
-		"Computer Science", "Software Engineering", "Electrical Engineering",
-		"Data Science", "Mathematics", "Information Technology", "Cybersecurity",
-		"Mechanical Engineering", "Physics", "Business Analytics",
-	}
-	levels         = []string{"Freshman", "Sophomore", "Junior", "Senior", "Masters", "PhD"}
-	genders        = []string{"Male", "Female", "Non-binary", "Prefer not to say"}
-	shirtSizes     = []string{"XS", "S", "M", "L", "XL", "XXL"}
-	expLevels      = []string{"Beginner", "Intermediate", "Advanced", "Expert"}
-	heardFrom      = []string{"Social Media", "Friend", "Professor", "Career Fair", "Website", "Email"}
-	countries      = []string{"United States", "India", "Canada", "Mexico", "United Kingdom"}
-	dietaryOptions = []string{"Vegan", "Vegetarian", "Halal", "Nuts", "Fish", "Wheat", "Dairy", "Eggs", "No Beef", "No Pork"}
+// timeline anchors every generated timestamp to a single event window that
+// straddles "now": the hackathon started yesterday evening and ends tomorrow
+// midday. That is the only arrangement where all of the super admin surfaces
+// have data at once -- the schedule has both past and upcoming events, scans
+// and sent notifications sit in the past, pending notifications sit in the
+// future, and a walk-in queue makes sense at all.
+type timeline struct {
+	now        time.Time
+	eventStart time.Time
+	eventEnd   time.Time
+	appOpen    time.Time
+	appDue     time.Time
+	decisions  time.Time
+	rsvpClose  time.Time
+}
 
-	reviewNotePool = []string{
-		"Strong technical background, good fit.",
-		"Needs more experience, but shows potential.",
-		"Great short answers, passionate about learning.",
-		"Solid hackathon experience.",
-		"Application could use more detail.",
-		"Impressive project portfolio.",
+func newTimeline(now time.Time) timeline {
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	eventStart := day.Add(-6 * time.Hour) // yesterday 18:00
+	eventEnd := day.Add(36 * time.Hour)   // tomorrow 12:00
+
+	appDue := eventStart.AddDate(0, 0, -21)
+	return timeline{
+		now:        now,
+		eventStart: eventStart,
+		eventEnd:   eventEnd,
+		appOpen:    appDue.AddDate(0, 0, -30),
+		appDue:     appDue,
+		decisions:  eventStart.AddDate(0, 0, -14),
+		rsvpClose:  eventStart.AddDate(0, 0, -2),
 	}
-)
+}
 
 func Seed(_ store.Storage, db *sql.DB) {
 	log.Println("Seeding...")
 
+	tl := newTimeline(time.Now())
 	clean(db)
 
-	adminIDs, hackerIDs := seedUsers(db, 1000)
-	appIDs, appStatuses := seedApplications(db, hackerIDs)
-	seedReviews(db, adminIDs, appIDs, appStatuses)
+	staffIDs, superAdminIDs := seedStaff(db)
+	hackerIDs := seedHackers(db, hackerCount)
 
+	apps := seedApplications(db, hackerIDs, tl)
+	seedReviews(db, staffIDs, apps, tl)
+	seedEventData(db, staffIDs, superAdminIDs, apps, tl)
+	seedContent(db, superAdminIDs, apps, tl)
+
+	promoted := promoteRealSuperAdmin(db)
+	seedSettings(db, append(superAdminIDs, promoted...), tl)
+
+	summarize(db, tl)
 	log.Println("Seeding complete!")
 }
 
@@ -82,219 +99,71 @@ func mustBegin(db *sql.DB) *sql.Tx {
 	return tx
 }
 
+func mustCommit(tx *sql.Tx, what string) {
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("failed to commit %s: %v", what, err)
+	}
+}
+
+func mustExec(tx *sql.Tx, what, query string, args ...any) {
+	if _, err := tx.Exec(query, args...); err != nil {
+		log.Fatalf("failed to %s: %v", what, err)
+	}
+}
+
+// clean removes everything the seeder owns. Order matters twice over:
+//
+//   - scheduled_notifications.created_by is ON DELETE RESTRICT, so those rows
+//     must go before the users they point at.
+//   - schedule is DELETEd rather than TRUNCATEd so that
+//     scheduled_notifications.schedule_id fires its ON DELETE CASCADE.
+//
+// Users are filtered by seedUserPrefix so a real logged-in account survives.
+// The content tables have no ownership column, so the seeder claims them
+// wholesale -- same tradeoff the Danger Zone reset makes in
+// internal/store/hackathon.go.
 func clean(db *sql.DB) {
 	tx := mustBegin(db)
-	for _, t := range []string{"application_reviews", "applications", "users"} {
-		if _, err := tx.Exec(fmt.Sprintf("DELETE FROM %s", t)); err != nil {
-			log.Fatalf("failed to clean %s: %v", t, err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		log.Fatalf("failed to commit clean: %v", err)
-	}
-	log.Println("  cleaned existing data")
+
+	mustExec(tx, "clean scheduled_notifications", "DELETE FROM scheduled_notifications")
+	mustExec(tx, "clean schedule", "DELETE FROM schedule")
+	mustExec(tx, "clean sponsors", "DELETE FROM sponsors")
+	mustExec(tx, "clean faqs", "DELETE FROM faqs")
+	mustExec(tx, "clean seeded users",
+		"DELETE FROM users WHERE supertokens_user_id LIKE $1", seedUserPrefix+"%")
+
+	mustCommit(tx, "clean")
+	log.Println("  cleaned previously seeded data")
 }
 
-func seedUsers(db *sql.DB, hackerCount int) (adminIDs, hackerIDs []string) {
-	tx := mustBegin(db)
-	query := `
-		INSERT INTO users (supertokens_user_id, email, role, auth_method)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id
-	`
-	insert := func(stID, email, role, auth string) string {
-		var id string
-		if err := tx.QueryRow(query, stID, email, role, auth).Scan(&id); err != nil {
-			log.Fatalf("failed to insert user %s: %v", email, err)
+// summarize prints what landed, so a run verifies itself at a glance.
+func summarize(db *sql.DB, tl timeline) {
+	type row struct {
+		label string
+		query string
+	}
+	rows := []row{
+		{"users", "SELECT COUNT(*) FROM users"},
+		{"applications", "SELECT COUNT(*) FROM applications"},
+		{"application_reviews", "SELECT COUNT(*) FROM application_reviews"},
+		{"scans", "SELECT COUNT(*) FROM scans"},
+		{"walk_ins", "SELECT COUNT(*) FROM walk_ins"},
+		{"schedule", "SELECT COUNT(*) FROM schedule"},
+		{"sponsors", "SELECT COUNT(*) FROM sponsors"},
+		{"faqs", "SELECT COUNT(*) FROM faqs"},
+		{"scheduled_notifications", "SELECT COUNT(*) FROM scheduled_notifications"},
+		{"push_subscriptions", "SELECT COUNT(*) FROM push_subscriptions"},
+		{"settings", "SELECT COUNT(*) FROM settings"},
+	}
+
+	log.Println("  ---- row counts ----")
+	for _, r := range rows {
+		var n int
+		if err := db.QueryRow(r.query).Scan(&n); err != nil {
+			log.Fatalf("failed to count %s: %v", r.label, err)
 		}
-		return id
+		log.Printf("  %-24s %5d", r.label, n)
 	}
-
-	// Admins
-	adminIDs = append(adminIDs, insert("seed-st-superadmin-1", "superadmin@hackutd.co", "super_admin", "passwordless"))
-	adminIDs = append(adminIDs, insert("seed-st-admin-1", "admin1@hackutd.co", "admin", "passwordless"))
-	adminIDs = append(adminIDs, insert("seed-st-admin-2", "admin2@hackutd.co", "admin", "google"))
-	adminIDs = append(adminIDs, insert("seed-st-admin-3", "admin3@hackutd.co", "admin", "passwordless"))
-
-	// Hackers
-	for i := 1; i <= hackerCount; i++ {
-		id := insert(
-			fmt.Sprintf("seed-st-hacker-%d", i),
-			fmt.Sprintf("hacker%d@example.com", i),
-			"hacker", "passwordless",
-		)
-		hackerIDs = append(hackerIDs, id)
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Fatalf("failed to commit users: %v", err)
-	}
-	log.Printf("  inserted %d users (%d admins + %d hackers)", 4+hackerCount, 4, hackerCount)
-	return adminIDs, hackerIDs
-}
-
-func pickDietaryRestrictions() []string {
-	// ~40% chance of no restrictions
-	if rng.Intn(5) < 2 {
-		return []string{}
-	}
-	// Pick 1-2 random restrictions
-	n := 1 + rng.Intn(2)
-	perm := rng.Perm(len(dietaryOptions))
-	result := make([]string, n)
-	for i := 0; i < n; i++ {
-		result[i] = dietaryOptions[perm[i]]
-	}
-	return result
-}
-
-func seedApplications(db *sql.DB, hackerIDs []string) (appIDs, appStatuses []string) {
-	tx := mustBegin(db)
-	query := `
-		INSERT INTO applications (
-			user_id, status, responses,
-			submitted_at
-		) VALUES ($1, $2, $3, $4)
-		RETURNING id
-	`
-
-	for i, userID := range hackerIDs {
-		status := pickStatus()
-		submitted := status != "draft"
-
-		first := firstNames[i%len(firstNames)]
-		last := lastNames[i%len(lastNames)]
-
-		var submittedAt *time.Time
-		if submitted {
-			submittedAt = ptr(randomPastTime(30))
-		}
-
-		responses := map[string]any{
-			"first_name":             first,
-			"last_name":              last,
-			"phone":                  fmt.Sprintf("+1214555%04d", i%10000),
-			"age":                    18 + rng.Intn(10),
-			"country_of_residence":   pick(countries),
-			"gender":                 pick(genders),
-			"race":                   "Asian",
-			"ethnicity":              "Hispanic",
-			"university":             pick(universities),
-			"major":                  pick(majors),
-			"level_of_study":         pick(levels),
-			"hackathons_attended":    rng.Intn(6),
-			"experience_level":       pick(expLevels),
-			"heard_about":            pick(heardFrom),
-			"shirt_size":             pick(shirtSizes),
-			"dietary_restrictions":   pickDietaryRestrictions(),
-			"github":                 fmt.Sprintf("https://github.com/%s%s%d", first, last, i),
-			"linkedin":               fmt.Sprintf("https://linkedin.com/in/%s%s%d", first, last, i),
-			"saq_1":                  "I love building things and meeting new people!",
-			"saq_2":                  "I have attended 2 hackathons and learned a lot about teamwork.",
-			"saq_3":                  "I hope to learn new technologies and frameworks.",
-			"saq_4":                  "I am looking forward to the workshops and networking.",
-			"ack_mlh_coc":            submitted,
-			"ack_mlh_data_sharing":   submitted,
-			"ack_mlh_contest_terms":  submitted,
-			"ack_mlh_privacy_policy": submitted,
-			"opt_in_mlh_emails":      rng.Intn(2) == 0,
-		}
-
-		responsesJSON, err := json.Marshal(responses)
-		if err != nil {
-			log.Fatalf("failed to marshal responses for application %d: %v", i, err)
-		}
-
-		var id string
-		err = tx.QueryRow(query,
-			userID, status, responsesJSON,
-			submittedAt,
-		).Scan(&id)
-		if err != nil {
-			log.Fatalf("failed to insert application %d: %v", i, err)
-		}
-
-		appIDs = append(appIDs, id)
-		appStatuses = append(appStatuses, status)
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Fatalf("failed to commit applications: %v", err)
-	}
-	log.Printf("  inserted %d applications", len(appIDs))
-	return appIDs, appStatuses
-}
-
-func pickStatus() string {
-	r := rng.Intn(100)
-	switch {
-	case r < 15:
-		return "draft"
-	case r < 65:
-		return "submitted"
-	case r < 80:
-		return "accepted"
-	case r < 90:
-		return "rejected"
-	default:
-		return "waitlisted"
-	}
-}
-
-func seedReviews(db *sql.DB, adminIDs, appIDs, appStatuses []string) {
-	tx := mustBegin(db)
-	query := `
-		INSERT INTO application_reviews (application_id, admin_id, vote, notes, reviewed_at)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (application_id, admin_id) DO NOTHING
-	`
-
-	allVotes := []store.ReviewVote{store.ReviewVoteAccept, store.ReviewVoteReject, store.ReviewVoteWaitlist}
-	count := 0
-
-	for i, appID := range appIDs {
-		status := appStatuses[i]
-		if status == "draft" {
-			continue
-		}
-
-		// 2 or 3 reviewers per app
-		numReviewers := min(2+rng.Intn(2), len(adminIDs))
-		perm := rng.Perm(len(adminIDs))
-
-		for j := range numReviewers {
-			adminID := adminIDs[perm[j]]
-			vote, notes, reviewedAt := buildVote(status, allVotes)
-
-			if _, err := tx.Exec(query, appID, adminID, vote, notes, reviewedAt); err != nil {
-				log.Fatalf("failed to insert review for app %s: %v", appID, err)
-			}
-			count++
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Fatalf("failed to commit reviews: %v", err)
-	}
-	log.Printf("  inserted %d reviews", count)
-}
-
-func buildVote(appStatus string, allVotes []store.ReviewVote) (*store.ReviewVote, *string, *time.Time) {
-	if appStatus == "submitted" && rng.Intn(3) == 0 {
-		return nil, nil, nil
-	}
-
-	var v store.ReviewVote
-	switch appStatus {
-	case "accepted":
-		v = store.ReviewVoteAccept
-	case "rejected":
-		v = store.ReviewVoteReject
-	case "waitlisted":
-		v = store.ReviewVoteWaitlist
-	default:
-		v = allVotes[rng.Intn(len(allVotes))]
-	}
-
-	return &v, ptr(pick(reviewNotePool)), ptr(randomPastTime(14))
+	log.Printf("  event window: %s -> %s",
+		tl.eventStart.Format(time.RFC1123), tl.eventEnd.Format(time.RFC1123))
 }
