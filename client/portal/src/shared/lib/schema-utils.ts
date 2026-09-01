@@ -141,10 +141,10 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
     }
     case "textarea": {
       let s = z.string();
-      if (field.required) s = s.min(1, `${field.label} is required`);
       if (typeof validation.maxLength === "number")
         s = s.max(validation.maxLength as number);
-      return s;
+      if (field.required) return s.min(1, `${field.label} is required`);
+      return s.optional().default("");
     }
     case "select": {
       if (field.required) {

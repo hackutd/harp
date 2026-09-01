@@ -83,7 +83,7 @@ jobs:
       - name: Run Tests
         run: |
           if [ -d "__tests__" ] || find src -name '*.test.*' -o -name '*.spec.*' 2>/dev/null | grep -q .; then
-            npx vitest run
+            npm test
           else
             echo "No test files found, skipping"
           fi
