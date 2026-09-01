@@ -36,50 +36,78 @@ function errorResponse(error: string | null, status = 400): Response {
   });
 }
 
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+type RequestFactory<M extends HttpMethod> = M extends "GET" | "DELETE"
+  ? (
+      endpoint: string,
+      errorContext?: string,
+      signal?: AbortSignal,
+    ) => Promise<{ status: number }>
+  : (
+      endpoint: string,
+      body: unknown,
+      errorContext?: string,
+      signal?: AbortSignal,
+    ) => Promise<{ status: number }>;
+
 /** Maps a method name to its exported request factory. */
-function requestFor(
-  method: string,
-): (
-  endpoint: string,
-  bodyOrErrorContext?: unknown | string,
-  maybeErrorContext?: string,
-  maybeSignal?: AbortSignal,
-) => Promise<{ status: number }> {
+function requestFor<M extends HttpMethod>(method: M): RequestFactory<M> {
   switch (method) {
     case "GET":
-      return (endpoint: string, errorContext?: string, signal?: AbortSignal) =>
-        getRequest(endpoint, errorContext ?? "", signal);
+      return ((endpoint: string, errorContext?: string, signal?: AbortSignal) =>
+        getRequest(endpoint, errorContext ?? "", signal)) as RequestFactory<M>;
     case "POST":
-      return (
+      return ((
         endpoint: string,
-        bodyOrErrorContext?: unknown,
+        body: unknown,
         errorContext?: string,
         signal?: AbortSignal,
       ) =>
-        postRequest(endpoint, bodyOrErrorContext, errorContext ?? "", signal);
+        postRequest(
+          endpoint,
+          body,
+          errorContext ?? "",
+          signal,
+        )) as RequestFactory<M>;
     case "PUT":
-      return (
+      return ((
         endpoint: string,
-        bodyOrErrorContext?: unknown,
-        errorContext?: string,
-        signal?: AbortSignal,
-      ) => putRequest(endpoint, bodyOrErrorContext, errorContext ?? "", signal);
-    case "PATCH":
-      return (
-        endpoint: string,
-        bodyOrErrorContext?: unknown,
+        body: unknown,
         errorContext?: string,
         signal?: AbortSignal,
       ) =>
-        patchRequest(endpoint, bodyOrErrorContext, errorContext ?? "", signal);
+        putRequest(
+          endpoint,
+          body,
+          errorContext ?? "",
+          signal,
+        )) as RequestFactory<M>;
+    case "PATCH":
+      return ((
+        endpoint: string,
+        body: unknown,
+        errorContext?: string,
+        signal?: AbortSignal,
+      ) =>
+        patchRequest(
+          endpoint,
+          body,
+          errorContext ?? "",
+          signal,
+        )) as RequestFactory<M>;
     default:
-      return (endpoint: string, errorContext?: string, signal?: AbortSignal) =>
-        deleteRequest(endpoint, errorContext ?? "", signal);
+      return ((endpoint: string, errorContext?: string, signal?: AbortSignal) =>
+        deleteRequest(
+          endpoint,
+          errorContext ?? "",
+          signal,
+        )) as RequestFactory<M>;
   }
 }
 
 describe("request method plumbing against mocked fetch", () => {
-  it.each([
+  it.each<[HttpMethod, unknown]>([
     ["GET", undefined],
     ["POST", { title: "Hi" }],
     ["PUT", { id: 1 }],
@@ -89,7 +117,12 @@ describe("request method plumbing against mocked fetch", () => {
     "%s issues the correct method/url/credentials/headers/body",
     async (method, body) => {
       fetchMock.mockResolvedValue(okResponse(null));
-      await requestFor(method)("/things", body);
+
+      if (method === "GET" || method === "DELETE") {
+        await requestFor(method)("/things");
+      } else {
+        await requestFor(method)("/things", body);
+      }
 
       const [input, init] = fetchMock.mock.calls[0];
       expect(String(input).startsWith("/v1/things")).toBe(true);
@@ -127,7 +160,7 @@ describe("success envelopes map to typed data", () => {
 });
 
 describe("API error envelopes and fallbacks surface consistently", () => {
-  it.each([
+  it.each<[HttpMethod, string, string]>([
     ["GET", "/things", "Failed to fetch /things"],
     ["POST", "/things", "Failed to post /things"],
     ["PUT", "/things", "Failed to update /things"],
@@ -137,11 +170,22 @@ describe("API error envelopes and fallbacks surface consistently", () => {
     "%s falls back to the context message when the envelope is empty",
     async (method, endpoint, expected) => {
       fetchMock.mockResolvedValue(errorResponse(null, 500));
-      const res = (await requestFor(method)(endpoint)) as {
-        status: number;
-        data?: unknown;
-        error?: string;
-      };
+
+      let res: { status: number; data?: unknown; error?: string };
+      if (method === "GET" || method === "DELETE") {
+        res = (await requestFor(method)(endpoint)) as {
+          status: number;
+          data?: unknown;
+          error?: string;
+        };
+      } else {
+        res = (await requestFor(method)(endpoint, {})) as {
+          status: number;
+          data?: unknown;
+          error?: string;
+        };
+      }
+
       expect(res.status).toBe(500);
       expect(res.data).toBeUndefined();
       expect(res.error).toBe(expected);
