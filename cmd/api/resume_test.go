@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/gcs"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/gcs"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,6 +19,7 @@ import (
 func TestGenerateResumeUploadURL(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 	mockGCS := app.gcsClient.(*gcs.MockClient)
 
 	t.Run("should generate upload url", func(t *testing.T) {
@@ -26,10 +27,12 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetHackathonName").Return("HackUTD 2026", nil).Once()
 		mockGCS.On(
 			"GenerateUploadURL",
+			mock.Anything,
 			mock.MatchedBy(func(path string) bool {
-				return strings.HasPrefix(path, "resumes/"+user.ID+"/") && strings.HasSuffix(path, ".pdf")
+				return strings.HasPrefix(path, "hackathons/hackutd-2026/resumes/"+user.ID+"/") && strings.HasSuffix(path, ".pdf")
 			}),
 		).Return("https://upload.example.com", nil).Once()
 
@@ -46,10 +49,11 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
 		assert.Equal(t, "https://upload.example.com", body.Data.UploadURL)
-		assert.True(t, strings.HasPrefix(body.Data.ResumePath, "resumes/"+user.ID+"/"))
+		assert.True(t, strings.HasPrefix(body.Data.ResumePath, "hackathons/hackutd-2026/resumes/"+user.ID+"/"))
 		assert.True(t, strings.HasSuffix(body.Data.ResumePath, ".pdf"))
 
 		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
 		mockGCS.AssertExpectations(t)
 	})
 
@@ -103,7 +107,8 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 		user := newTestUser()
 		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockGCS.On("GenerateUploadURL", mock.AnythingOfType("string")).Return("", errors.New("gcs failed")).Once()
+		mockSettings.On("GetHackathonName").Return("HackUTD 2026", nil).Once()
+		mockGCS.On("GenerateUploadURL", mock.Anything, mock.AnythingOfType("string")).Return("", errors.New("gcs failed")).Once()
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
@@ -113,13 +118,60 @@ func TestGenerateResumeUploadURL(t *testing.T) {
 		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 
 		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
 		mockGCS.AssertExpectations(t)
 	})
+}
+
+func TestResumeStoragePrefixFromPath(t *testing.T) {
+	tests := map[string]struct {
+		path string
+		want string
+		ok   bool
+	}{
+		"current": {path: "hackathons/hackutd-2027/resumes/user/file.pdf", want: "hackathons/hackutd-2027/resumes/", ok: true},
+		"legacy":  {path: "resumes/user/file.pdf", want: "resumes/", ok: true},
+		"other":   {path: "hackathons/hackutd-2027/assets/logo.png", want: "", ok: false},
+	}
+
+	for testName, tt := range tests {
+		t.Run(testName, func(t *testing.T) {
+			prefix, ok := resumeStoragePrefixFromPath(tt.path)
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.want, prefix)
+		})
+	}
+}
+
+func TestValidResumeObjectPath(t *testing.T) {
+	const (
+		userID   = "user-1"
+		objectID = "0123456789abcdef0123456789abcdef"
+	)
+
+	tests := map[string]struct {
+		path string
+		want bool
+	}{
+		"current":          {path: "hackathons/hackutd-2027/resumes/" + userID + "/" + objectID + ".pdf", want: true},
+		"legacy":           {path: "resumes/" + userID + "/" + objectID + ".pdf", want: true},
+		"different user":   {path: "hackathons/hackutd-2027/resumes/user-2/" + objectID + ".pdf", want: false},
+		"arbitrary object": {path: "sponsors/logo.png", want: false},
+		"nested filename":  {path: "resumes/" + userID + "/nested/" + objectID + ".pdf", want: false},
+		"invalid id":       {path: "resumes/" + userID + "/not-random.pdf", want: false},
+	}
+
+	for testName, tt := range tests {
+		t.Run(testName, func(t *testing.T) {
+			assert.Equal(t, tt.want, validResumeObjectPath(tt.path, userID))
+		})
+	}
 }
 
 func TestDeleteResume(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 	mockGCS := app.gcsClient.(*gcs.MockClient)
 
 	t.Run("should delete resume", func(t *testing.T) {
@@ -131,13 +183,18 @@ func TestDeleteResume(t *testing.T) {
 			Status:     store.StatusDraft,
 			ResumePath: &resumePath,
 		}
+		schema := []store.ApplicationSchemaField{
+			{ID: "github", Type: "text", Label: "GitHub"},
+		}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockGCS.On("DeleteObject", resumePath).Return(nil).Once()
+		mockGCS.On("DeleteObject", mock.Anything, resumePath).Return(nil).Once()
 		mockApps.On("Update", mock.AnythingOfType("*store.Application")).Run(func(args mock.Arguments) {
 			updated := args.Get(0).(*store.Application)
 			assert.Nil(t, updated.ResumePath)
 		}).Return(nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		app.store.Scans.(*store.MockScansStore).On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodDelete, "/", nil)
 		require.NoError(t, err)
@@ -146,7 +203,16 @@ func TestDeleteResume(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.deleteResumeHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Len(t, envelope.Data.ApplicationSchema, len(schema))
+
 		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
 		mockGCS.AssertExpectations(t)
 	})
 
@@ -187,6 +253,51 @@ func TestDeleteResume(t *testing.T) {
 	})
 }
 
+func TestGetMyResumeDownloadURL(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockGCS := app.gcsClient.(*gcs.MockClient)
+
+	t.Run("should generate download url for own resume", func(t *testing.T) {
+		user := newTestUser()
+		resumePath := "resumes/user-1/file.pdf"
+		application := &store.Application{ID: "app-1", UserID: user.ID, ResumePath: &resumePath}
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockGCS.On("GenerateDownloadURL", mock.Anything, resumePath).Return("https://download.example.com", nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getMyResumeDownloadURLHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ResumeDownloadURLResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, "https://download.example.com", body.Data.DownloadURL)
+
+		mockApps.AssertExpectations(t)
+		mockGCS.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when resume does not exist", func(t *testing.T) {
+		user := newTestUser()
+		application := &store.Application{ID: "app-1", UserID: user.ID, ResumePath: nil}
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getMyResumeDownloadURLHandler))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
 func TestGetResumeDownloadURL(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
@@ -202,7 +313,7 @@ func TestGetResumeDownloadURL(t *testing.T) {
 		resumePath := "resumes/user-1/file.pdf"
 		application := &store.Application{ID: "app-1", ResumePath: &resumePath}
 		mockApps.On("GetByID", "app-1").Return(application, nil).Once()
-		mockGCS.On("GenerateDownloadURL", resumePath).Return("https://download.example.com", nil).Once()
+		mockGCS.On("GenerateDownloadURL", mock.Anything, resumePath).Return("https://download.example.com", nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type CreateSchedulePayload = SchedulePayload
@@ -44,6 +44,50 @@ type ScheduleItemResponse struct {
 //	@Security		CookieAuth
 //	@Router			/admin/schedule/date-range [get]
 func (app *application) getAdminScheduleDateRange(w http.ResponseWriter, r *http.Request) {
+	dateRange, err := app.store.Settings.GetHackathonDateRange(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := HackathonDateRangeResponse{
+		StartDate:  dateRange.StartDate,
+		EndDate:    dateRange.EndDate,
+		Configured: dateRange.StartDate != nil && dateRange.EndDate != nil,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getHackerScheduleHandler returns the full schedule for any authenticated user.
+//
+//	@Summary		Get schedule
+//	@Description	Returns the full event schedule, ordered by start time ascending
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	ScheduleListResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/schedule [get]
+func (app *application) getHackerScheduleHandler(w http.ResponseWriter, r *http.Request) {
+	app.listScheduleHandler(w, r)
+}
+
+// getHackerScheduleDateRange returns configured hackathon start/end dates.
+//
+//	@Summary		Get hackathon date range
+//	@Description	Returns configured hackathon start and end dates so the hacker schedule can render one column per day
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	HackathonDateRangeResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/schedule/date-range [get]
+func (app *application) getHackerScheduleDateRange(w http.ResponseWriter, r *http.Request) {
 	dateRange, err := app.store.Settings.GetHackathonDateRange(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -235,16 +279,6 @@ func (app *application) deleteScheduleHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (app *application) validateSchedulePayloadAgainstConfiguredRange(ctx context.Context, payload SchedulePayload) error {
-	timeZone := app.config.hackathonTimeZone
-	if timeZone == "" {
-		timeZone = "America/Chicago"
-	}
-
-	location, err := time.LoadLocation(timeZone)
-	if err != nil {
-		return err
-	}
-
 	dateRange, err := app.store.Settings.GetHackathonDateRange(ctx)
 	if err != nil {
 		return err
@@ -254,45 +288,36 @@ func (app *application) validateSchedulePayloadAgainstConfiguredRange(ctx contex
 		return errors.New("hackathon date range is not configured")
 	}
 
-	startDate, err := time.ParseInLocation("2006-01-02", *dateRange.StartDate, location)
+	// Times are stored and compared as absolute UTC instants; the configured
+	// range is a pair of calendar dates parsed as UTC midnight. The client
+	// renders everything in the viewer's local timezone, so the server itself
+	// does no timezone reasoning.
+	startDate, err := time.Parse("2006-01-02", *dateRange.StartDate)
 	if err != nil {
 		return errors.New("invalid configured start_date")
 	}
 
-	endDate, err := time.ParseInLocation("2006-01-02", *dateRange.EndDate, location)
+	endDate, err := time.Parse("2006-01-02", *dateRange.EndDate)
 	if err != nil {
 		return errors.New("invalid configured end_date")
 	}
 
-	eventStart := payload.StartTime.In(location)
-	eventEnd := payload.EndTime.In(location)
-
-	if !eventEnd.After(eventStart) {
+	if !payload.EndTime.After(payload.StartTime) {
 		return errors.New("end_time must be after start_time")
 	}
 
-	if eventStart.Year() != eventEnd.Year() ||
-		eventStart.Month() != eventEnd.Month() ||
-		eventStart.Day() != eventEnd.Day() {
+	// The grid renders each event within a single day, so cap the duration
+	// instead of checking a timezone-specific calendar day.
+	if payload.EndTime.Sub(payload.StartTime) > 24*time.Hour {
 		return errors.New("schedule events cannot span multiple days")
 	}
 
-	rangeStart := time.Date(
-		startDate.Year(),
-		startDate.Month(),
-		startDate.Day(),
-		0, 0, 0, 0,
-		location,
-	)
-	rangeEnd := time.Date(
-		endDate.Year(),
-		endDate.Month(),
-		endDate.Day(),
-		23, 59, 59, int(time.Second-time.Nanosecond),
-		location,
-	)
-
-	if eventStart.Before(rangeStart) || eventEnd.After(rangeEnd) {
+	// Allow the inclusive last day (+24h) plus a one-day buffer on each side so
+	// an event authored near local midnight is never falsely rejected, whatever
+	// the author's timezone (max offset ±14h < 24h). Still guards wildly-off dates.
+	lowerBound := startDate.Add(-24 * time.Hour)
+	upperBound := endDate.Add(48 * time.Hour)
+	if payload.StartTime.Before(lowerBound) || payload.EndTime.After(upperBound) {
 		return errors.New("event must be within configured hackathon date range")
 	}
 

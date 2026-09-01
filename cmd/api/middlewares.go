@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hackutd/portal/internal/auth"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/auth"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 
@@ -226,6 +226,62 @@ func (app *application) ApplicationsEnabledMiddleware(next http.Handler) http.Ha
 
 		if !enabled {
 			app.forbiddenResponse(w, r, fmt.Errorf("applications are currently closed"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) AdminSponsorEditPermissionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetAdminSponsorEditEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if user.Role == store.RoleAdmin && !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("admin sponsor editing is disabled"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) AdminFAQEditPermissionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetAdminFAQEditEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if user.Role == store.RoleAdmin && !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("admin FAQ editing is disabled"))
 			return
 		}
 

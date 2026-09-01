@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,47 +18,21 @@ import (
 
 // newCompleteApplication returns a fully filled application ready for submission
 func newCompleteApplication(userID string) *store.Application {
-	firstName := "John"
-	lastName := "Doe"
-	phone := "+11234567890"
-	age := int16(20)
-	country := "US"
-	gender := "Male"
-	race := "Asian"
-	ethnicity := "Not Hispanic"
-	university := "UT Dallas"
-	major := "CS"
-	level := "Undergraduate"
-	hackathons := int16(2)
-	experience := "Intermediate"
-	heard := "Friend"
-	shirt := "M"
-
 	return &store.Application{
-		ID:                      "app-1",
-		UserID:                  userID,
-		Status:                  store.StatusDraft,
-		FirstName:               &firstName,
-		LastName:                &lastName,
-		PhoneE164:               &phone,
-		Age:                     &age,
-		CountryOfResidence:      &country,
-		Gender:                  &gender,
-		Race:                    &race,
-		Ethnicity:               &ethnicity,
-		University:              &university,
-		Major:                   &major,
-		LevelOfStudy:            &level,
-		HackathonsAttendedCount: &hackathons,
-		SoftwareExperienceLevel: &experience,
-		HeardAbout:              &heard,
-		ShirtSize:               &shirt,
-		ShortAnswerResponses:    json.RawMessage(`{"q1":"answer1"}`),
-		AckApplication:          true,
-		AckMLHCOC:               true,
-		AckMLHPrivacy:           true,
-		CreatedAt:               time.Now(),
-		UpdatedAt:               time.Now(),
+		ID:     "app-1",
+		UserID: userID,
+		Status: store.StatusDraft,
+		Responses: json.RawMessage(`{
+			"first_name":"John","last_name":"Doe","phone":"+11234567890",
+			"age":20,"country_of_residence":"US","gender":"Male","race":"Asian",
+			"ethnicity":"Not Hispanic","university":"UT Dallas","major":"CS",
+			"level_of_study":"Undergraduate","hackathons_attended":2,
+			"experience_level":"Intermediate","heard_about":"Friend",
+			"shirt_size":"M",
+			"ack_mlh_coc":true,"ack_mlh_privacy":true
+		}`),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 }
 
@@ -65,14 +40,16 @@ func TestGetOrCreateApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockScans := app.store.Scans.(*store.MockScansStore)
 
 	t.Run("should return existing application", func(t *testing.T) {
 		user := newTestUser()
 		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
-		questions := []store.ShortAnswerQuestion{{ID: "q1", Question: "Why?"}}
+		schema := []store.ApplicationSchemaField{{ID: "first_name", Type: "text", Label: "First Name"}}
 
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(15, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -81,17 +58,27 @@ func TestGetOrCreateApplication(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getOrCreateApplicationHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 15, envelope.Data.Points)
+
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	t.Run("should create draft when no application exists", func(t *testing.T) {
 		user := newTestUser()
-		questions := []store.ShortAnswerQuestion{}
+		schema := []store.ApplicationSchemaField{}
 
 		mockApps.On("GetByUserID", user.ID).Return(nil, store.ErrNotFound).Once()
 		mockApps.On("Create", mock.AnythingOfType("*store.Application")).Return(nil).Once()
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -102,17 +89,19 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 
 	t.Run("should handle race condition on create conflict", func(t *testing.T) {
 		user := newTestUser()
 		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
-		questions := []store.ShortAnswerQuestion{}
+		schema := []store.ApplicationSchemaField{}
 
 		mockApps.On("GetByUserID", user.ID).Return(nil, store.ErrNotFound).Once()
 		mockApps.On("Create", mock.AnythingOfType("*store.Application")).Return(store.ErrConflict).Once()
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
@@ -123,21 +112,29 @@ func TestGetOrCreateApplication(t *testing.T) {
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 	})
 }
 
 func TestUpdateApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
-	t.Run("should update draft application fields", func(t *testing.T) {
+	t.Run("should update draft application responses", func(t *testing.T) {
 		user := newTestUser()
 		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name"},
+			{ID: "age", Type: "number", Label: "Age"},
+		}
 
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 		mockApps.On("Update", mock.AnythingOfType("*store.Application")).Return(nil).Once()
+		app.store.Scans.(*store.MockScansStore).On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
 
-		body := `{"first_name": "Jane", "last_name": "Doe"}`
+		body := `{"responses": {"first_name": "Jane", "last_name": "Doe"}}`
 		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -146,7 +143,61 @@ func TestUpdateApplication(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
+		var envelope struct {
+			Data struct {
+				ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Len(t, envelope.Data.ApplicationSchema, len(schema))
+
 		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject wrong-typed value without enforcing required fields", func(t *testing.T) {
+		user := newTestUser()
+		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "age", Type: "number", Label: "Age"},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		// age is a non-numeric string; required first_name is omitted but must not error
+		body := `{"responses": {"age": "abc"}}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should reject a resume path outside the authenticated user's namespace", func(t *testing.T) {
+		user := newTestUser()
+		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+
+		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return([]store.ApplicationSchemaField{}, nil).Once()
+
+		body := `{"resume_path":"hackathons/hackutd-2027/resumes/another-user/0123456789abcdef0123456789abcdef.pdf"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
 	})
 
 	t.Run("should return 409 when application is already submitted", func(t *testing.T) {
@@ -155,7 +206,7 @@ func TestUpdateApplication(t *testing.T) {
 
 		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
 
-		body := `{"first_name": "Jane"}`
+		body := `{"responses": {"first_name": "Jane"}}`
 		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -172,7 +223,7 @@ func TestUpdateApplication(t *testing.T) {
 
 		mockApps.On("GetByUserID", user.ID).Return(nil, store.ErrNotFound).Once()
 
-		body := `{"first_name": "Jane"}`
+		body := `{"responses": {"first_name": "Jane"}}`
 		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -180,25 +231,6 @@ func TestUpdateApplication(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
-
-		mockApps.AssertExpectations(t)
-	})
-
-	t.Run("should return 400 on validation failure", func(t *testing.T) {
-		user := newTestUser()
-		existing := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
-
-		mockApps.On("GetByUserID", user.ID).Return(existing, nil).Once()
-
-		// age out of range
-		body := `{"age": -5}`
-		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
-		req = setUserContext(req, user)
-
-		rr := executeRequest(req, http.HandlerFunc(app.updateApplicationHandler))
-		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 
 		mockApps.AssertExpectations(t)
 	})
@@ -212,12 +244,13 @@ func TestSubmitApplication(t *testing.T) {
 	t.Run("should submit a complete application", func(t *testing.T) {
 		user := newTestUser()
 		application := newCompleteApplication(user.ID)
-		questions := []store.ShortAnswerQuestion{
-			{ID: "q1", Question: "Why?", Required: true},
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
 		}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 		mockApps.On("Submit", application).Return(nil).Once()
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
@@ -233,12 +266,14 @@ func TestSubmitApplication(t *testing.T) {
 
 	t.Run("should return 400 when required fields are missing", func(t *testing.T) {
 		user := newTestUser()
-		// empty draft application — all fields nil
+		// empty draft application — no responses
 		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
-		questions := []store.ShortAnswerQuestion{}
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+		}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
@@ -252,23 +287,24 @@ func TestSubmitApplication(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Contains(t, body.Error, "missing required fields")
+		assert.Contains(t, body.Error, "validation errors")
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
 	})
 
-	t.Run("should return 400 when required short answer is blank", func(t *testing.T) {
+	t.Run("should return 400 when required field is blank", func(t *testing.T) {
 		user := newTestUser()
 		application := newCompleteApplication(user.ID)
-		application.ShortAnswerResponses = json.RawMessage(`{"q1":""}`) // blank answer
+		application.Responses = json.RawMessage(`{"first_name":"","last_name":"Doe"}`)
 
-		questions := []store.ShortAnswerQuestion{
-			{ID: "q1", Question: "Why?", Required: true},
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
 		}
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
-		mockSettings.On("GetShortAnswerQuestions").Return(questions, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
@@ -282,7 +318,70 @@ func TestSubmitApplication(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Contains(t, body.Error, "short_answer:q1")
+		assert.Contains(t, body.Error, "first_name is required")
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 when select field has invalid option", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","gender":"InvalidOption"}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "gender", Type: "select", Label: "Gender", Required: false, Options: []string{"Male", "Female", "Other"}},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Contains(t, body.Error, "gender has invalid option")
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 when number field exceeds max", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","last_name":"Doe","age":200}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: "age", Type: "number", Label: "Age", Required: false, Validation: map[string]interface{}{"min": float64(1), "max": float64(150)}},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Error string `json:"error"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Contains(t, body.Error, "age must be at most")
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
@@ -523,6 +622,86 @@ func TestListApplications(t *testing.T) {
 	})
 }
 
+func TestGetApplication(t *testing.T) {
+	schema := []store.ApplicationSchemaField{{ID: "first_name", Type: "text", Label: "First Name"}}
+
+	newRequest := func(t *testing.T, applicationID string) *http.Request {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", applicationID)
+		return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	}
+
+	t.Run("should return application with points", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		existing := newCompleteApplication("user-1")
+		mockApps.On("GetByID", "app-1").Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", "user-1").Return(42, nil).Once()
+
+		rr := executeRequest(newRequest(t, "app-1"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 42, envelope.Data.Points)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+	})
+
+	// Points are cosmetic — a failed lookup must not fail the whole read.
+	t.Run("should still return 200 with 0 points when lookup fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+
+		existing := newCompleteApplication("user-1")
+		mockApps.On("GetByID", "app-1").Return(existing, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockScans.On("GetTotalPointsByUserID", "user-1").
+			Return(0, errors.New("scans unavailable")).Once()
+
+		rr := executeRequest(newRequest(t, "app-1"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data struct {
+				Points int `json:"points"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, 0, envelope.Data.Points)
+
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		mockApps.On("GetByID", "nonexistent").Return(nil, store.ErrNotFound).Once()
+
+		rr := executeRequest(newRequest(t, "nonexistent"), http.HandlerFunc(app.getApplication))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
 func TestSetApplicationStatus(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
@@ -579,10 +758,3 @@ func TestSetApplicationStatus(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 }
-
-// func TestGetApplicantEmailsByStatus(t *testing.T) {
-// 	app := newTestApplication(t)
-// 	mockApps := app.store.Application.(*store.MockApplicationStore) //TODO: write test function. NOT FINISHED
-//
-// 	mockApps.On("GetEmailsByStatus", user.ID).Return(application, nil).Once()
-// }

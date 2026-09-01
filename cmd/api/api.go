@@ -13,37 +13,46 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-	"github.com/hackutd/portal/internal/gcs"
-	"github.com/hackutd/portal/internal/mailer"
-	"github.com/hackutd/portal/internal/ratelimiter"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/gcs"
+	"github.com/hackutd/harp/internal/mailer"
+	"github.com/hackutd/harp/internal/ratelimiter"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/supertokens"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
 
 type application struct {
-	config      config
-	store       store.Storage
-	logger      *zap.SugaredLogger
-	mailer      mailer.Client
-	gcsClient   gcs.Client
-	rateLimiter ratelimiter.Limiter
+	config            config
+	store             store.Storage
+	logger            *zap.SugaredLogger
+	mailer            mailer.Client
+	gcsClient         gcs.Client
+	appleWalletPasses appleWalletPassGenerator
+	rateLimiter       ratelimiter.Limiter
+	dispatcherCancel  context.CancelFunc
 }
 
 type config struct {
-	addr              string
-	db                dbConfig
-	env               string
-	appURL            string
-	frontendURL       string
-	hackathonTimeZone string
-	mail              mailConfig
-	gcs               gcsConfig
-	auth              authConfig
-	rateLimiter       ratelimiter.Config
-	supertokens       supertokensConfig
-	publicCORSOrigin  string
+	addr             string
+	db               dbConfig
+	env              string
+	appURL           string
+	frontendURL      string
+	mail             mailer.Config
+	gcs              gcsConfig
+	auth             authConfig
+	rateLimiter      ratelimiter.Config
+	supertokens      supertokensConfig
+	publicCORSOrigin string
+	vapid            vapidConfig
+	appleWallet      appleWalletConfig
+}
+
+type vapidConfig struct {
+	publicKey  string
+	privateKey string
+	subject    string
 }
 
 type supertokensConfig struct {
@@ -63,16 +72,6 @@ type basicConfig struct {
 	user string
 	pass string
 }
-
-type mailConfig struct {
-	sendGrid  sendGridConfig
-	fromEmail string
-}
-
-type sendGridConfig struct {
-	apiKey string
-}
-
 type gcsConfig struct {
 	bucketName string
 }
@@ -95,7 +94,10 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/reviews",
 		"admin/scans",
 		"admin/schedule",
+		"admin/sponsors",
+		"admin/faq",
 		"superadmin/applications",
+		"superadmin/emails",
 		"superadmin/settings",
 		"superadmin/users"
 	];
@@ -145,7 +147,13 @@ func (app *application) mount() http.Handler {
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)
 			r.Get("/schedule", app.getPublicScheduleHandler)
+			r.Get("/sponsors", app.getPublicSponsorsHandler)
+			r.Get("/faq", app.getPublicFAQHandler)
 		})
+
+		// Legal document links. Unauthenticated on purpose: the login page
+		// tells hackers they agree to these before they have a session.
+		r.Get("/legal", app.getLegalConfigHandler)
 
 		// Auth endpoints not handled by SuperTokens
 		r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
@@ -165,10 +173,31 @@ func (app *application) mount() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(app.AuthRequiredMiddleware)
 
+			// Push notifications (any authenticated user)
+			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/feed", app.getNotificationFeedHandler)
+				r.Get("/vapid-public-key", app.getVapidPublicKeyHandler)
+				r.Post("/subscribe", app.subscribePushHandler)
+				r.Delete("/subscribe", app.unsubscribePushHandler)
+			})
+
 			// Hacker Routes
+			r.Get("/schedule", app.getHackerScheduleHandler)
+			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
+			r.Get("/faq", app.getHackerFAQHandler)
+			r.Get("/hacker-pack", app.getHackerPackHandler)
+			r.Get("/points-config", app.getPointsConfigHandler)
+			r.Get("/hackathon-config", app.getHackathonConfigHandler)
+			r.Delete("/users/me", app.deleteMyAccountHandler)
+			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
+			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
+
 			r.Route("/applications", func(r chi.Router) {
 				r.Get("/me", app.getOrCreateApplicationHandler)
 				r.Get("/enabled", app.getApplicationsEnabled)
+				// Viewing your own resume is allowed in any status,
+				// even after applications close.
+				r.Get("/me/resume-url", app.getMyResumeDownloadURLHandler)
 
 				r.Group(func(r chi.Router) {
 					r.Use(app.ApplicationsEnabledMiddleware)
@@ -220,6 +249,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/types", app.getScanTypesHandler)
 						r.Get("/user/{userID}", app.getUserScansHandler)
 						r.Get("/stats", app.getScanStatsHandler)
+						r.Post("/rebalance-stats", app.rebalanceScanStatsHandler)
 					})
 
 					// Schedule
@@ -234,6 +264,32 @@ func (app *application) mount() http.Handler {
 							r.Delete("/{scheduleID}", app.deleteScheduleHandler)
 						})
 					})
+
+					// Sponsors
+					r.Route("/sponsors", func(r chi.Router) {
+						r.Get("/", app.listSponsorsHandler)
+
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminSponsorEditPermissionMiddleware)
+							r.Post("/", app.createSponsorHandler)
+							r.Put("/{sponsorID}", app.updateSponsorHandler)
+							r.Delete("/{sponsorID}", app.deleteSponsorHandler)
+							r.Put("/{sponsorID}/logo", app.uploadLogoHandler)
+						})
+					})
+
+					// FAQ
+					r.Route("/faq", func(r chi.Router) {
+						r.Get("/", app.listFAQsHandler)
+						r.Get("/edit-permission", app.getFAQEditPermissionHandler)
+
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminFAQEditPermissionMiddleware)
+							r.Post("/", app.createFAQHandler)
+							r.Put("/{faqID}", app.updateFAQHandler)
+							r.Delete("/{faqID}", app.deleteFAQHandler)
+						})
+					})
 				})
 			})
 
@@ -241,34 +297,65 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleSuperAdmin))
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
+					r.Post("/reset-hackathon", app.resetHackathonHandler)
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
-						r.Get("/saquestions", app.getShortAnswerQuestions)
-						r.Put("/saquestions", app.updateShortAnswerQuestions)
+						r.Get("/application-schema", app.getApplicationSchema)
+						r.Put("/application-schema", app.updateApplicationSchema)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
 						r.Get("/admin-schedule-edit-toggle", app.getAdminScheduleEditToggle)
 						r.Post("/admin-schedule-edit-toggle", app.setAdminScheduleEditToggle)
+						r.Get("/admin-sponsor-edit-toggle", app.getAdminSponsorEditToggle)
+						r.Post("/admin-sponsor-edit-toggle", app.setAdminSponsorEditToggle)
+						r.Get("/admin-faq-edit-toggle", app.getAdminFAQEditToggle)
+						r.Post("/admin-faq-edit-toggle", app.setAdminFAQEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
+						r.Get("/hacker-pack-url", app.getHackerPackURL)
+						r.Post("/hacker-pack-url", app.setHackerPackURL)
+						r.Post("/points-name", app.setPointsName)
+						r.Get("/points-enabled", app.getPointsEnabled)
+						r.Post("/points-enabled", app.setPointsEnabled)
+						r.Get("/hackathon-name", app.getHackathonName)
+						r.Post("/hackathon-name", app.setHackathonName)
+						r.Get("/contact-email", app.getContactEmail)
+						r.Post("/contact-email", app.setContactEmail)
+						r.Get("/from-email", app.getFromEmail)
+						r.Post("/from-email", app.setFromEmail)
+						r.Get("/from-name", app.getFromName)
+						r.Post("/from-name", app.setFromName)
+						r.Get("/application-due-date", app.getApplicationDueDate)
+						r.Post("/application-due-date", app.setApplicationDueDate)
+						r.Get("/privacy-policy-url", app.getPrivacyPolicyURL)
+						r.Post("/privacy-policy-url", app.setPrivacyPolicyURL)
+						r.Get("/terms-url", app.getTermsURL)
+						r.Post("/terms-url", app.setTermsURL)
+						r.Get("/onboarding-status", app.getOnboardingStatus)
 						r.Put("/scan-types", app.updateScanTypesHandler)
+						r.Get("/meal-groups", app.getMealGroups)
+						r.Put("/meal-groups", app.updateMealGroups)
+						r.Get("/meal-groups/stats", app.getMealGroupStats)
 						r.Put("/applications-enabled", app.setApplicationsEnabled)
+					})
+
+					r.Route("/walk-ins", func(r chi.Router) {
+						r.Get("/", app.getWalkInsHandler)
+						r.Post("/promote", app.promoteWalkInsHandler)
 					})
 
 					r.Route("/applications", func(r chi.Router) {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+					})
 
-						r.Group(func(r chi.Router) {
-							r.Use(app.ApplicationsEnabledMiddleware)
-							r.Patch("/me", app.updateApplicationHandler)
-							r.Post("/me/submit", app.submitApplicationHandler)
-							r.Post("/me/resume-upload-url", app.generateResumeUploadURLHandler)
-							r.Delete("/me/resume", app.deleteResumeHandler)
-						})
+					// Outbound decision emails
+					r.Route("/emails", func(r chi.Router) {
+						r.Get("/decisions/stats", app.getDecisionEmailStatsHandler)
+						r.Post("/decisions", app.sendDecisionEmailsHandler)
 					})
 
 					// User Management
@@ -277,6 +364,14 @@ func (app *application) mount() http.Handler {
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 					})
 
+					// Scheduled push notifications
+					r.Route("/notifications", func(r chi.Router) {
+						r.Get("/", app.listScheduledNotificationsHandler)
+						r.Post("/", app.createScheduledNotificationHandler)
+						r.Post("/from-schedule", app.generateScheduleNotificationsHandler)
+						r.Patch("/{notificationID}", app.updateScheduledNotificationHandler)
+						r.Delete("/{notificationID}", app.deleteScheduledNotificationHandler)
+					})
 				})
 			})
 		})
@@ -311,6 +406,10 @@ func (app *application) run(mux http.Handler) error {
 		defer cancel()
 
 		app.logger.Infow("server caught", "signal", s.String())
+
+		if app.dispatcherCancel != nil {
+			app.dispatcherCancel()
+		}
 
 		shutdown <- server.Shutdown(ctx)
 	}()

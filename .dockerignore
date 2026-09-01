@@ -1,5 +1,5 @@
 .git
 .env
 tmp
-client/web/node_modules
-client/web/dist
+client/portal/node_modules
+client/portal/dist

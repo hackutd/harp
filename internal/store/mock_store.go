@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -59,6 +60,11 @@ func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role Use
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*User), args.Error(1)
+}
+
+func (m *MockUsersStore) Delete(ctx context.Context, userID string) error {
+	args := m.Called(userID)
+	return args.Error(0)
 }
 
 func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
@@ -137,6 +143,11 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 	return args.Get(0).(*Application), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
+	args := m.Called(userID)
+	return args.Get(0).(ApplicationStatus), args.Error(1)
+}
+
 func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
 	args := m.Called(status)
 	if args.Get(0) == nil {
@@ -145,21 +156,58 @@ func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status App
 	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error) {
+	args := m.Called(statuses, kind, onlyUnsent)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DecisionEmailRecipient), args.Error(1)
+}
+
+func (m *MockApplicationStore) SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error {
+	args := m.Called(applicationIDs, kind, sent)
+	return args.Error(0)
+}
+
+func (m *MockApplicationStore) GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DecisionEmailStats), args.Error(1)
+}
+
+func (m *MockApplicationStore) SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error) {
+	args := m.Called(id, mealGroup)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*string), args.Error(1)
+}
+
+func (m *MockApplicationStore) GetMealGroupByUserID(ctx context.Context, userID string) (*string, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*string), args.Error(1)
+}
+
 // mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock
 }
 
-func (m *MockSettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error) {
+func (m *MockSettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]ShortAnswerQuestion), args.Error(1)
+	return args.Get(0).([]ApplicationSchemaField), args.Error(1)
 }
 
-func (m *MockSettingsStore) UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error {
-	args := m.Called(questions)
+func (m *MockSettingsStore) UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	args := m.Called(fields)
 	return args.Error(0)
 }
 
@@ -201,6 +249,26 @@ func (m *MockSettingsStore) SetAdminScheduleEditEnabled(ctx context.Context, ena
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetAdminSponsorEditEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetAdminFAQEditEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -211,6 +279,106 @@ func (m *MockSettingsStore) GetHackathonDateRange(ctx context.Context) (Hackatho
 
 func (m *MockSettingsStore) SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error {
 	args := m.Called(dateRange)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetHackerPackURL(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetHackerPackURL(ctx context.Context, url string) error {
+	args := m.Called(url)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetPointsName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) SetPointsName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetHackathonName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetHackathonName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetContactEmail(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetContactEmail(ctx context.Context, email string) error {
+	args := m.Called(email)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetPrivacyPolicyURL(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPrivacyPolicyURL(ctx context.Context, url string) error {
+	args := m.Called(url)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetTermsURL(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetTermsURL(ctx context.Context, url string) error {
+	args := m.Called(url)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetFromEmail(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetFromEmail(ctx context.Context, email string) error {
+	args := m.Called(email)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetFromName(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetFromName(ctx context.Context, name string) error {
+	args := m.Called(name)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetApplicationDueDate(ctx context.Context) (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
+	args := m.Called(date)
 	return args.Error(0)
 }
 
@@ -235,14 +403,48 @@ func (m *MockSettingsStore) GetScanStats(ctx context.Context) (map[string]int, e
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockSettingsStore) GetMealGroups(ctx context.Context) ([]string, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetMealGroups(ctx context.Context, groups []string) error {
+	args := m.Called(groups)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
 func (m *MockSettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
 	args := m.Called()
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
+func (m *MockSettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) error {
 	args := m.Called(enabled)
-	return args.Bool(0), args.Error(1)
+	return args.Error(0)
+}
+
+// MockHackathonStore is a mock implementation of the Hackathon interface
+type MockHackathonStore struct {
+	mock.Mock
+}
+
+func (m *MockHackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string, error) {
+	args := m.Called(opts)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
@@ -313,6 +515,11 @@ func (m *MockScansStore) Create(ctx context.Context, scan *Scan) error {
 	return args.Error(0)
 }
 
+func (m *MockScansStore) CreatePurchase(ctx context.Context, scan *Scan) (int, error) {
+	args := m.Called(scan)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *MockScansStore) GetByUserID(ctx context.Context, userID string) ([]Scan, error) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {
@@ -332,6 +539,19 @@ func (m *MockScansStore) GetStats(ctx context.Context) ([]ScanStat, error) {
 func (m *MockScansStore) HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error) {
 	args := m.Called(userID, checkInTypes)
 	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockScansStore) GetTotalPointsByUserID(ctx context.Context, userID string) (int, error) {
+	args := m.Called(userID)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockScansStore) RebalanceStats(ctx context.Context) ([]ScanStat, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ScanStat), args.Error(1)
 }
 
 // MockScheduleStore is a mock implementation of the Schedule interface

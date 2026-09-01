@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -93,6 +93,60 @@ func TestGetAdminScheduleDateRange(t *testing.T) {
 		assert.Equal(t, start, *body.Data.StartDate)
 		assert.Equal(t, end, *body.Data.EndDate)
 		assert.True(t, body.Data.Configured)
+
+		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestGetHackerScheduleDateRange(t *testing.T) {
+	app := newTestApplication(t)
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+	t.Run("returns configured date range for hacker", func(t *testing.T) {
+		start := "2026-03-13"
+		end := "2026-03-15"
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{
+			StartDate: &start,
+			EndDate:   &end,
+		}, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackerScheduleDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		require.NotNil(t, body.Data.StartDate)
+		require.NotNil(t, body.Data.EndDate)
+		assert.Equal(t, start, *body.Data.StartDate)
+		assert.Equal(t, end, *body.Data.EndDate)
+		assert.True(t, body.Data.Configured)
+
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("reports not configured when unset", func(t *testing.T) {
+		mockSettings.On("GetHackathonDateRange").Return(store.HackathonDateRange{}, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newTestUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getHackerScheduleDateRange))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data HackathonDateRangeResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.False(t, body.Data.Configured)
 
 		mockSettings.AssertExpectations(t)
 	})
@@ -239,7 +293,7 @@ func TestScheduleDateRangeValidation(t *testing.T) {
 			EndDate:   &end,
 		}, nil).Once()
 
-		body := `{"event_name":"Post Event","start_time":"2026-03-16T10:00:00Z","end_time":"2026-03-16T11:00:00Z"}`
+		body := `{"event_name":"Post Event","start_time":"2026-04-01T10:00:00Z","end_time":"2026-04-01T11:00:00Z"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -262,7 +316,7 @@ func TestScheduleDateRangeValidation(t *testing.T) {
 			EndDate:   &end,
 		}, nil).Once()
 
-		body := `{"event_name":"Overnight","start_time":"2026-03-15T04:30:00Z","end_time":"2026-03-15T06:30:00Z"}`
+		body := `{"event_name":"Overnight","start_time":"2026-03-14T10:00:00Z","end_time":"2026-03-15T11:00:00Z"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")

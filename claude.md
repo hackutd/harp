@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**HARP** (Hacker Applications & Review Platform) — a hackathon management system for HackUTD. Go backend + React frontend. Supports hacker applications, admin review/grading workflows, and super-admin configuration.
+**HARP** (Hacker Applications & Review Platform) — a hackathon management system built so any school can run it. Go backend + React frontend. Supports hacker applications, admin review/grading workflows, and super-admin configuration.
+
+One frontend lives under `client/`:
+
+- `client/portal/` — the year-round application/review SPA (Vite + React). Built into the Go container and served from `/`.
+
+The public marketing site lives in a **separate repository** (`hackutd/harp-marketing`). It is redesigned per hackathon, deployed independently to Vercel, and consumes `/v1/public/*` with an API key. It is not part of this repo or the Docker build.
+
+Local dev ports: backend `8080`, portal `3000`. Port 3000 is pinned for the portal by `FRONTEND_URL` and the SuperTokens `WebsiteDomain`, so the marketing site takes 3001 when run alongside.
 
 ## Commands
 
@@ -26,7 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CLI must be installed.
 
-### Frontend (`client/web/`)
+### Frontend (`client/portal/`)
 
 | Command                | Description                              |
 | ---------------------- | ---------------------------------------- |
@@ -52,6 +60,17 @@ Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CL
 - **JSON envelope:** Success: `{"data": ...}`, Error: `{"error": "..."}`
 - **Pagination:** Cursor-based with base64-encoded JSON cursors
 - **Migrations:** SQL files in `cmd/migrate/migrations/`, managed with `golang-migrate`
+
+#### Migration Naming Convention
+
+Format: `{6-digit-number}_{action}_{subject}.{up|down}.sql`
+
+- `create` — foundational schema objects (infrastructure, core tables, initial types)
+- `add` — new features, tables, columns, or triggers added after initial setup
+- `alter` — modifications to existing schema objects
+- `seed` — initial/default data insertion
+
+Each migration must be isolated to one concern — one table, one type, or one logical operation. Triggers and indexes stay with their parent table. Enum types get their own migration, separate from the table that uses them.
 
 #### Go Handler Pattern
 
@@ -92,6 +111,14 @@ Tests live in `cmd/api/` (`_test.go` files, same package as handlers):
 - **Forms:** React Hook Form + Zod validation
 - **Auth client:** `supertokens-auth-react`
 
+### Public content API (consumed by the marketing site)
+
+The marketing site is a **separate repository** (`hackutd/harp-marketing`, Next.js). It is not built, tested, or deployed from here. What matters in this repo is the contract it depends on:
+
+- `/v1/public/{schedule,sponsors,faq}` sits behind `APIKeyMiddleware` (`cmd/api/api.go`), which compares an `X-API-Key` header against `PUBLIC_API_KEY`. These routes need no user session but are **not** unauthenticated — the key is a shared secret.
+- The marketing repo's `lib/types.ts` mirrors the Go structs in `internal/store/`. That coupling now spans two repositories and nothing here will catch a drift: **changing the shape of a `/v1/public/*` response is a breaking change for the marketing site**, so update it in the same sitting.
+- Sponsor logos ship as raw base64 in `logo_data` plus `logo_content_type`, not URLs — so the sponsors payload grows with every sponsor.
+
 ### Frontend-Backend Connection
 
 Vite dev server proxies `/v1/*` and most `/auth/*` to Go backend (port 8080). Frontend auth routes (`/auth/callback`, `/auth/verify`, `/auth/callback/google`) are excluded from proxy.
@@ -129,28 +156,31 @@ Vite dev server proxies `/v1/*` and most `/auth/*` to Go backend (port 8080). Fr
 Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 
 - **Go:** gofmt check, `go mod verify`, build, `go vet`, `staticcheck`, `go test -race ./...`
-- **Frontend:** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`
+- **Portal:** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`
 
 ## Deployment & Infrastructure
 
-- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — Go checks (gofmt, vet, staticcheck, tests) and frontend checks (format, lint, build, audit)
+- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — two jobs: `backend-audit`, `frontend-audit` (portal)
 - **CD:** Merges to `main` trigger Google Cloud Build → Google Cloud Run (auto-deploy)
 - **Container:** Multi-stage `Dockerfile` — builds frontend (Node 22), builds Go binary, runs from `scratch` image on port 8080. Frontend is compiled at build time and served as static files
 - **Database:** Neon DB (managed PostgreSQL)
 - **File Storage:** Google Cloud Storage (GCS)
 - **Auth:** SuperTokens (self-hosted or managed, free tier: 5,000 MAUs) — Passwordless + Google OAuth
 - **Email:** SendGrid
+- **Marketing site:** its own repository (`hackutd/harp-marketing`) and its own Vercel project — not part of this repo or the Cloud Run deploy
 
 ## Git Conventions
 
 - **Commit messages:** Use [Conventional Commits] format (e.g., `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`)
 - Keep commit messages short (subject line under 72 characters)
 - **Never** include `Co-Authored-By` lines in commit messages
+- Run `task setup-hooks` once after cloning to enable the local `commit-msg` hook that validates Conventional Commits
+- PR titles are validated in CI (`.github/workflows/conventional-commits.yaml`) and must follow Conventional Commits, since the squash-merge commit (and release-please) uses the PR title
 
 ## API Routes
 
 **Auth:** `GET /v1/auth/check-email`, `GET /v1/auth/me`
-**Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`
-**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`
-**Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/emails/qr`
+**Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`, `GET /v1/points-config`
+**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
+**Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/settings/points-name`, `GET|POST /v1/superadmin/settings/points-enabled`, `POST /v1/superadmin/scans/rebalance-stats`, `POST /v1/superadmin/emails/decisions`, `GET /v1/superadmin/emails/decisions/stats`, `GET /v1/superadmin/walk-ins`, `POST /v1/superadmin/walk-ins/promote`
 **Infra (Basic Auth):** `GET /v1/health`, `GET /v1/debug/vars`, `GET /v1/swagger/*`

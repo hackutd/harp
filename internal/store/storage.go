@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	ErrNotFound          = errors.New("resource not found")
-	ErrConflict          = errors.New("resource already exists")
-	QueryTimeoutDuration = time.Second * 5
+	ErrNotFound           = errors.New("resource not found")
+	ErrConflict           = errors.New("resource already exists")
+	ErrInsufficientPoints = errors.New("insufficient points")
+	QueryTimeoutDuration  = time.Second * 5
 )
 
 type Storage struct {
@@ -25,11 +26,13 @@ type Storage struct {
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 		GetByRole(ctx context.Context, role UserRole) ([]User, error)
+		Delete(ctx context.Context, userID string) error
 		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
 		GetByID(ctx context.Context, id string) (*Application, error)
+		GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application) error
@@ -37,10 +40,15 @@ type Storage struct {
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
+		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
+		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)
+		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
+		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {
-		GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error)
-		UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error
+		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
@@ -50,17 +58,50 @@ type Storage struct {
 		SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error
 		GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error)
 		SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error
+		GetHackerPackURL(ctx context.Context) (string, error)
+		SetHackerPackURL(ctx context.Context, url string) error
+		GetPointsName(ctx context.Context) (string, error)
+		SetPointsName(ctx context.Context, name string) error
+		GetPointsEnabled(ctx context.Context) (bool, error)
+		SetPointsEnabled(ctx context.Context, enabled bool) error
+		GetHackathonName(ctx context.Context) (string, error)
+		SetHackathonName(ctx context.Context, name string) error
+		GetContactEmail(ctx context.Context) (string, error)
+		SetContactEmail(ctx context.Context, email string) error
+		GetFromEmail(ctx context.Context) (string, error)
+		SetFromEmail(ctx context.Context, email string) error
+		GetFromName(ctx context.Context) (string, error)
+		SetFromName(ctx context.Context, name string) error
+		GetApplicationDueDate(ctx context.Context) (string, error)
+		SetApplicationDueDate(ctx context.Context, date string) error
+		GetPrivacyPolicyURL(ctx context.Context) (string, error)
+		SetPrivacyPolicyURL(ctx context.Context, url string) error
+		GetTermsURL(ctx context.Context) (string, error)
+		SetTermsURL(ctx context.Context, url string) error
 		GetScanTypes(ctx context.Context) ([]ScanType, error)
 		UpdateScanTypes(ctx context.Context, scanTypes []ScanType) error
 		GetScanStats(ctx context.Context) (map[string]int, error)
+		GetMealGroups(ctx context.Context) ([]string, error)
+		SetMealGroups(ctx context.Context, groups []string) error
+		GetMealGroupStats(ctx context.Context) (map[string]int, error)
 		GetApplicationsEnabled(ctx context.Context) (bool, error)
-		SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error)
+		SetApplicationsEnabled(ctx context.Context, enabled bool) error
+		GetAdminSponsorEditEnabled(ctx context.Context) (bool, error)
+		SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error
+		GetAdminFAQEditEnabled(ctx context.Context) (bool, error)
+		SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error
+	}
+	Hackathon interface {
+		Reset(ctx context.Context, opts ResetOptions) ([]string, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
+		CreatePurchase(ctx context.Context, scan *Scan) (int, error)
 		GetByUserID(ctx context.Context, userID string) ([]Scan, error)
 		GetStats(ctx context.Context) ([]ScanStat, error)
 		HasCheckIn(ctx context.Context, userID string, checkInTypes []string) (bool, error)
+		GetTotalPointsByUserID(ctx context.Context, userID string) (int, error)
+		RebalanceStats(ctx context.Context) ([]ScanStat, error)
 	}
 	ApplicationReviews interface {
 		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)

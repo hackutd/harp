@@ -6,17 +6,27 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/iterator"
 )
 
 const (
 	signedURLExpiry    = 15 * time.Minute
 	resumeContentType  = "application/pdf"
 	maxResumeSizeBytes = 5 * 1024 * 1024
+	maxImageSizeBytes  = 2 * 1024 * 1024
 )
 
+var AllowedImageContentTypes = map[string]bool{
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
 type GCSClient struct {
-	client *storage.Client
-	bucket *storage.BucketHandle
+	client     *storage.Client
+	bucket     *storage.BucketHandle
+	bucketName string
 }
 
 func New(ctx context.Context, bucketName string) (*GCSClient, error) {
@@ -26,8 +36,9 @@ func New(ctx context.Context, bucketName string) (*GCSClient, error) {
 	}
 
 	return &GCSClient{
-		client: client,
-		bucket: client.Bucket(bucketName),
+		client:     client,
+		bucket:     client.Bucket(bucketName),
+		bucketName: bucketName,
 	}, nil
 }
 
@@ -38,6 +49,23 @@ func (c *GCSClient) GenerateUploadURL(_ context.Context, objectPath string) (str
 		ContentType: resumeContentType,
 		Headers: []string{
 			fmt.Sprintf("x-goog-content-length-range:0,%d", maxResumeSizeBytes),
+		},
+		Scheme: storage.SigningSchemeV4,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+func (c *GCSClient) GenerateImageUploadURL(_ context.Context, objectPath string, contentType string) (string, error) {
+	url, err := c.bucket.SignedURL(objectPath, &storage.SignedURLOptions{
+		Method:      "PUT",
+		Expires:     time.Now().Add(signedURLExpiry),
+		ContentType: contentType,
+		Headers: []string{
+			fmt.Sprintf("x-goog-content-length-range:0,%d", maxImageSizeBytes),
 		},
 		Scheme: storage.SigningSchemeV4,
 	})
@@ -61,10 +89,30 @@ func (c *GCSClient) GenerateDownloadURL(_ context.Context, objectPath string) (s
 	return url, nil
 }
 
+func (c *GCSClient) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+	objects := c.bucket.Objects(ctx, &storage.Query{Prefix: prefix})
+	var paths []string
+
+	for {
+		attrs, err := objects.Next()
+		if err == iterator.Done {
+			return paths, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, attrs.Name)
+	}
+}
+
 func (c *GCSClient) DeleteObject(ctx context.Context, objectPath string) error {
 	return c.bucket.Object(objectPath).Delete(ctx)
 }
 
 func (c *GCSClient) Close() error {
 	return c.client.Close()
+}
+
+func (c *GCSClient) GeneratePublicURL(objectPath string) string {
+	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", c.bucketName, objectPath)
 }

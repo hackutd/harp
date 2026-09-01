@@ -34,10 +34,11 @@ tmp/
 .DS_Store
 
 # Node.js (client/)
-client/web/node_modules/
-client/web/dist/
-client/web/dist-ssr/
-client/web/.vite/
+client/portal/node_modules/
+client/portal/dist/
+client/portal/dist-ssr/
+client/portal/dev-dist/
+client/portal/.vite/
 logs/
 *.log
 npm-debug.log*
@@ -47,7 +48,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Claude
-.claude/
+.claude/settings.local.json
 
 # Generated docs
 docs/swagger.json

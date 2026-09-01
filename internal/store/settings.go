@@ -7,31 +7,51 @@ import (
 	"errors"
 )
 
-// ShortAnswerQuestion represents a single configurable question
-type ShortAnswerQuestion struct {
-	ID           string `json:"id" validate:"required,min=1,max=50"`
-	Question     string `json:"question" validate:"required,min=1,max=500"`
-	Required     bool   `json:"required"`
-	DisplayOrder int    `json:"display_order" validate:"min=0"`
-}
-
-// SettingsStore handles database operations for hackathon settings (e.g., short answer questions)
+// SettingsStore handles database operations for hackathon settings
 type SettingsStore struct {
 	db *sql.DB
 }
 
-const SettingsKeyShortAnswerQuestions = "short_answer_questions"
+const SettingsKeyApplicationSchema = "application_schema"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
 const SettingsKeyScanTypes = "scan_types"
 const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
+const SettingsKeyAdminSponsorEditEnabled = "admin_sponsor_edit_enabled"
+const SettingsKeyAdminFAQEditEnabled = "admin_faq_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
+const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
+const SettingsKeyHackerPackURL = "hacker_pack_url"
+const SettingsKeyPointsName = "points_name"
+const SettingsKeyPointsEnabled = "points_enabled"
+const SettingsKeyHackathonName = "hackathon_name"
+const SettingsKeyContactEmail = "contact_email"
+const SettingsKeyFromEmail = "from_email"
+const SettingsKeyFromName = "from_name"
+const SettingsKeyApplicationDueDate = "application_due_date"
+const SettingsKeyPrivacyPolicyURL = "privacy_policy_url"
+const SettingsKeyTermsURL = "terms_url"
 
 type HackathonDateRange struct {
 	StartDate *string `json:"start_date"`
 	EndDate   *string `json:"end_date"`
+}
+
+// ApplicationSchemaField defines a single field in the configurable application form.
+// The full schema is stored as a JSON array in the settings table under key "application_schema".
+type ApplicationSchemaField struct {
+	ID           string                 `json:"id"`
+	Type         string                 `json:"type"`
+	Label        string                 `json:"label"`
+	Required     bool                   `json:"required"`
+	Section      string                 `json:"section,omitempty"`
+	SectionLabel string                 `json:"section_label,omitempty"`
+	SectionOrder int                    `json:"section_order"`
+	DisplayOrder int                    `json:"display_order"`
+	Options      []string               `json:"options,omitempty"`
+	Validation   map[string]interface{} `json:"validation,omitempty"`
 }
 
 // ReviewAssignmentEntry represents a single admin's review assignment toggle state.
@@ -41,8 +61,8 @@ type ReviewAssignmentEntry struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// GetShortAnswerQuestions returns the parsed questions array
-func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAnswerQuestion, error) {
+// GetApplicationSchema returns the parsed application form schema fields
+func (s *SettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
@@ -53,20 +73,40 @@ func (s *SettingsStore) GetShortAnswerQuestions(ctx context.Context) ([]ShortAns
 	`
 
 	var value []byte
-	err := s.db.QueryRowContext(ctx, query, SettingsKeyShortAnswerQuestions).Scan(&value)
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationSchema).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return []ShortAnswerQuestion{}, nil
+			return []ApplicationSchemaField{}, nil
 		}
 		return nil, err
 	}
 
-	var questions []ShortAnswerQuestion
-	if err := json.Unmarshal(value, &questions); err != nil {
+	var fields []ApplicationSchemaField
+	if err := json.Unmarshal(value, &fields); err != nil {
 		return nil, err
 	}
 
-	return questions, nil
+	return fields, nil
+}
+
+// UpdateApplicationSchema replaces the application form schema with the provided fields
+func (s *SettingsStore) UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationSchema, string(value))
+	return err
 }
 
 // GetReviewsPerApplication returns the configured number of reviews per application
@@ -158,7 +198,7 @@ func (s *SettingsStore) UpdateScanTypes(ctx context.Context, scanTypes []ScanTyp
 	query := `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyScanTypes, value)
@@ -216,23 +256,77 @@ func incrementScanStat(ctx context.Context, tx *sql.Tx, scanType string) error {
 	return err
 }
 
-// UpdateShortAnswerQuestions replaces all questions with the provided array
-func (s *SettingsStore) UpdateShortAnswerQuestions(ctx context.Context, questions []ShortAnswerQuestion) error {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
+// resetScanStats resets the scan stats within an existing transaction.
+func resetScanStats(ctx context.Context, tx *sql.Tx) error {
+	query := `UPDATE settings SET value = '{}', updated_at = NOW() WHERE key = $1`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyScanStats)
+	return err
+}
 
-	value, err := json.Marshal(questions)
-	if err != nil {
+// resetReviewAssignmentToggle resets review assignment toggles within an existing transaction.
+func resetReviewAssignmentToggle(ctx context.Context, tx *sql.Tx) error {
+	query := `UPDATE settings SET value = '[]', updated_at = NOW() WHERE key = $1`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyReviewAssignmentToggle)
+	return err
+}
+
+// DefaultScanTypes mirrors the seeded scan_types setting (migrations 000006 and
+// 000021). These two are structural — check-in gates the event and walk-in
+// drives the walk-in queue — so a reset restores them rather than emptying the
+// list. Meal, swag, and shop types are per-hackathon config and are dropped.
+const DefaultScanTypes = `[` +
+	`{"name":"check_in","display_name":"Check In","category":"check_in","is_active":true,"points":0},` +
+	`{"name":"walk_in","display_name":"Walk-In","category":"walk_in","is_active":true,"points":0}` +
+	`]`
+
+// resetScanTypes restores the default scan types within an existing transaction.
+func resetScanTypes(ctx context.Context, tx *sql.Tx) error {
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyScanTypes, DefaultScanTypes)
+	return err
+}
+
+// resetHackathonConfig clears the per-cycle hackathon configuration within an
+// existing transaction.
+func resetHackathonConfig(ctx context.Context, tx *sql.Tx) error {
+	// Clear only per-cycle identity and content. Organization-level settings
+	// such as contact/sender addresses, application schema, review count, admin
+	// permissions, and meal-group names intentionally carry forward.
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM settings WHERE key IN ($1, $2, $3, $4, $5)`,
+		SettingsKeyHackathonName,
+		SettingsKeyHackathonDateRange,
+		SettingsKeyApplicationDueDate,
+		SettingsKeyPointsName,
+		SettingsKeyHackerPackURL,
+	); err != nil {
 		return err
 	}
 
+	if err := closeApplications(ctx, tx); err != nil {
+		return err
+	}
+
+	// A fresh cycle has no point-bearing scan types yet, so keep the hacker
+	// points UI hidden until an organizer deliberately configures it.
 	query := `
 		INSERT INTO settings (key, value)
-		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-	`
+		VALUES ($1, 'false'::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyPointsEnabled)
+	return err
+}
 
-	_, err = s.db.ExecContext(ctx, query, SettingsKeyShortAnswerQuestions, string(value))
+// closeApplications puts the public form in its safe between-events state.
+func closeApplications(ctx context.Context, tx *sql.Tx) error {
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, 'false'::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
+	_, err := tx.ExecContext(ctx, query, SettingsKeyApplicationsEnabled)
 	return err
 }
 
@@ -488,6 +582,233 @@ func (s *SettingsStore) SetHackathonDateRange(ctx context.Context, dateRange Hac
 	return err
 }
 
+// GetHackerPackURL returns the configured Hacker Pack Notion URL.
+// Defaults to an empty string if the row does not exist (not configured).
+func (s *SettingsStore) GetHackerPackURL(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyHackerPackURL).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	var url string
+	if err := json.Unmarshal(value, &url); err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+// SetHackerPackURL updates the Hacker Pack Notion URL.
+func (s *SettingsStore) SetHackerPackURL(ctx context.Context, url string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(url)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyHackerPackURL, string(jsonValue))
+	return err
+}
+
+// GetPointsName returns the configured display name of the points system.
+// Defaults to "Points" if the row does not exist (not configured).
+func (s *SettingsStore) GetPointsName(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyPointsName).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "Points", nil
+		}
+		return "", err
+	}
+
+	var name string
+	if err := json.Unmarshal(value, &name); err != nil {
+		return "", err
+	}
+
+	return name, nil
+}
+
+// SetPointsName updates the display name of the points system.
+func (s *SettingsStore) SetPointsName(ctx context.Context, name string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(name)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyPointsName, string(jsonValue))
+	return err
+}
+
+// GetPointsEnabled returns whether the points system is enabled.
+// Defaults to false if the setting row does not exist.
+func (s *SettingsStore) GetPointsEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyPointsEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+// SetPointsEnabled updates whether the points system is enabled. When disabled
+// the points system is hidden from the hacker-facing portal.
+func (s *SettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyPointsEnabled, string(jsonValue))
+	return err
+}
+
+// GetMealGroups returns the configured list of meal group names (e.g., ["A", "B", "C", "D"])
+func (s *SettingsStore) GetMealGroups(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyMealGroups).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+
+	var groups []string
+	if err := json.Unmarshal(value, &groups); err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}
+
+// SetMealGroups updates the available meal group names
+func (s *SettingsStore) SetMealGroups(ctx context.Context, groups []string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(groups)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyMealGroups, value)
+	return err
+}
+
+// GetMealGroupStats returns the number of hackers assigned to each meal group
+func (s *SettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT meal_group, COUNT(*)
+		FROM applications
+		WHERE meal_group IS NOT NULL
+		GROUP BY meal_group
+	`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make(map[string]int)
+	for rows.Next() {
+		var group string
+		var count int
+		if err := rows.Scan(&group, &count); err != nil {
+			return nil, err
+		}
+		stats[group] = count
+	}
+
+	return stats, rows.Err()
+}
+
 func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -500,6 +821,52 @@ func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error
 
 	var value []byte
 	err := s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyApplicationsEnabled, string(jsonValue))
+	return err
+}
+
+func (s *SettingsStore) GetAdminSponsorEditEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyAdminSponsorEditEnabled).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return true, nil
@@ -515,26 +882,189 @@ func (s *SettingsStore) GetApplicationsEnabled(ctx context.Context) (bool, error
 	return enabled, nil
 }
 
-func (s *SettingsStore) SetApplicationsEnabled(ctx context.Context, enabled bool) (bool, error) {
+func (s *SettingsStore) SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	jsonValue, err := json.Marshal(enabled)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	query := `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-		RETURNING value`
+	`
 
-	var value bool
-	err = s.db.QueryRowContext(ctx, query, SettingsKeyApplicationsEnabled, string(jsonValue)).Scan(&value)
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminSponsorEditEnabled, string(jsonValue))
+	return err
+}
+
+func (s *SettingsStore) GetAdminFAQEditEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyAdminFAQEditEnabled).Scan(&value)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
 		return false, err
 	}
 
-	return value, nil
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+func (s *SettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminFAQEditEnabled, string(jsonValue))
+	return err
+}
+
+// getStringSetting returns the string value stored under key, or an empty
+// string when the row does not exist or holds a JSON null.
+func (s *SettingsStore) getStringSetting(ctx context.Context, key string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, key).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	var parsed *string
+	if err := json.Unmarshal(value, &parsed); err != nil {
+		return "", err
+	}
+	if parsed == nil {
+		return "", nil
+	}
+
+	return *parsed, nil
+}
+
+// setStringSetting upserts a string value under key.
+func (s *SettingsStore) setStringSetting(ctx context.Context, key, value string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, key, string(jsonValue))
+	return err
+}
+
+// GetHackathonName returns the configured hackathon name (empty when unset).
+func (s *SettingsStore) GetHackathonName(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyHackathonName)
+}
+
+// SetHackathonName updates the hackathon name shown across the portal and emails.
+func (s *SettingsStore) SetHackathonName(ctx context.Context, name string) error {
+	return s.setStringSetting(ctx, SettingsKeyHackathonName, name)
+}
+
+// GetContactEmail returns the configured public contact email (empty when unset).
+func (s *SettingsStore) GetContactEmail(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyContactEmail)
+}
+
+// SetContactEmail updates the public contact email surfaced to hackers.
+func (s *SettingsStore) SetContactEmail(ctx context.Context, email string) error {
+	return s.setStringSetting(ctx, SettingsKeyContactEmail, email)
+}
+
+// GetFromEmail returns the configured sender email for outgoing mail.
+func (s *SettingsStore) GetFromEmail(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyFromEmail)
+}
+
+// SetFromEmail updates the sender email for outgoing mail.
+func (s *SettingsStore) SetFromEmail(ctx context.Context, email string) error {
+	return s.setStringSetting(ctx, SettingsKeyFromEmail, email)
+}
+
+// GetFromName returns the configured sender display name for outgoing mail.
+func (s *SettingsStore) GetFromName(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyFromName)
+}
+
+// SetFromName updates the sender display name for outgoing mail.
+func (s *SettingsStore) SetFromName(ctx context.Context, name string) error {
+	return s.setStringSetting(ctx, SettingsKeyFromName, name)
+}
+
+// GetApplicationDueDate returns the application deadline as YYYY-MM-DD.
+func (s *SettingsStore) GetApplicationDueDate(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyApplicationDueDate)
+}
+
+// SetApplicationDueDate updates the application deadline (YYYY-MM-DD).
+func (s *SettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
+	return s.setStringSetting(ctx, SettingsKeyApplicationDueDate, date)
+}
+
+// GetPrivacyPolicyURL returns the operator's privacy policy link (empty when unset).
+func (s *SettingsStore) GetPrivacyPolicyURL(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyPrivacyPolicyURL)
+}
+
+// SetPrivacyPolicyURL updates the privacy policy link shown on the login page.
+func (s *SettingsStore) SetPrivacyPolicyURL(ctx context.Context, url string) error {
+	return s.setStringSetting(ctx, SettingsKeyPrivacyPolicyURL, url)
+}
+
+// GetTermsURL returns the operator's terms of service link (empty when unset).
+func (s *SettingsStore) GetTermsURL(ctx context.Context) (string, error) {
+	return s.getStringSetting(ctx, SettingsKeyTermsURL)
+}
+
+// SetTermsURL updates the terms of service link shown on the login page.
+func (s *SettingsStore) SetTermsURL(ctx context.Context, url string) error {
+	return s.setStringSetting(ctx, SettingsKeyTermsURL, url)
 }

@@ -1,4 +1,4 @@
-module github.com/hackutd/portal
+module github.com/hackutd/harp
 
 go 1.24.0
 
@@ -6,6 +6,7 @@ toolchain go1.24.11
 
 require (
 	cloud.google.com/go/storage v1.60.0
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/cors v1.2.2
 	github.com/go-playground/validator/v10 v10.30.1
@@ -15,7 +16,10 @@ require (
 	github.com/supertokens/supertokens-golang v0.25.1
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
+	github.com/wneessen/go-mail v0.7.2
+	go.mozilla.org/pkcs7 v0.10.0
 	go.uber.org/zap v1.27.1
+	google.golang.org/api v0.265.0
 )
 
 require (
@@ -54,7 +58,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	google.golang.org/api v0.265.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260203192932-546029d2fa20 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260203192932-546029d2fa20 // indirect

@@ -1,0 +1,155 @@
+import { toast } from "sonner";
+import { create } from "zustand";
+
+import { errorAlert } from "@/shared/lib/api";
+
+import {
+  createScan as apiCreateScan,
+  fetchScanStats,
+  fetchScanTypes,
+  rebalanceScanStats as apiRebalanceScanStats,
+  saveScanTypes as apiSaveScanTypes,
+} from "./api";
+import type { Scan, ScanStat, ScanType } from "./types";
+
+export interface ScanResult {
+  success: boolean;
+  message: string;
+  scan?: Scan;
+}
+
+export interface ScansState {
+  scanTypes: ScanType[];
+  stats: ScanStat[];
+  typesLoading: boolean;
+  statsLoading: boolean;
+  scanning: boolean;
+  saving: boolean;
+  rebalancing: boolean;
+  activeScanType: ScanType | null;
+  lastScanResult: ScanResult | null;
+
+  fetchTypes: (signal?: AbortSignal) => Promise<void>;
+  fetchStats: (signal?: AbortSignal) => Promise<void>;
+  performScan: (userId: string) => Promise<void>;
+  rebalanceStats: () => Promise<void>;
+  saveScanTypes: (
+    scanTypes: ScanType[],
+  ) => Promise<{ success: boolean; error?: string }>;
+  setActiveScanType: (scanType: ScanType | null) => void;
+  clearLastResult: () => void;
+}
+
+export const useScansStore = create<ScansState>((set, get) => ({
+  scanTypes: [],
+  stats: [],
+  typesLoading: false,
+  statsLoading: false,
+  scanning: false,
+  saving: false,
+  rebalancing: false,
+  activeScanType: null,
+  lastScanResult: null,
+
+  fetchTypes: async (signal?: AbortSignal) => {
+    set({ typesLoading: true });
+
+    const res = await fetchScanTypes(signal);
+
+    if (signal?.aborted) return;
+
+    if (res.status === 200 && res.data) {
+      set({ scanTypes: res.data.scan_types, typesLoading: false });
+    } else {
+      set({ scanTypes: [], typesLoading: false });
+    }
+  },
+
+  fetchStats: async (signal?: AbortSignal) => {
+    set({ statsLoading: true });
+
+    const res = await fetchScanStats(signal);
+
+    if (signal?.aborted) return;
+
+    if (res.status === 200 && res.data) {
+      set({ stats: res.data.stats, statsLoading: false });
+    } else {
+      set({ stats: [], statsLoading: false });
+    }
+  },
+
+  performScan: async (userId: string) => {
+    const { activeScanType, scanning } = get();
+    if (!activeScanType || scanning) return;
+
+    set({ scanning: true, lastScanResult: null });
+
+    const res = await apiCreateScan(userId, activeScanType.name);
+
+    if (res.status === 201 && res.data) {
+      set({
+        scanning: false,
+        lastScanResult: {
+          success: true,
+          message: "Scanned successfully",
+          scan: res.data,
+        },
+      });
+      // Refresh stats after successful scan
+      get().fetchStats();
+    } else {
+      let message = res.error || "Failed to create scan";
+      if (res.status === 404) {
+        message = "User not found — QR code not recognized";
+      } else if (res.status === 409) {
+        message = `Already scanned for ${activeScanType.display_name}`;
+      } else if (res.status === 403) {
+        message = "User must check in first";
+      } else if (res.status === 402) {
+        message = res.error || "Insufficient points";
+      }
+
+      set({
+        scanning: false,
+        lastScanResult: { success: false, message },
+      });
+    }
+  },
+
+  rebalanceStats: async () => {
+    if (get().rebalancing) return;
+
+    set({ rebalancing: true });
+
+    const res = await apiRebalanceScanStats();
+
+    if (res.status === 200 && res.data) {
+      set({ stats: res.data.stats, rebalancing: false });
+      toast.success("Scan counts rebalanced");
+    } else {
+      set({ rebalancing: false });
+      errorAlert(res, "Failed to rebalance scan counts");
+    }
+  },
+
+  saveScanTypes: async (scanTypes: ScanType[]) => {
+    set({ saving: true });
+    const res = await apiSaveScanTypes(scanTypes);
+    if (res.status === 200 && res.data) {
+      set({ scanTypes: res.data.scan_types, saving: false });
+      get().fetchStats();
+      return { success: true };
+    }
+    set({ saving: false });
+    return { success: false, error: res.error || "Failed to save scan types" };
+  },
+
+  setActiveScanType: (scanType: ScanType | null) => {
+    set({ activeScanType: scanType, lastScanResult: null });
+  },
+
+  clearLastResult: () => {
+    set({ lastScanResult: null });
+  },
+}));

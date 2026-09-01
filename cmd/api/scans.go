@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"math/rand"
 	"net/http"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type CreateScanPayload struct {
@@ -27,6 +30,13 @@ type ScanStatsResponse struct {
 
 type UpdateScanTypesPayload struct {
 	ScanTypes []store.ScanType `json:"scan_types" validate:"required,dive"`
+}
+
+type CreateScanResponse struct {
+	*store.Scan
+	MealGroup *string `json:"meal_group,omitempty"`
+	// Balance is the user's remaining points; populated only for shop scans.
+	Balance *int `json:"balance,omitempty"`
 }
 
 // getScanTypesHandler returns all configured scan types
@@ -56,14 +66,15 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 // createScanHandler records a scan for a user
 //
 //	@Summary		Create a scan (Admin)
-//	@Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first.
+//	@Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.
 //	@Tags			admin/scans
 //	@Accept			json
 //	@Produce		json
 //	@Param			scan	body		CreateScanPayload	true	"Scan to create"
-//	@Success		201		{object}	store.Scan
+//	@Success		201		{object}	CreateScanResponse
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
+//	@Failure		402		{object}	object{error=string}	"Insufficient points for shop scan"
 //	@Failure		403		{object}	object{error=string}
 //	@Failure		409		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
@@ -107,7 +118,32 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if found.Category != store.ScanCategoryCheckIn {
+	// Walk-in scan: skip check-in prerequisite, enqueue user, send queued email.
+	if found.Category == store.ScanCategoryWalkIn {
+		scannedUser, err := app.store.Users.GetByID(r.Context(), req.UserID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				app.notFoundResponse(w, r, errors.New("user not found"))
+				return
+			}
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		inserted, position, err := app.store.WalkIns.Enqueue(r.Context(), req.UserID)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		if inserted {
+			go func() {
+				if err := app.mailer.SendWalkInQueuedEmail(scannedUser.Email, position); err != nil {
+					app.logger.Errorw("failed to send walk-in queued email", "error", err)
+				}
+			}()
+		}
+	} else if found.Category != store.ScanCategoryCheckIn {
+		// Non-walk-in, non-check-in scans require the user to have checked in first.
 		var checkInTypes []string
 		for _, st := range scanTypes {
 			if st.Category == store.ScanCategoryCheckIn {
@@ -125,6 +161,21 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 			app.forbiddenResponse(w, r, errors.New("user must check in before claiming items"))
 			return
 		}
+	} else {
+		// Check-in scan: require accepted status.
+		status, err := app.store.Application.GetStatusByUserID(r.Context(), req.UserID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				app.forbiddenResponse(w, r, errors.New("user has no application"))
+				return
+			}
+			app.internalServerError(w, r, err)
+			return
+		}
+		if status != store.StatusAccepted {
+			app.forbiddenResponse(w, r, fmt.Errorf("user is not accepted (status: %s)", status))
+			return
+		}
 	}
 
 	admin := getUserFromContext(r.Context())
@@ -133,9 +184,31 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		UserID:    req.UserID,
 		ScanType:  req.ScanType,
 		ScannedBy: admin.ID,
+		Points:    found.Points,
 	}
 
-	if err := app.store.Scans.Create(r.Context(), scan); err != nil {
+	var balance *int
+	if found.Category == store.ScanCategoryShop {
+		// Shop scans spend points: negate the configured cost and let the
+		// store verify the balance atomically.
+		scan.Points = -found.Points
+
+		newBalance, err := app.store.Scans.CreatePurchase(r.Context(), scan)
+		if err != nil {
+			if errors.Is(err, store.ErrInsufficientPoints) {
+				writeJSONError(w, http.StatusPaymentRequired,
+					fmt.Sprintf("insufficient points: balance is %d, %s costs %d", newBalance, found.DisplayName, found.Points))
+				return
+			}
+			if errors.Is(err, store.ErrNotFound) {
+				app.notFoundResponse(w, r, errors.New("user not found"))
+				return
+			}
+			app.internalServerError(w, r, err)
+			return
+		}
+		balance = &newBalance
+	} else if err := app.store.Scans.Create(r.Context(), scan); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			app.conflictResponse(w, r, errors.New("user already scanned for: "+req.ScanType))
 			return
@@ -148,9 +221,60 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, scan); err != nil {
+	var mealGroup *string
+	if found.Category == store.ScanCategoryCheckIn {
+		mealGroup = app.assignMealGroup(r.Context(), req.UserID)
+	} else {
+		mealGroup, err = app.store.Application.GetMealGroupByUserID(r.Context(), req.UserID)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			app.logger.Warnw("failed to fetch meal group for scan response", "user_id", req.UserID, "error", err)
+		}
+	}
+
+	response := CreateScanResponse{
+		Scan:      scan,
+		MealGroup: mealGroup,
+		Balance:   balance,
+	}
+
+	if err := app.jsonResponse(w, http.StatusCreated, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+func (app *application) assignMealGroup(ctx context.Context, userID string) *string {
+	groups, err := app.store.Settings.GetMealGroups(ctx)
+	if err != nil {
+		app.logger.Warnw("failed to fetch meal groups for assignment", "error", err)
+		return nil
+	}
+
+	if len(groups) == 0 {
+		return nil
+	}
+
+	hackerApp, err := app.store.Application.GetByUserID(ctx, userID)
+	if err != nil {
+		// If the user doesn't have an application, we can't assign a group
+		if !errors.Is(err, store.ErrNotFound) {
+			app.logger.Warnw("failed to fetch application for meal group assignment", "user_id", userID, "error", err)
+		}
+		return nil
+	}
+
+	if hackerApp.MealGroup != nil {
+		return hackerApp.MealGroup // Already assigned
+	}
+
+	selectedGroup := groups[rand.Intn(len(groups))]
+
+	assigned, err := app.store.Application.SetMealGroup(ctx, hackerApp.ID, selectedGroup)
+	if err != nil {
+		app.logger.Warnw("failed to set meal group on application", "app_id", hackerApp.ID, "error", err)
+		return nil
+	}
+
+	return assigned
 }
 
 // getUserScansHandler returns all scan records for a specified user
@@ -209,10 +333,37 @@ func (app *application) getScanStatsHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// rebalanceScanStatsHandler recomputes the scan_stats counter cache from the scans table
+//
+//	@Summary		Rebalance scan statistics (Admin)
+//	@Description	Recomputes the scan_stats counter cache from the authoritative scans table and returns the recomputed stats
+//	@Tags			admin/scans
+//	@Produce		json
+//	@Success		200	{object}	ScanStatsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/scans/rebalance-stats [post]
+func (app *application) rebalanceScanStatsHandler(w http.ResponseWriter, r *http.Request) {
+	stats, err := app.store.Scans.RebalanceStats(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	admin := getUserFromContext(r.Context())
+	app.logger.Infow("scan stats rebalanced", "admin_id", admin.ID)
+
+	if err := app.jsonResponse(w, http.StatusOK, ScanStatsResponse{Stats: stats}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // updateScanTypesHandler replaces all scan types with the provided array
 //
 //	@Summary		Update scan types (Super Admin)
-//	@Description	Replaces all scan types with the provided array. Must include at least one check_in category type. Names must be unique.
+//	@Description	Replaces all scan types with the provided array. Must include at least one active check_in category type and at least one active walk_in category type. Names must be unique.
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
@@ -246,15 +397,23 @@ func (app *application) updateScanTypesHandler(w http.ResponseWriter, r *http.Re
 		nameMap[st.Name] = true
 	}
 
-	// Validate exactly one check_in category type exists
-	checkInCount := 0
+	// Validate at least one active check_in and one active walk_in type exist.
+	hasCheckIn := false
+	hasWalkIn := false
 	for _, st := range req.ScanTypes {
-		if st.Category == store.ScanCategoryCheckIn {
-			checkInCount++
+		if st.IsActive && st.Category == store.ScanCategoryCheckIn {
+			hasCheckIn = true
+		}
+		if st.IsActive && st.Category == store.ScanCategoryWalkIn {
+			hasWalkIn = true
 		}
 	}
-	if checkInCount != 1 {
-		app.badRequestResponse(w, r, errors.New("exactly one scan type must have the check_in category"))
+	if !hasCheckIn {
+		app.badRequestResponse(w, r, errors.New("at least one active check_in scan type is required"))
+		return
+	}
+	if !hasWalkIn {
+		app.badRequestResponse(w, r, errors.New("at least one active walk_in scan type is required"))
 		return
 	}
 

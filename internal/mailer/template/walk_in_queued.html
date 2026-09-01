@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>You're on the {{.HackathonName}} walk-in list</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      font-family: Arial, Helvetica, sans-serif;
+    "
+  >
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f4f4; padding: 40px 0"
+    >
+      <tr>
+        <td align="center">
+          <table
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <tr>
+              <td
+                style="
+                  background-color: #1a1a2e;
+                  padding: 30px;
+                  text-align: center;
+                "
+              >
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px">
+                  {{.HackathonName}}
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 40px 30px">
+                <h2 style="color: #333333; margin: 0 0 20px">
+                  You're on the list
+                </h2>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  Hi {{.Email}}, you're number
+                  <strong>{{.Position}}</strong> in the {{.HackathonName}}
+                  walk-in queue.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  Your application status is now waitlisted. We'll email you
+                  a QR code if a spot opens up.
+                </p>
+                <p style="color: #555555; font-size: 14px; line-height: 1.6">
+                  Please stay within <strong>10 minutes</strong> of the
+                  check-in area so you can make it in time when called.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  {{.From}}
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  background-color: #f8f8f8;
+                  padding: 20px 30px;
+                  text-align: center;
+                "
+              >
+                <p style="color: #999999; font-size: 12px; margin: 0">
+                  &copy; {{.HackathonName}}. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

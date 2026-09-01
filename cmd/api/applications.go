@@ -9,49 +9,32 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type UpdateApplicationPayload struct {
-	FirstName *string `json:"first_name" validate:"omitempty,min=1"`
-	LastName  *string `json:"last_name" validate:"omitempty,min=1"`
-	PhoneE164 *string `json:"phone_e164" validate:"omitempty,e164"`
-	Age       *int16  `json:"age" validate:"omitempty,min=1,max=150"`
-
-	CountryOfResidence *string `json:"country_of_residence" validate:"omitempty,min=1"`
-	Gender             *string `json:"gender" validate:"omitempty,min=1"`
-	Race               *string `json:"race" validate:"omitempty,min=1"`
-	Ethnicity          *string `json:"ethnicity" validate:"omitempty,min=1"`
-
-	University   *string `json:"university" validate:"omitempty,min=1"`
-	Major        *string `json:"major" validate:"omitempty,min=1"`
-	LevelOfStudy *string `json:"level_of_study" validate:"omitempty,min=1"`
-
-	ShortAnswerResponses json.RawMessage `json:"short_answer_responses"`
-
-	HackathonsAttendedCount *int16  `json:"hackathons_attended_count" validate:"omitempty,min=0"`
-	SoftwareExperienceLevel *string `json:"software_experience_level" validate:"omitempty,min=1"`
-	HeardAbout              *string `json:"heard_about" validate:"omitempty,min=1"`
-
-	ShirtSize           *string   `json:"shirt_size" validate:"omitempty,min=1"`
-	DietaryRestrictions *[]string `json:"dietary_restrictions"`
-	Accommodations      *string   `json:"accommodations"`
-
-	Github     *string `json:"github" validate:"omitempty,url"`
-	LinkedIn   *string `json:"linkedin" validate:"omitempty,url"`
-	Website    *string `json:"website" validate:"omitempty,url"`
-	ResumePath *string `json:"resume_path"`
-
-	AckApplication *bool `json:"ack_application"`
-	AckMLHCOC      *bool `json:"ack_mlh_coc"`
-	AckMLHPrivacy  *bool `json:"ack_mlh_privacy"`
-	OptInMLHEmails *bool `json:"opt_in_mlh_emails"`
+	Responses  json.RawMessage `json:"responses"`
+	ResumePath *string         `json:"resume_path"`
 }
 
-// SAQs embeds questions in the response for the hacker
-type ApplicationWithQuestions struct {
+// ApplicationWithSchema embeds the schema in the response for the hacker
+type ApplicationWithSchema struct {
 	*store.Application
-	ShortAnswerQuestions []store.ShortAnswerQuestion `json:"short_answer_questions"`
+	ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
+	// Points is the user's total scan points; populated on read endpoints only.
+	Points int `json:"points"`
+}
+
+// userPoints returns the user's total scan points. Points are cosmetic, so a
+// lookup failure is logged and reported as 0 rather than failing the request.
+func (app *application) userPoints(r *http.Request, userID string) int {
+	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), userID)
+	if err != nil {
+		app.logger.Warnw("failed to fetch scan points", "user_id", userID, "error", err)
+		return 0
+	}
+
+	return points
 }
 
 // getOrCreateApplicationHandler returns or creates the user's hackathon application
@@ -61,7 +44,7 @@ type ApplicationWithQuestions struct {
 //	@Tags			hackers
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	store.Application
+//	@Success		200	{object}	ApplicationWithSchema
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
@@ -97,17 +80,17 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		}
 	}
 
-	// Fetch questions to embed in response
-	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+	// Fetch schema to embed in response
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	// Return application with embedded questions
-	response := ApplicationWithQuestions{
-		Application:          application,
-		ShortAnswerQuestions: questions,
+	response := ApplicationWithSchema{
+		Application:       application,
+		ApplicationSchema: schema,
+		Points:            app.userPoints(r, user.ID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -123,7 +106,7 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 //	@Accept			json
 //	@Produce		json
 //	@Param			application	body		UpdateApplicationPayload	true	"Fields to update"
-//	@Success		200			{object}	store.Application
+//	@Success		200			{object}	ApplicationWithSchema
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		404			{object}	object{error=string}
@@ -158,89 +141,36 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := Validate.Struct(req); err != nil {
-		app.badRequestResponse(w, r, err)
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
 		return
 	}
 
-	// only update if pointer is not nil
-	if req.FirstName != nil {
-		application.FirstName = req.FirstName
-	}
-	if req.LastName != nil {
-		application.LastName = req.LastName
-	}
-	if req.PhoneE164 != nil {
-		application.PhoneE164 = req.PhoneE164
-	}
-	if req.Age != nil {
-		application.Age = req.Age
-	}
-	if req.CountryOfResidence != nil {
-		application.CountryOfResidence = req.CountryOfResidence
-	}
-	if req.Gender != nil {
-		application.Gender = req.Gender
-	}
-	if req.Race != nil {
-		application.Race = req.Race
-	}
-	if req.Ethnicity != nil {
-		application.Ethnicity = req.Ethnicity
-	}
-	if req.University != nil {
-		application.University = req.University
-	}
-	if req.Major != nil {
-		application.Major = req.Major
-	}
-	if req.LevelOfStudy != nil {
-		application.LevelOfStudy = req.LevelOfStudy
-	}
-	if req.ShortAnswerResponses != nil {
-		application.ShortAnswerResponses = req.ShortAnswerResponses
-	}
-	if req.HackathonsAttendedCount != nil {
-		application.HackathonsAttendedCount = req.HackathonsAttendedCount
-	}
-	if req.SoftwareExperienceLevel != nil {
-		application.SoftwareExperienceLevel = req.SoftwareExperienceLevel
-	}
-	if req.HeardAbout != nil {
-		application.HeardAbout = req.HeardAbout
-	}
-	if req.ShirtSize != nil {
-		application.ShirtSize = req.ShirtSize
-	}
-	if req.DietaryRestrictions != nil {
-		application.DietaryRestrictions = *req.DietaryRestrictions
-	}
-	if req.Accommodations != nil {
-		application.Accommodations = req.Accommodations
-	}
-	if req.Github != nil {
-		application.Github = req.Github
-	}
-	if req.LinkedIn != nil {
-		application.LinkedIn = req.LinkedIn
-	}
-	if req.Website != nil {
-		application.Website = req.Website
+	// Only update if field is present in the request
+	if req.Responses != nil {
+		// Validate types against the schema before persisting. Required fields are
+		// not enforced here so incomplete drafts can still be saved, but wrong types
+		// (e.g. a non-numeric age) are rejected to keep downstream queries safe.
+		var responses map[string]interface{}
+		if err := json.Unmarshal(req.Responses, &responses); err != nil {
+			app.badRequestResponse(w, r, errors.New("responses must be a JSON object"))
+			return
+		}
+
+		if validationErrors := validateResponses(schema, responses, false); len(validationErrors) > 0 {
+			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+			return
+		}
+
+		application.Responses = req.Responses
 	}
 	if req.ResumePath != nil {
+		if !validResumeObjectPath(*req.ResumePath, user.ID) {
+			app.badRequestResponse(w, r, errors.New("invalid resume path"))
+			return
+		}
 		application.ResumePath = req.ResumePath
-	}
-	if req.AckApplication != nil {
-		application.AckApplication = *req.AckApplication
-	}
-	if req.AckMLHCOC != nil {
-		application.AckMLHCOC = *req.AckMLHCOC
-	}
-	if req.AckMLHPrivacy != nil {
-		application.AckMLHPrivacy = *req.AckMLHPrivacy
-	}
-	if req.OptInMLHEmails != nil {
-		application.OptInMLHEmails = *req.OptInMLHEmails
 	}
 
 	if err := app.store.Application.Update(r.Context(), application); err != nil {
@@ -248,7 +178,13 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
+	response := ApplicationWithSchema{
+		Application:       application,
+		ApplicationSchema: schema,
+		Points:            app.userPoints(r, user.ID),
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -256,7 +192,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 // submitApplicationHandler submits the authenticated user's application for review
 //
 //	@Summary		Submit application
-//	@Description	Submits the authenticated user's application for review. All required fields must be filled and acknowledgments must be accepted. Application must be in draft status.
+//	@Description	Submits the authenticated user's application for review. All required schema fields must be filled and acknowledgments must be accepted. Application must be in draft status.
 //	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	store.Application
@@ -288,94 +224,28 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Validate required fields
-	var missing []string
-
-	if application.FirstName == nil {
-		missing = append(missing, "first_name")
-	}
-	if application.LastName == nil {
-		missing = append(missing, "last_name")
-	}
-	if application.PhoneE164 == nil {
-		missing = append(missing, "phone_e164")
-	}
-	if application.Age == nil {
-		missing = append(missing, "age")
-	}
-	if application.CountryOfResidence == nil {
-		missing = append(missing, "country_of_residence")
-	}
-	if application.Gender == nil {
-		missing = append(missing, "gender")
-	}
-	if application.Race == nil {
-		missing = append(missing, "race")
-	}
-	if application.Ethnicity == nil {
-		missing = append(missing, "ethnicity")
-	}
-	if application.University == nil {
-		missing = append(missing, "university")
-	}
-	if application.Major == nil {
-		missing = append(missing, "major")
-	}
-	if application.LevelOfStudy == nil {
-		missing = append(missing, "level_of_study")
-	}
-
-	// Validate dynamic short answer questions
-	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+	// Fetch the application schema for validation
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	var responses map[string]string
-	if application.ShortAnswerResponses != nil {
-		if err := json.Unmarshal(application.ShortAnswerResponses, &responses); err != nil {
-			responses = make(map[string]string)
+	// Parse responses for validation
+	var responses map[string]interface{}
+	if application.Responses != nil {
+		if err := json.Unmarshal(application.Responses, &responses); err != nil {
+			responses = make(map[string]interface{})
 		}
 	} else {
-		responses = make(map[string]string)
+		responses = make(map[string]interface{})
 	}
 
-	for _, q := range questions {
-		if q.Required {
-			answer, exists := responses[q.ID]
-			if !exists || strings.TrimSpace(answer) == "" {
-				missing = append(missing, "short_answer:"+q.ID)
-			}
-		}
-	}
+	// Validate responses against schema
+	validationErrors := validateResponses(schema, responses, true)
 
-	if application.HackathonsAttendedCount == nil {
-		missing = append(missing, "hackathons_attended_count")
-	}
-	if application.SoftwareExperienceLevel == nil {
-		missing = append(missing, "software_experience_level")
-	}
-	if application.HeardAbout == nil {
-		missing = append(missing, "heard_about")
-	}
-	if application.ShirtSize == nil {
-		missing = append(missing, "shirt_size")
-	}
-
-	// Validate acknowledgments
-	if !application.AckApplication {
-		missing = append(missing, "ack_application")
-	}
-	if !application.AckMLHCOC {
-		missing = append(missing, "ack_mlh_coc")
-	}
-	if !application.AckMLHPrivacy {
-		missing = append(missing, "ack_mlh_privacy")
-	}
-
-	if len(missing) > 0 {
-		app.badRequestResponse(w, r, fmt.Errorf("missing required fields: %v", missing))
+	if len(validationErrors) > 0 {
+		app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
 		return
 	}
 
@@ -388,6 +258,123 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	if err := app.jsonResponse(w, http.StatusOK, application); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// validateResponses checks each response value against its schema field definition.
+// Returns a list of human-readable validation error strings. When enforceRequired
+// is false, missing/empty required fields are allowed (used for draft saves) while
+// type checks on present values still apply.
+func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, enforceRequired bool) []string {
+	var errs []string
+
+	for _, field := range schema {
+		val, exists := responses[field.ID]
+
+		// Required check
+		if enforceRequired && field.Required && (!exists || isEmpty(val)) {
+			errs = append(errs, field.ID+" is required")
+			continue
+		}
+
+		// Skip further validation if value is absent or empty
+		if !exists || isEmpty(val) {
+			continue
+		}
+
+		// Type-specific validation
+		switch field.Type {
+		case "text", "textarea", "phone":
+			s, ok := val.(string)
+			if !ok {
+				errs = append(errs, field.ID+" must be a string")
+				continue
+			}
+			if maxLen, ok := field.Validation["maxLength"]; ok {
+				if ml, ok := maxLen.(float64); ok && float64(len(s)) > ml {
+					errs = append(errs, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
+				}
+			}
+
+		case "number":
+			n, ok := val.(float64)
+			if !ok {
+				errs = append(errs, field.ID+" must be a number")
+				continue
+			}
+			if minVal, ok := field.Validation["min"]; ok {
+				if mv, ok := minVal.(float64); ok && n < mv {
+					errs = append(errs, fmt.Sprintf("%s must be at least %v", field.ID, mv))
+				}
+			}
+			if maxVal, ok := field.Validation["max"]; ok {
+				if mv, ok := maxVal.(float64); ok && n > mv {
+					errs = append(errs, fmt.Sprintf("%s must be at most %v", field.ID, mv))
+				}
+			}
+
+		case "select":
+			s, ok := val.(string)
+			if !ok {
+				errs = append(errs, field.ID+" must be a string")
+				continue
+			}
+			if len(field.Options) > 0 && !containsString(field.Options, s) {
+				errs = append(errs, field.ID+" has invalid option: "+s)
+			}
+
+		case "multi_select":
+			arr, ok := val.([]interface{})
+			if !ok {
+				errs = append(errs, field.ID+" must be an array")
+				continue
+			}
+			for _, item := range arr {
+				s, ok := item.(string)
+				if !ok {
+					errs = append(errs, field.ID+" array items must be strings")
+					break
+				}
+				if len(field.Options) > 0 && !containsString(field.Options, s) {
+					errs = append(errs, field.ID+" has invalid option: "+s)
+				}
+			}
+
+		case "checkbox":
+			b, ok := val.(bool)
+			if !ok {
+				errs = append(errs, field.ID+" must be a boolean")
+			} else if enforceRequired && field.Required && !b {
+				errs = append(errs, field.ID+" must be checked")
+			}
+		}
+	}
+
+	return errs
+}
+
+// isEmpty checks if a response value is considered empty
+func isEmpty(val interface{}) bool {
+	if val == nil {
+		return true
+	}
+	switch v := val.(type) {
+	case string:
+		return strings.TrimSpace(v) == ""
+	case []interface{}:
+		return len(v) == 0
+	default:
+		return false
+	}
+}
+
+// containsString checks if a string slice contains the given value
+func containsString(slice []string, val string) bool {
+	for _, s := range slice {
+		if s == val {
+			return true
+		}
+	}
+	return false
 }
 
 // getApplicationStatsHandler returns aggregated statistics for all applications
@@ -538,10 +525,6 @@ type EmailListResponse struct {
 	Count      int             `json:"count"`
 }
 
-type ApplicationsEnabledResponse struct {
-	Enabled bool `json:"enabled"`
-}
-
 // setApplicationStatus sets the final status on an application
 //
 //	@Summary		Set application status (Super Admin)
@@ -592,14 +575,14 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// getApplication returns a single application by ID with embedded questions
+// getApplication returns a single application by ID with embedded schema
 //
 //	@Summary		Get application by ID (Admin)
-//	@Description	Returns a single application by its ID with embedded short answer questions
+//	@Description	Returns a single application by its ID with embedded application schema
 //	@Tags			admin/applications
 //	@Produce		json
 //	@Param			applicationID	path		string	true	"Application ID"
-//	@Success		200				{object}	ApplicationWithQuestions
+//	@Success		200				{object}	ApplicationWithSchema
 //	@Failure		400				{object}	object{error=string}
 //	@Failure		401				{object}	object{error=string}
 //	@Failure		403				{object}	object{error=string}
@@ -623,17 +606,17 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch questions to embed in response
-	questions, err := app.store.Settings.GetShortAnswerQuestions(r.Context())
+	// Fetch schema to embed in response
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	// Return application with embedded questions
-	response := ApplicationWithQuestions{
-		Application:          application,
-		ShortAnswerQuestions: questions,
+	response := ApplicationWithSchema{
+		Application:       application,
+		ApplicationSchema: schema,
+		Points:            app.userPoints(r, application.UserID),
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -693,5 +676,4 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 	if err = app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
-
 }
