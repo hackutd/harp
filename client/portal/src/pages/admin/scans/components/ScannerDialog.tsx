@@ -10,10 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useQrScanner } from "@/shared/hooks";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import { useScansStore } from "../store";
-import { useQrScanner } from "./useQrScanner";
 
 export function ScannerDialog() {
   const {

@@ -1,87 +1,84 @@
-import { WalletCards } from "lucide-react";
-import { type MouseEvent, useEffect, useState } from "react";
-import { toast } from "sonner";
-import Session from "supertokens-auth-react/recipe/session";
+import { useSearchParams } from "react-router";
 
+import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/shared/stores";
 
-import { HackerQR } from "../components/HackerQR";
-import { APPLE_WALLET_PASS_URL, getAppleWalletStatus } from "./api";
+import { MyCodeView } from "./components/MyCodeView";
+import { ScannerView } from "./components/ScannerView";
 
-function isIOS(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-  return /iPhone|iPod/.test(navigator.userAgent);
-}
+type ScanTab = "code" | "scanner";
+
+const TABS: { value: ScanTab; label: string }[] = [
+  { value: "code", label: "My Code" },
+  { value: "scanner", label: "Scanner" },
+];
+
+// Uniform inset (rem) around the sliding pill — matches the track's padding
+// (p-1) and the pill's inset-y, mirroring the bottom nav in HackerLayout.
+const TAB_PAD = 0.25;
 
 export default function ScanPage() {
   const { user } = useUserStore();
-  const [walletAvailableForUser, setWalletAvailableForUser] = useState<
-    string | null
-  >(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    if (!user?.id || !isIOS()) return;
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const tab: ScanTab =
+    isAdmin && searchParams.get("tab") === "scanner" ? "scanner" : "code";
+  const activeIndex = TABS.findIndex((t) => t.value === tab);
 
-    const controller = new AbortController();
-    void getAppleWalletStatus(controller.signal).then((response) => {
-      if (response.status === 200 && response.data?.available) {
-        setWalletAvailableForUser(user.id);
-      }
+  const handleTabChange = (next: ScanTab) => {
+    setSearchParams(next === "scanner" ? { tab: "scanner" } : {}, {
+      replace: true,
     });
-
-    return () => controller.abort();
-  }, [user?.id]);
-
-  // Anchor navigations bypass the SuperTokens fetch interceptor, so an
-  // expired access token would return a JSON error instead of a pass.
-  // Refresh the session first, then navigate.
-  const handleAddToWallet = async (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    try {
-      if (await Session.attemptRefreshingSession()) {
-        window.location.assign(APPLE_WALLET_PASS_URL);
-      } else {
-        toast.error("Your session has expired. Please sign in again.");
-      }
-    } catch {
-      toast.error("Couldn't add the pass to Apple Wallet. Please try again.");
-    }
   };
 
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-5 md:px-10">
+        <MyCodeView className="min-h-[70svh]" />
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto flex min-h-[70svh] max-w-2xl flex-col items-center justify-center px-5 md:px-10">
-      <h1 className="text-2xl font-light tracking-tight text-black">QR Code</h1>
-      <p className="mt-1 text-center text-sm font-light text-[#8A8A8A]">
-        Show this at check-in, meals, and events
-      </p>
+    <div className="mx-auto w-full max-w-2xl px-5 pt-6 pb-8 md:px-10">
+      {/* Admins toggle between their own QR code and the mobile scanner */}
+      <div className="relative mx-auto flex w-full max-w-xs rounded-full bg-[#F0F0F0] p-1">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-all duration-300 ease-out"
+          style={{
+            top: `${TAB_PAD}rem`,
+            bottom: `${TAB_PAD}rem`,
+            left: `calc(${TAB_PAD}rem + ${activeIndex} * (100% - ${2 * TAB_PAD}rem) / ${TABS.length})`,
+            width: `calc((100% - ${2 * TAB_PAD}rem) / ${TABS.length})`,
+          }}
+        />
+        {TABS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => handleTabChange(value)}
+            aria-pressed={tab === value}
+            className={cn(
+              "relative z-10 flex-1 rounded-full py-2 text-sm transition-colors active:scale-[0.98]",
+              tab === value
+                ? "font-medium text-black"
+                : "font-light text-[#8A8A8A]",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {user?.id ? (
-        <div className="mt-8 rounded-xl border border-[#E5E5E5] p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
-          <HackerQR value={user.id} size={240} />
-        </div>
-      ) : (
-        <p className="mt-8 text-sm font-light text-[#8A8A8A]">
-          Sign in to view your code.
-        </p>
-      )}
-
-      {user?.email && (
-        <p className="mt-6 text-xs font-light text-[#8A8A8A]">{user.email}</p>
-      )}
-
-      {walletAvailableForUser === user?.id && (
-        <a
-          href={APPLE_WALLET_PASS_URL}
-          onClick={handleAddToWallet}
-          className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-black px-5 text-sm font-medium text-white transition-colors active:bg-black/80"
-          aria-label="Add this hacker pass to Apple Wallet"
-        >
-          <WalletCards className="size-5" aria-hidden="true" />
-          Add to Apple Wallet
-        </a>
-      )}
+      <div className="mt-6">
+        {tab === "scanner" ? (
+          <ScannerView />
+        ) : (
+          <MyCodeView className="min-h-[65svh]" />
+        )}
+      </div>
     </div>
   );
 }

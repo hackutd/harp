@@ -278,7 +278,10 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
         >
           <FormMetrics form={form} data={data} />
         </TabsContent>
-        <TabsContent value="responses" className="mt-3 min-h-0">
+        <TabsContent
+          value="responses"
+          className="mt-3 flex min-h-0 overflow-hidden"
+        >
           <ResponsesTable form={form} onSummaryRefresh={onRefresh} />
         </TabsContent>
         <TabsContent

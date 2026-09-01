@@ -1,4 +1,4 @@
-import { FileText, ReceiptText } from "lucide-react";
+import { FileText, Maximize2, ReceiptText } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -76,7 +76,7 @@ function StatusBadge({ value }: { value: string }) {
 
 function ResponseColumns({ form }: { form: FormKey }) {
   return (
-    <TableHeader>
+    <TableHeader className="sticky top-0 z-10 bg-card">
       <TableRow>
         <TableHead className="pl-6">Person</TableHead>
         {form === "application" && <TableHead>Application</TableHead>}
@@ -111,19 +111,22 @@ function ResponseRow({
     <TableRow
       role="button"
       tabIndex={0}
-      className="cursor-pointer"
+      className="group cursor-pointer hover:bg-muted"
       onClick={onSelect}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") onSelect();
       }}
     >
-      <TableCell className="pl-6">
+      <TableCell className="relative pl-6">
         <div className="max-w-56">
           <p className="truncate font-medium">
             {formatName(item.first_name, item.last_name)}
           </p>
           <p className="truncate text-xs text-muted-foreground">{item.email}</p>
         </div>
+        <span className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+          <Maximize2 className="h-4 w-4 text-muted-foreground" />
+        </span>
       </TableCell>
       {form === "application" && (
         <TableCell>
@@ -284,8 +287,8 @@ export function ResponsesTable({
 
   return (
     <>
-      <Card className="min-h-0 overflow-hidden">
-        <CardHeader className="border-b">
+      <Card className="min-h-0 w-full flex-1 overflow-hidden pb-0">
+        <CardHeader className="shrink-0 border-b">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <CardTitle className="text-base">
@@ -374,41 +377,43 @@ export function ResponsesTable({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="space-y-2 p-4">
-              {[...Array(7)].map((_, index) => (
-                <Skeleton key={index} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : items.length > 0 ? (
-            <Table>
-              <ResponseColumns form={form} />
-              <TableBody>
-                {items.map((item) => (
-                  <ResponseRow
-                    key={item.id}
-                    form={form}
-                    item={item}
-                    onSelect={() => setSelectedId(item.id)}
-                  />
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+          <div className="min-h-0 flex-1 overflow-auto">
+            {loading ? (
+              <div className="space-y-2 p-4">
+                {[...Array(7)].map((_, index) => (
+                  <Skeleton key={index} className="h-12 w-full" />
                 ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="flex flex-col items-center px-6 py-14 text-center">
-              {form === "travel" ? (
-                <ReceiptText className="mb-3 size-9 text-muted-foreground/50" />
-              ) : (
-                <FileText className="mb-3 size-9 text-muted-foreground/50" />
-              )}
-              <p className="font-medium">No matching people</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Try changing the response filters or search.
-              </p>
-            </div>
-          )}
-          <div className="flex items-center justify-between border-t px-4 py-3">
+              </div>
+            ) : items.length > 0 ? (
+              <Table>
+                <ResponseColumns form={form} />
+                <TableBody>
+                  {items.map((item) => (
+                    <ResponseRow
+                      key={item.id}
+                      form={form}
+                      item={item}
+                      onSelect={() => setSelectedId(item.id)}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex flex-col items-center px-6 py-14 text-center">
+                {form === "travel" ? (
+                  <ReceiptText className="mb-3 size-9 text-muted-foreground/50" />
+                ) : (
+                  <FileText className="mb-3 size-9 text-muted-foreground/50" />
+                )}
+                <p className="font-medium">No matching people</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Try changing the response filters or search.
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center justify-between border-t px-4 py-2">
             <p className="text-xs text-muted-foreground">
               {loading ? "Loading…" : `${items.length} people on this page`}
             </p>
