@@ -83,7 +83,6 @@ function ResponseColumns({ form }: { form: FormKey }) {
         {form === "travel" && <TableHead>Travel decision</TableHead>}
         {form === "travel" && <TableHead>Requested</TableHead>}
         {form === "travel" && <TableHead>Approved</TableHead>}
-        {form === "travel" && <TableHead>Claimed</TableHead>}
         {form === "travel" && <TableHead>Receipts</TableHead>}
         {form !== "application" && <TableHead>Form status</TableHead>}
         <TableHead>Submitted</TableHead>
@@ -144,11 +143,6 @@ function ResponseRow({
       {form === "travel" && (
         <TableCell className="font-medium tabular-nums">
           {formatCurrency(item.travel_approved_amount_cents)}
-        </TableCell>
-      )}
-      {form === "travel" && (
-        <TableCell className="tabular-nums">
-          {formatCurrency(item.claimed_travel_cost_cents)}
         </TableCell>
       )}
       {form === "travel" && (

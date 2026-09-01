@@ -12,8 +12,8 @@ interface ApplicationSummaryProps {
   responses: Record<string, unknown>;
   userEmail?: string;
   hasResume: boolean;
-  /** Section that hosts the resume; defaults to "links". */
-  resumeSectionId?: string;
+  /** Section that hosts the resume; defaults to "links". Pass null to omit the resume row (e.g. RSVP schemas). */
+  resumeSectionId?: string | null;
 }
 
 function SummaryRow({

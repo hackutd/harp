@@ -36,7 +36,6 @@ func TestGetFormsOverview(t *testing.T) {
 			PeopleWithReceipts:     12,
 			RequestedEstimateCents: 1200000,
 			ApprovedAmountCents:    825000,
-			ClaimedTravelCostCents: 740000,
 		},
 	}
 

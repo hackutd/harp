@@ -84,9 +84,7 @@ function FormMetrics({
           <Card key={label}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-2xl font-light tabular-nums">
-                {value}
-              </p>
+              <p className="mt-1 text-2xl font-light tabular-nums">{value}</p>
             </CardContent>
           </Card>
         ))}
@@ -124,9 +122,7 @@ function FormMetrics({
           <Card key={label}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-2xl font-light tabular-nums">
-                {value}
-              </p>
+              <p className="mt-1 text-2xl font-light tabular-nums">{value}</p>
             </CardContent>
           </Card>
         ))}
@@ -161,9 +157,7 @@ function FormMetrics({
           <Card key={label}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-2xl font-light tabular-nums">
-                {value}
-              </p>
+              <p className="mt-1 text-2xl font-light tabular-nums">{value}</p>
             </CardContent>
           </Card>
         ))}
@@ -179,11 +173,10 @@ function FormMetrics({
             approved amount—not the sum they requested.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
+        <CardContent className="grid gap-3 sm:grid-cols-2">
           {[
             ["Requested estimate", stats.requested_estimate_cents],
             ["Approved commitment", stats.approved_amount_cents],
-            ["Claimed cost", stats.claimed_travel_cost_cents],
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg border p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
@@ -251,28 +244,16 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
               </Link>
             </Button>
             <TabsList className="h-auto min-w-0 flex-1 justify-start overflow-x-auto rounded-none border-0 bg-transparent p-0">
-              <TabsTrigger
-                value="overview"
-                className={detailTabClassName}
-              >
+              <TabsTrigger value="overview" className={detailTabClassName}>
                 <BarChart3 /> Overview
               </TabsTrigger>
-              <TabsTrigger
-                value="responses"
-                className={detailTabClassName}
-              >
+              <TabsTrigger value="responses" className={detailTabClassName}>
                 <Inbox /> Responses
               </TabsTrigger>
-              <TabsTrigger
-                value="builder"
-                className={detailTabClassName}
-              >
+              <TabsTrigger value="builder" className={detailTabClassName}>
                 <FilePenLine /> Builder
               </TabsTrigger>
-              <TabsTrigger
-                value="settings"
-                className={detailTabClassName}
-              >
+              <TabsTrigger value="settings" className={detailTabClassName}>
                 <Settings2 /> Settings
               </TabsTrigger>
             </TabsList>

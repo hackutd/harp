@@ -118,7 +118,6 @@ type ApplicationListItem struct {
 	TravelRSVPSubmittedAt    *time.Time `json:"travel_rsvp_submitted_at"`
 	ReceiptCount             int        `json:"receipt_count"`
 	EstimatedTravelCostCents *int64     `json:"estimated_travel_cost_cents"`
-	ClaimedTravelCostCents   *int64     `json:"claimed_travel_cost_cents"`
 }
 
 // ApplicationListResult contains paginated results
@@ -183,7 +182,6 @@ type TravelFormStats struct {
 	ReceiptFiles               int64      `json:"receipt_files"`
 	RequestedEstimateCents     int64      `json:"requested_estimate_cents"`
 	ApprovedAmountCents        int64      `json:"approved_amount_cents"`
-	ClaimedTravelCostCents     int64      `json:"claimed_travel_cost_cents"`
 	LatestTravelFormSubmission *time.Time `json:"latest_travel_form_submission"`
 }
 
@@ -556,9 +554,7 @@ func (s *ApplicationsStore) List(
 		       a.rsvp_submitted_at, a.travel_rsvp_submitted_at,
 		       CARDINALITY(a.travel_receipt_paths) AS receipt_count,
 		       CASE WHEN a.responses->>'travel_estimated_cost' ~ '^[0-9]+([.][0-9]{1,2})?$'
-		            THEN ROUND((a.responses->>'travel_estimated_cost')::numeric * 100)::bigint END AS estimated_travel_cost_cents,
-		       CASE WHEN a.travel_rsvp_responses->>'travel_cost_total' ~ '^[0-9]+([.][0-9]{1,2})?$'
-		            THEN ROUND((a.travel_rsvp_responses->>'travel_cost_total')::numeric * 100)::bigint END AS claimed_travel_cost_cents
+		            THEN ROUND((a.responses->>'travel_estimated_cost')::numeric * 100)::bigint END AS estimated_travel_cost_cents
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -687,7 +683,7 @@ func (s *ApplicationsStore) List(
 			&item.TravelStatus, &item.TravelYesVotes, &item.TravelNoVotes, &item.TravelApprovedAmountCents,
 			&item.RSVPStatus, &item.TravelRSVPStatus,
 			&item.RSVPSubmittedAt, &item.TravelRSVPSubmittedAt,
-			&item.ReceiptCount, &item.EstimatedTravelCostCents, &item.ClaimedTravelCostCents,
+			&item.ReceiptCount, &item.EstimatedTravelCostCents,
 		); err != nil {
 			return nil, err
 		}
@@ -975,10 +971,7 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 			SELECT *,
 				CASE WHEN responses->>'travel_estimated_cost' ~ '^[0-9]+([.][0-9]{1,2})?$'
 					THEN ROUND((responses->>'travel_estimated_cost')::numeric * 100)::bigint
-					ELSE 0 END AS requested_cents,
-				CASE WHEN travel_rsvp_responses->>'travel_cost_total' ~ '^[0-9]+([.][0-9]{1,2})?$'
-					THEN ROUND((travel_rsvp_responses->>'travel_cost_total')::numeric * 100)::bigint
-					ELSE 0 END AS claimed_cents
+					ELSE 0 END AS requested_cents
 			FROM applications
 		)
 		SELECT
@@ -1009,7 +1002,6 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 			COALESCE(SUM(CARDINALITY(travel_receipt_paths)), 0),
 			COALESCE(SUM(requested_cents) FILTER (WHERE travel_status != 'not_requested'), 0),
 			COALESCE(SUM(travel_approved_amount_cents) FILTER (WHERE travel_status = 'approved'), 0),
-			COALESCE(SUM(claimed_cents) FILTER (WHERE travel_rsvp_status = 'confirmed'), 0),
 			MAX(travel_rsvp_submitted_at)
 		FROM normalized`
 
@@ -1040,7 +1032,6 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 		&stats.Travel.ReceiptFiles,
 		&stats.Travel.RequestedEstimateCents,
 		&stats.Travel.ApprovedAmountCents,
-		&stats.Travel.ClaimedTravelCostCents,
 		&stats.Travel.LatestTravelFormSubmission,
 	)
 	if err != nil {

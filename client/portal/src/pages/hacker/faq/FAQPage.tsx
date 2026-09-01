@@ -36,51 +36,51 @@ export default function FAQPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8 md:pt-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-3 px-5 pt-4 pb-8 md:max-w-5xl md:flex-row md:items-start md:gap-2 md:px-8 md:pt-6">
       <button
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-colors hover:bg-[#F0F0F0]"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1 md:-ml-10"
       >
         <ChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
 
-      <h1 className="mt-3 text-2xl font-light tracking-tight text-black">
-        FAQ
-      </h1>
-      <p className="mt-1 text-sm font-light text-[#6B6B6B]">
-        Answers to common questions about the event.
-      </p>
-
-      {loading ? (
-        <div className="mt-6 space-y-3">
-          <Skeleton className="h-14 w-full rounded-lg" />
-          <Skeleton className="h-14 w-full rounded-lg" />
-          <Skeleton className="h-14 w-full rounded-lg" />
-        </div>
-      ) : faqs.length === 0 ? (
-        <p className="pt-12 text-center text-sm font-light text-[#8A8A8A]">
-          No FAQs yet. Check back soon.
+      <div className="min-w-0 flex-1">
+        <h1 className="text-2xl font-light tracking-tight text-black">FAQ</h1>
+        <p className="mt-1 text-sm font-light text-[#6B6B6B]">
+          Answers to common questions about the event.
         </p>
-      ) : (
-        <Accordion type="single" collapsible className="mt-4">
-          {faqs.map((faq) => (
-            <AccordionItem
-              key={faq.id}
-              value={faq.id}
-              className="border-[#E5E5E5]"
-            >
-              <AccordionTrigger className="text-base font-normal text-black hover:no-underline">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-sm font-light whitespace-pre-line text-[#6B6B6B]">
-                {renderLabel(faq.answer)}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      )}
+
+        {loading ? (
+          <div className="mt-6 space-y-3">
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+          </div>
+        ) : faqs.length === 0 ? (
+          <p className="pt-12 text-center text-sm font-light text-[#8A8A8A]">
+            No FAQs yet. Check back soon.
+          </p>
+        ) : (
+          <Accordion type="single" collapsible className="mt-4">
+            {faqs.map((faq) => (
+              <AccordionItem
+                key={faq.id}
+                value={faq.id}
+                className="border-[#E5E5E5]"
+              >
+                <AccordionTrigger className="text-base font-normal text-black hover:no-underline">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm font-light whitespace-pre-line text-[#6B6B6B]">
+                  {renderLabel(faq.answer)}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </div>
     </div>
   );
 }

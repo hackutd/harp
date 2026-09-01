@@ -385,7 +385,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       if (application?.id) {
         localStorage.removeItem(stepStorageKey(application.id));
       }
-      navigate("/app/status", {
+      navigate("/app", {
         state: { justSubmitted: submitRes.data.id },
       });
     } else {
@@ -541,7 +541,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         </p>
         <button
           type="button"
-          onClick={() => navigate("/app/status")}
+          onClick={() => navigate("/app")}
           className="text-sm font-light text-black underline underline-offset-2"
         >
           View status

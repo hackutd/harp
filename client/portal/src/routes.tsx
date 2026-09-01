@@ -24,7 +24,9 @@ const DashboardPage = lazy(
   () => import("@/pages/hacker/dashboard/DashboardPage"),
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
-const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
+const ApplicationDetailPage = lazy(
+  () => import("@/pages/hacker/application/ApplicationDetailPage"),
+);
 const HackerRSVPPage = lazy(() => import("@/pages/hacker/rsvp/RSVPPage"));
 const HackerTravelRSVPPage = lazy(
   () => import("@/pages/hacker/travel-rsvp/TravelRSVPPage"),
@@ -121,11 +123,21 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
           },
+          // The standalone status page is gone — the dashboard shows the
+          // status cards now. Redirect stale links/bookmarks.
           {
             path: "status",
+            element: <Navigate to="/app" replace />,
+          },
+          {
+            path: "status/application",
+            element: <Navigate to="/app/application" replace />,
+          },
+          {
+            path: "application",
             element: (
               <Suspense fallback={<PageLoader />}>
-                <StatusPage />
+                <ApplicationDetailPage />
               </Suspense>
             ),
           },

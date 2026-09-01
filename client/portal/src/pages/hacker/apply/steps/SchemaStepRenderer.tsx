@@ -387,14 +387,17 @@ function SchemaFormField({
           control={form.control}
           name={field.id}
           render={({ field: formField }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  className="mt-0.5"
-                  checked={formField.value ?? false}
-                  onCheckedChange={formField.onChange}
-                />
-              </FormControl>
+            <FormItem className="flex flex-row items-start gap-2.5 space-y-0">
+              {/* h-6 matches the label's leading-6 line box, so the box centers
+                  on the first line of text however many lines it wraps to. */}
+              <div className="flex h-6 shrink-0 items-center">
+                <FormControl>
+                  <Checkbox
+                    checked={formField.value ?? false}
+                    onCheckedChange={formField.onChange}
+                  />
+                </FormControl>
+              </div>
               <div className="min-w-0 flex-1 space-y-1">
                 <FormLabel className="block text-sm leading-6 font-extralight">
                   {renderLabel(field.label)}

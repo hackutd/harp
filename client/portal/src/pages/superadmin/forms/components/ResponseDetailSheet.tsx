@@ -375,8 +375,8 @@ export function ResponseDetailSheet({
                             Reimbursement amounts
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            Requested, approved, and claimed are separate
-                            values.
+                            The requested estimate and approved amount are
+                            separate values.
                           </p>
                         </div>
                         {item.travel_status !== "not_requested" && (
@@ -391,7 +391,7 @@ export function ResponseDetailSheet({
                           </Button>
                         )}
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
                         {[
                           {
                             label: "Requested estimate",
@@ -400,10 +400,6 @@ export function ResponseDetailSheet({
                           {
                             label: "Approved commitment",
                             value: approvedAmount,
-                          },
-                          {
-                            label: "Claimed cost",
-                            value: item.claimed_travel_cost_cents,
                           },
                         ].map((metric) => (
                           <div

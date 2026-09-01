@@ -41,7 +41,6 @@ export interface TravelFormStats {
   receipt_files: number;
   requested_estimate_cents: number;
   approved_amount_cents: number;
-  claimed_travel_cost_cents: number;
   latest_travel_form_submission: string | null;
 }
 

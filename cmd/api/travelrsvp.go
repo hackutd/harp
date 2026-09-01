@@ -37,6 +37,10 @@ type TravelRSVPResponse struct {
 	TravelReceiptPaths    []string                       `json:"travel_receipt_paths"`
 	TravelRSVPSchema      []store.ApplicationSchemaField `json:"travel_rsvp_schema"`
 	TravelRSVPEnabled     bool                           `json:"travel_rsvp_enabled"`
+	// TravelApprovedAmountCents is the reimbursement amount the organizers
+	// committed to, shown to the hacker on the travel form. It is decided by a
+	// super admin and is never editable by the hacker.
+	TravelApprovedAmountCents *int64 `json:"travel_approved_amount_cents"`
 	// ReceiptRequiredFieldID and ReceiptRequiredValue tell the client which
 	// answer makes a receipt upload mandatory, so the rule lives in one place.
 	ReceiptRequiredFieldID string `json:"receipt_required_field_id"`
@@ -131,14 +135,15 @@ func (app *application) getMyTravelRSVPHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	response := TravelRSVPResponse{
-		TravelRSVPStatus:       application.TravelRSVPStatus,
-		TravelRSVPResponses:    application.TravelRSVPResponses,
-		TravelRSVPSubmittedAt:  application.TravelRSVPSubmittedAt,
-		TravelReceiptPaths:     application.TravelReceiptPaths,
-		TravelRSVPSchema:       schema,
-		TravelRSVPEnabled:      enabled,
-		ReceiptRequiredFieldID: travelModeFieldID,
-		ReceiptRequiredValue:   travelModeFlying,
+		TravelRSVPStatus:          application.TravelRSVPStatus,
+		TravelRSVPResponses:       application.TravelRSVPResponses,
+		TravelRSVPSubmittedAt:     application.TravelRSVPSubmittedAt,
+		TravelReceiptPaths:        application.TravelReceiptPaths,
+		TravelRSVPSchema:          schema,
+		TravelRSVPEnabled:         enabled,
+		TravelApprovedAmountCents: application.TravelApprovedAmountCents,
+		ReceiptRequiredFieldID:    travelModeFieldID,
+		ReceiptRequiredValue:      travelModeFlying,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -262,14 +267,15 @@ func (app *application) submitMyTravelRSVPHandler(w http.ResponseWriter, r *http
 	}
 
 	response := TravelRSVPResponse{
-		TravelRSVPStatus:       application.TravelRSVPStatus,
-		TravelRSVPResponses:    application.TravelRSVPResponses,
-		TravelRSVPSubmittedAt:  application.TravelRSVPSubmittedAt,
-		TravelReceiptPaths:     application.TravelReceiptPaths,
-		TravelRSVPSchema:       schema,
-		TravelRSVPEnabled:      enabled,
-		ReceiptRequiredFieldID: travelModeFieldID,
-		ReceiptRequiredValue:   travelModeFlying,
+		TravelRSVPStatus:          application.TravelRSVPStatus,
+		TravelRSVPResponses:       application.TravelRSVPResponses,
+		TravelRSVPSubmittedAt:     application.TravelRSVPSubmittedAt,
+		TravelReceiptPaths:        application.TravelReceiptPaths,
+		TravelRSVPSchema:          schema,
+		TravelRSVPEnabled:         enabled,
+		TravelApprovedAmountCents: application.TravelApprovedAmountCents,
+		ReceiptRequiredFieldID:    travelModeFieldID,
+		ReceiptRequiredValue:      travelModeFlying,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

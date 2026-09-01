@@ -18,21 +18,27 @@ import (
 
 const testReceiptObjectID = "0123456789abcdef0123456789abcdef"
 
+// testTravelApprovedAmountCents is the committed award carried by the eligible
+// test application, chosen non-round so assertions can't pass by accident.
+const testTravelApprovedAmountCents = int64(12345)
+
 // newTravelEligibleApplication returns an accepted application with a confirmed
 // RSVP, approved travel, and a pending travel RSVP.
 func newTravelEligibleApplication(userID string) *store.Application {
+	approvedAmount := testTravelApprovedAmountCents
 	return &store.Application{
-		ID:                  "app-1",
-		UserID:              userID,
-		Status:              store.StatusAccepted,
-		Responses:           json.RawMessage(`{}`),
-		RSVPStatus:          store.RSVPConfirmed,
-		RSVPResponses:       json.RawMessage(`{}`),
-		TravelStatus:        store.TravelApproved,
-		TravelRSVPStatus:    store.RSVPPending,
-		TravelRSVPResponses: json.RawMessage(`{}`),
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
+		ID:                        "app-1",
+		UserID:                    userID,
+		Status:                    store.StatusAccepted,
+		Responses:                 json.RawMessage(`{}`),
+		RSVPStatus:                store.RSVPConfirmed,
+		RSVPResponses:             json.RawMessage(`{}`),
+		TravelStatus:              store.TravelApproved,
+		TravelApprovedAmountCents: &approvedAmount,
+		TravelRSVPStatus:          store.RSVPPending,
+		TravelRSVPResponses:       json.RawMessage(`{}`),
+		CreatedAt:                 time.Now(),
+		UpdatedAt:                 time.Now(),
 	}
 }
 
@@ -75,6 +81,8 @@ func TestGetMyTravelRSVP(t *testing.T) {
 		assert.Equal(t, store.RSVPPending, envelope.Data.TravelRSVPStatus)
 		assert.True(t, envelope.Data.TravelRSVPEnabled)
 		assert.Len(t, envelope.Data.TravelRSVPSchema, 3)
+		require.NotNil(t, envelope.Data.TravelApprovedAmountCents)
+		assert.Equal(t, testTravelApprovedAmountCents, *envelope.Data.TravelApprovedAmountCents)
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)

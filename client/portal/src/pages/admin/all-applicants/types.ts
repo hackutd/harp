@@ -44,7 +44,6 @@ export interface ApplicationListItem {
   travel_rsvp_submitted_at: string | null;
   receipt_count: number;
   estimated_travel_cost_cents: number | null;
-  claimed_travel_cost_cents: number | null;
 }
 
 export interface ApplicationListResult {

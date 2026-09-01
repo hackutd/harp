@@ -80,7 +80,9 @@ export function ReceiptPreviewDialog({
               <p className="text-sm font-light text-[#8A8A8A]">{error}</p>
             </div>
           )}
-          {!loading && !error && url &&
+          {!loading &&
+            !error &&
+            url &&
             (isPDF(receipt) ? (
               <iframe
                 src={url}

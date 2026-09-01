@@ -27,16 +27,16 @@ import {
 } from "@/shared/lib/schema-utils";
 import type { RSVPStatus } from "@/types";
 
+import { ApplicationSummary } from "../apply/components/ApplicationSummary";
 import { SchemaStepRenderer } from "../apply/steps/SchemaStepRenderer";
 import { fetchMyRSVP, submitMyRSVP } from "./api";
 import type { RSVPInfo } from "./types";
 
 function RSVPResult({ status }: { status: Exclude<RSVPStatus, "pending"> }) {
-  const navigate = useNavigate();
   const confirmed = status === "confirmed";
 
   return (
-    <div className="mt-3 rounded-xl border border-[#E5E5E5] p-5">
+    <div className="rounded-xl border border-[#E5E5E5] p-5">
       <span
         className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${
           confirmed ? "bg-[#5A7D63]" : "bg-[#7A7973]"
@@ -52,12 +52,6 @@ function RSVPResult({ status }: { status: Exclude<RSVPStatus, "pending"> }) {
           ? "Your RSVP is confirmed. We can't wait to see you at the event!"
           : "You've declined your spot. Sorry you can't make it — we hope to see you next time!"}
       </p>
-      <Button
-        onClick={() => navigate("/app/status")}
-        className="mt-6 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
-      >
-        Back to status
-      </Button>
     </div>
   );
 }
@@ -89,7 +83,7 @@ export default function RSVPPage() {
         form.reset(buildDefaultValues(res.data.rsvp_schema ?? []));
       } else if (res.status === 403 || res.status === 404) {
         // Not accepted (or no application) — RSVP doesn't apply.
-        navigate("/app/status", { replace: true });
+        navigate("/app", { replace: true });
         return;
       } else {
         errorAlert(res);
@@ -141,100 +135,117 @@ export default function RSVPPage() {
   if (!rsvp) return null;
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8">
+    <div className="mx-auto flex max-w-2xl flex-col gap-3 px-5 pt-4 pb-8 md:max-w-5xl md:flex-row md:items-start md:gap-2 md:px-8">
       <button
         type="button"
-        onClick={() => navigate("/app/status")}
+        onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-colors hover:bg-[#F0F0F0]"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1 md:-ml-10"
       >
         <ChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
 
-      {rsvp.rsvp_status !== "pending" ? (
-        <RSVPResult status={rsvp.rsvp_status} />
-      ) : !rsvp.rsvp_enabled ? (
-        <div className="mt-3 rounded-xl border border-[#E5E5E5] p-5">
-          <span className="inline-block rounded-full bg-[#7A7973] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
-            RSVPs closed
-          </span>
-          <h1 className="mt-3 text-xl font-light tracking-tight text-black">
-            RSVPs are closed
-          </h1>
-          <p className="mt-2 text-sm font-light text-[#8A8A8A]">
-            The RSVP window has ended. If you think this is a mistake, please
-            reach out to the organizing team.
-          </p>
-        </div>
-      ) : (
-        <>
-          <h1 className="mt-3 text-2xl font-light tracking-tight text-black">
-            Claim your spot
-          </h1>
-          <p className="mt-2 text-sm font-light text-[#8A8A8A]">
-            Congratulations on being accepted! Fill this out to confirm
-            you&apos;re coming. You can only submit once.
-          </p>
-
-          <FormProvider {...form}>
-            <form onSubmit={handleConfirm} className="mt-8 space-y-10">
-              {sections.map((section) => (
-                <SchemaStepRenderer
-                  key={section.id}
-                  sectionLabel={section.label}
-                  fields={grouped[section.id] ?? []}
-                  headingClassName="text-2xl"
+      <div className="min-w-0 flex-1">
+        {rsvp.rsvp_status !== "pending" ? (
+          <>
+            <RSVPResult status={rsvp.rsvp_status} />
+            {rsvp.rsvp_status === "confirmed" && schema.length > 0 && (
+              <section className="mt-5">
+                <h2 className="mb-3 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
+                  Your submission
+                </h2>
+                <ApplicationSummary
+                  schema={schema}
+                  responses={rsvp.rsvp_responses ?? {}}
+                  hasResume={false}
+                  resumeSectionId={null}
                 />
-              ))}
+              </section>
+            )}
+          </>
+        ) : !rsvp.rsvp_enabled ? (
+          <div className="rounded-xl border border-[#E5E5E5] p-5">
+            <span className="inline-block rounded-full bg-[#7A7973] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
+              RSVPs closed
+            </span>
+            <h1 className="mt-3 text-xl font-light tracking-tight text-black">
+              RSVPs are closed
+            </h1>
+            <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+              The RSVP window has ended. If you think this is a mistake, please
+              reach out to the organizing team.
+            </p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-light tracking-tight text-black">
+              Claim your spot
+            </h1>
+            <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+              Congratulations on being accepted! Fill this out to confirm
+              you&apos;re coming. You can only submit once.
+            </p>
 
-              <div className="space-y-3">
-                <Button
-                  type="submit"
-                  loading={submitting}
-                  className="h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
-                >
-                  Confirm my spot
-                </Button>
+            <FormProvider {...form}>
+              <form onSubmit={handleConfirm} className="mt-8 space-y-10">
+                {sections.map((section) => (
+                  <SchemaStepRenderer
+                    key={section.id}
+                    sectionLabel={section.label}
+                    fields={grouped[section.id] ?? []}
+                    headingClassName="text-2xl"
+                  />
+                ))}
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={submitting}
-                      className="h-12 w-full rounded-full text-sm font-light text-[#8A8A8A] hover:text-black"
-                    >
-                      I can&apos;t make it, decline my spot
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="font-light tracking-tight text-black">
-                        Decline your spot?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription className="font-light text-[#8A8A8A]">
-                        Your spot will be released and this cannot be undone.
-                        Are you sure you can&apos;t make it?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="gap-3">
-                      <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
-                        Keep my spot
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => submitDecision("declined")}
-                        className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
+                <div className="space-y-3">
+                  <Button
+                    type="submit"
+                    loading={submitting}
+                    className="h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+                  >
+                    Confirm my spot
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={submitting}
+                        className="h-12 w-full rounded-full text-sm font-light text-[#8A8A8A] hover:text-black"
                       >
-                        Decline
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </form>
-          </FormProvider>
-        </>
-      )}
+                        I can&apos;t make it, decline my spot
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-light tracking-tight text-black">
+                          Decline your spot?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="font-light text-[#8A8A8A]">
+                          Your spot will be released and this cannot be undone.
+                          Are you sure you can&apos;t make it?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter className="gap-3">
+                        <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
+                          Keep my spot
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => submitDecision("declined")}
+                          className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
+                        >
+                          Decline
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </form>
+            </FormProvider>
+          </>
+        )}
+      </div>
     </div>
   );
 }

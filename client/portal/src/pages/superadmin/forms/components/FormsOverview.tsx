@@ -276,10 +276,11 @@ export function FormsOverview({
             </CardTitle>
           </div>
           <CardDescription>
-            Requested, committed, and claimed are intentionally separate.
+            Requested estimates and committed amounts are intentionally
+            separate.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
+        <CardContent className="grid gap-3 sm:grid-cols-2">
           {[
             {
               label: "Requested estimate",
@@ -290,11 +291,6 @@ export function FormsOverview({
               label: "Approved commitment",
               value: data.stats.travel.approved_amount_cents,
               note: `${data.stats.travel.approved} approved people`,
-            },
-            {
-              label: "Claimed cost",
-              value: data.stats.travel.claimed_travel_cost_cents,
-              note: `${data.stats.travel.form_submitted} submitted forms`,
             },
           ].map((metric) => (
             <div key={metric.label} className="rounded-lg border p-4">

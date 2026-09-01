@@ -108,7 +108,7 @@ func TestTravelRSVPSchemaContract(t *testing.T) {
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)
 		mockSettings.On("UpdateTravelRSVPSchema", mock.AnythingOfType("[]store.ApplicationSchemaField")).Return(nil).Once()
 
-		body := `{"fields":[{"id":"travel_cost_total","type":"number","label":"Cost","display_order":0,"section_order":0}]}`
+		body := `{"fields":[{"id":"travel_notes","type":"textarea","label":"Notes","display_order":0,"section_order":0}]}`
 		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")

@@ -1,13 +1,15 @@
 import type { LucideIcon } from "lucide-react";
 import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { getRequest } from "@/shared/lib/api";
 import { parseDateOnly } from "@/shared/lib/datetime";
 import type { Application, NotificationFeedItem } from "@/types";
 
+import { ApplicationStatusCards } from "../components/ApplicationStatusCards";
 import { fetchHackerPackURL } from "../hacker-pack/api";
 import { getNotificationFeed } from "../notifications/api";
 import type { HackathonConfig } from "./api";
@@ -68,9 +70,9 @@ const QUICK_LINKS: Omit<QuickLink, "href">[] = [
   { label: "Contact", icon: Mail },
 ];
 
-// The dashboard intentionally hides the specific decision. Hackers see only a
-// neutral "Under review" / "Decisions are out" here; the real outcome
-// (accepted / waitlisted / not accepted) is revealed on the status page.
+// Pre-decision states for the neutral hackathon card. Once a decision exists
+// the dashboard renders the shared status cards instead, so the decided
+// branch here is just a fallback.
 function dashboardStatus(application: Application | null): {
   label: string;
   color: string;
@@ -82,7 +84,6 @@ function dashboardStatus(application: Application | null): {
     case "submitted":
       return { label: "Under review", color: "bg-white/15" };
     default:
-      // accepted / rejected / waitlisted — never reveal the outcome here
       return {
         label: "Decisions are out",
         color: "bg-[#7A7973] text-white",
@@ -107,6 +108,8 @@ function completionPercent(application: Application | null): number {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [application, setApplication] = useState<Application | null>(null);
   const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
   const [hackerPackURL, setHackerPackURL] = useState("");
@@ -116,6 +119,16 @@ export default function DashboardPage() {
   const [applicationsEnabled, setApplicationsEnabled] = useState<
     boolean | null
   >(null);
+
+  // Grab the "justSubmitted" ID from navigation state then clear it
+  // so back-navigation doesn't re-trigger the submit celebration.
+  const justSubmittedId = (location.state as { justSubmitted?: string })
+    ?.justSubmitted;
+  useEffect(() => {
+    if (justSubmittedId) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [justSubmittedId, navigate, location.pathname]);
 
   const hackathonName = config?.hackathon_name || "Hackathon";
   const contactEmail = config?.contact_email ?? "";
@@ -172,14 +185,18 @@ export default function DashboardPage() {
   const dates = importantDates(config);
   const percent = completionPercent(application);
   const isDraft = !application || application.status === "draft";
+  // Decided applications skip the neutral hackathon card entirely and show
+  // the shared status cards (decision, RSVP, travel) right on the dashboard.
+  const decided =
+    application != null &&
+    application.status !== "draft" &&
+    application.status !== "submitted";
   // Closing applications only changes the card for hackers who haven't
   // submitted yet — a submitted application keeps showing its review state.
   const applicationsClosed = applicationsEnabled === false && isDraft;
   const status = applicationsClosed
     ? { label: "Applications closed", color: "bg-white/15" }
     : dashboardStatus(application);
-  // Once a decision exists the card stays deliberately silent — no subtext at
-  // all, so nothing here can hint at the outcome.
   const statusSubtext = isDraft
     ? `Application ${percent}% complete`
     : application?.status === "submitted"
@@ -221,63 +238,73 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-4 pb-6 md:max-w-5xl md:px-8 md:pt-6">
-      {/* Application status card — intentionally shows only a neutral state,
-          never the decision outcome (that lives on the status page) */}
-      <div className="rounded-xl border border-white/10 bg-[#46453F]/90 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(255,255,255,0.14),rgba(255,255,255,0)_55%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_28px_rgba(0,0,0,0.10)] backdrop-blur-xl">
-        <span
-          className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide ${status.color}`}
-        >
-          {status.label}
-        </span>
-        <h1 className="mt-3 text-xl font-light tracking-tight">
-          {hackathonName}
-        </h1>
-        {applicationsClosed ? (
-          <p className="mt-1 text-sm font-light text-white/70">
-            The application portal is not currently accepting submissions.
-            Please check back later.
-            {application?.status === "draft" &&
-              " Your draft has been saved and will be here when applications reopen."}
-            {contactEmail && (
-              <>
-                {" "}
-                If you believe this is a mistake, reach out to{" "}
-                <a
-                  href={`mailto:${contactEmail}`}
-                  onClick={handleCopyEmail}
-                  className="text-white underline underline-offset-2"
-                >
-                  {contactEmail}
-                </a>
-                .
-              </>
-            )}
-          </p>
-        ) : (
-          <>
-            {statusSubtext && (
-              <p className="mt-1 text-sm font-light text-white/70">
-                {statusSubtext}
-              </p>
-            )}
-            {isDraft && (
-              <div className="mt-3 h-1 w-full rounded-full bg-white/20">
-                <div
-                  className="h-1 rounded-full bg-white transition-all"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-            )}
-            <Link
-              to={isDraft ? "/app/apply" : "/app/status"}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-medium text-black active:scale-[0.98]"
-            >
-              {isDraft ? "Continue" : "View status"}
-              <ChevronRight className="size-4" strokeWidth={1.75} />
-            </Link>
-          </>
-        )}
-      </div>
+      {/* Submit celebration: fires when the user was just redirected from submit */}
+      {application && justSubmittedId === application.id && (
+        <CelebrationEffect id={application.id} type="submit" />
+      )}
+
+      {/* Once a decision exists the dashboard shows the full status card
+          cluster (decision, RSVP, travel) with its one-time celebration;
+          before that it keeps the neutral hackathon card. */}
+      {decided ? (
+        <ApplicationStatusCards application={application} />
+      ) : (
+        <div className="rounded-xl border border-white/10 bg-[#46453F]/90 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(255,255,255,0.14),rgba(255,255,255,0)_55%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_28px_rgba(0,0,0,0.10)] backdrop-blur-xl">
+          <span
+            className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide ${status.color}`}
+          >
+            {status.label}
+          </span>
+          <h1 className="mt-3 text-xl font-light tracking-tight">
+            {hackathonName}
+          </h1>
+          {applicationsClosed ? (
+            <p className="mt-1 text-sm font-light text-white/70">
+              The application portal is not currently accepting submissions.
+              Please check back later.
+              {application?.status === "draft" &&
+                " Your draft has been saved and will be here when applications reopen."}
+              {contactEmail && (
+                <>
+                  {" "}
+                  If you believe this is a mistake, reach out to{" "}
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    onClick={handleCopyEmail}
+                    className="text-white underline underline-offset-2"
+                  >
+                    {contactEmail}
+                  </a>
+                  .
+                </>
+              )}
+            </p>
+          ) : (
+            <>
+              {statusSubtext && (
+                <p className="mt-1 text-sm font-light text-white/70">
+                  {statusSubtext}
+                </p>
+              )}
+              {isDraft && (
+                <div className="mt-3 h-1 w-full rounded-full bg-white/20">
+                  <div
+                    className="h-1 rounded-full bg-white transition-all"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              )}
+              <Link
+                to={isDraft ? "/app/apply" : "/app/application"}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-medium text-black active:scale-[0.98]"
+              >
+                {isDraft ? "Continue" : "View submission"}
+                <ChevronRight className="size-4" strokeWidth={1.75} />
+              </Link>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Important dates */}
       <section className={dates.length > 0 ? "mt-5" : "hidden"}>

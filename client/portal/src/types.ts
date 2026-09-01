@@ -114,7 +114,7 @@ export interface Application {
   travel_status: TravelStatus;
   travel_yes_votes: number;
   travel_no_votes: number;
-  /** Organizer-approved commitment; distinct from requested and claimed cost. */
+  /** Organizer-approved commitment; distinct from the requested estimate. */
   travel_approved_amount_cents: number | null;
   /** Travel RSVP (proof of travel) for hackers with approved travel; "pending" until they submit. */
   travel_rsvp_status: RSVPStatus;
@@ -201,7 +201,6 @@ export interface ApplicationListItem {
   travel_rsvp_submitted_at: string | null;
   receipt_count: number;
   estimated_travel_cost_cents: number | null;
-  claimed_travel_cost_cents: number | null;
 }
 
 // Paginated response from admin applications endpoint

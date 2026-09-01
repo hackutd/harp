@@ -10516,6 +10516,10 @@ const docTemplate = `{
                 "receipt_required_value": {
                     "type": "string"
                 },
+                "travel_approved_amount_cents": {
+                    "description": "TravelApprovedAmountCents is the reimbursement amount the organizers\ncommitted to, shown to the hacker on the travel form. It is decided by a\nsuper admin and is never editable by the hacker.",
+                    "type": "integer"
+                },
                 "travel_receipt_paths": {
                     "type": "array",
                     "items": {
@@ -10956,9 +10960,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "ai_percent": {
-                    "type": "integer"
-                },
-                "claimed_travel_cost_cents": {
                     "type": "integer"
                 },
                 "country_of_residence": {
@@ -11647,9 +11648,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "approved_amount_cents": {
-                    "type": "integer"
-                },
-                "claimed_travel_cost_cents": {
                     "type": "integer"
                 },
                 "decision_pending": {
