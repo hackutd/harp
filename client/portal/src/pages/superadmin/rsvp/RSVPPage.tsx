@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { RotateCcw, Save } from "lucide-react";
 import { useEffect } from "react";
 
 import {
@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,14 +27,29 @@ import { SchemaEditor } from "../application/components/SchemaEditor";
 import { useRSVPSchemaStore } from "./store";
 
 export default function RSVPPage() {
-  const { fields, sections, loading, saving, fetchSchema, saveSchema } =
-    useRSVPSchemaStore();
+  const {
+    fields,
+    sections,
+    loading,
+    saving,
+    dirty,
+    fetchSchema,
+    saveSchema,
+    discardChanges,
+  } = useRSVPSchemaStore();
 
   useEffect(() => {
     const controller = new AbortController();
     fetchSchema(controller.signal);
     return () => controller.abort();
   }, [fetchSchema]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   return (
     <div className="flex flex-1 min-h-0">
@@ -45,7 +61,11 @@ export default function RSVPPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-0">
-          <ApplicationPreview fields={fields} sections={sections} />
+          <ApplicationPreview
+            fields={fields}
+            sections={sections}
+            systemBlock="rsvp_decision"
+          />
         </CardContent>
       </Card>
 
@@ -71,35 +91,50 @@ export default function RSVPPage() {
                 description="Configure the fields accepted hackers fill out when claiming their spot. Fields are grouped by section. Whether RSVPs are open is controlled from Settings → Permissions."
               />
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button loading={saving} className="w-full cursor-pointer">
-                    {!saving && <Save className="size-4 mr-2" />}
-                    Save Schema
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Save RSVP schema?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will affect <strong>all</strong> RSVP forms for
-                      accepted hackers. Are you sure you want to save these
-                      changes?
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="cursor-pointer">
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={saveSchema}
-                      className="cursor-pointer bg-red-600 hover:bg-red-700"
+              <div className="sticky bottom-0 flex items-center gap-2 border-t bg-background pt-3">
+                <Button
+                  variant="outline"
+                  disabled={!dirty || saving}
+                  onClick={discardChanges}
+                >
+                  <RotateCcw className="size-4" />
+                  Discard
+                </Button>
+                {dirty && <Badge variant="secondary">Unsaved changes</Badge>}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      loading={saving}
+                      disabled={!dirty}
+                      className="ml-auto cursor-pointer"
                     >
-                      Save
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      {!saving && <Save className="size-4 mr-2" />}
+                      Save Schema
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Save RSVP schema?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will affect <strong>all</strong> RSVP forms for
+                        accepted hackers. Are you sure you want to save these
+                        changes?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="cursor-pointer">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={saveSchema}
+                        className="cursor-pointer bg-red-600 hover:bg-red-700"
+                      >
+                        Save
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           )}
         </CardContent>

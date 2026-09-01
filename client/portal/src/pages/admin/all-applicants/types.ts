@@ -1,4 +1,4 @@
-import type { TravelStatus } from "@/types";
+import type { RSVPStatus, TravelStatus } from "@/types";
 
 export type ApplicationStatus =
   | "draft"
@@ -36,6 +36,15 @@ export interface ApplicationListItem {
   travel_status: TravelStatus;
   travel_yes_votes: number;
   travel_no_votes: number;
+  travel_approved_amount_cents: number | null;
+  /** One-shot hacker decisions; a submitted travel RSVP pins the travel status. */
+  rsvp_status: RSVPStatus;
+  travel_rsvp_status: RSVPStatus;
+  rsvp_submitted_at: string | null;
+  travel_rsvp_submitted_at: string | null;
+  receipt_count: number;
+  estimated_travel_cost_cents: number | null;
+  claimed_travel_cost_cents: number | null;
 }
 
 export interface ApplicationListResult {
@@ -66,6 +75,10 @@ export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
   travel_status?: TravelStatus;
+  rsvp_status?: RSVPStatus;
+  travel_rsvp_status?: RSVPStatus;
+  has_receipts?: boolean;
+  travel_requested?: boolean;
   direction?: "forward" | "backward";
   search?: string;
   sort_by?: ApplicationSortBy;

@@ -141,7 +141,7 @@ export default function RSVPPage() {
   if (!rsvp) return null;
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:px-8">
+    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8">
       <button
         type="button"
         onClick={() => navigate("/app/status")}
@@ -168,7 +168,7 @@ export default function RSVPPage() {
         </div>
       ) : (
         <>
-          <h1 className="mt-3 text-3xl font-light tracking-tight text-black">
+          <h1 className="mt-3 text-2xl font-light tracking-tight text-black">
             Claim your spot
           </h1>
           <p className="mt-2 text-sm font-light text-[#8A8A8A]">
@@ -183,6 +183,7 @@ export default function RSVPPage() {
                   key={section.id}
                   sectionLabel={section.label}
                   fields={grouped[section.id] ?? []}
+                  headingClassName="text-2xl"
                 />
               ))}
 
@@ -203,22 +204,26 @@ export default function RSVPPage() {
                       disabled={submitting}
                       className="h-12 w-full rounded-full text-sm font-light text-[#8A8A8A] hover:text-black"
                     >
-                      I can&apos;t make it — decline my spot
+                      I can&apos;t make it, decline my spot
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Decline your spot?</AlertDialogTitle>
-                      <AlertDialogDescription>
+                      <AlertDialogTitle className="font-light tracking-tight text-black">
+                        Decline your spot?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-light text-[#8A8A8A]">
                         Your spot will be released and this cannot be undone.
                         Are you sure you can&apos;t make it?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Keep my spot</AlertDialogCancel>
+                    <AlertDialogFooter className="gap-3">
+                      <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
+                        Keep my spot
+                      </AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => submitDecision("declined")}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
                       >
                         Decline
                       </AlertDialogAction>

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,12 +15,10 @@ import (
 	"github.com/hackutd/harp/internal/store"
 )
 
-// Well-known travel RSVP schema contract: when the travel mode answer is
-// "Flying", at least one receipt (plane ticket) upload is required.
-const (
-	travelModeFieldID = "travel_rsvp_mode"
-	travelModeFlying  = "Flying"
-)
+// travelReceiptDeleteTimeout bounds the cleanup of receipts detached by an RSVP
+// reset. An application carries at most 5 of them, so the cleanup runs inline
+// and the admin sees the reset finish once storage has caught up.
+const travelReceiptDeleteTimeout = 30 * time.Second
 
 // travelReceiptContentTypes maps allowed receipt upload content types to the
 // file extension used in the GCS object path.
@@ -38,6 +37,10 @@ type TravelRSVPResponse struct {
 	TravelReceiptPaths    []string                       `json:"travel_receipt_paths"`
 	TravelRSVPSchema      []store.ApplicationSchemaField `json:"travel_rsvp_schema"`
 	TravelRSVPEnabled     bool                           `json:"travel_rsvp_enabled"`
+	// ReceiptRequiredFieldID and ReceiptRequiredValue tell the client which
+	// answer makes a receipt upload mandatory, so the rule lives in one place.
+	ReceiptRequiredFieldID string `json:"receipt_required_field_id"`
+	ReceiptRequiredValue   string `json:"receipt_required_value"`
 }
 
 type SubmitTravelRSVPPayload struct {
@@ -128,12 +131,14 @@ func (app *application) getMyTravelRSVPHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	response := TravelRSVPResponse{
-		TravelRSVPStatus:      application.TravelRSVPStatus,
-		TravelRSVPResponses:   application.TravelRSVPResponses,
-		TravelRSVPSubmittedAt: application.TravelRSVPSubmittedAt,
-		TravelReceiptPaths:    application.TravelReceiptPaths,
-		TravelRSVPSchema:      schema,
-		TravelRSVPEnabled:     enabled,
+		TravelRSVPStatus:       application.TravelRSVPStatus,
+		TravelRSVPResponses:    application.TravelRSVPResponses,
+		TravelRSVPSubmittedAt:  application.TravelRSVPSubmittedAt,
+		TravelReceiptPaths:     application.TravelReceiptPaths,
+		TravelRSVPSchema:       schema,
+		TravelRSVPEnabled:      enabled,
+		ReceiptRequiredFieldID: travelModeFieldID,
+		ReceiptRequiredValue:   travelModeFlying,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -257,12 +262,14 @@ func (app *application) submitMyTravelRSVPHandler(w http.ResponseWriter, r *http
 	}
 
 	response := TravelRSVPResponse{
-		TravelRSVPStatus:      application.TravelRSVPStatus,
-		TravelRSVPResponses:   application.TravelRSVPResponses,
-		TravelRSVPSubmittedAt: application.TravelRSVPSubmittedAt,
-		TravelReceiptPaths:    application.TravelReceiptPaths,
-		TravelRSVPSchema:      schema,
-		TravelRSVPEnabled:     enabled,
+		TravelRSVPStatus:       application.TravelRSVPStatus,
+		TravelRSVPResponses:    application.TravelRSVPResponses,
+		TravelRSVPSubmittedAt:  application.TravelRSVPSubmittedAt,
+		TravelReceiptPaths:     application.TravelReceiptPaths,
+		TravelRSVPSchema:       schema,
+		TravelRSVPEnabled:      enabled,
+		ReceiptRequiredFieldID: travelModeFieldID,
+		ReceiptRequiredValue:   travelModeFlying,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -274,23 +281,23 @@ func travelReceiptStoragePrefix(hackathonName string) string {
 	return fmt.Sprintf("hackathons/%s/travel-receipts/", slug.Hackathon(hackathonName))
 }
 
-// validTravelReceiptObjectPath prevents clients from attaching arbitrary bucket
-// objects as receipts. A receipt path must belong to the authenticated user and
-// use the random 128-bit name and extension issued by this API.
-func validTravelReceiptObjectPath(objectPath, userID string) bool {
+// travelReceiptObjectOwner returns the user a receipt object belongs to, and
+// whether the path has the shape this API issues at all: the hackathon
+// namespace, a per-user folder, and the random 128-bit name and extension.
+func travelReceiptObjectOwner(objectPath string) (string, bool) {
 	parts := strings.Split(objectPath, "/")
 	if len(parts) != 5 ||
 		parts[0] != strings.TrimSuffix(hackathonStorageRootPrefix, "/") ||
 		parts[1] == "" ||
 		parts[2] != "travel-receipts" ||
-		parts[3] != userID {
-		return false
+		parts[3] == "" {
+		return "", false
 	}
 	fileName := parts[4]
 
 	dot := strings.LastIndex(fileName, ".")
 	if dot <= 0 {
-		return false
+		return "", false
 	}
 	ext := fileName[dot+1:]
 	validExt := false
@@ -301,15 +308,33 @@ func validTravelReceiptObjectPath(objectPath, userID string) bool {
 		}
 	}
 	if !validExt {
-		return false
+		return "", false
 	}
 
 	objectID := fileName[:dot]
 	if len(objectID) != randomResumeObjectIDBytes*2 {
-		return false
+		return "", false
 	}
-	_, err := hex.DecodeString(objectID)
-	return err == nil
+	if _, err := hex.DecodeString(objectID); err != nil {
+		return "", false
+	}
+
+	return parts[3], true
+}
+
+// isTravelReceiptObjectPath reports whether an object in the bucket is a travel
+// receipt, whoever uploaded it.
+func isTravelReceiptObjectPath(objectPath string) bool {
+	_, ok := travelReceiptObjectOwner(objectPath)
+	return ok
+}
+
+// validTravelReceiptObjectPath prevents clients from attaching arbitrary bucket
+// objects as receipts. A receipt path must belong to the authenticated user and
+// use the random 128-bit name and extension issued by this API.
+func validTravelReceiptObjectPath(objectPath, userID string) bool {
+	owner, ok := travelReceiptObjectOwner(objectPath)
+	return ok && owner == userID
 }
 
 // generateTravelReceiptUploadURLHandler returns a signed upload URL for travel receipt uploads.
@@ -516,5 +541,69 @@ func (app *application) getTravelReceiptURLsHandler(w http.ResponseWriter, r *ht
 		Receipts: receipts,
 	}); err != nil {
 		app.internalServerError(w, r, err)
+	}
+}
+
+// resetApplicationTravelRSVPHandler clears a hacker's one-shot travel RSVP
+//
+//	@Summary		Reset travel RSVP (Super Admin)
+//	@Description	Clears a hacker's submitted travel RSVP so they can fill the travel form again, and removes their uploaded receipts from object storage. The event RSVP is left untouched. Also the way to unpin a travel decision after the hacker has submitted their travel form.
+//	@Tags			superadmin/applications
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	ApplicationResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/{applicationID}/travel-rsvp/reset [post]
+func (app *application) resetApplicationTravelRSVPHandler(w http.ResponseWriter, r *http.Request) {
+	applicationID := chi.URLParam(r, "applicationID")
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	application, receiptPaths, err := app.store.Application.ResetTravelRSVP(r.Context(), applicationID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("application not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	app.logRSVPReset(r, "travel_rsvp", application, receiptPaths)
+	app.deleteTravelReceiptObjects(receiptPaths)
+
+	if err := app.jsonResponse(w, http.StatusOK, ApplicationResponse{Application: application}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// deleteTravelReceiptObjects removes detached receipt files from object storage
+// on a best-effort basis, using its own context so a client that walks away
+// mid-request does not leave half the objects behind. The rows are already
+// cleared, so failures are logged rather than surfaced.
+func (app *application) deleteTravelReceiptObjects(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+
+	if app.gcsClient == nil {
+		app.logger.Warnw("travel receipts left in object storage: no GCS client configured", "count", len(paths))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), travelReceiptDeleteTimeout)
+	defer cancel()
+
+	for _, path := range paths {
+		if err := app.gcsClient.DeleteObject(ctx, path); err != nil {
+			app.logger.Errorw("failed to delete travel receipt from object storage", "path", path, "error", err)
+		}
 	}
 }

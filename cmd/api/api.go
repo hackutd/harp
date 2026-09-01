@@ -305,9 +305,11 @@ func (app *application) mount() http.Handler {
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
 					r.Post("/reset-hackathon", app.resetHackathonHandler)
+					r.Get("/forms/summary", app.getFormsOverview)
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
+						r.Get("/schema-contract", app.getSchemaContract)
 						r.Get("/application-schema", app.getApplicationSchema)
 						r.Put("/application-schema", app.updateApplicationSchema)
 						r.Get("/rsvp-schema", app.getRSVPSchema)
@@ -366,6 +368,9 @@ func (app *application) mount() http.Handler {
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
 						r.Patch("/{applicationID}/travel-status", app.setApplicationTravelStatus)
+						// Repair hatches for the one-shot hacker RSVPs
+						r.Post("/{applicationID}/rsvp/reset", app.resetApplicationRSVPHandler)
+						r.Post("/{applicationID}/travel-rsvp/reset", app.resetApplicationTravelRSVPHandler)
 					})
 
 					// Outbound decision emails

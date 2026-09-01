@@ -114,8 +114,8 @@ func (m *MockApplicationStore) Update(ctx context.Context, app *Application) err
 	return args.Error(0)
 }
 
-func (m *MockApplicationStore) Submit(ctx context.Context, app *Application) error {
-	args := m.Called(app)
+func (m *MockApplicationStore) Submit(ctx context.Context, app *Application, travelOptInFieldID string) error {
+	args := m.Called(app, travelOptInFieldID)
 	return args.Error(0)
 }
 
@@ -153,12 +153,38 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 	return args.Get(0).(*Application), args.Error(1)
 }
 
-func (m *MockApplicationStore) SetTravelStatus(ctx context.Context, id string, status TravelStatus) (*Application, error) {
-	args := m.Called(id, status)
+func (m *MockApplicationStore) SetTravelStatus(ctx context.Context, id string, status TravelStatus, approvedAmountCents *int64) (*Application, error) {
+	args := m.Called(id, status, approvedAmountCents)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*Application), args.Error(1)
+}
+
+func (m *MockApplicationStore) GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*FormOperationsStats), args.Error(1)
+}
+
+func (m *MockApplicationStore) ResetRSVP(ctx context.Context, id string) (*Application, []string, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	receipts, _ := args.Get(1).([]string)
+	return args.Get(0).(*Application), receipts, args.Error(2)
+}
+
+func (m *MockApplicationStore) ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	receipts, _ := args.Get(1).([]string)
+	return args.Get(0).(*Application), receipts, args.Error(2)
 }
 
 func (m *MockApplicationStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
@@ -503,12 +529,12 @@ type MockHackathonStore struct {
 	mock.Mock
 }
 
-func (m *MockHackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string, error) {
+func (m *MockHackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPaths, error) {
 	args := m.Called(opts)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(*ResetPaths), args.Error(1)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface

@@ -62,6 +62,8 @@ const selectItem =
 interface SchemaStepRendererProps {
   sectionLabel: string;
   fields: ApplicationSchemaField[];
+  /** Optional visual override for the section heading. */
+  headingClassName?: string;
   /** Extra content rendered before the fields (e.g., read-only email). */
   header?: React.ReactNode;
 }
@@ -69,6 +71,7 @@ interface SchemaStepRendererProps {
 export function SchemaStepRenderer({
   sectionLabel,
   fields,
+  headingClassName,
   header,
 }: SchemaStepRendererProps) {
   const form = useFormContext<ApplicationFormValues>();
@@ -128,7 +131,12 @@ export function SchemaStepRenderer({
 
   return (
     <div className="space-y-7">
-      <h1 className="text-3xl font-light tracking-tight text-black">
+      <h1
+        className={cn(
+          "text-3xl font-light tracking-tight text-black",
+          headingClassName,
+        )}
+      >
         {sectionLabel}
       </h1>
 
@@ -387,8 +395,8 @@ function SchemaFormField({
                   onCheckedChange={formField.onChange}
                 />
               </FormControl>
-              <div className="space-y-1 leading-snug">
-                <FormLabel className="text-sm font-extralight">
+              <div className="min-w-0 flex-1 space-y-1">
+                <FormLabel className="block text-sm leading-6 font-extralight">
                   {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>

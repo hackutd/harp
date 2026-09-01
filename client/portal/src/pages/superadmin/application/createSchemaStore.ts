@@ -5,8 +5,16 @@ import { errorAlert } from "@/shared/lib/api";
 import { deriveSections, type SectionDef } from "@/shared/lib/schema-utils";
 import type { ApiResponse, ApplicationSchemaField } from "@/types";
 
+import {
+  fetchSchemaContract,
+  type SchemaContractKey,
+  type SchemaFieldContract,
+} from "./contract";
+
 interface SchemaApiResponse {
   fields: ApplicationSchemaField[];
+  /** Bindings the saved schema no longer declares, reported by the backend. */
+  warnings?: string[];
 }
 
 export interface SchemaStoreConfig {
@@ -17,16 +25,26 @@ export interface SchemaStoreConfig {
     fields: ApplicationSchemaField[],
   ) => Promise<ApiResponse<SchemaApiResponse>>;
   savedMessage: string;
+  /** Which set of backend field bindings this schema carries, if any. */
+  contractKey?: SchemaContractKey;
 }
 
 export interface SchemaEditorState {
   fields: ApplicationSchemaField[];
   sections: SectionDef[];
+  savedFields: ApplicationSchemaField[];
+  savedSections: SectionDef[];
   loading: boolean;
   saving: boolean;
+  dirty: boolean;
+  /** Fields the backend reads, keyed by field id. */
+  contracts: Record<string, SchemaFieldContract>;
+  /** Bindings the last save left inactive, shown as a banner in the editor. */
+  warnings: string[];
 
   fetchSchema: (signal?: AbortSignal) => Promise<void>;
   saveSchema: () => Promise<void>;
+  discardChanges: () => void;
   updateField: (
     fieldId: string,
     updates: Partial<ApplicationSchemaField>,
@@ -81,19 +99,46 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
   return create<SchemaEditorState>((set, get) => ({
     fields: [],
     sections: [],
+    savedFields: [],
+    savedSections: [],
     loading: false,
     saving: false,
+    dirty: false,
+    contracts: {},
+    warnings: [],
 
     fetchSchema: async (signal?: AbortSignal) => {
-      set({ loading: true });
+      // Keep unsaved work intact when the admin switches away from and back to
+      // the Builder tab. They can explicitly discard it from the editor.
+      if (get().dirty) return;
+      set({ loading: true, warnings: [] });
+
+      // The bindings are static per deploy, so a failure to load them only
+      // costs the editor its badges — it must not block editing.
+      if (config.contractKey && Object.keys(get().contracts).length === 0) {
+        const contractRes = await fetchSchemaContract(signal);
+        if (contractRes.status === 200 && contractRes.data) {
+          const contracts = contractRes.data[config.contractKey] ?? [];
+          set({
+            contracts: Object.fromEntries(
+              contracts.map((contract) => [contract.field_id, contract]),
+            ),
+          });
+        }
+      }
+
       const res = await config.fetchSchema(signal);
       if (signal?.aborted) return;
       if (res.status === 200 && res.data) {
         const fields = res.data.fields ?? [];
+        const sections = buildSections(fields);
         set({
           fields,
-          sections: buildSections(fields),
+          sections,
+          savedFields: fields.map((field) => ({ ...field })),
+          savedSections: sections.map((section) => ({ ...section })),
           loading: false,
+          dirty: false,
         });
       } else {
         errorAlert(res);
@@ -126,7 +171,16 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
       const res = await config.saveSchema(normalized);
       if (res.status === 200 && res.data) {
         const saved = res.data.fields;
-        set({ fields: saved, sections: buildSections(saved), saving: false });
+        const savedSections = buildSections(saved);
+        set({
+          fields: saved,
+          sections: savedSections,
+          savedFields: saved.map((field) => ({ ...field })),
+          savedSections: savedSections.map((section) => ({ ...section })),
+          saving: false,
+          dirty: false,
+          warnings: res.data.warnings ?? [],
+        });
         toast.success(config.savedMessage);
       } else {
         errorAlert(res);
@@ -134,16 +188,27 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
       }
     },
 
+    discardChanges: () => {
+      const { savedFields, savedSections } = get();
+      set({
+        fields: savedFields.map((field) => ({ ...field })),
+        sections: savedSections.map((section) => ({ ...section })),
+        dirty: false,
+      });
+      toast.info("Unsaved schema changes discarded");
+    },
+
     updateField: (fieldId, updates) => {
       set((state) => ({
         fields: state.fields.map((f) =>
           f.id === fieldId ? { ...f, ...updates } : f,
         ),
+        dirty: true,
       }));
     },
 
     addField: (field) => {
-      set((state) => ({ fields: [...state.fields, field] }));
+      set((state) => ({ fields: [...state.fields, field], dirty: true }));
     },
 
     removeField: (fieldId) => {
@@ -151,6 +216,7 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
         const newFields = state.fields.filter((f) => f.id !== fieldId);
         return {
           fields: newFields,
+          dirty: true,
           // Keep sections intact — empty sections are allowed during editing
         };
       });
@@ -180,6 +246,7 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
               return { ...f, display_order: tempOrder };
             return f;
           }),
+          dirty: true,
         };
       });
     },
@@ -188,7 +255,7 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
       set((state) => {
         const id = `section_${Date.now()}`;
         const newSection: SectionDef = { id, label };
-        return { sections: [...state.sections, newSection] };
+        return { sections: [...state.sections, newSection], dirty: true };
       });
     },
 
@@ -196,6 +263,7 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
       set((state) => ({
         sections: state.sections.filter((s) => s.id !== sectionId),
         fields: state.fields.filter((f) => f.section !== sectionId),
+        dirty: true,
       }));
     },
 
@@ -207,6 +275,7 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
         fields: state.fields.map((f) =>
           f.section === sectionId ? { ...f, section_label: label } : f,
         ),
+        dirty: true,
       }));
     },
 
@@ -221,7 +290,7 @@ export function createSchemaStore(config: SchemaStoreConfig): SchemaStore {
           newSections[swapIdx],
           newSections[idx],
         ];
-        return { sections: newSections };
+        return { sections: newSections, dirty: true };
       });
     },
   }));

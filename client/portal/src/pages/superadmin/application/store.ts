@@ -5,4 +5,5 @@ export const useApplicationSchemaStore = createSchemaStore({
   fetchSchema: fetchApplicationSchema,
   saveSchema: saveApplicationSchema,
   savedMessage: "Application schema saved",
+  contractKey: "application_schema",
 });

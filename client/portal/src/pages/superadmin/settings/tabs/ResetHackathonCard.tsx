@@ -140,9 +140,11 @@ export function ResetHackathonCard() {
       }
 
       const resumes = res.data?.resumes_deleted ?? 0;
+      const receipts = res.data?.receipts_deleted ?? 0;
+      const files = resumes + receipts;
       const notes = [
-        resumes > 0
-          ? `queued ${resumes} resume file${resumes === 1 ? "" : "s"} for storage cleanup`
+        files > 0
+          ? `queued ${files} uploaded file${files === 1 ? "" : "s"} for storage cleanup`
           : null,
         // Closing applications is a side effect of the config reset that a
         // super admin has to know about — it silently takes the public form down.

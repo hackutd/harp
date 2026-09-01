@@ -28,9 +28,17 @@ func (o ResetOptions) Any() bool {
 		o.Notifications || o.Settings || o.Sponsors || o.FAQs || o.Config
 }
 
+// ResetPaths holds the storage objects a reset orphaned, by kind, so the caller
+// can delete them once the rows pointing at them are gone.
+type ResetPaths struct {
+	Resumes        []string
+	TravelReceipts []string
+}
+
 // Reset resets the selected domains of hackathon data in a single transaction.
-// Returns a list of resume paths that should be deleted from storage if applications were reset.
-func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string, error) {
+// Returns the uploaded files that should be deleted from storage if
+// applications were reset.
+func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPaths, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2) // Longer timeout for bulk operations
 	defer cancel()
 
@@ -40,11 +48,16 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string
 	}
 	defer tx.Rollback()
 
-	var resumePaths []string
+	paths := &ResetPaths{}
 
 	if opts.Applications {
-		// Collect resume paths before truncation
-		resumePaths, err = collectResumePaths(ctx, tx)
+		// Collect uploaded file paths before truncation
+		paths.Resumes, err = collectResumePaths(ctx, tx)
+		if err != nil {
+			return nil, err
+		}
+
+		paths.TravelReceipts, err = collectTravelReceiptPaths(ctx, tx)
 		if err != nil {
 			return nil, err
 		}
@@ -133,13 +146,35 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string
 		return nil, err
 	}
 
-	return resumePaths, nil
+	return paths, nil
 }
 
 // collectResumePaths reads every non-empty resume path so the objects can be
 // removed from storage once the rows pointing at them are gone.
 func collectResumePaths(ctx context.Context, tx *sql.Tx) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, "SELECT resume_path FROM applications WHERE resume_path IS NOT NULL AND resume_path <> ''")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var paths []string
+	for rows.Next() {
+		var path string
+		if err := rows.Scan(&path); err != nil {
+			return nil, err
+		}
+		paths = append(paths, path)
+	}
+
+	return paths, rows.Err()
+}
+
+// collectTravelReceiptPaths reads every uploaded travel receipt so the objects
+// can be removed from storage along with the applications that referenced them.
+func collectTravelReceiptPaths(ctx context.Context, tx *sql.Tx) ([]string, error) {
+	rows, err := tx.QueryContext(ctx,
+		"SELECT UNNEST(travel_receipt_paths) FROM applications WHERE ARRAY_LENGTH(travel_receipt_paths, 1) > 0")
 	if err != nil {
 		return nil, err
 	}

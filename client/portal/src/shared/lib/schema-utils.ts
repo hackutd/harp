@@ -326,7 +326,7 @@ export function renderLabel(label: string): ReactNode {
           target: "_blank",
           rel: "noopener noreferrer",
           className:
-            "underline underline-offset-4 text-blue-600 hover:text-blue-800",
+            "bg-[linear-gradient(currentColor,currentColor)] bg-[position:0_100%] bg-[length:0_1px] bg-no-repeat text-blue-600 transition-[background-size,color] duration-300 ease-out hover:bg-[length:100%_1px] hover:text-blue-800 motion-reduce:transition-none",
         },
         match[1],
       ),

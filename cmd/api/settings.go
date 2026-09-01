@@ -15,6 +15,9 @@ type UpdateApplicationSchemaPayload struct {
 
 type ApplicationSchemaResponse struct {
 	Fields []store.ApplicationSchemaField `json:"fields"`
+	// Warnings names well-known bindings the saved schema no longer declares,
+	// so the editor can say which feature just went inactive.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // getApplicationSchema returns the configurable application schema
@@ -48,7 +51,7 @@ func (app *application) getApplicationSchema(w http.ResponseWriter, r *http.Requ
 // updateApplicationSchema replaces the application schema
 //
 //	@Summary		Update application schema (Super Admin)
-//	@Description	Replaces the application schema with the provided array of fields
+//	@Description	Replaces the application schema with the provided array of fields. Rejected when a well-known field the backend reads (see /superadmin/settings/schema-contract) is still present but no longer usable; removing such a field is allowed and comes back as a warning.
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
@@ -72,14 +75,10 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Validate unique IDs
-	idMap := make(map[string]bool)
-	for _, f := range req.Fields {
-		if idMap[f.ID] {
-			app.badRequestResponse(w, r, errors.New("duplicate field ID: "+f.ID))
-			return
-		}
-		idMap[f.ID] = true
+	warnings, err := validateSchemaFields(applicationSchemaContracts, req.Fields)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
 	}
 
 	if err := app.store.Settings.UpdateApplicationSchema(r.Context(), req.Fields); err != nil {
@@ -87,7 +86,7 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	response := ApplicationSchemaResponse(req)
+	response := ApplicationSchemaResponse{Fields: req.Fields, Warnings: warnings}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
@@ -157,14 +156,9 @@ func (app *application) updateRSVPSchema(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Validate unique IDs
-	idMap := make(map[string]bool)
-	for _, f := range req.Fields {
-		if idMap[f.ID] {
-			app.badRequestResponse(w, r, errors.New("duplicate field ID: "+f.ID))
-			return
-		}
-		idMap[f.ID] = true
+	if _, err := validateSchemaFields(nil, req.Fields); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
 	}
 
 	if err := app.store.Settings.UpdateRSVPSchema(r.Context(), req.Fields); err != nil {
@@ -255,6 +249,9 @@ type UpdateTravelRSVPSchemaPayload struct {
 
 type TravelRSVPSchemaResponse struct {
 	Fields []store.ApplicationSchemaField `json:"fields"`
+	// Warnings names well-known bindings the saved schema no longer declares,
+	// so the editor can say which feature just went inactive.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // getTravelRSVPSchema returns the configurable travel RSVP schema
@@ -288,7 +285,7 @@ func (app *application) getTravelRSVPSchema(w http.ResponseWriter, r *http.Reque
 // updateTravelRSVPSchema replaces the travel RSVP schema
 //
 //	@Summary		Update travel RSVP schema (Super Admin)
-//	@Description	Replaces the travel RSVP form schema with the provided array of fields
+//	@Description	Replaces the travel RSVP form schema with the provided array of fields. Rejected when a well-known field the backend reads (see /superadmin/settings/schema-contract) is still present but no longer usable; removing such a field is allowed and comes back as a warning.
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
@@ -312,14 +309,10 @@ func (app *application) updateTravelRSVPSchema(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Validate unique IDs
-	idMap := make(map[string]bool)
-	for _, f := range req.Fields {
-		if idMap[f.ID] {
-			app.badRequestResponse(w, r, errors.New("duplicate field ID: "+f.ID))
-			return
-		}
-		idMap[f.ID] = true
+	warnings, err := validateSchemaFields(travelRSVPSchemaContracts, req.Fields)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
 	}
 
 	if err := app.store.Settings.UpdateTravelRSVPSchema(r.Context(), req.Fields); err != nil {
@@ -327,7 +320,7 @@ func (app *application) updateTravelRSVPSchema(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	response := TravelRSVPSchemaResponse(req)
+	response := TravelRSVPSchemaResponse{Fields: req.Fields, Warnings: warnings}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

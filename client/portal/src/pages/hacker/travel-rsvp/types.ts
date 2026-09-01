@@ -7,6 +7,13 @@ export interface TravelRSVPInfo {
   travel_receipt_paths: string[] | null;
   travel_rsvp_schema: ApplicationSchemaField[];
   travel_rsvp_enabled: boolean;
+  /**
+   * The answer that makes a receipt upload mandatory, reported by the backend
+   * so the rule is not duplicated here — super admins can rename the field or
+   * its options in the travel RSVP schema editor.
+   */
+  receipt_required_field_id: string;
+  receipt_required_value: string;
 }
 
 export interface SubmitTravelRSVPPayload {

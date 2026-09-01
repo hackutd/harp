@@ -58,6 +58,9 @@ type ResetHackathonResponse struct {
 	// storage. Deletion happens in the background, so a file may still fail;
 	// failures are logged server-side.
 	ResumesDeleted int `json:"resumes_deleted"`
+	// ReceiptsDeleted counts the travel receipt files queued for removal from
+	// object storage, on the same best-effort basis as ResumesDeleted.
+	ReceiptsDeleted int `json:"receipts_deleted"`
 }
 
 // resetHackathonHandler resets hackathon data based on options
@@ -93,19 +96,21 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	resumePaths, err := app.store.Hackathon.Reset(r.Context(), opts)
+	paths, err := app.store.Hackathon.Reset(r.Context(), opts)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	resumesQueued := 0
+	resumesQueued, receiptsQueued := 0, 0
 	if opts.Applications {
 		if app.gcsClient == nil {
-			app.logger.Warnw("resume files left in object storage: no GCS client configured", "count", len(resumePaths))
+			app.logger.Warnw("uploaded files left in object storage: no GCS client configured",
+				"resumes", len(paths.Resumes), "travel_receipts", len(paths.TravelReceipts))
 		} else {
-			resumesQueued = len(resumePaths)
-			go app.deleteResumeObjects(resumePaths)
+			resumesQueued = len(paths.Resumes)
+			receiptsQueued = len(paths.TravelReceipts)
+			go app.deleteHackathonUploads(paths)
 		}
 	}
 
@@ -120,6 +125,7 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		ResetFAQs:          req.ResetFAQs,
 		ResetConfig:        req.ResetConfig,
 		ResumesDeleted:     resumesQueued,
+		ReceiptsDeleted:    receiptsQueued,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -127,10 +133,20 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// deleteResumeObjects removes resume files from object storage on a best-effort
-// basis, using its own context so the work outlives the request. Individual
-// failures are logged rather than surfaced — the rows are already gone.
-func (app *application) deleteResumeObjects(paths []string) {
+// isHackathonUploadPath reports whether a stored object is a per-cycle hacker
+// upload — a resume or a travel receipt — and so belongs to a reset's cleanup.
+func isHackathonUploadPath(objectPath string) bool {
+	if _, ok := resumeStoragePrefixFromPath(objectPath); ok {
+		return true
+	}
+	return isTravelReceiptObjectPath(objectPath)
+}
+
+// deleteHackathonUploads removes the resumes and travel receipts a reset
+// orphaned from object storage on a best-effort basis, using its own context so
+// the work outlives the request. Individual failures are logged rather than
+// surfaced — the rows are already gone.
+func (app *application) deleteHackathonUploads(resetPaths *store.ResetPaths) {
 	ctx, cancel := context.WithTimeout(context.Background(), resumeDeleteTimeout)
 	defer cancel()
 
@@ -138,10 +154,11 @@ func (app *application) deleteResumeObjects(paths []string) {
 	// orphaned uploads and leftovers from an interrupted earlier cleanup.
 	// De-duplicate before issuing deletes. Objects elsewhere under hackathons/
 	// are deliberately ignored so future event assets can share the namespace.
-	uniquePaths := make(map[string]struct{}, len(paths))
-	for _, path := range paths {
-		if _, ok := resumeStoragePrefixFromPath(path); !ok {
-			app.logger.Warnw("skipping unrecognized resume object path", "path", path)
+	linked := append(append([]string{}, resetPaths.Resumes...), resetPaths.TravelReceipts...)
+	uniquePaths := make(map[string]struct{}, len(linked))
+	for _, path := range linked {
+		if !isHackathonUploadPath(path) {
+			app.logger.Warnw("skipping unrecognized upload object path", "path", path)
 			continue
 		}
 		uniquePaths[path] = struct{}{}
@@ -149,10 +166,10 @@ func (app *application) deleteResumeObjects(paths []string) {
 	for _, pathPrefix := range []string{legacyResumeStoragePrefix, hackathonStorageRootPrefix} {
 		prefixPaths, err := app.gcsClient.ListObjects(ctx, pathPrefix)
 		if err != nil {
-			app.logger.Errorw("failed to list resume objects for cleanup", "prefix", pathPrefix, "error", err)
+			app.logger.Errorw("failed to list uploaded objects for cleanup", "prefix", pathPrefix, "error", err)
 		} else {
 			for _, path := range prefixPaths {
-				if _, ok := resumeStoragePrefixFromPath(path); ok {
+				if isHackathonUploadPath(path) {
 					uniquePaths[path] = struct{}{}
 				}
 			}
@@ -175,14 +192,14 @@ func (app *application) deleteResumeObjects(paths []string) {
 
 			if err := app.gcsClient.DeleteObject(ctx, path); err != nil {
 				failed.Add(1)
-				app.logger.Errorw("failed to delete resume from object storage", "path", path, "error", err)
+				app.logger.Errorw("failed to delete uploaded file from object storage", "path", path, "error", err)
 			}
 		}(path)
 	}
 
 	wg.Wait()
 
-	app.logger.Infow("resume cleanup finished",
+	app.logger.Infow("uploaded file cleanup finished",
 		"total", len(uniquePaths),
 		"deleted", int64(len(uniquePaths))-failed.Load(),
 		"failed", failed.Load(),

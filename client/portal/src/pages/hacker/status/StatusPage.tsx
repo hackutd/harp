@@ -50,24 +50,34 @@ interface TravelCard {
   showTravelForm?: boolean;
 }
 
-// Travel reimbursement card copy, shown only when the hacker opted in. Once
-// travel is approved, the card follows the travel RSVP (proof of travel) state.
+// Travel reimbursement card copy, shown only when the hacker opted in. Travel
+// is decided independently of the application, so the outcome is only shown
+// once the application itself is decided — an approval a waitlisted applicant
+// can't act on (or a travel rejection they'd read as their decision) is worse
+// than saying nothing. Once travel is approved, the card follows the travel
+// RSVP (proof of travel) state.
 function travelCardContent(application: Application): TravelCard | null {
-  if (
-    application.travel_status === "not_requested" ||
-    application.status === "rejected"
-  ) {
+  if (application.travel_status === "not_requested") {
     return null;
+  }
+
+  const underReview: TravelCard = {
+    pill: "Travel under review",
+    pillColor: "bg-[#7A7973]",
+    message:
+      "We're reviewing your travel reimbursement request. You'll see the decision here once it's made.",
+  };
+
+  if (application.status === "rejected") {
+    return null;
+  }
+  if (application.status !== "accepted") {
+    return underReview;
   }
 
   switch (application.travel_status) {
     case "pending":
-      return {
-        pill: "Travel under review",
-        pillColor: "bg-[#7A7973]",
-        message:
-          "We're reviewing your travel reimbursement request. You'll see the decision here once it's made.",
-      };
+      return underReview;
     case "rejected":
       return {
         pill: "Travel not approved",
@@ -94,6 +104,16 @@ function travelCardContent(application: Application): TravelCard | null {
       pillColor: "bg-[#7A7973]",
       message:
         "You've declined the travel reimbursement. See you at the event!",
+    };
+  }
+  // Declining the spot is one-shot, so there is no "claim it now" path left —
+  // say so instead of pointing at an RSVP the hacker can no longer submit.
+  if (application.rsvp_status === "declined") {
+    return {
+      pill: "Travel approved",
+      pillColor: "bg-[#7A7973]",
+      message:
+        "Your travel reimbursement was approved, but you declined your spot, so there's nothing left to reimburse. If you declined by mistake, reach out to the organizing team.",
     };
   }
   if (application.rsvp_status !== "confirmed") {

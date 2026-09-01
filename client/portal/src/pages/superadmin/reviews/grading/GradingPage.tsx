@@ -39,6 +39,8 @@ export default function GradingPage() {
   const navigatePrev = useGradingStore((s) => s.navigatePrev);
   const gradeApplication = useGradingStore((s) => s.gradeApplication);
   const gradeTravel = useGradingStore((s) => s.gradeTravel);
+  const resetRSVP = useGradingStore((s) => s.resetRSVP);
+  const resetTravelRSVP = useGradingStore((s) => s.resetTravelRSVP);
   const reset = useGradingStore((s) => s.reset);
 
   const currentApp = applications[currentIndex] ?? null;
@@ -85,13 +87,28 @@ export default function GradingPage() {
   );
 
   const handleGradeTravel = useCallback(
-    (travelStatus: "approved" | "rejected" | "pending") => {
+    (
+      travelStatus: "approved" | "rejected" | "pending",
+      approvedAmountCents?: number,
+    ) => {
       if (currentApp) {
-        gradeTravel(currentApp.id, travelStatus);
+        gradeTravel(currentApp.id, travelStatus, approvedAmountCents);
       }
     },
     [currentApp, gradeTravel],
   );
+
+  const handleResetRSVP = useCallback(() => {
+    if (currentApp) {
+      resetRSVP(currentApp.id);
+    }
+  }, [currentApp, resetRSVP]);
+
+  const handleResetTravelRSVP = useCallback(() => {
+    if (currentApp) {
+      resetTravelRSVP(currentApp.id);
+    }
+  }, [currentApp, resetTravelRSVP]);
 
   useGradingKeyboardShortcuts({
     disabled: grading,
@@ -184,6 +201,8 @@ export default function GradingPage() {
           grading={grading}
           onGrade={handleGrade}
           onGradeTravel={handleGradeTravel}
+          onResetRSVP={handleResetRSVP}
+          onResetTravelRSVP={handleResetTravelRSVP}
         />
       }
       emptyState={

@@ -682,3 +682,77 @@ func TestTravelRSVPSchemaSettings(t *testing.T) {
 		mockSettings.AssertExpectations(t)
 	})
 }
+
+func TestResetApplicationTravelRSVP(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockGCS := app.gcsClient.(*gcs.MockClient)
+
+	t.Run("should clear the travel rsvp and delete the detached receipts", func(t *testing.T) {
+		receiptPath := validTestReceiptPath("user-1")
+		reset := newTravelEligibleApplication("user-1")
+
+		mockApps.On("ResetTravelRSVP", "app-1").Return(reset, []string{receiptPath}, nil).Once()
+		mockGCS.On("DeleteObject", mock.Anything, receiptPath).Return(nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetApplicationTravelRSVPHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data ApplicationResponse `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, store.RSVPPending, envelope.Data.Application.TravelRSVPStatus)
+		// The event RSVP is left alone: only the travel form is being redone.
+		assert.Equal(t, store.RSVPConfirmed, envelope.Data.Application.RSVPStatus)
+
+		mockApps.AssertExpectations(t)
+		mockGCS.AssertExpectations(t)
+	})
+
+	t.Run("should still reset when a receipt cannot be deleted", func(t *testing.T) {
+		// The rows are already cleared, so a storage failure must not fail the
+		// reset — it only leaves an orphaned object behind, which is logged.
+		receiptPath := validTestReceiptPath("user-1")
+		reset := newTravelEligibleApplication("user-1")
+
+		mockApps.On("ResetTravelRSVP", "app-1").Return(reset, []string{receiptPath}, nil).Once()
+		mockGCS.On("DeleteObject", mock.Anything, receiptPath).Return(assert.AnError).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetApplicationTravelRSVPHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockGCS.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		mockApps.On("ResetTravelRSVP", "nonexistent").Return(nil, nil, store.ErrNotFound).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "nonexistent")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetApplicationTravelRSVPHandler))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}

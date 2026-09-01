@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/hackutd/harp/internal/store"
 )
 
@@ -196,4 +197,61 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// resetApplicationRSVPHandler clears a hacker's one-shot RSVP so they can decide again
+//
+//	@Summary		Reset RSVP (Super Admin)
+//	@Description	Clears a hacker's submitted RSVP so they can claim or decline their spot again. The travel RSVP is cleared along with it — it is only reachable through a confirmed RSVP — and any uploaded travel receipts are removed from object storage.
+//	@Tags			superadmin/applications
+//	@Produce		json
+//	@Param			applicationID	path		string	true	"Application ID"
+//	@Success		200				{object}	ApplicationResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/{applicationID}/rsvp/reset [post]
+func (app *application) resetApplicationRSVPHandler(w http.ResponseWriter, r *http.Request) {
+	applicationID := chi.URLParam(r, "applicationID")
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	application, receiptPaths, err := app.store.Application.ResetRSVP(r.Context(), applicationID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("application not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	app.logRSVPReset(r, "rsvp", application, receiptPaths)
+	app.deleteTravelReceiptObjects(receiptPaths)
+
+	if err := app.jsonResponse(w, http.StatusOK, ApplicationResponse{Application: application}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// logRSVPReset records who reset which RSVP, since the reset discards the
+// hacker's submitted answers and there is no other trail of it.
+func (app *application) logRSVPReset(r *http.Request, kind string, application *store.Application, receiptPaths []string) {
+	var actorID string
+	if actor := getUserFromContext(r.Context()); actor != nil {
+		actorID = actor.ID
+	}
+
+	app.logger.Infow("rsvp reset by super admin",
+		"kind", kind,
+		"actor_id", actorID,
+		"application_id", application.ID,
+		"user_id", application.UserID,
+		"receipts_detached", len(receiptPaths),
+	)
 }

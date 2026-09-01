@@ -47,14 +47,8 @@ const HackerPackPage = lazy(
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
-const SuperAdminApplicationPage = lazy(
-  () => import("@/pages/superadmin/application/ApplicationPage"),
-);
-const SuperAdminRSVPPage = lazy(
-  () => import("@/pages/superadmin/rsvp/RSVPPage"),
-);
-const SuperAdminTravelRSVPPage = lazy(
-  () => import("@/pages/superadmin/travel-rsvp/TravelRSVPPage"),
+const SuperAdminFormsPage = lazy(
+  () => import("@/pages/superadmin/forms/FormsPage"),
 );
 const SuperAdminReviewsPage = lazy(
   () => import("@/pages/superadmin/reviews/ReviewsPage"),
@@ -288,9 +282,10 @@ export const router = createBrowserRouter([
             path: "sa/application",
             element: (
               <RequireSuperAdmin>
-                <Suspense fallback={<PageLoader />}>
-                  <SuperAdminApplicationPage />
-                </Suspense>
+                <Navigate
+                  to="/admin/sa/forms/application?tab=builder"
+                  replace
+                />
               </RequireSuperAdmin>
             ),
           },
@@ -298,9 +293,7 @@ export const router = createBrowserRouter([
             path: "sa/rsvp",
             element: (
               <RequireSuperAdmin>
-                <Suspense fallback={<PageLoader />}>
-                  <SuperAdminRSVPPage />
-                </Suspense>
+                <Navigate to="/admin/sa/forms/rsvp?tab=builder" replace />
               </RequireSuperAdmin>
             ),
           },
@@ -308,8 +301,26 @@ export const router = createBrowserRouter([
             path: "sa/travel-rsvp",
             element: (
               <RequireSuperAdmin>
+                <Navigate to="/admin/sa/forms/travel?tab=builder" replace />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/forms",
+            element: (
+              <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
-                  <SuperAdminTravelRSVPPage />
+                  <SuperAdminFormsPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/forms/:formKey",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminFormsPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),

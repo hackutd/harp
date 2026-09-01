@@ -15,7 +15,12 @@ import { fetchReviewNotes } from "@/pages/admin/reviews/api";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
 import type { Application } from "@/types";
 
-import { setApplicationStatus, setApplicationTravelStatus } from "./api";
+import {
+  resetApplicationRSVP,
+  resetApplicationTravelRSVP,
+  setApplicationStatus,
+  setApplicationTravelStatus,
+} from "./api";
 
 interface FilterParams {
   status?: ApplicationStatus;
@@ -46,7 +51,10 @@ interface GradingState {
   gradeTravel: (
     applicationId: string,
     travelStatus: "approved" | "rejected" | "pending",
+    approvedAmountCents?: number,
   ) => Promise<void>;
+  resetRSVP: (applicationId: string) => Promise<void>;
+  resetTravelRSVP: (applicationId: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -211,16 +219,28 @@ export const useGradingStore = create<GradingState>((set, get) => ({
   gradeTravel: async (
     applicationId: string,
     travelStatus: "approved" | "rejected" | "pending",
+    approvedAmountCents?: number,
   ) => {
     set({ grading: true });
 
-    const res = await setApplicationTravelStatus(applicationId, travelStatus);
+    const res = await setApplicationTravelStatus(
+      applicationId,
+      travelStatus,
+      approvedAmountCents,
+    );
 
     if (res.status === 200) {
       const { applications } = get();
       const updated = applications.map((app) =>
         app.id === applicationId
-          ? { ...app, travel_status: travelStatus }
+          ? {
+              ...app,
+              travel_status: travelStatus,
+              travel_approved_amount_cents:
+                travelStatus === "approved"
+                  ? (approvedAmountCents ?? null)
+                  : null,
+            }
           : app,
       );
       set({ applications: updated, grading: false });
@@ -229,6 +249,69 @@ export const useGradingStore = create<GradingState>((set, get) => ({
     } else {
       set({ grading: false });
       toast.error(res.error ?? "Failed to update travel status");
+    }
+  },
+
+  // Repair hatches for the one-shot hacker RSVPs. Both refresh the loaded
+  // detail from the response so the travel RSVP panel stops showing answers
+  // that were just discarded.
+  resetRSVP: async (applicationId: string) => {
+    set({ grading: true });
+
+    const res = await resetApplicationRSVP(applicationId);
+
+    if (res.status === 200) {
+      const { applications, detail } = get();
+      const updated = applications.map((app) =>
+        app.id === applicationId
+          ? {
+              ...app,
+              rsvp_status: "pending" as const,
+              travel_rsvp_status: "pending" as const,
+            }
+          : app,
+      );
+      set({
+        applications: updated,
+        grading: false,
+        detail:
+          detail?.id === applicationId && res.data
+            ? res.data.application
+            : detail,
+      });
+
+      toast.success("RSVP reset — the hacker can claim their spot again");
+    } else {
+      set({ grading: false });
+      toast.error(res.error ?? "Failed to reset RSVP");
+    }
+  },
+
+  resetTravelRSVP: async (applicationId: string) => {
+    set({ grading: true });
+
+    const res = await resetApplicationTravelRSVP(applicationId);
+
+    if (res.status === 200) {
+      const { applications, detail } = get();
+      const updated = applications.map((app) =>
+        app.id === applicationId
+          ? { ...app, travel_rsvp_status: "pending" as const }
+          : app,
+      );
+      set({
+        applications: updated,
+        grading: false,
+        detail:
+          detail?.id === applicationId && res.data
+            ? res.data.application
+            : detail,
+      });
+
+      toast.success("Travel form reset — the hacker can fill it in again");
+    } else {
+      set({ grading: false });
+      toast.error(res.error ?? "Failed to reset travel form");
     }
   },
 

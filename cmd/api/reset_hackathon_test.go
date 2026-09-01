@@ -38,13 +38,17 @@ func TestResetHackathon(t *testing.T) {
 				Notifications: true, Settings: true, Sponsors: true, FAQs: true,
 				Config: true,
 			}).
-			Return([]string{"resumes/user-1/resume1.pdf", "resumes/user-2/resume2.pdf"}, nil)
+			Return(&store.ResetPaths{
+				Resumes:        []string{"resumes/user-1/resume1.pdf", "resumes/user-2/resume2.pdf"},
+				TravelReceipts: []string{validTestReceiptPath("user-1")},
+			}, nil)
 
-		// Resume cleanup runs in the background; wait for all deletes.
+		// Upload cleanup runs in the background; wait for all deletes.
 		var deletions sync.WaitGroup
 		mockGCS.On("ListObjects", mock.Anything, hackathonStorageRootPrefix).
 			Return([]string{
 				"hackathons/hackutd-2026/resumes/orphan.pdf",
+				validTestReceiptPath("user-2"),
 				"hackathons/hackutd-2026/assets/logo.png",
 			}, nil).
 			Once()
@@ -52,12 +56,16 @@ func TestResetHackathon(t *testing.T) {
 			Return([]string{"resumes/legacy-orphan.pdf"}, nil).
 			Once()
 
-		deletions.Add(4)
+		deletions.Add(6)
 		for _, path := range []string{
 			"resumes/user-1/resume1.pdf",
 			"resumes/user-2/resume2.pdf",
 			"hackathons/hackutd-2026/resumes/orphan.pdf",
 			"resumes/legacy-orphan.pdf",
+			// Receipts are cleaned up alongside resumes: both the ones the
+			// applications pointed at and any orphan left in the bucket.
+			validTestReceiptPath("user-1"),
+			validTestReceiptPath("user-2"),
 		} {
 			mockGCS.On("DeleteObject", mock.Anything, path).
 				Return(nil).
@@ -79,6 +87,7 @@ func TestResetHackathon(t *testing.T) {
 		err := json.Unmarshal(rr.Body.Bytes(), &respBody)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, respBody.Data.ResumesDeleted)
+		assert.Equal(t, 1, respBody.Data.ReceiptsDeleted)
 
 		deletions.Wait()
 		mockGCS.AssertExpectations(t)
@@ -91,7 +100,7 @@ func TestResetHackathon(t *testing.T) {
 
 		app.store.Hackathon.(*store.MockHackathonStore).
 			On("Reset", store.ResetOptions{Applications: true}).
-			Return([]string{"resume1.pdf", "resume2.pdf"}, nil)
+			Return(&store.ResetPaths{Resumes: []string{"resume1.pdf", "resume2.pdf"}}, nil)
 
 		reqBody, _ := json.Marshal(ResetHackathonPayload{ResetApplications: true})
 		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
@@ -118,7 +127,7 @@ func TestResetHackathon(t *testing.T) {
 
 		app.store.Hackathon.(*store.MockHackathonStore).
 			On("Reset", store.ResetOptions{Applications: true}).
-			Return([]string(nil), nil).
+			Return(&store.ResetPaths{}, nil).
 			Once()
 		mockGCS.On("ListObjects", mock.Anything, hackathonStorageRootPrefix).
 			Return([]string{orphanPath, "hackathons/hackutd-2026/assets/logo.png"}, nil).
@@ -157,7 +166,7 @@ func TestResetHackathon(t *testing.T) {
 
 		app.store.Hackathon.(*store.MockHackathonStore).
 			On("Reset", store.ResetOptions{ScanTypes: true, Sponsors: true, FAQs: true}).
-			Return([]string(nil), nil)
+			Return(&store.ResetPaths{}, nil)
 
 		reqBody, _ := json.Marshal(payload)
 		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
@@ -186,7 +195,7 @@ func TestResetHackathon(t *testing.T) {
 
 		app.store.Hackathon.(*store.MockHackathonStore).
 			On("Reset", store.ResetOptions{Config: true}).
-			Return([]string(nil), nil)
+			Return(&store.ResetPaths{}, nil)
 
 		reqBody, _ := json.Marshal(ResetHackathonPayload{ResetConfig: true})
 		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))
@@ -218,7 +227,7 @@ func TestResetHackathon(t *testing.T) {
 		// Simulate partial failure/rollback by returning error from store
 		app.store.Hackathon.(*store.MockHackathonStore).
 			On("Reset", store.ResetOptions{Applications: true}).
-			Return([]string(nil), errors.New("db transaction failed"))
+			Return(nil, errors.New("db transaction failed"))
 
 		reqBody, _ := json.Marshal(payload)
 		req, _ := http.NewRequest(http.MethodPost, "/v1/superadmin/reset-hackathon", bytes.NewBuffer(reqBody))

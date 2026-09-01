@@ -3,12 +3,10 @@
 import {
   Bell,
   Calendar,
-  CalendarCheck,
   ClipboardList,
   DoorOpen,
   Handshake,
   MessageSquare,
-  Plane,
   ScanLine,
   Settings,
   Star,
@@ -71,29 +69,19 @@ const eventNav = [
 
 const superAdminNav = [
   {
+    name: "Forms",
+    url: "/admin/sa/forms",
+    icon: ClipboardList,
+  },
+  {
     name: "Reviews",
     url: "/admin/sa/reviews",
     icon: Star,
   },
   {
-    name: "User Management",
+    name: "Users",
     url: "/admin/sa/user-management",
     icon: Users,
-  },
-  {
-    name: "Application",
-    url: "/admin/sa/application",
-    icon: ClipboardList,
-  },
-  {
-    name: "RSVP",
-    url: "/admin/sa/rsvp",
-    icon: CalendarCheck,
-  },
-  {
-    name: "Travel RSVP",
-    url: "/admin/sa/travel-rsvp",
-    icon: Plane,
   },
   {
     name: "Notifications",

@@ -249,8 +249,10 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Submit!
-	if err := app.store.Application.Submit(r.Context(), application); err != nil {
+	// Submit! The travel opt-in binding is resolved against the live schema, so
+	// an event that removed the checkbox simply requests no travel.
+	optInFieldID := schemaContractFieldID(schema, travelOptInFieldID)
+	if err := app.store.Application.Submit(r.Context(), application, optInFieldID); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -433,17 +435,21 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 //	@Description	Lists all applications with cursor-based pagination and optional status filter
 //	@Tags			admin/applications
 //	@Produce		json
-//	@Param			cursor			query		string	false	"Pagination cursor"
-//	@Param			status			query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
-//	@Param			travel_status	query		string	false	"Filter by travel status (not_requested, pending, approved, rejected)"
-//	@Param			limit			query		int		false	"Page size (default 50, max 100)"
-//	@Param			direction		query		string	false	"Pagination direction: forward (default) or backward"
-//	@Param			sort_by			query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes, travel_yes_votes"
-//	@Success		200				{object}	store.ApplicationListResult
-//	@Failure		400				{object}	object{error=string}
-//	@Failure		401				{object}	object{error=string}
-//	@Failure		403				{object}	object{error=string}
-//	@Failure		500				{object}	object{error=string}
+//	@Param			cursor				query		string	false	"Pagination cursor"
+//	@Param			status				query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
+//	@Param			travel_status		query		string	false	"Filter by travel status (not_requested, pending, approved, rejected)"
+//	@Param			rsvp_status			query		string	false	"Filter by RSVP status (pending, confirmed, declined)"
+//	@Param			travel_rsvp_status	query		string	false	"Filter by travel form status (pending, confirmed, declined)"
+//	@Param			has_receipts		query		boolean	false	"Filter by whether at least one receipt was submitted"
+//	@Param			travel_requested	query		boolean	false	"Filter by whether travel reimbursement was requested"
+//	@Param			limit				query		int		false	"Page size (default 50, max 100)"
+//	@Param			direction			query		string	false	"Pagination direction: forward (default) or backward"
+//	@Param			sort_by				query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes, travel_yes_votes"
+//	@Success		200					{object}	store.ApplicationListResult
+//	@Failure		400					{object}	object{error=string}
+//	@Failure		401					{object}	object{error=string}
+//	@Failure		403					{object}	object{error=string}
+//	@Failure		500					{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/applications [get]
 func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.Request) {
@@ -485,6 +491,48 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 			app.badRequestResponse(w, r, errors.New("invalid travel_status value"))
 			return
 		}
+	}
+
+	parseRSVPStatus := func(value string) (*store.RSVPStatus, bool) {
+		status := store.RSVPStatus(value)
+		switch status {
+		case store.RSVPPending, store.RSVPConfirmed, store.RSVPDeclined:
+			return &status, true
+		default:
+			return nil, false
+		}
+	}
+	if value := query.Get("rsvp_status"); value != "" {
+		status, ok := parseRSVPStatus(value)
+		if !ok {
+			app.badRequestResponse(w, r, errors.New("invalid rsvp_status value"))
+			return
+		}
+		filters.RSVPStatus = status
+	}
+	if value := query.Get("travel_rsvp_status"); value != "" {
+		status, ok := parseRSVPStatus(value)
+		if !ok {
+			app.badRequestResponse(w, r, errors.New("invalid travel_rsvp_status value"))
+			return
+		}
+		filters.TravelRSVPStatus = status
+	}
+	if value := query.Get("has_receipts"); value != "" {
+		hasReceipts, err := strconv.ParseBool(value)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("has_receipts must be true or false"))
+			return
+		}
+		filters.HasReceipts = &hasReceipts
+	}
+	if value := query.Get("travel_requested"); value != "" {
+		travelRequested, err := strconv.ParseBool(value)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("travel_requested must be true or false"))
+			return
+		}
+		filters.TravelRequested = &travelRequested
 	}
 
 	// Parse search
@@ -552,7 +600,8 @@ type SetStatusPayload struct {
 }
 
 type SetTravelStatusPayload struct {
-	TravelStatus store.TravelStatus `json:"travel_status" validate:"required,oneof=pending approved rejected"`
+	TravelStatus        store.TravelStatus `json:"travel_status" validate:"required,oneof=pending approved rejected"`
+	ApprovedAmountCents *int64             `json:"approved_amount_cents,omitempty" validate:"omitempty,gt=0"`
 }
 
 type ApplicationResponse struct {
@@ -623,7 +672,7 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 // setApplicationTravelStatus sets the travel reimbursement decision on an application
 //
 //	@Summary		Set travel reimbursement status (Super Admin)
-//	@Description	Sets the travel reimbursement decision (approved, rejected, or back to pending) on an application that requested travel reimbursement
+//	@Description	Sets the travel reimbursement decision (approved, rejected, or back to pending) on an application that requested travel reimbursement. The application must be submitted, accepted, or waitlisted, and the decision is pinned once the hacker submits their travel RSVP — reset the travel RSVP first to change it.
 //	@Tags			superadmin/applications
 //	@Accept			json
 //	@Produce		json
@@ -634,7 +683,7 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 //	@Failure		401				{object}	object{error=string}
 //	@Failure		403				{object}	object{error=string}
 //	@Failure		404				{object}	object{error=string}
-//	@Failure		409				{object}	object{error=string}	"Applicant did not request travel reimbursement"
+//	@Failure		409				{object}	object{error=string}	"Travel not requested, application not decidable, or travel RSVP already submitted"
 //	@Failure		500				{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/superadmin/applications/{applicationID}/travel-status [patch]
@@ -655,14 +704,28 @@ func (app *application) setApplicationTravelStatus(w http.ResponseWriter, r *htt
 		app.badRequestResponse(w, r, err)
 		return
 	}
+	if payload.TravelStatus == store.TravelApproved && payload.ApprovedAmountCents == nil {
+		app.badRequestResponse(w, r, errors.New("approved_amount_cents is required when approving travel"))
+		return
+	}
+	if payload.TravelStatus != store.TravelApproved && payload.ApprovedAmountCents != nil {
+		app.badRequestResponse(w, r, errors.New("approved_amount_cents is only allowed when approving travel"))
+		return
+	}
 
-	application, err := app.store.Application.SetTravelStatus(r.Context(), applicationID, payload.TravelStatus)
+	application, err := app.store.Application.SetTravelStatus(r.Context(), applicationID, payload.TravelStatus, payload.ApprovedAmountCents)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			app.notFoundResponse(w, r, errors.New("application not found"))
-		case errors.Is(err, store.ErrConflict):
+		case errors.Is(err, store.ErrTravelNotRequested):
 			app.conflictResponse(w, r, errors.New("applicant did not request travel reimbursement"))
+		case errors.Is(err, store.ErrTravelStatusNotDecidable):
+			app.conflictResponse(w, r, errors.New("travel cannot be decided on a draft or rejected application"))
+		case errors.Is(err, store.ErrTravelRSVPSubmitted):
+			app.conflictResponse(w, r, errors.New("hacker already submitted their travel form; reset it before changing the travel decision"))
+		case errors.Is(err, store.ErrConflict):
+			app.conflictResponse(w, r, errors.New("travel status changed concurrently, try again"))
 		default:
 			app.internalServerError(w, r, err)
 		}

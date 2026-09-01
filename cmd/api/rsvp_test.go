@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi"
+	"github.com/hackutd/harp/internal/gcs"
 	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -397,5 +400,74 @@ func TestRSVPSchemaSettings(t *testing.T) {
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		mockSettings.AssertExpectations(t)
+	})
+}
+
+func TestResetApplicationRSVP(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+	mockGCS := app.gcsClient.(*gcs.MockClient)
+
+	t.Run("should clear the rsvp and delete receipts detached by the cascade", func(t *testing.T) {
+		// Resetting the spot also clears the travel RSVP underneath it, so the
+		// receipts uploaded with that travel RSVP are no longer reachable.
+		receiptPath := validTestReceiptPath("user-1")
+		reset := newAcceptedApplication("user-1")
+
+		mockApps.On("ResetRSVP", "app-1").Return(reset, []string{receiptPath}, nil).Once()
+		mockGCS.On("DeleteObject", mock.Anything, receiptPath).Return(nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetApplicationRSVPHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data ApplicationResponse `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, store.RSVPPending, envelope.Data.Application.RSVPStatus)
+
+		mockApps.AssertExpectations(t)
+		mockGCS.AssertExpectations(t)
+	})
+
+	t.Run("should still succeed when there are no receipts to delete", func(t *testing.T) {
+		reset := newAcceptedApplication("user-1")
+		mockApps.On("ResetRSVP", "app-1").Return(reset, nil, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetApplicationRSVPHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockGCS.AssertExpectations(t)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		mockApps.On("ResetRSVP", "nonexistent").Return(nil, nil, store.ErrNotFound).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "nonexistent")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.resetApplicationRSVPHandler))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockApps.AssertExpectations(t)
 	})
 }

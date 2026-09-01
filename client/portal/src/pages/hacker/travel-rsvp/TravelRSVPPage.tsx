@@ -32,11 +32,6 @@ import { fetchMyTravelRSVP, submitMyTravelRSVP } from "./api";
 import { ReceiptUploader } from "./components/ReceiptUploader";
 import type { TravelRSVPInfo, UploadedReceipt } from "./types";
 
-// Well-known travel RSVP schema contract (mirrored by the backend): when the
-// travel mode answer is "Flying", at least one receipt upload is required.
-const TRAVEL_MODE_FIELD_ID = "travel_rsvp_mode";
-const TRAVEL_MODE_FLYING = "Flying";
-
 function TravelRSVPResult({
   status,
 }: {
@@ -145,8 +140,11 @@ export default function TravelRSVPPage() {
       if (fieldIds.has(key)) responses[key] = value;
     }
 
+    // The backend enforces this too, and tells us which answer triggers it.
+    const receiptFieldID = travelRSVP?.receipt_required_field_id;
     if (
-      responses[TRAVEL_MODE_FIELD_ID] === TRAVEL_MODE_FLYING &&
+      receiptFieldID &&
+      responses[receiptFieldID] === travelRSVP?.receipt_required_value &&
       receipts.length === 0
     ) {
       toast.error("Please upload at least one ticket receipt when flying");
@@ -173,7 +171,7 @@ export default function TravelRSVPPage() {
   if (!travelRSVP) return null;
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:px-8">
+    <div className="mx-auto max-w-2xl px-5 pt-4 pb-8 md:max-w-5xl md:px-8">
       <button
         type="button"
         onClick={() => navigate("/app/status")}
@@ -200,7 +198,7 @@ export default function TravelRSVPPage() {
         </div>
       ) : (
         <>
-          <h1 className="mt-3 text-3xl font-light tracking-tight text-black">
+          <h1 className="mt-3 text-2xl font-light tracking-tight text-black">
             Travel reimbursement
           </h1>
           <p className="mt-2 text-sm font-light text-[#8A8A8A]">
@@ -216,6 +214,7 @@ export default function TravelRSVPPage() {
                   key={section.id}
                   sectionLabel={section.label}
                   fields={grouped[section.id] ?? []}
+                  headingClassName="text-2xl"
                 />
               ))}
 
@@ -251,24 +250,26 @@ export default function TravelRSVPPage() {
                       disabled={submitting}
                       className="h-12 w-full rounded-full text-sm font-light text-[#8A8A8A] hover:text-black"
                     >
-                      I no longer need reimbursement — decline
+                      I no longer need reimbursement, decline
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>
+                      <AlertDialogTitle className="font-light tracking-tight text-black">
                         Decline travel reimbursement?
                       </AlertDialogTitle>
-                      <AlertDialogDescription>
+                      <AlertDialogDescription className="font-light text-[#8A8A8A]">
                         You won&apos;t be reimbursed for your travel and this
                         cannot be undone. Are you sure?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Keep reimbursement</AlertDialogCancel>
+                    <AlertDialogFooter className="gap-3">
+                      <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
+                        Keep reimbursement
+                      </AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => submitDecision("declined")}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
                       >
                         Decline
                       </AlertDialogAction>

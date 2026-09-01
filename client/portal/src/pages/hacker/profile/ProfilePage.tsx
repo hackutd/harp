@@ -409,28 +409,30 @@ export default function ProfilePage() {
                 type="button"
                 className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FFF5F5]"
               >
-                <Trash2 className="size-4.5 text-red-500" strokeWidth={1.5} />
-                <span className="text-sm font-normal text-red-500">
+                <Trash2 className="size-4.5 text-[#D14343]" strokeWidth={1.5} />
+                <span className="text-sm font-normal text-[#D14343]">
                   Delete account
                 </span>
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-xl">
+            <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle className="font-light tracking-tight text-black">
+                  Delete your account?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="font-light text-[#8A8A8A]">
                   This permanently deletes your account, application, and all
                   associated data. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-full">
+              <AlertDialogFooter className="gap-3">
+                <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
                   Cancel
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteAccount}
                   disabled={deleting}
-                  className="rounded-full bg-red-500 text-white hover:bg-red-600"
+                  className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
                 >
                   {deleting ? "Deleting..." : "Delete"}
                 </AlertDialogAction>

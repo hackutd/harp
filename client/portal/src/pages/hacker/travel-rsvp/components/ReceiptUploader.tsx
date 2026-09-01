@@ -5,11 +5,11 @@ import { toast } from "sonner";
 import {
   MAX_RECEIPT_IMAGE_SIZE_BYTES,
   MAX_RECEIPT_PDF_SIZE_BYTES,
-  requestTravelReceiptDownloadURL,
   requestTravelReceiptUploadURL,
   uploadReceiptToSignedURL,
 } from "../api";
 import type { ReceiptContentType, UploadedReceipt } from "../types";
+import { ReceiptPreviewDialog } from "./ReceiptPreviewDialog";
 
 const MAX_RECEIPTS = 5;
 
@@ -83,15 +83,6 @@ export function ReceiptUploader({
     setUploading(false);
   };
 
-  const handlePreview = async (path: string) => {
-    const res = await requestTravelReceiptDownloadURL(path);
-    if (res.status === 200 && res.data) {
-      window.open(res.data.download_url, "_blank", "noopener,noreferrer");
-    } else {
-      toast.error(res.error ?? "Failed to open receipt");
-    }
-  };
-
   return (
     <div className="space-y-3">
       {receipts.map((receipt) => (
@@ -109,14 +100,18 @@ export function ReceiptUploader({
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              aria-label="Preview receipt"
-              onClick={() => handlePreview(receipt.path)}
-              className="flex size-8 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F0F0F0] hover:text-black"
-            >
-              <Eye className="size-4" strokeWidth={1.5} />
-            </button>
+            <ReceiptPreviewDialog
+              receipt={receipt}
+              trigger={
+                <button
+                  type="button"
+                  aria-label={`Preview ${receipt.name}`}
+                  className="flex size-8 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F0F0F0] hover:text-black"
+                >
+                  <Eye className="size-4" strokeWidth={1.5} />
+                </button>
+              }
+            />
             {!disabled && (
               <button
                 type="button"
