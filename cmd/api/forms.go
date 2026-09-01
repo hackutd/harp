@@ -37,6 +37,20 @@ func (app *application) getFormsOverview(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Prime the settings cache in one round trip. The four typed getters below
+	// then answer from it, which keeps each key's own default in the store
+	// where it belongs -- they genuinely differ (applications default closed,
+	// the RSVP toggles default open).
+	if _, err := app.store.Settings.GetMany(r.Context(),
+		store.SettingsKeyApplicationsEnabled,
+		store.SettingsKeyRSVPEnabled,
+		store.SettingsKeyTravelRSVPEnabled,
+		store.SettingsKeyApplicationDueDate,
+	); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	applicationsEnabled, err := app.store.Settings.GetApplicationsEnabled(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)

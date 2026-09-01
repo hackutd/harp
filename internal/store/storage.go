@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -69,6 +70,9 @@ type Storage struct {
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {
+		// GetMany reads several settings in one round trip and primes the
+		// cache, so the typed getters that follow cost no further queries.
+		GetMany(ctx context.Context, keys ...string) (map[string]json.RawMessage, error)
 		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
 		UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
@@ -189,11 +193,13 @@ type Storage struct {
 }
 
 func NewStorage(db *sql.DB) Storage {
+	settings := newSettingsStore(db)
+
 	return Storage{
 		Users:                  &UsersStore{db: db},
 		Application:            &ApplicationsStore{db: db},
-		Settings:               &SettingsStore{db: db},
-		Hackathon:              &HackathonStore{db: db},
+		Settings:               settings,
+		Hackathon:              &HackathonStore{db: db, settings: settings},
 		ApplicationReviews:     &ApplicationReviewsStore{db: db},
 		Scans:                  &ScansStore{db: db},
 		Schedule:               &ScheduleStore{db: db},

@@ -40,6 +40,12 @@ func TestGetFormsOverview(t *testing.T) {
 	}
 
 	mockApplications.On("GetFormOperationsStats").Return(stats, nil).Once()
+	mockSettings.On("GetMany", []string{
+		store.SettingsKeyApplicationsEnabled,
+		store.SettingsKeyRSVPEnabled,
+		store.SettingsKeyTravelRSVPEnabled,
+		store.SettingsKeyApplicationDueDate,
+	}).Return(map[string]json.RawMessage{}, nil).Once()
 	mockSettings.On("GetApplicationsEnabled").Return(true, nil).Once()
 	mockSettings.On("GetRSVPEnabled").Return(true, nil).Once()
 	mockSettings.On("GetTravelRSVPEnabled").Return(false, nil).Once()

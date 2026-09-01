@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -240,6 +241,14 @@ func (m *MockApplicationStore) GetMealGroupByUserID(ctx context.Context, userID 
 // mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock
+}
+
+func (m *MockSettingsStore) GetMany(ctx context.Context, keys ...string) (map[string]json.RawMessage, error) {
+	args := m.Called(keys)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]json.RawMessage), args.Error(1)
 }
 
 func (m *MockSettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {

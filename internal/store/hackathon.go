@@ -7,6 +7,10 @@ import (
 
 type HackathonStore struct {
 	db *sql.DB
+	// settings is held only so a reset can drop the settings cache: the reset
+	// writes applications_enabled and friends straight through its own
+	// transaction, where the store's own invalidation never runs.
+	settings *SettingsStore
 }
 
 // ResetOptions selects which domains of hackathon data a reset clears.
@@ -144,6 +148,10 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
+	}
+
+	if s.settings != nil {
+		s.settings.invalidateAll()
 	}
 
 	return paths, nil
