@@ -220,3 +220,22 @@ func TestDeleteHackerLink(t *testing.T) {
 		mockLinks.AssertExpectations(t)
 	})
 }
+
+func TestRequireRoleMiddleware_HackerLinks(t *testing.T) {
+	t.Run("admin gets 403 on superadmin hacker link routes", func(t *testing.T) {
+		app := newTestApplication(t)
+
+		handler := app.RequireRoleMiddleware(store.RoleSuperAdmin)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			t.Error("handler should not be called")
+		}))
+
+		body := `{"label":"Discord","url":"https://discord.gg/hackutd","icon":"discord","display_order":1}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, handler)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+	})
+}

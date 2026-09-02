@@ -11,7 +11,3 @@ CREATE TABLE IF NOT EXISTS hacker_links (
 CREATE TRIGGER trg_hacker_links_updated_at
 BEFORE UPDATE ON hacker_links
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-INSERT INTO hacker_links (label, url, icon, display_order) VALUES
-    ('Devpost', 'https://devpost.com', 'devpost', 0),
-    ('Discord', 'https://discord.com', 'discord', 1);
