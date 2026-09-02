@@ -192,22 +192,20 @@ export const useGradingStore = create<GradingState>((set, get) => ({
     const res = await setApplicationStatus(applicationId, status);
 
     if (res.status === 200) {
-      const { applications, currentIndex } = get();
+      const { applications, detail } = get();
       const updated = applications.map((app) =>
         app.id === applicationId ? { ...app, status } : app,
       );
-      set({ applications: updated, grading: false });
+      set({
+        applications: updated,
+        grading: false,
+        detail:
+          detail?.id === applicationId && res.data
+            ? res.data.application
+            : detail,
+      });
 
       toast.success(`Application ${status}`);
-
-      // Auto-advance to next
-      if (currentIndex < updated.length - 1) {
-        const newIndex = currentIndex + 1;
-        set({ currentIndex: newIndex });
-        get().loadDetail(updated[newIndex].id);
-      } else if (get().nextCursor) {
-        get().navigateNext();
-      }
     } else {
       set({ grading: false });
       toast.error(res.error ?? "Failed to update application status");

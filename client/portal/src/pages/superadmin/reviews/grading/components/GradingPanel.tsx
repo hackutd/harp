@@ -1,4 +1,11 @@
-import { Minus, Plane, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  Check,
+  Minus,
+  Plane,
+  RotateCcw,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import { memo, useState } from "react";
 
 import {
@@ -32,6 +39,13 @@ const TRAVEL_STATUS_COLORS: Record<TravelStatus, string> = {
   rejected: "bg-red-100 text-red-800",
 };
 
+const TRAVEL_STATUS_LABELS: Record<TravelStatus, string> = {
+  not_requested: "Not requested",
+  pending: "Pending decision",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
 const RSVP_STATUS_COLORS: Record<RSVPStatus, string> = {
   pending: "bg-gray-100 text-gray-800",
   confirmed: "bg-green-100 text-green-800",
@@ -43,6 +57,19 @@ const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
   confirmed: "spot claimed",
   declined: "spot declined",
 };
+
+function formatTravelAmount(
+  cents: number | null | undefined,
+  fallback: string,
+) {
+  if (cents == null) return fallback;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
 
 /**
  * Resets discard what the hacker submitted and cannot be undone, so each one
@@ -159,43 +186,85 @@ export const GradingPanel = memo(function GradingPanel({
 
   return (
     <div className="space-y-4 p-4">
-      {/* Current Status */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Current Status</Label>
-        <div className="mt-1">
+      {/* Application decision */}
+      <section aria-label="Application" className="border-b pb-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Application
+            </p>
+          </div>
           <Badge className={getStatusColor(listItem.status)}>
             {listItem.status}
           </Badge>
         </div>
-      </div>
 
-      {/* Vote Summary */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Vote Summary</Label>
-        <p className="text-sm mt-1">
-          {listItem.reviews_completed} / {listItem.reviews_assigned} reviews
-          completed
-        </p>
-        <div className="flex items-center gap-2 flex-wrap mt-1.5">
-          <Badge className="bg-green-100 text-green-800 text-sm px-2.5 py-1">
-            <ThumbsUp className="h-3.5 w-3.5 mr-1" />
-            {listItem.accept_votes}
-          </Badge>
-          <Badge className="bg-red-100 text-red-800 text-sm px-2.5 py-1">
-            <ThumbsDown className="h-3.5 w-3.5 mr-1" />
-            {listItem.reject_votes}
-          </Badge>
-          <Badge className="bg-yellow-100 text-yellow-800 text-sm px-2.5 py-1">
-            <Minus className="h-3.5 w-3.5 mr-1" />
-            {listItem.waitlist_votes}
-          </Badge>
+        <div className="mt-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium">Application reviewer votes</p>
+            <p className="text-xs text-muted-foreground">
+              {listItem.reviews_completed} of {listItem.reviews_assigned}{" "}
+              complete
+            </p>
+          </div>
+          <div className="mt-3 grid grid-cols-3 divide-x">
+            <div className="flex items-center justify-center gap-2 px-1">
+              <ThumbsDown className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-semibold tabular-nums">
+                  {listItem.reject_votes}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Reject</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-2 px-1">
+              <Minus className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-semibold tabular-nums">
+                  {listItem.waitlist_votes}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Waitlist</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-2 px-1">
+              <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-semibold tabular-nums">
+                  {listItem.accept_votes}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Accept</p>
+              </div>
+            </div>
+          </div>
           {listItem.ai_percent != null && (
-            <Badge variant="secondary" className="text-sm px-2.5 py-1">
-              AI: {listItem.ai_percent}%
-            </Badge>
+            <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
+              <span className="text-muted-foreground">AI indicator</span>
+              <span className="font-medium tabular-nums">
+                {listItem.ai_percent}%
+              </span>
+            </div>
           )}
         </div>
-      </div>
+
+        <div className="mt-4">
+          <GradingActionButtons
+            disabled={grading}
+            onReject={() => onGrade("rejected")}
+            onWaitlist={() => onGrade("waitlisted")}
+            onAccept={() => onGrade("accepted")}
+            label={null}
+            selected={
+              listItem.status === "rejected"
+                ? "reject"
+                : listItem.status === "waitlisted"
+                  ? "waitlist"
+                  : listItem.status === "accepted"
+                    ? "accept"
+                    : null
+            }
+          />
+        </div>
+      </section>
 
       {/* RSVP — one-shot, so a mistaken decline needs a reset to undo */}
       {(listItem.status === "accepted" ||
@@ -223,66 +292,116 @@ export const GradingPanel = memo(function GradingPanel({
 
       {/* Travel Reimbursement — only when the applicant requested it */}
       {listItem.travel_status !== "not_requested" && (
-        <div>
-          <Label className="text-xs text-muted-foreground">
-            Travel Reimbursement
-          </Label>
-          <div className="flex items-center gap-2 flex-wrap mt-1.5">
+        <section aria-label="Travel reimbursement" className="border-b pb-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Travel · Separate decision
+              </p>
+            </div>
             <Badge
-              className={`${TRAVEL_STATUS_COLORS[listItem.travel_status]} text-sm px-2.5 py-1`}
+              className={`${TRAVEL_STATUS_COLORS[listItem.travel_status]} shrink-0 px-2.5 py-1 text-xs`}
             >
-              <Plane className="h-3.5 w-3.5 mr-1" />
-              {listItem.travel_status}
-            </Badge>
-            {listItem.travel_approved_amount_cents != null && (
-              <Badge variant="outline" className="text-sm px-2.5 py-1">
-                ${(listItem.travel_approved_amount_cents / 100).toFixed(2)}
-                approved
-              </Badge>
-            )}
-            <Badge className="bg-green-100 text-green-800 text-sm px-2.5 py-1">
-              <ThumbsUp className="h-3.5 w-3.5 mr-1" />
-              {listItem.travel_yes_votes} yes
-            </Badge>
-            <Badge className="bg-red-100 text-red-800 text-sm px-2.5 py-1">
-              <ThumbsDown className="h-3.5 w-3.5 mr-1" />
-              {listItem.travel_no_votes} no
+              <Plane className="mr-1 h-3.5 w-3.5" />
+              {TRAVEL_STATUS_LABELS[listItem.travel_status]}
             </Badge>
           </div>
+
+          <div className="mt-4 grid grid-cols-2 divide-x border-y py-3">
+            <div className="pr-3">
+              <p className="text-xs text-muted-foreground">
+                Requested estimate
+              </p>
+              <p className="mt-0.5 text-base font-semibold tabular-nums">
+                {formatTravelAmount(
+                  listItem.estimated_travel_cost_cents,
+                  "Not provided",
+                )}
+              </p>
+            </div>
+            <div className="pl-3">
+              <p className="text-xs text-muted-foreground">Approved amount</p>
+              <p className="mt-0.5 text-base font-semibold tabular-nums">
+                {formatTravelAmount(
+                  listItem.travel_approved_amount_cents,
+                  "Not set",
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <p className="text-xs font-medium">Travel reviewer votes</p>
+            <div className="mt-3 grid grid-cols-2 divide-x">
+              <div className="flex items-center justify-center gap-2 px-1">
+                <ThumbsDown className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {listItem.travel_no_votes}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">No</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-2 px-1">
+                <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {listItem.travel_yes_votes}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">Yes</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {travelDecisionBlocker && (
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
               {travelDecisionBlocker}
             </p>
           )}
-          <div className="flex gap-2 mt-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 cursor-pointer text-red-700 hover:text-red-800 hover:bg-red-50"
-              disabled={
-                grading ||
-                travelDecisionLocked ||
-                listItem.travel_status === "rejected"
-              }
-              onClick={() => onGradeTravel("rejected")}
-            >
-              <ThumbsDown className="h-3.5 w-3.5 mr-1" />
-              Reject Travel
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 cursor-pointer text-green-700 hover:text-green-800 hover:bg-green-50"
-              disabled={
-                grading || (travelDecisionLocked && !canEditCurrentApproval)
-              }
-              onClick={openApproval}
-            >
-              <ThumbsUp className="h-3.5 w-3.5 mr-1" />
-              {listItem.travel_status === "approved"
-                ? "Edit Amount"
-                : "Approve Travel"}
-            </Button>
+          <div className="mt-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                aria-pressed={listItem.travel_status === "rejected"}
+                className={`w-full cursor-pointer disabled:cursor-not-allowed ${
+                  listItem.travel_status === "rejected"
+                    ? "border-foreground/40 bg-accent text-accent-foreground shadow-xs"
+                    : ""
+                }`}
+                disabled={
+                  grading ||
+                  travelDecisionLocked ||
+                  listItem.travel_status === "rejected"
+                }
+                onClick={() => onGradeTravel("rejected")}
+              >
+                <ThumbsDown className="h-4 w-4" />
+                Reject
+                {listItem.travel_status === "rejected" && (
+                  <Check className="ml-auto h-4 w-4" aria-label="Selected" />
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                aria-pressed={listItem.travel_status === "approved"}
+                className={`w-full cursor-pointer disabled:cursor-not-allowed ${
+                  listItem.travel_status === "approved"
+                    ? "border-foreground/40 bg-accent text-accent-foreground shadow-xs"
+                    : ""
+                }`}
+                disabled={
+                  grading || (travelDecisionLocked && !canEditCurrentApproval)
+                }
+                onClick={openApproval}
+              >
+                <ThumbsUp className="h-4 w-4" />
+                Approve
+                {listItem.travel_status === "approved" && (
+                  <Check className="ml-auto h-4 w-4" aria-label="Selected" />
+                )}
+              </Button>
+            </div>
           </div>
           {listItem.travel_status !== "pending" && (
             <Button
@@ -297,48 +416,111 @@ export const GradingPanel = memo(function GradingPanel({
           )}
 
           <AlertDialog open={approvalOpen} onOpenChange={setApprovalOpen}>
-            <AlertDialogContent>
+            <AlertDialogContent className="gap-5">
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Approve travel reimbursement
+                  {listItem.travel_status === "approved"
+                    ? "Edit approved travel amount"
+                    : "Set approved travel amount"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Set the maximum amount the organization is committing to this
-                  person. This can be lower than the amount they requested.
+                  Set the most the organization will reimburse this person. The
+                  requested estimate will stay unchanged.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className="space-y-2 py-1">
-                {listItem.estimated_travel_cost_cents != null && (
-                  <p className="text-sm text-muted-foreground">
-                    Requested estimate: ${" "}
-                    {(listItem.estimated_travel_cost_cents / 100).toFixed(2)}
-                  </p>
-                )}
-                <Label htmlFor="travel-approved-amount">
-                  Approved amount (USD)
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    $
-                  </span>
-                  <Input
-                    id="travel-approved-amount"
-                    autoFocus
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={approvalAmount}
-                    onChange={(event) => {
-                      setApprovalAmount(event.target.value);
-                      setApprovalError(null);
-                    }}
-                    className="pl-7"
-                    placeholder="0.00"
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/50 p-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Requested</p>
+                    <p className="mt-1 font-medium tabular-nums">
+                      {formatTravelAmount(
+                        listItem.estimated_travel_cost_cents,
+                        "Not provided",
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Currently approved
+                    </p>
+                    <p className="mt-1 font-medium tabular-nums">
+                      {formatTravelAmount(
+                        listItem.travel_approved_amount_cents,
+                        "Not set",
+                      )}
+                    </p>
+                  </div>
                 </div>
-                {approvalError && (
-                  <p className="text-sm text-destructive">{approvalError}</p>
-                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="travel-approved-amount">
+                      Approved amount
+                    </Label>
+                    {(listItem.estimated_travel_cost_cents ?? 0) > 0 && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto px-0 text-xs font-normal"
+                        onClick={() => {
+                          setApprovalAmount(
+                            (
+                              listItem.estimated_travel_cost_cents! / 100
+                            ).toFixed(2),
+                          );
+                          setApprovalError(null);
+                        }}
+                      >
+                        Use requested amount
+                      </Button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      id="travel-approved-amount"
+                      aria-describedby={
+                        approvalError
+                          ? "travel-approved-amount-help travel-approved-amount-error"
+                          : "travel-approved-amount-help"
+                      }
+                      aria-invalid={!!approvalError}
+                      autoFocus
+                      type="number"
+                      inputMode="decimal"
+                      min="0.01"
+                      step="0.01"
+                      value={approvalAmount}
+                      onChange={(event) => {
+                        setApprovalAmount(event.target.value);
+                        setApprovalError(null);
+                      }}
+                      className="h-11 pl-7 pr-14 text-base tabular-nums"
+                      placeholder="0.00"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                      USD
+                    </span>
+                  </div>
+                  <p
+                    id="travel-approved-amount-help"
+                    className="text-xs text-muted-foreground"
+                  >
+                    You can approve less than the requested estimate.
+                  </p>
+                  {approvalError && (
+                    <p
+                      id="travel-approved-amount-error"
+                      className="text-sm text-destructive"
+                      role="alert"
+                    >
+                      {approvalError}
+                    </p>
+                  )}
+                </div>
               </div>
               <AlertDialogFooter>
                 <AlertDialogCancel className="cursor-pointer">
@@ -351,7 +533,9 @@ export const GradingPanel = memo(function GradingPanel({
                     confirmApproval();
                   }}
                 >
-                  Approve amount
+                  {listItem.travel_status === "approved"
+                    ? "Save approved amount"
+                    : "Approve & save amount"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -365,20 +549,11 @@ export const GradingPanel = memo(function GradingPanel({
               onConfirm={onResetTravelRSVP}
             />
           )}
-        </div>
+        </section>
       )}
 
       {/* Reviewer Notes */}
       <ReviewerNotesList notes={notes} loading={notesLoading} />
-
-      {/* Grade Applicant */}
-      <GradingActionButtons
-        disabled={grading}
-        onReject={() => onGrade("rejected")}
-        onWaitlist={() => onGrade("waitlisted")}
-        onAccept={() => onGrade("accepted")}
-        label="Grade Applicant"
-      />
     </div>
   );
 });
