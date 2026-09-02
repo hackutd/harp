@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.13.0](https://github.com/hackutd/harp/compare/v0.12.0...v0.13.0) (2026-09-02)
+
+
+### Features
+
+* "Add to Home Screen" wording + "Get Notified" push dialog ([#142](https://github.com/hackutd/harp/issues/142)) ([db20740](https://github.com/hackutd/harp/commit/db20740136e4917f4252c849e1422f098939d6f9))
+* auto-open install walkthrough on mobile browsers instead of toast ([#144](https://github.com/hackutd/harp/issues/144)) ([74598c5](https://github.com/hackutd/harp/commit/74598c58fe3ce771adaa667fe4c47b17f8ee3937))
+* hide hacker information from admins ([#140](https://github.com/hackutd/harp/issues/140)) ([f9ec8d0](https://github.com/hackutd/harp/commit/f9ec8d09e6533372ab8a95ca1f3013047c50d513))
+* install walkthrough slideshow + push notification dialog ([#138](https://github.com/hackutd/harp/issues/138)) ([67c84cc](https://github.com/hackutd/harp/commit/67c84cc7754d25f3cbfcfd44d186e1e11bb24eae))
+* many frontend improvements & delete user ([#151](https://github.com/hackutd/harp/issues/151)) ([7bf35b0](https://github.com/hackutd/harp/commit/7bf35b0078d6f7930efdbcb31b5a7dd252e664b9))
+* performance optimizations ([#149](https://github.com/hackutd/harp/issues/149)) ([ae11579](https://github.com/hackutd/harp/commit/ae115796032c1f1df0a55b8261ce12c4791a07b2))
+* rsvp and travel ([#145](https://github.com/hackutd/harp/issues/145)) ([49ba0e8](https://github.com/hackutd/harp/commit/49ba0e892e90e61ae4dffd9134e18e71ec52dc19))
+* superadmin-configurable Hacker Links shown as cards on hacker home ([#143](https://github.com/hackutd/harp/issues/143)) ([f3d6a1c](https://github.com/hackutd/harp/commit/f3d6a1c7cfd60f37cbb82efa97ed0c75fda94640))
+* surface hacker meal group in portal UI ([#139](https://github.com/hackutd/harp/issues/139)) ([4a20ee8](https://github.com/hackutd/harp/commit/4a20ee82d79960ee24f0f46f7ef0e2dd11252c60))
+
+
+### Bug Fixes
+
+* key rate limiter by session user with per-IP fallback ([#152](https://github.com/hackutd/harp/issues/152)) ([cca2761](https://github.com/hackutd/harp/commit/cca2761f4e9f855ffbe9c60c2d0ae038da4378f0))
+
 ## [0.12.0](https://github.com/hackutd/harp/compare/v0.11.0...v0.12.0) (2026-08-27)
 
 
