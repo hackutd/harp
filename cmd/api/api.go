@@ -383,6 +383,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/users", func(r chi.Router) {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
+						r.Delete("/{userID}", app.deleteUserHandler)
 					})
 
 					// Scheduled push notifications

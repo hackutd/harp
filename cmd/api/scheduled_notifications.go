@@ -95,7 +95,7 @@ func (app *application) createScheduledNotificationHandler(w http.ResponseWriter
 		URL:         payload.URL,
 		TargetRole:  toUserRolePtr(payload.TargetRole),
 		ScheduledAt: payload.ScheduledAt,
-		CreatedBy:   user.ID,
+		CreatedBy:   &user.ID,
 	}
 
 	if err := app.store.ScheduledNotifications.Create(r.Context(), n); err != nil {

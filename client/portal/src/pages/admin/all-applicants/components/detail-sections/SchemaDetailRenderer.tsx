@@ -54,7 +54,7 @@ export function SchemaDetailRenderer({
                     value
                   ) {
                     return (
-                      <div key={field.id} className="col-span-2">
+                      <div key={field.id} className="col-span-full">
                         <Label className="text-muted-foreground text-xs">
                           {field.label}
                         </Label>
@@ -67,6 +67,21 @@ export function SchemaDetailRenderer({
                           >
                             {value}
                           </a>
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  // Short-answer responses run long, so they get their own
+                  // row instead of being squeezed into a grid column.
+                  if (field.type === "textarea") {
+                    return (
+                      <div key={field.id} className="col-span-full">
+                        <Label className="text-muted-foreground text-xs">
+                          {field.label}
+                        </Label>
+                        <p className="whitespace-pre-wrap">
+                          {formatResponseValue(value, field)}
                         </p>
                       </div>
                     );

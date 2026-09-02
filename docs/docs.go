@@ -8828,6 +8828,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/users/{userID}": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Permanently deletes a user along with their application, uploaded files, scans, reviews, and auth identity. Cannot be used on your own account.",
+                "tags": [
+                    "superadmin/users"
+                ],
+                "summary": "Delete a user (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/users/{userID}/role": {
             "patch": {
                 "security": [
@@ -9077,7 +9171,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Permanently deletes the authenticated user's account, application, scans, and auth identity",
+                "description": "Permanently deletes the authenticated user's account, application, uploads, scans, and auth identity",
                 "tags": [
                     "hackers"
                 ],
@@ -9413,6 +9507,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "scanned_by": {
+                    "description": "Nil once the staff account that performed the scan is deleted; the scan\nitself belongs to the hacker and outlives them.",
                     "type": "string"
                 },
                 "user_id": {
@@ -11451,6 +11546,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "scanned_by": {
+                    "description": "Nil once the staff account that performed the scan is deleted; the scan\nitself belongs to the hacker and outlives them.",
                     "type": "string"
                 },
                 "user_id": {
@@ -11586,6 +11682,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_by": {
+                    "description": "Nil once the author's account is deleted; the notification outlives them.",
                     "type": "string"
                 },
                 "id": {

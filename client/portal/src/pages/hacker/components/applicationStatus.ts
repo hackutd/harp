@@ -24,7 +24,7 @@ export const STATUS_MESSAGES: Record<ApplicationStatus, string> = {
 export const STATUS_PILL_COLORS: Record<ApplicationStatus, string> = {
   draft: "bg-[#7A7973]",
   submitted: "bg-[#7A7973]",
-  accepted: "bg-[#5A7D63]",
-  rejected: "bg-[#8F5F5A]",
-  waitlisted: "bg-[#8A7444]",
+  accepted: "bg-emerald-700",
+  rejected: "bg-red-700",
+  waitlisted: "bg-amber-800",
 };

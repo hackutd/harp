@@ -489,6 +489,95 @@ func resetReviewAssignmentToggle(ctx context.Context, tx *sql.Tx) error {
 	return err
 }
 
+// removeReviewAssignmentEntry drops a user's entry from the review assignment
+// toggle setting within an existing transaction. The setting is a JSONB array
+// keyed by user id with no foreign key, so deleting a user would otherwise leave
+// a dangling entry behind. Inverse of the append in UsersStore.Create.
+func removeReviewAssignmentEntry(ctx context.Context, tx *sql.Tx, userID string) error {
+	var value []byte
+	err := tx.QueryRowContext(ctx,
+		`SELECT value FROM settings WHERE key = $1 FOR UPDATE`,
+		SettingsKeyReviewAssignmentToggle,
+	).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	entries, err := parseReviewAssignmentEntries(value)
+	if err != nil {
+		// An unreadable setting is not worth failing a deletion over; the
+		// dangling entry is inert either way.
+		return nil
+	}
+
+	remaining := make([]ReviewAssignmentEntry, 0, len(entries))
+	for _, e := range entries {
+		if e.ID != userID {
+			remaining = append(remaining, e)
+		}
+	}
+	if len(remaining) == len(entries) {
+		return nil
+	}
+
+	updated, err := json.Marshal(remaining)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE settings SET value = $1, updated_at = NOW() WHERE key = $2`,
+		updated, SettingsKeyReviewAssignmentToggle,
+	)
+	return err
+}
+
+// rebalanceScanStats recomputes the scan_stats counter cache from the
+// authoritative scans table within an existing transaction, and returns the
+// recomputed counts. The settings row is locked FOR UPDATE to serialize against
+// concurrent incrementScanStat calls.
+//
+// incrementScanStat has no decrement path, so any operation that deletes scan
+// rows must call this or the cache stays permanently overcounted.
+func rebalanceScanStats(ctx context.Context, tx *sql.Tx) (map[string]int, error) {
+	if _, err := tx.ExecContext(ctx, `SELECT value FROM settings WHERE key = $1 FOR UPDATE`, SettingsKeyScanStats); err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.QueryContext(ctx, `SELECT scan_type, COUNT(*) FROM scans GROUP BY scan_type`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	statsMap := make(map[string]int)
+	for rows.Next() {
+		var scanType string
+		var count int
+		if err := rows.Scan(&scanType, &count); err != nil {
+			return nil, err
+		}
+		statsMap[scanType] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	value, err := json.Marshal(statsMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `UPDATE settings SET value = $1, updated_at = NOW() WHERE key = $2`, value, SettingsKeyScanStats); err != nil {
+		return nil, err
+	}
+
+	return statsMap, nil
+}
+
 // DefaultScanTypes mirrors the seeded scan_types setting (migrations 000006 and
 // 000021). These two are structural — check-in gates the event and walk-in
 // drives the walk-in queue — so a reset restores them rather than emptying the

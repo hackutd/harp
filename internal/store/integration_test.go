@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 
@@ -250,5 +252,158 @@ func TestIntegrationSettingsCache(t *testing.T) {
 	}
 	if _, ok := many[SettingsKeyRSVPEnabled]; !ok {
 		t.Error("GetMany missed rsvp_enabled")
+	}
+}
+
+// seedIntegrationDeletion layers the rows a user deletion has to reason about on
+// top of seedIntegration: the admin has reviewed two applications, checked Alice
+// in, and scheduled a notification, and both they and Alice carry a
+// review_assignment_toggle entry and uploaded files.
+func seedIntegrationDeletion(t *testing.T, db *sql.DB) {
+	t.Helper()
+	ctx := context.Background()
+	stmts := []string{
+		`INSERT INTO scans (id, user_id, scan_type, scanned_by, points) VALUES
+		  ('cccccccc-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111','check_in','44444444-4444-4444-4444-444444444444',5),
+		  ('cccccccc-0000-0000-0000-000000000002','22222222-2222-2222-2222-222222222222','check_in','44444444-4444-4444-4444-444444444444',5),
+		  ('cccccccc-0000-0000-0000-000000000003','11111111-1111-1111-1111-111111111111','lunch','44444444-4444-4444-4444-444444444444',0)`,
+		`INSERT INTO scheduled_notifications (id, title, body, scheduled_at, created_by) VALUES
+		  ('dddddddd-0000-0000-0000-000000000001','Doors open','Come on in', NOW() + interval '1 hour','44444444-4444-4444-4444-444444444444')`,
+		`UPDATE applications SET resume_path = 'hackathons/test/resumes/11111111-1111-1111-1111-111111111111/abc.pdf'
+		   WHERE user_id = '11111111-1111-1111-1111-111111111111'`,
+		`INSERT INTO settings (key, value) VALUES ('review_assignment_toggle',
+		  '[{"id":"44444444-4444-4444-4444-444444444444","enabled":true},{"id":"11111111-1111-1111-1111-111111111111","enabled":false}]'::jsonb)
+		  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+		`INSERT INTO settings (key, value) VALUES ('scan_stats', '{"check_in":99,"lunch":99}'::jsonb)
+		  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+	}
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
+			t.Fatalf("seed failed: %v\n%s", err, s)
+		}
+	}
+}
+
+func TestIntegrationDeleteAdmin(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	seedIntegrationDeletion(t, db)
+
+	s := &UsersStore{db: db}
+	ctx := context.Background()
+	const adminID = "44444444-4444-4444-4444-444444444444"
+
+	// scheduled_notifications.created_by used to be ON DELETE RESTRICT, which
+	// made every staff account with a scheduled notification undeletable.
+	paths, err := s.Delete(ctx, adminID)
+	if err != nil {
+		t.Fatalf("deleting the admin failed: %v", err)
+	}
+	if len(paths.Resumes) != 0 || len(paths.TravelReceipts) != 0 {
+		t.Errorf("admin has no uploads, got %+v", paths)
+	}
+
+	// The scans they performed belong to the hackers and must outlive them.
+	var scanCount, unattributed int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*), COUNT(*) FILTER (WHERE scanned_by IS NULL) FROM scans`,
+	).Scan(&scanCount, &unattributed); err != nil {
+		t.Fatal(err)
+	}
+	if scanCount != 3 || unattributed != 3 {
+		t.Errorf("got %d scans (%d unattributed), want 3 scans all unattributed", scanCount, unattributed)
+	}
+
+	var notifCount, orphanedNotifs int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*), COUNT(*) FILTER (WHERE created_by IS NULL) FROM scheduled_notifications`,
+	).Scan(&notifCount, &orphanedNotifs); err != nil {
+		t.Fatal(err)
+	}
+	if notifCount != 1 || orphanedNotifs != 1 {
+		t.Errorf("got %d notifications (%d unattributed), want 1 unattributed", notifCount, orphanedNotifs)
+	}
+
+	// Their two review assignments cascaded, and trg_update_vote_counts should
+	// have walked the applications' counters back down.
+	var reviewCount int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM application_reviews`).Scan(&reviewCount); err != nil {
+		t.Fatal(err)
+	}
+	if reviewCount != 0 {
+		t.Errorf("got %d review rows, want 0", reviewCount)
+	}
+	var maxAssigned int
+	if err := db.QueryRowContext(ctx, `SELECT MAX(reviews_assigned) FROM applications`).Scan(&maxAssigned); err != nil {
+		t.Fatal(err)
+	}
+	if maxAssigned != 0 {
+		t.Errorf("reviews_assigned did not decrement: max is %d, want 0", maxAssigned)
+	}
+
+	// The toggle setting is a JSONB array keyed by user id with no foreign key,
+	// so nothing but this method prunes it.
+	var toggles []byte
+	if err := db.QueryRowContext(ctx,
+		`SELECT value FROM settings WHERE key = 'review_assignment_toggle'`,
+	).Scan(&toggles); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := parseReviewAssignmentEntries(toggles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ID != "11111111-1111-1111-1111-111111111111" {
+		t.Errorf("stale toggle entry left behind: %+v", entries)
+	}
+
+	if _, err := s.Delete(ctx, adminID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("second delete: got %v, want ErrNotFound", err)
+	}
+}
+
+func TestIntegrationDeleteHacker(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	seedIntegrationDeletion(t, db)
+
+	s := &UsersStore{db: db}
+	ctx := context.Background()
+	const aliceID = "11111111-1111-1111-1111-111111111111"
+
+	paths, err := s.Delete(ctx, aliceID)
+	if err != nil {
+		t.Fatalf("deleting the hacker failed: %v", err)
+	}
+	if len(paths.Resumes) != 1 || paths.Resumes[0] != "hackathons/test/resumes/"+aliceID+"/abc.pdf" {
+		t.Errorf("resume path not collected for storage cleanup: %+v", paths.Resumes)
+	}
+	if len(paths.TravelReceipts) != 1 || paths.TravelReceipts[0] != "p/1.pdf" {
+		t.Errorf("travel receipt paths not collected: %+v", paths.TravelReceipts)
+	}
+
+	var remaining int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM scans WHERE user_id = $1`, aliceID).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Errorf("got %d of the hacker's own scans left, want 0", remaining)
+	}
+
+	// incrementScanStat never counts down, so the cascade above would otherwise
+	// leave scan_stats permanently overcounted.
+	var stats []byte
+	if err := db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = 'scan_stats'`).Scan(&stats); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]int
+	if err := json.Unmarshal(stats, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"check_in": 1}
+	if len(got) != len(want) || got["check_in"] != want["check_in"] {
+		t.Errorf("scan_stats = %v, want %v", got, want)
 	}
 }

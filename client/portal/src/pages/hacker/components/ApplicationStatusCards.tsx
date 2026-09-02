@@ -62,7 +62,7 @@ function travelCardContent(application: Application): TravelCard | null {
     case "rejected":
       return {
         pill: "Travel not approved",
-        pillColor: "bg-[#8F5F5A]",
+        pillColor: "bg-red-700",
         message:
           "We couldn't approve your travel reimbursement request this time. This doesn't affect your application decision.",
       };
@@ -74,7 +74,7 @@ function travelCardContent(application: Application): TravelCard | null {
   if (application.travel_rsvp_status === "confirmed") {
     return {
       pill: "Travel details submitted",
-      pillColor: "bg-[#5A7D63]",
+      pillColor: "bg-emerald-700",
       message:
         "We received your travel details and receipts. The organizing team will follow up about your reimbursement.",
       amountCents: application.travel_approved_amount_cents,
@@ -102,7 +102,7 @@ function travelCardContent(application: Application): TravelCard | null {
   if (application.rsvp_status !== "confirmed") {
     return {
       pill: "Travel approved",
-      pillColor: "bg-[#5A7D63]",
+      pillColor: "bg-emerald-700",
       message:
         "Your travel reimbursement was approved! Claim your spot first, then complete the travel form with your travel details and receipts.",
       amountCents: application.travel_approved_amount_cents,
@@ -110,7 +110,7 @@ function travelCardContent(application: Application): TravelCard | null {
   }
   return {
     pill: "Travel approved",
-    pillColor: "bg-[#5A7D63]",
+    pillColor: "bg-emerald-700",
     message:
       "Your travel reimbursement was approved! Complete the travel form with your travel details, ticket receipts, and payment info.",
     amountCents: application.travel_approved_amount_cents,
@@ -213,7 +213,7 @@ export function ApplicationStatusCards({
             className="group mt-5 flex w-full items-center justify-between gap-4 rounded-xl border border-[#E5E5E5] p-5 text-left transition-colors hover:bg-[#FAFAFA]"
           >
             <span className="block">
-              <span className="inline-block rounded-full bg-[#5A7D63] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
+              <span className="inline-block rounded-full bg-emerald-700 px-3 py-1 text-[11px] font-medium tracking-wide text-white">
                 Spot claimed
               </span>
               <span className="mt-3 block text-sm font-light text-[#8A8A8A]">

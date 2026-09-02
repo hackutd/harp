@@ -9,7 +9,8 @@ export interface ScheduledNotification {
   scheduled_at: string;
   sent_at: string | null;
   recipient_count: number;
-  created_by: string;
+  /** Null once the author's account is deleted. */
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

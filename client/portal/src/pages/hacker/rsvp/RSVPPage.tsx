@@ -5,6 +5,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { IncompleteFormAlert } from "@/components/IncompleteFormAlert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert } from "@/shared/lib/api";
+import {
+  collectIncompleteSections,
+  scrollToFirstInvalidField,
+  summarizeIncomplete,
+} from "@/shared/lib/form-errors";
 import {
   buildDefaultValues,
   buildZodSchema,
@@ -39,7 +45,7 @@ function RSVPResult({ status }: { status: Exclude<RSVPStatus, "pending"> }) {
     <div className="rounded-xl border border-[#E5E5E5] p-5">
       <span
         className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${
-          confirmed ? "bg-[#5A7D63]" : "bg-[#7A7973]"
+          confirmed ? "bg-emerald-700" : "bg-[#7A7973]"
         }`}
       >
         {confirmed ? "Spot claimed" : "Spot declined"}
@@ -72,6 +78,15 @@ export default function RSVPPage() {
     defaultValues: buildDefaultValues(schema),
     mode: "onTouched",
   });
+
+  // Questions still missing an answer, grouped by section. Derived from the
+  // live errors (rather than snapshotted on submit) so the list shrinks as the
+  // user fills them in.
+  const { errors: formErrors, isSubmitted } = form.formState;
+  const incompleteSections = useMemo(
+    () => (isSubmitted ? collectIncompleteSections(schema, formErrors) : []),
+    [isSubmitted, formErrors, schema],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -113,14 +128,23 @@ export default function RSVPPage() {
     setSubmitting(false);
   };
 
-  const handleConfirm = form.handleSubmit((values) => {
-    const fieldIds = new Set(schema.map((f) => f.id));
-    const responses: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(values)) {
-      if (fieldIds.has(key)) responses[key] = value;
-    }
-    return submitDecision("confirmed", responses);
-  });
+  const handleConfirm = form.handleSubmit(
+    (values) => {
+      const fieldIds = new Set(schema.map((f) => f.id));
+      const responses: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(values)) {
+        if (fieldIds.has(key)) responses[key] = value;
+      }
+      return submitDecision("confirmed", responses);
+    },
+    (errors) => {
+      // Name the unanswered questions instead of failing silently.
+      toast.error(
+        summarizeIncomplete(collectIncompleteSections(schema, errors)),
+      );
+      scrollToFirstInvalidField();
+    },
+  );
 
   if (loading) {
     return (
@@ -198,6 +222,8 @@ export default function RSVPPage() {
                 ))}
 
                 <div className="space-y-3">
+                  <IncompleteFormAlert sections={incompleteSections} />
+
                   <Button
                     type="submit"
                     loading={submitting}
@@ -233,7 +259,7 @@ export default function RSVPPage() {
                         </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => submitDecision("declined")}
-                          className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
+                          className="h-11 rounded-full bg-destructive px-6 font-normal text-white hover:bg-destructive-hover"
                         >
                           Decline
                         </AlertDialogAction>

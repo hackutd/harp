@@ -18,7 +18,8 @@ export interface Scan {
   id: string;
   user_id: string;
   scan_type: string;
-  scanned_by: string;
+  /** Null once the staff account that performed the scan is deleted. */
+  scanned_by: string | null;
   points: number;
   scanned_at: string;
   created_at: string;

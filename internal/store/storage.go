@@ -43,7 +43,7 @@ type Storage struct {
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 		GetByRole(ctx context.Context, role UserRole) ([]User, error)
-		Delete(ctx context.Context, userID string) error
+		Delete(ctx context.Context, userID string) (*DeletedUserPaths, error)
 		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {

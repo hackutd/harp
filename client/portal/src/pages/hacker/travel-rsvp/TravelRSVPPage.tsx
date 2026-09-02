@@ -5,6 +5,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { IncompleteFormAlert } from "@/components/IncompleteFormAlert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert } from "@/shared/lib/api";
 import {
+  collectIncompleteSections,
+  type IncompleteSection,
+  scrollToFirstInvalidField,
+  summarizeIncomplete,
+} from "@/shared/lib/form-errors";
+import {
   buildDefaultValues,
   buildZodSchema,
   deriveSections,
@@ -33,6 +40,9 @@ import { fetchMyTravelRSVP, submitMyTravelRSVP } from "./api";
 import { ReceiptPreviewDialog } from "./components/ReceiptPreviewDialog";
 import { ReceiptUploader } from "./components/ReceiptUploader";
 import type { TravelRSVPInfo, UploadedReceipt } from "./types";
+
+/** Anchor for the receipts block, so a failed submit can scroll to it. */
+const RECEIPTS_SECTION_ID = "travel-receipts";
 
 function formatUSD(cents: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -55,7 +65,7 @@ function TravelRSVPResult({
     <div className="rounded-xl border border-[#E5E5E5] p-5">
       <span
         className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${
-          confirmed ? "bg-[#5A7D63]" : "bg-[#7A7973]"
+          confirmed ? "bg-emerald-700" : "bg-[#7A7973]"
         }`}
       >
         {confirmed ? "Travel details submitted" : "Reimbursement declined"}
@@ -82,6 +92,7 @@ export default function TravelRSVPPage() {
   const [submitting, setSubmitting] = useState(false);
   const [travelRSVP, setTravelRSVP] = useState<TravelRSVPInfo | null>(null);
   const [receipts, setReceipts] = useState<UploadedReceipt[]>([]);
+  const [receiptsMissing, setReceiptsMissing] = useState(false);
 
   const schema = useMemo(
     () => travelRSVP?.travel_rsvp_schema ?? [],
@@ -96,6 +107,24 @@ export default function TravelRSVPPage() {
     defaultValues: buildDefaultValues(schema),
     mode: "onTouched",
   });
+
+  // Everything the user still has to fix, grouped by section. Derived from the
+  // live errors (rather than snapshotted on submit) so the list shrinks as they
+  // fill the gaps in.
+  const { errors: formErrors, isSubmitted } = form.formState;
+  const incompleteSections = useMemo<IncompleteSection[]>(() => {
+    const sections = isSubmitted
+      ? collectIncompleteSections(schema, formErrors)
+      : [];
+    if (receiptsMissing) {
+      sections.push({
+        id: RECEIPTS_SECTION_ID,
+        label: "Receipts",
+        fieldLabels: ["Upload at least one ticket receipt"],
+      });
+    }
+    return sections;
+  }, [isSubmitted, formErrors, schema, receiptsMissing]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -142,30 +171,46 @@ export default function TravelRSVPPage() {
     setSubmitting(false);
   };
 
-  const handleConfirm = form.handleSubmit((values) => {
-    const fieldIds = new Set(schema.map((f) => f.id));
-    const responses: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(values)) {
-      if (fieldIds.has(key)) responses[key] = value;
-    }
+  const handleConfirm = form.handleSubmit(
+    (values) => {
+      const fieldIds = new Set(schema.map((f) => f.id));
+      const responses: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(values)) {
+        if (fieldIds.has(key)) responses[key] = value;
+      }
 
-    // The backend enforces this too, and tells us which answer triggers it.
-    const receiptFieldID = travelRSVP?.receipt_required_field_id;
-    if (
-      receiptFieldID &&
-      responses[receiptFieldID] === travelRSVP?.receipt_required_value &&
-      receipts.length === 0
-    ) {
-      toast.error("Please upload at least one ticket receipt when flying");
-      return;
-    }
+      // The backend enforces this too, and tells us which answer triggers it.
+      const receiptFieldID = travelRSVP?.receipt_required_field_id;
+      if (
+        receiptFieldID &&
+        responses[receiptFieldID] === travelRSVP?.receipt_required_value &&
+        receipts.length === 0
+      ) {
+        setReceiptsMissing(true);
+        toast.error("Please upload at least one ticket receipt when flying");
+        document.getElementById(RECEIPTS_SECTION_ID)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        return;
+      }
 
-    return submitDecision(
-      "confirmed",
-      responses,
-      receipts.map((r) => r.path),
-    );
-  });
+      setReceiptsMissing(false);
+      return submitDecision(
+        "confirmed",
+        responses,
+        receipts.map((r) => r.path),
+      );
+    },
+    (errors) => {
+      // Point at the unanswered questions instead of failing silently at the
+      // bottom of a long form.
+      toast.error(
+        summarizeIncomplete(collectIncompleteSections(schema, errors)),
+      );
+      scrollToFirstInvalidField();
+    },
+  );
 
   if (loading) {
     return (
@@ -301,7 +346,7 @@ export default function TravelRSVPPage() {
                   />
                 ))}
 
-                <div className="space-y-3">
+                <div id={RECEIPTS_SECTION_ID} className="space-y-3">
                   <h2 className="text-xl font-light tracking-tight text-black">
                     Receipts
                   </h2>
@@ -311,12 +356,17 @@ export default function TravelRSVPPage() {
                   </p>
                   <ReceiptUploader
                     receipts={receipts}
-                    onChange={setReceipts}
+                    onChange={(next) => {
+                      setReceipts(next);
+                      if (next.length > 0) setReceiptsMissing(false);
+                    }}
                     disabled={submitting}
                   />
                 </div>
 
                 <div className="space-y-3">
+                  <IncompleteFormAlert sections={incompleteSections} />
+
                   <Button
                     type="submit"
                     loading={submitting}
@@ -352,7 +402,7 @@ export default function TravelRSVPPage() {
                         </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => submitDecision("declined")}
-                          className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
+                          className="h-11 rounded-full bg-destructive px-6 font-normal text-white hover:bg-destructive-hover"
                         >
                           Decline
                         </AlertDialogAction>

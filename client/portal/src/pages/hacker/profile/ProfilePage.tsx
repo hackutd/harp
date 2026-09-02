@@ -407,10 +407,13 @@ export default function ProfilePage() {
             <AlertDialogTrigger asChild>
               <button
                 type="button"
-                className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FFF5F5]"
+                className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-destructive/5"
               >
-                <Trash2 className="size-4.5 text-[#D14343]" strokeWidth={1.5} />
-                <span className="text-sm font-normal text-[#D14343]">
+                <Trash2
+                  className="size-4.5 text-destructive"
+                  strokeWidth={1.5}
+                />
+                <span className="text-sm font-normal text-destructive">
                   Delete account
                 </span>
               </button>
@@ -432,7 +435,7 @@ export default function ProfilePage() {
                 <AlertDialogAction
                   onClick={handleDeleteAccount}
                   disabled={deleting}
-                  className="h-11 rounded-full bg-[#D14343] px-6 font-normal text-white hover:bg-[#C03939]"
+                  className="h-11 rounded-full bg-destructive px-6 font-normal text-white hover:bg-destructive-hover"
                 >
                   {deleting ? "Deleting..." : "Delete"}
                 </AlertDialogAction>

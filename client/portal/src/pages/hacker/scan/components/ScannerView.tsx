@@ -134,11 +134,11 @@ export function ScannerView() {
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 px-6 text-center">
               {lastScanResult.success ? (
                 <CheckCircle2
-                  className="size-12 text-[#1A8A1A]"
+                  className="size-12 text-emerald-700"
                   strokeWidth={1.5}
                 />
               ) : (
-                <XCircle className="size-12 text-[#D32F2F]" strokeWidth={1.5} />
+                <XCircle className="size-12 text-red-600" strokeWidth={1.5} />
               )}
               <p className="text-lg font-normal text-black">
                 {lastScanResult.message}

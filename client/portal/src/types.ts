@@ -145,7 +145,8 @@ export interface NotificationFeedItem {
   sent_at: string | null;
   recipient_count: number;
   schedule_id: string | null;
-  created_by: string;
+  /** Null once the author's account is deleted. */
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

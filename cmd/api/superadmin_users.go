@@ -252,3 +252,62 @@ func (app *application) updateUserRoleHandler(w http.ResponseWriter, r *http.Req
 		app.internalServerError(w, r, err)
 	}
 }
+
+// deleteUserHandler permanently deletes a user and everything belonging to them.
+//
+//	@Summary		Delete a user (Super Admin)
+//	@Description	Permanently deletes a user along with their application, uploaded files, scans, reviews, and auth identity. Cannot be used on your own account.
+//	@Tags			superadmin/users
+//	@Param			userID	path	string	true	"User ID"
+//	@Success		204
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		404	{object}	object{error=string}
+//	@Failure		409	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/users/{userID} [delete]
+func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	actor := getUserFromContext(r.Context())
+	if actor == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("user not in context"))
+		return
+	}
+
+	userID := chi.URLParam(r, "userID")
+	if userID == "" {
+		app.badRequestResponse(w, r, errors.New("user ID is required"))
+		return
+	}
+
+	// Deleting yourself here would take the session down mid-request and, if you
+	// are the last super admin, lock the org out of the portal.
+	if userID == actor.ID {
+		app.conflictResponse(w, r, errors.New("you cannot delete your own account from user management"))
+		return
+	}
+
+	// The list endpoint does not expose supertokens_user_id, so the full user has
+	// to be loaded before the row goes away.
+	user, err := app.store.Users.GetByID(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("user not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.deleteUserAndIdentity(r, user); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("user not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

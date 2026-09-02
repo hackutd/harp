@@ -111,12 +111,14 @@ func mustExec(tx *sql.Tx, what, query string, args ...any) {
 	}
 }
 
-// clean removes everything the seeder owns. Order matters twice over:
+// clean removes everything the seeder owns. Order matters:
 //
-//   - scheduled_notifications.created_by is ON DELETE RESTRICT, so those rows
-//     must go before the users they point at.
 //   - schedule is DELETEd rather than TRUNCATEd so that
 //     scheduled_notifications.schedule_id fires its ON DELETE CASCADE.
+//
+// scheduled_notifications is still cleared before users, though created_by is
+// now ON DELETE SET NULL rather than RESTRICT, so the seeded notifications are
+// removed outright instead of surviving as unattributed rows.
 //
 // Users are filtered by seedUserPrefix so a real logged-in account survives.
 // The content tables have no ownership column, so the seeder claims them

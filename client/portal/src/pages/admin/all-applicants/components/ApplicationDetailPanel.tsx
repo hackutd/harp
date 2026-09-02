@@ -4,8 +4,7 @@ import {
   ClipboardPen,
   Utensils,
 } from "lucide-react";
-import { memo, useCallback, useState } from "react";
-import { toast } from "sonner";
+import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,12 +23,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRedactApplicants } from "@/shared/hooks";
-import { errorAlert } from "@/shared/lib/api";
 import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
 import type { Application } from "@/types";
 
-import { fetchApplicationResumeURL } from "../api";
 import { formatName, getStatusColor } from "../utils";
 import { LinksSection } from "./detail-sections";
 import { SchemaDetailRenderer } from "./detail-sections/SchemaDetailRenderer";
@@ -58,33 +55,8 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
   onPrevious,
   onNext,
 }: ApplicationDetailPanelProps) {
-  const [isOpeningResume, setIsOpeningResume] = useState(false);
   const pointsName = usePointsConfigStore((s) => s.pointsName);
   const redact = useRedactApplicants();
-
-  const handleViewResume = useCallback(async () => {
-    if (!application || !application.resume_path || isOpeningResume) {
-      return;
-    }
-
-    const resumeTab = window.open("", "_blank");
-    if (!resumeTab) {
-      toast.error("Please allow popups to view resumes.");
-      return;
-    }
-
-    setIsOpeningResume(true);
-    const res = await fetchApplicationResumeURL(application.id);
-
-    if (res.status === 200 && res.data?.download_url) {
-      resumeTab.location.href = res.data.download_url;
-    } else {
-      resumeTab.close();
-      errorAlert(res, "Failed to open resume");
-    }
-
-    setIsOpeningResume(false);
-  }, [application, isOpeningResume]);
 
   const email = application?.responses?.email as string | undefined;
   const hasNavigation = onPrevious != null || onNext != null;
@@ -190,11 +162,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
             ) : application ? (
               <div className="space-y-6 pb-2">
                 <SchemaDetailRenderer application={application} />
-                <LinksSection
-                  application={application}
-                  onViewResume={handleViewResume}
-                  isOpeningResume={isOpeningResume}
-                />
+                <LinksSection application={application} />
                 <TimelineSection application={application} />
               </div>
             ) : null}

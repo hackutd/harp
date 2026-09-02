@@ -161,7 +161,7 @@ function EventDetailsCard({
           <p className="flex items-center gap-2 text-[13px] text-black">
             <span
               className="size-2.5 rounded-[3px]"
-              style={{ backgroundColor: color.hex }}
+              style={{ backgroundColor: color.color }}
             />
             {color.label}
           </p>
@@ -359,7 +359,7 @@ export default function SchedulePage() {
               align="end"
               className="pointer-events-auto w-56 rounded-2xl border-none bg-[#1E1E1E] p-1.5 text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
             >
-              {FILTER_OPTIONS.map(({ key, label, hex }) => (
+              {FILTER_OPTIONS.map(({ key, label, color }) => (
                 <label
                   key={key}
                   className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/10"
@@ -367,7 +367,7 @@ export default function SchedulePage() {
                   <span className="flex items-center gap-3">
                     <span
                       className="size-4 rounded"
-                      style={{ backgroundColor: hex }}
+                      style={{ backgroundColor: color }}
                     />
                     <span className="text-sm font-light">{label}</span>
                   </span>
@@ -503,7 +503,7 @@ export default function SchedulePage() {
 
                 {showNow && (
                   <span
-                    className="absolute right-0 z-20 -translate-y-1/2 rounded-sm bg-[#FF3338] px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums"
+                    className="absolute right-0 z-20 -translate-y-1/2 rounded-sm bg-red-400 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums"
                     style={{ top: nowTop }}
                   >
                     {formatClock(nowParts.hour, nowParts.minute)}
@@ -568,7 +568,7 @@ export default function SchedulePage() {
                           <div
                             className="absolute inset-y-0 left-0 w-[5px]"
                             style={{
-                              backgroundColor: color.hex,
+                              backgroundColor: color.color,
                               borderRadius: "5px 0 0 5px",
                             }}
                           />
@@ -578,8 +578,8 @@ export default function SchedulePage() {
                             className="absolute inset-y-0 left-[5px] right-0 overflow-hidden rounded-r-sm px-2 py-1 transition-colors"
                             style={{
                               backgroundColor: isSelected
-                                ? color.hex
-                                : withAlpha(color.hex, 0.18),
+                                ? color.color
+                                : withAlpha(color.color, 0.18),
                             }}
                           >
                             <p
@@ -615,7 +615,7 @@ export default function SchedulePage() {
                       >
                         <div
                           className={cn(
-                            "bg-[#FF3338]",
+                            "bg-red-400",
                             isToday
                               ? "h-[3px] rounded-full"
                               : "h-px opacity-55",

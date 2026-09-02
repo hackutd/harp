@@ -63,9 +63,12 @@ func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role Use
 	return args.Get(0).(*User), args.Error(1)
 }
 
-func (m *MockUsersStore) Delete(ctx context.Context, userID string) error {
+func (m *MockUsersStore) Delete(ctx context.Context, userID string) (*DeletedUserPaths, error) {
 	args := m.Called(userID)
-	return args.Error(0)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DeletedUserPaths), args.Error(1)
 }
 
 func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {

@@ -183,7 +183,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	scan := &store.Scan{
 		UserID:    req.UserID,
 		ScanType:  req.ScanType,
-		ScannedBy: admin.ID,
+		ScannedBy: &admin.ID,
 		Points:    found.Points,
 	}
 

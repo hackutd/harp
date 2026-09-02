@@ -30,3 +30,9 @@ export interface PendingRoleChange {
   email: string;
   newRole: UserRole;
 }
+
+export interface PendingUserDeletion {
+  userId: string;
+  email: string;
+  name: string;
+}
