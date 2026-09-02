@@ -55,7 +55,8 @@ Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CL
 - **Entry point:** `cmd/api/main.go` — loads config, `cmd/api/api.go` — Chi router setup in `mount()`
 - **Database:** PostgreSQL 16.3, raw SQL (no ORM), repository pattern in `internal/store/`
 - **Auth:** SuperTokens (Passwordless magic link + Google OAuth), initialized in `internal/auth/`
-- **Middleware chain:** RequestID → RealIP → Logger → Recoverer → CORS → SuperTokens → RateLimiter → AuthRequired → RequireRole
+- **Middleware chain:** RequestID → RealIP → Logger → Recoverer → CORS → SuperTokens → RateLimiter (`/v1` only) → AuthRequired → RequireRole
+- **Rate limiting:** keyed by SuperTokens user ID when the request carries a verified session (`RATELIMITER_REQUESTS_COUNT`), falling back to client IP otherwise (`RATELIMITER_IP_REQUESTS_COUNT`, larger because a whole venue shares one NAT). Static assets and `/auth/*` are never limited.
 - **Roles (hierarchical):** `hacker` (1) < `admin` (2) < `super_admin` (3)
 - **JSON envelope:** Success: `{"data": ...}`, Error: `{"error": "..."}`
 - **Pagination:** Cursor-based with base64-encoded JSON cursors
@@ -100,7 +101,7 @@ Tests live in `cmd/api/` (`_test.go` files, same package as handlers):
 - `internal/db/` — PostgreSQL connection setup (pgx)
 - `internal/mailer/` — SendGrid email with embedded Go templates
 - `internal/auth/` — SuperTokens init, user creation from session
-- `internal/ratelimiter/` — fixed-window rate limiter
+- `internal/ratelimiter/` — fixed-window rate limiter (one instance per user-ID bucket, one per IP bucket)
 - `internal/logger/` — Zap logger (dev/prod modes based on `ENV`)
 
 ### Frontend (React 19 + TypeScript + Vite)

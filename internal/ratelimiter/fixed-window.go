@@ -20,18 +20,18 @@ func NewFixedWindowLimiter(limit int, window time.Duration) *FixedWindowLimiter 
 	}
 }
 
-func (rl *FixedWindowLimiter) Allow(ip string) (bool, time.Duration) {
+func (rl *FixedWindowLimiter) Allow(key string) (bool, time.Duration) {
 	rl.RLock()
-	count, exists := rl.clients[ip]
+	count, exists := rl.clients[key]
 	rl.RUnlock()
 
 	if !exists || count < rl.limit {
 		rl.Lock()
 		if !exists {
-			go rl.resetCount(ip)
+			go rl.resetCount(key)
 		}
 
-		rl.clients[ip]++
+		rl.clients[key]++
 		rl.Unlock()
 
 		return true, 0
@@ -40,9 +40,9 @@ func (rl *FixedWindowLimiter) Allow(ip string) (bool, time.Duration) {
 	return false, rl.window
 }
 
-func (rl *FixedWindowLimiter) resetCount(ip string) {
+func (rl *FixedWindowLimiter) resetCount(key string) {
 	time.Sleep(rl.window)
 	rl.Lock()
-	delete(rl.clients, ip)
+	delete(rl.clients, key)
 	rl.Unlock()
 }

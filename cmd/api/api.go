@@ -29,8 +29,15 @@ type application struct {
 	mailer            mailer.Client
 	gcsClient         gcs.Client
 	appleWalletPasses appleWalletPassGenerator
-	rateLimiter       ratelimiter.Limiter
-	dispatcherCancel  context.CancelFunc
+	// rateLimiter buckets requests by verified session user ID; ipRateLimiter
+	// is the fallback for requests without one. Split so the shared-IP budget
+	// (a venue full of hackers behind one NAT) can be tuned independently.
+	rateLimiter   ratelimiter.Limiter
+	ipRateLimiter ratelimiter.Limiter
+	// sessionUserID resolves the SuperTokens user ID for a request without
+	// requiring a session. Injected so tests can stub it.
+	sessionUserID    sessionUserIDResolver
+	dispatcherCancel context.CancelFunc
 }
 
 type config struct {
@@ -136,12 +143,14 @@ func (app *application) mount() http.Handler {
 	// Applied at root level so it intercepts /auth/* requests.
 	r.Use(supertokens.Middleware)
 
-	// Ratelimiter
-	if app.config.rateLimiter.Enabled {
-		r.Use(app.RateLimiterMiddleware)
-	}
-
 	r.Route("/v1", func(r chi.Router) {
+		// Ratelimiter. Scoped to the API so the SPA shell and static assets
+		// (served from /*) are never throttled; /auth/* is handled by the
+		// SuperTokens middleware above and never reaches this router.
+		if app.config.rateLimiter.Enabled {
+			r.Use(app.RateLimiterMiddleware)
+		}
+
 		// Public API (key auth)
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)

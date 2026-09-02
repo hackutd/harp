@@ -6,17 +6,41 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
 	"github.com/hackutd/harp/internal/auth"
+	"github.com/hackutd/harp/internal/ratelimiter"
 	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/recipe/session"
+	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
 )
 
 type contextKey string
 
 const userContextKey contextKey = "user"
+
+// sessionUserIDResolver reports the SuperTokens user ID behind a request, or
+// false when the request carries no verifiable session.
+type sessionUserIDResolver func(w http.ResponseWriter, r *http.Request) (string, bool)
+
+// supertokensSessionUserID reads the session without requiring one. Only a
+// signature-verified access token yields a user ID, so a forged token cannot
+// mint its own rate-limit bucket. Missing, expired, or invalid tokens report
+// false and the caller falls back to the client IP. Verification is local
+// (cached JWKS); no call to the SuperTokens core is made.
+func supertokensSessionUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	optional := false
+	sess, err := session.GetSession(r, w, &sessmodels.VerifySessionOptions{
+		SessionRequired: &optional,
+		AntiCsrfCheck:   &optional,
+	})
+	if err != nil || sess == nil {
+		return "", false
+	}
+	return sess.GetUserID(), true
+}
 
 // Validates HTTP Basic authentication credentials
 func (app *application) BasicAuthMiddleware(next http.Handler) http.Handler {
@@ -49,15 +73,39 @@ func (app *application) BasicAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Rate limits per IP
+// Rate limits per signed-in user, falling back to the client IP for requests
+// without a verified session. Per-user buckets keep one venue NAT full of
+// hackers from exhausting a single shared budget.
 func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
-			app.rateLimiterExceededResponse(w, r, retryAfter.String())
+		limiter, key := app.rateLimiterFor(w, r)
+		if allow, retryAfter := limiter.Allow(key); !allow {
+			app.rateLimiterExceededResponse(w, r, key, retryAfter.String())
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// Picks the limiter and bucket key for a request: the per-user limiter keyed
+// by SuperTokens user ID when a session verifies, else the per-IP limiter.
+func (app *application) rateLimiterFor(w http.ResponseWriter, r *http.Request) (ratelimiter.Limiter, string) {
+	if app.sessionUserID != nil {
+		if userID, ok := app.sessionUserID(w, r); ok {
+			return app.rateLimiter, "user:" + userID
+		}
+	}
+	return app.ipRateLimiter, "ip:" + clientIP(r)
+}
+
+// middleware.RealIP rewrites RemoteAddr to the bare forwarded IP behind a
+// proxy, but without one RemoteAddr keeps its port, which would make every
+// connection its own bucket.
+func clientIP(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 // Verifies the SuperTokens session and loads the user into context
