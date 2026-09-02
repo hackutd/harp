@@ -262,7 +262,17 @@ export default function HackerLinksPage() {
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Icon" />
                     </SelectTrigger>
-                    <SelectContent>
+                    {/* Popper mode anchors the menu under the trigger; the
+                        default item-aligned mode centres on the selected
+                        item and can push the list up off the screen. */}
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      align="start"
+                      avoidCollisions={false}
+                      showScrollButtons={false}
+                      matchTriggerHeight={false}
+                    >
                       {HACKER_LINK_ICON_OPTIONS.map((opt) => {
                         const Icon = hackerLinkIcon(opt.value);
                         return (
