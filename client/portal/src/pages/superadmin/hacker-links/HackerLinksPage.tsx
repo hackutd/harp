@@ -190,44 +190,182 @@ export default function HackerLinksPage() {
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
+      {/* Hacker-side preview — mirrors the quick-link cards on /app */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hacker preview</CardTitle>
+          <CardDescription>
+            How the quick links appear on the hacker home page. Hacker Pack,
+            FAQ, and Contact are built in and shown for reference; the links you
+            configure here open in a new tab.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-xl bg-[#F5F5F3] p-4">
+            <div className="grid grid-cols-3 gap-3">
+              {BUILT_IN_LINKS.map(({ label, icon }) => (
+                <PreviewCard
+                  key={label}
+                  label={label}
+                  icon={icon}
+                  muted={label === "Hacker Pack" && !hackerPackURL}
+                />
+              ))}
+              {links.map((link) => (
+                <PreviewCard
+                  key={link.id}
+                  label={link.label}
+                  icon={hackerLinkIcon(link.icon)}
+                  href={link.url}
+                />
+              ))}
+            </div>
+          </div>
+          {!hackerPackURL && (
+            <p className="text-xs text-muted-foreground">
+              Hacker Pack is hidden on the hacker home page until a Notion embed
+              is saved.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
-        {/* Hacker-side preview — mirrors the quick-link cards on /app */}
+        {/* Editor */}
         <Card>
           <CardHeader>
-            <CardTitle>Hacker preview</CardTitle>
+            <CardTitle>{isEditing ? "Edit link" : "Add a link"}</CardTitle>
             <CardDescription>
-              How the quick links appear on the hacker home page. Hacker Pack,
-              FAQ, and Contact are built in and shown for reference; the links
-              you configure here open in a new tab.
+              Configure the links hackers see on their home page.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="rounded-xl bg-[#F5F5F3] p-4">
-              <div className="grid grid-cols-3 gap-3">
-                {BUILT_IN_LINKS.map(({ label, icon }) => (
-                  <PreviewCard
-                    key={label}
-                    label={label}
-                    icon={icon}
-                    muted={label === "Hacker Pack" && !hackerPackURL}
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="hacker-link-label">Label</Label>
+                  <Input
+                    id="hacker-link-label"
+                    placeholder="Devpost"
+                    value={form.label}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, label: e.target.value }))
+                    }
                   />
-                ))}
-                {links.map((link) => (
-                  <PreviewCard
-                    key={link.id}
-                    label={link.label}
-                    icon={hackerLinkIcon(link.icon)}
-                    href={link.url}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Icon</Label>
+                  <Select
+                    value={form.icon}
+                    onValueChange={(icon) => setForm((f) => ({ ...f, icon }))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Icon" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HACKER_LINK_ICON_OPTIONS.map((opt) => {
+                        const Icon = hackerLinkIcon(opt.value);
+                        return (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            <span className="flex items-center gap-2">
+                              <Icon className="size-4" />
+                              {opt.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
+                <div className="space-y-1.5">
+                  <Label htmlFor="hacker-link-url">URL</Label>
+                  <Input
+                    id="hacker-link-url"
+                    type="url"
+                    placeholder="https://..."
+                    value={form.url}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, url: e.target.value }))
+                    }
                   />
-                ))}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="hacker-link-order">Order</Label>
+                  <Input
+                    id="hacker-link-order"
+                    type="number"
+                    min={0}
+                    value={form.display_order}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, display_order: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSubmit} disabled={saving}>
+                  {!isEditing && <Plus className="size-4" />}
+                  {isEditing ? "Save changes" : "Add link"}
+                </Button>
+                {isEditing && (
+                  <Button variant="outline" onClick={handleCancel}>
+                    Cancel
+                  </Button>
+                )}
               </div>
             </div>
-            {!hackerPackURL && (
-              <p className="text-xs text-muted-foreground">
-                Hacker Pack is hidden on the hacker home page until a Notion
-                embed is saved below.
-              </p>
-            )}
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Current links</p>
+              {links.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No links yet.</p>
+              ) : (
+                <ul className="divide-y rounded-md border">
+                  {links.map((link) => {
+                    const Icon = hackerLinkIcon(link.icon);
+                    return (
+                      <li
+                        key={link.id}
+                        className="flex items-center gap-3 px-3 py-2.5"
+                      >
+                        <Icon className="size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {link.label}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {link.url}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          #{link.display_order}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Edit ${link.label}`}
+                          onClick={() => handleStartEdit(link)}
+                          disabled={saving}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Delete ${link.label}`}
+                          onClick={() => handleDelete(link)}
+                          disabled={saving}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -237,144 +375,6 @@ export default function HackerLinksPage() {
           onSave={saveHackerPackURL}
         />
       </div>
-
-      {/* Editor */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{isEditing ? "Edit link" : "Add a link"}</CardTitle>
-          <CardDescription>
-            Configure the links hackers see on their home page.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="hacker-link-label">Label</Label>
-                <Input
-                  id="hacker-link-label"
-                  placeholder="Devpost"
-                  value={form.label}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, label: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Icon</Label>
-                <Select
-                  value={form.icon}
-                  onValueChange={(icon) => setForm((f) => ({ ...f, icon }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Icon" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HACKER_LINK_ICON_OPTIONS.map((opt) => {
-                      const Icon = hackerLinkIcon(opt.value);
-                      return (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          <span className="flex items-center gap-2">
-                            <Icon className="size-4" />
-                            {opt.label}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
-              <div className="space-y-1.5">
-                <Label htmlFor="hacker-link-url">URL</Label>
-                <Input
-                  id="hacker-link-url"
-                  type="url"
-                  placeholder="https://..."
-                  value={form.url}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, url: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="hacker-link-order">Order</Label>
-                <Input
-                  id="hacker-link-order"
-                  type="number"
-                  min={0}
-                  value={form.display_order}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, display_order: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleSubmit} disabled={saving}>
-                {!isEditing && <Plus className="size-4" />}
-                {isEditing ? "Save changes" : "Add link"}
-              </Button>
-              {isEditing && (
-                <Button variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Current links</p>
-            {links.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No links yet.</p>
-            ) : (
-              <ul className="divide-y rounded-md border">
-                {links.map((link) => {
-                  const Icon = hackerLinkIcon(link.icon);
-                  return (
-                    <li
-                      key={link.id}
-                      className="flex items-center gap-3 px-3 py-2.5"
-                    >
-                      <Icon className="size-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
-                          {link.label}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {link.url}
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        #{link.display_order}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Edit ${link.label}`}
-                        onClick={() => handleStartEdit(link)}
-                        disabled={saving}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${link.label}`}
-                        onClick={() => handleDelete(link)}
-                        disabled={saving}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
