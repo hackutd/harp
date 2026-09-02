@@ -8,9 +8,9 @@ import { useUserStore } from "@/shared/stores";
  * Renders a link to the admin portal, but only for users with the
  * `admin` or `super_admin` role. Returns null for everyone else.
  *
- * Styled to match the bordered list rows on the Profile page. On mobile the
- * admin portal is scan-only (see `AdminLayout`), so this jumps straight to the
- * Scans page; on desktop it opens the full portal at All Applicants.
+ * Styled to match the bordered list rows on the Profile page. On mobile,
+ * admin work is scanning, so this jumps to the mobile scanner tab on the
+ * hacker Scan page; on desktop it opens the full portal at All Applicants.
  */
 export function AdminPortalButton() {
   const { user } = useUserStore();
@@ -20,7 +20,7 @@ export function AdminPortalButton() {
     return null;
   }
 
-  const target = isMobile ? "/admin/scans" : "/admin/all-applicants";
+  const target = isMobile ? "/app/scan?tab=scanner" : "/admin/all-applicants";
 
   return (
     <section>

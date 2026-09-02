@@ -70,19 +70,19 @@ const eventNav = [
 
 const superAdminNav = [
   {
+    name: "Forms",
+    url: "/admin/sa/forms",
+    icon: ClipboardList,
+  },
+  {
     name: "Reviews",
     url: "/admin/sa/reviews",
     icon: Star,
   },
   {
-    name: "User Management",
+    name: "Users",
     url: "/admin/sa/user-management",
     icon: Users,
-  },
-  {
-    name: "Application",
-    url: "/admin/sa/application",
-    icon: ClipboardList,
   },
   {
     name: "Notifications",

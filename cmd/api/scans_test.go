@@ -565,9 +565,10 @@ func TestGetUserScans(t *testing.T) {
 		app := newTestApplication(t)
 		mockScans := app.store.Scans.(*store.MockScansStore)
 
+		scannedBy := "admin-1"
 		scans := []store.Scan{
-			{ID: "scan-1", UserID: "user-1", ScanType: "check_in", ScannedBy: "admin-1", ScannedAt: time.Now(), CreatedAt: time.Now()},
-			{ID: "scan-2", UserID: "user-1", ScanType: "lunch", ScannedBy: "admin-1", ScannedAt: time.Now(), CreatedAt: time.Now()},
+			{ID: "scan-1", UserID: "user-1", ScanType: "check_in", ScannedBy: &scannedBy, ScannedAt: time.Now(), CreatedAt: time.Now()},
+			{ID: "scan-2", UserID: "user-1", ScanType: "lunch", ScannedBy: &scannedBy, ScannedAt: time.Now(), CreatedAt: time.Now()},
 		}
 
 		mockScans.On("GetByUserID", "user-1").Return(scans, nil).Once()

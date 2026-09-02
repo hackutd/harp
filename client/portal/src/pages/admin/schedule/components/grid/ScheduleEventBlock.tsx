@@ -23,8 +23,7 @@ export const ScheduleEventBlock = memo(function ScheduleEventBlock({
   return (
     <div
       className={cn(
-        "absolute inset-x-0 top-0 cursor-pointer overflow-hidden rounded-none border px-1.5 py-1 text-[10px] leading-tight",
-        colorClasses.border,
+        "absolute inset-x-0 top-0 cursor-pointer overflow-hidden rounded-none px-1.5 py-1 text-[10px] leading-tight",
         colorClasses.background,
         colorClasses.text,
       )}

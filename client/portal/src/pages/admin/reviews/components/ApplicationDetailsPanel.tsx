@@ -1,13 +1,10 @@
-import { ExternalLink } from "lucide-react";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { errorAlert } from "@/shared/lib/api";
+import { ResumePreviewDialog } from "@/pages/admin/_shared/ResumePreviewDialog";
 import type { Application } from "@/types";
 
-import { fetchApplicationResumeURL } from "../../all-applicants/api";
 import { SchemaDetailRenderer } from "../../all-applicants/components/detail-sections/SchemaDetailRenderer";
 import type { Review } from "../types";
 
@@ -23,31 +20,6 @@ export function ApplicationDetailsPanel({
   isExpanded,
 }: ApplicationDetailsPanelProps) {
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
-  const [isOpeningResume, setIsOpeningResume] = useState(false);
-
-  const handleViewResume = useCallback(async () => {
-    if (!application.resume_path || isOpeningResume) {
-      return;
-    }
-
-    const resumeTab = window.open("", "_blank");
-    if (!resumeTab) {
-      toast.error("Please allow popups to view resumes.");
-      return;
-    }
-
-    setIsOpeningResume(true);
-    const res = await fetchApplicationResumeURL(application.id);
-
-    if (res.status === 200 && res.data?.download_url) {
-      resumeTab.location.href = res.data.download_url;
-    } else {
-      resumeTab.close();
-      errorAlert(res, "Failed to open resume");
-    }
-
-    setIsOpeningResume(false);
-  }, [application.id, application.resume_path, isOpeningResume]);
 
   return (
     <div className="space-y-6 pb-2">
@@ -60,16 +32,15 @@ export function ApplicationDetailsPanel({
           <h4 className="text-sm font-semibold mb-2">Resume</h4>
           <div className="text-sm">
             <div className="pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleViewResume}
-                loading={isOpeningResume}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                {isOpeningResume ? "Opening..." : "View Resume"}
-              </Button>
+              <ResumePreviewDialog
+                applicationId={application.id}
+                trigger={
+                  <Button type="button" variant="outline" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Resume
+                  </Button>
+                }
+              />
             </div>
           </div>
         </div>

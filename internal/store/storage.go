@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -16,6 +18,21 @@ var (
 	QueryTimeoutDuration  = time.Second * 5
 )
 
+// Travel decision conflicts. Each wraps ErrConflict so existing callers that
+// only check for a conflict keep working, while handlers that care can report
+// exactly why the decision was refused.
+var (
+	// ErrTravelNotRequested is returned when the applicant never opted into
+	// travel reimbursement, so there is nothing to decide.
+	ErrTravelNotRequested = fmt.Errorf("%w: applicant did not request travel reimbursement", ErrConflict)
+	// ErrTravelStatusNotDecidable is returned when the application is in a
+	// status that cannot carry a travel decision (draft or rejected).
+	ErrTravelStatusNotDecidable = fmt.Errorf("%w: application status does not allow a travel decision", ErrConflict)
+	// ErrTravelRSVPSubmitted is returned when the hacker has already submitted
+	// their travel RSVP, which pins the travel status until it is reset.
+	ErrTravelRSVPSubmitted = fmt.Errorf("%w: travel rsvp already submitted", ErrConflict)
+)
+
 type Storage struct {
 	Users interface {
 		GetBySuperTokensID(ctx context.Context, supertokensUserID string) (*User, error)
@@ -26,7 +43,7 @@ type Storage struct {
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
 		GetByRole(ctx context.Context, role UserRole) ([]User, error)
-		Delete(ctx context.Context, userID string) error
+		Delete(ctx context.Context, userID string) (*DeletedUserPaths, error)
 		ListUsers(ctx context.Context, filters UserListFilters, cursor *UserCursor, direction PaginationDirection, limit int) (*UserListResult, error)
 	}
 	Application interface {
@@ -35,10 +52,16 @@ type Storage struct {
 		GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
-		Submit(ctx context.Context, app *Application) error
+		Submit(ctx context.Context, app *Application, travelOptInFieldID string) error
+		SubmitRSVP(ctx context.Context, app *Application) error
+		SubmitTravelRSVP(ctx context.Context, app *Application) error
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
+		SetTravelStatus(ctx context.Context, id string, status TravelStatus, approvedAmountCents *int64) (*Application, error)
+		GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error)
+		ResetRSVP(ctx context.Context, id string) (*Application, []string, error)
+		ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
 		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
 		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
@@ -47,8 +70,19 @@ type Storage struct {
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
 	}
 	Settings interface {
+		// GetMany reads several settings in one round trip and primes the
+		// cache, so the typed getters that follow cost no further queries.
+		GetMany(ctx context.Context, keys ...string) (map[string]json.RawMessage, error)
 		GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error)
 		UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		GetRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		GetRSVPEnabled(ctx context.Context) (bool, error)
+		SetRSVPEnabled(ctx context.Context, enabled bool) error
+		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
+		UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		GetTravelRSVPEnabled(ctx context.Context) (bool, error)
+		SetTravelRSVPEnabled(ctx context.Context, enabled bool) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
 		SetReviewsPerApplication(ctx context.Context, value int) error
 		GetAllReviewAssignmentToggles(ctx context.Context) ([]ReviewAssignmentEntry, error)
@@ -92,7 +126,7 @@ type Storage struct {
 		SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
-		Reset(ctx context.Context, opts ResetOptions) ([]string, error)
+		Reset(ctx context.Context, opts ResetOptions) (*ResetPaths, error)
 	}
 	Scans interface {
 		Create(ctx context.Context, scan *Scan) error
@@ -104,7 +138,8 @@ type Storage struct {
 		RebalanceStats(ctx context.Context) ([]ScanStat, error)
 	}
 	ApplicationReviews interface {
-		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error)
+		SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, travelVote *bool, notes *string) (*ApplicationReview, error)
+		GetTravelStatusByReviewID(ctx context.Context, reviewID string, adminID string) (TravelStatus, error)
 		GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error)
 		GetCompletedByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error)
 		GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error)
@@ -164,11 +199,13 @@ type Storage struct {
 }
 
 func NewStorage(db *sql.DB) Storage {
+	settings := newSettingsStore(db)
+
 	return Storage{
 		Users:                  &UsersStore{db: db},
 		Application:            &ApplicationsStore{db: db},
-		Settings:               &SettingsStore{db: db},
-		Hackathon:              &HackathonStore{db: db},
+		Settings:               settings,
+		Hackathon:              &HackathonStore{db: db, settings: settings},
 		ApplicationReviews:     &ApplicationReviewsStore{db: db},
 		Scans:                  &ScansStore{db: db},
 		Schedule:               &ScheduleStore{db: db},

@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { RotateCcw, Save } from "lucide-react";
 import { useEffect } from "react";
 
 import {
@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,14 +27,29 @@ import { SchemaEditor } from "./components/SchemaEditor";
 import { useApplicationSchemaStore } from "./store";
 
 export default function ApplicationPage() {
-  const { fields, sections, loading, saving, fetchSchema, saveSchema } =
-    useApplicationSchemaStore();
+  const {
+    fields,
+    sections,
+    loading,
+    saving,
+    dirty,
+    fetchSchema,
+    saveSchema,
+    discardChanges,
+  } = useApplicationSchemaStore();
 
   useEffect(() => {
     const controller = new AbortController();
     fetchSchema(controller.signal);
     return () => controller.abort();
   }, [fetchSchema]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   return (
     <div className="flex flex-1 min-h-0">
@@ -66,38 +82,57 @@ export default function ApplicationPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <SchemaEditor />
+              <SchemaEditor
+                store={useApplicationSchemaStore}
+                description="Configure the fields that appear on hacker applications. Fields are grouped by section."
+              />
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button loading={saving} className="w-full cursor-pointer">
-                    {!saving && <Save className="size-4 mr-2" />}
-                    Save Schema
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Save application schema?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will affect <strong>all</strong> hacker applications.
-                      Are you sure you want to save these changes?
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="cursor-pointer">
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={saveSchema}
-                      className="cursor-pointer bg-red-600 hover:bg-red-700"
+              <div className="sticky bottom-0 flex items-center gap-2 border-t bg-background pt-3">
+                <Button
+                  variant="outline"
+                  disabled={!dirty || saving}
+                  onClick={discardChanges}
+                >
+                  <RotateCcw className="size-4" />
+                  Discard
+                </Button>
+                {dirty && <Badge variant="secondary">Unsaved changes</Badge>}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      loading={saving}
+                      disabled={!dirty}
+                      className="ml-auto cursor-pointer"
                     >
-                      Save
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      {!saving && <Save className="size-4 mr-2" />}
+                      Save Schema
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Save application schema?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will affect <strong>all</strong> hacker
+                        applications. Are you sure you want to save these
+                        changes?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="cursor-pointer">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={saveSchema}
+                        className="cursor-pointer bg-red-600 hover:bg-red-700"
+                      >
+                        Save
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           )}
         </CardContent>

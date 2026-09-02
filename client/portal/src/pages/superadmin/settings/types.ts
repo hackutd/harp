@@ -12,6 +12,7 @@ export interface ResetHackathonOptions {
 
 export interface ResetHackathonResult extends ResetHackathonOptions {
   resumes_deleted: number;
+  receipts_deleted: number;
 }
 
 export interface MealGroupsResult {

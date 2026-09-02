@@ -1,4 +1,10 @@
-import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -11,20 +17,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { useApplicationSchemaStore } from "../store";
+import type { SchemaStore } from "../createSchemaStore";
 import { AddFieldDialog } from "./AddFieldDialog";
 import { AddSectionDialog } from "./AddSectionDialog";
 import { FieldCard } from "./FieldCard";
 
-export function SchemaEditor() {
-  const fields = useApplicationSchemaStore((s) => s.fields);
-  const sections = useApplicationSchemaStore((s) => s.sections);
-  const updateField = useApplicationSchemaStore((s) => s.updateField);
-  const removeField = useApplicationSchemaStore((s) => s.removeField);
-  const moveField = useApplicationSchemaStore((s) => s.moveField);
-  const removeSection = useApplicationSchemaStore((s) => s.removeSection);
-  const renameSection = useApplicationSchemaStore((s) => s.renameSection);
-  const moveSection = useApplicationSchemaStore((s) => s.moveSection);
+interface SchemaEditorProps {
+  store: SchemaStore;
+  description: string;
+}
+
+export function SchemaEditor({
+  store: useStore,
+  description,
+}: SchemaEditorProps) {
+  const fields = useStore((s) => s.fields);
+  const sections = useStore((s) => s.sections);
+  const contracts = useStore((s) => s.contracts);
+  const warnings = useStore((s) => s.warnings);
+  const updateField = useStore((s) => s.updateField);
+  const removeField = useStore((s) => s.removeField);
+  const moveField = useStore((s) => s.moveField);
+  const removeSection = useStore((s) => s.removeSection);
+  const renameSection = useStore((s) => s.renameSection);
+  const moveSection = useStore((s) => s.moveSection);
 
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
@@ -52,10 +68,23 @@ export function SchemaEditor() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-light text-muted-foreground">
-        Configure the fields that appear on hacker applications. Fields are
-        grouped by section.
-      </p>
+      <p className="text-sm font-light text-muted-foreground">{description}</p>
+
+      {/* Removing a field the backend reads is allowed — an event may not run
+          travel reimbursement — but it must not happen silently. */}
+      {warnings.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+          <div className="flex items-center gap-2 text-amber-900">
+            <TriangleAlert className="size-4 shrink-0" />
+            <span className="text-sm font-medium">Saved with warnings</span>
+          </div>
+          <ul className="mt-1.5 space-y-1 pl-6 text-xs text-amber-900 list-disc">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Accordion type="multiple" className="space-y-2">
         {fieldsBySection.map(
@@ -144,15 +173,17 @@ export function SchemaEditor() {
                       <FieldCard
                         key={field.id}
                         field={field}
+                        availableFields={fields}
                         onUpdate={(updates) => updateField(field.id, updates)}
                         onRemove={() => removeField(field.id)}
                         onMove={(dir) => moveField(field.id, dir)}
                         isFirst={idx === 0}
                         isLast={idx === sectionFields.length - 1}
+                        contract={contracts[field.id]}
                       />
                     ))
                   )}
-                  <AddFieldDialog defaultSection={section} />
+                  <AddFieldDialog store={useStore} defaultSection={section} />
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -160,7 +191,7 @@ export function SchemaEditor() {
         )}
       </Accordion>
 
-      <AddSectionDialog />
+      <AddSectionDialog store={useStore} />
     </div>
   );
 }

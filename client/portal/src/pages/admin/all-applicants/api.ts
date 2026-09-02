@@ -25,6 +25,26 @@ export async function fetchApplications(
     queryParams.set("status", params.status);
   }
 
+  if (params?.travel_status) {
+    queryParams.set("travel_status", params.travel_status);
+  }
+
+  if (params?.rsvp_status) {
+    queryParams.set("rsvp_status", params.rsvp_status);
+  }
+
+  if (params?.travel_rsvp_status) {
+    queryParams.set("travel_rsvp_status", params.travel_rsvp_status);
+  }
+
+  if (params?.has_receipts !== undefined) {
+    queryParams.set("has_receipts", String(params.has_receipts));
+  }
+
+  if (params?.travel_requested !== undefined) {
+    queryParams.set("travel_requested", String(params.travel_requested));
+  }
+
   if (params?.cursor) {
     queryParams.set("cursor", params.cursor);
   }

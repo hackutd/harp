@@ -23,6 +23,7 @@ type ApplicationReview struct {
 	ApplicationID string      `json:"application_id"`
 	AdminID       string      `json:"admin_id"`
 	Vote          *ReviewVote `json:"vote"`
+	TravelVote    *bool       `json:"travel_vote"`
 	Notes         *string     `json:"notes"`
 	AssignedAt    time.Time   `json:"assigned_at"`
 	ReviewedAt    *time.Time  `json:"reviewed_at"`
@@ -34,14 +35,15 @@ type ApplicationReview struct {
 type ApplicationReviewWithDetails struct {
 	ApplicationReview
 	// Application fields
-	FirstName          *string `json:"first_name"`
-	LastName           *string `json:"last_name"`
-	Email              string  `json:"email"`
-	Age                *int16  `json:"age"`
-	University         *string `json:"university"`
-	Major              *string `json:"major"`
-	CountryOfResidence *string `json:"country_of_residence"`
-	HackathonsAttended *int16  `json:"hackathons_attended"`
+	FirstName          *string      `json:"first_name"`
+	LastName           *string      `json:"last_name"`
+	Email              string       `json:"email"`
+	Age                *int16       `json:"age"`
+	University         *string      `json:"university"`
+	Major              *string      `json:"major"`
+	CountryOfResidence *string      `json:"country_of_residence"`
+	HackathonsAttended *int16       `json:"hackathons_attended"`
+	TravelStatus       TravelStatus `json:"travel_status"`
 }
 
 // ReviewNote represents a note from an admin review (without vote information)
@@ -57,33 +59,75 @@ type ApplicationReviewsStore struct {
 	db *sql.DB
 }
 
-// SubmitVote records an admin's vote on an assigned review
-func (s *ApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error) {
+// ErrVoteNotApplied means the vote UPDATE matched no row: either the review
+// does not exist for this admin, or travelVote disagreed with the application's
+// travel status. The two are indistinguishable from the statement itself, so a
+// caller that needs to tell them apart follows up with
+// GetTravelStatusByReviewID -- only on this error path, never on a good vote.
+var ErrVoteNotApplied = errors.New("vote not applied")
+
+// SubmitVote records an admin's vote on an assigned review. travelVote is the
+// admin's yes/no travel reimbursement recommendation; nil when the applicant
+// did not request travel.
+//
+// The join onto applications makes the travel agreement part of the write
+// itself rather than a separate read beforehand, which halves the queries on
+// the review path and closes the window where travel_status could change
+// between the check and the update.
+func (s *ApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, travelVote *bool, notes *string) (*ApplicationReview, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-		UPDATE application_reviews
-		SET vote = $3, notes = $4, reviewed_at = NOW(), updated_at = NOW()
-		WHERE id = $1 AND admin_id = $2
-		RETURNING id, application_id, admin_id, vote, notes, assigned_at, reviewed_at, created_at, updated_at
+		UPDATE application_reviews ar
+		SET vote = $3, travel_vote = $4, notes = $5, reviewed_at = NOW(), updated_at = NOW()
+		FROM applications a
+		WHERE ar.id = $1 AND ar.admin_id = $2 AND a.id = ar.application_id
+		  AND ((a.travel_status = 'not_requested') = ($4::boolean IS NULL))
+		RETURNING ar.id, ar.application_id, ar.admin_id, ar.vote, ar.travel_vote, ar.notes,
+		          ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at
 	`
 
 	var review ApplicationReview
-	err := s.db.QueryRowContext(ctx, query, reviewID, adminID, vote, notes).Scan(
+	err := s.db.QueryRowContext(ctx, query, reviewID, adminID, vote, travelVote, notes).Scan(
 		&review.ID, &review.ApplicationID, &review.AdminID,
-		&review.Vote, &review.Notes,
+		&review.Vote, &review.TravelVote, &review.Notes,
 		&review.AssignedAt, &review.ReviewedAt,
 		&review.CreatedAt, &review.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrVoteNotApplied
 		}
 		return nil, err
 	}
 
 	return &review, nil
+}
+
+// GetTravelStatusByReviewID returns the travel status of the application tied
+// to a review, scoped to the assigned admin so it doubles as an ownership check.
+func (s *ApplicationReviewsStore) GetTravelStatusByReviewID(ctx context.Context, reviewID string, adminID string) (TravelStatus, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT a.travel_status
+		FROM application_reviews ar
+		JOIN applications a ON ar.application_id = a.id
+		WHERE ar.id = $1 AND ar.admin_id = $2
+	`
+
+	var status TravelStatus
+	err := s.db.QueryRowContext(ctx, query, reviewID, adminID).Scan(&status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+
+	return status, nil
 }
 
 // GetPendingByAdminID returns all reviews assigned to an admin that haven't been voted on yet,
@@ -94,13 +138,14 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 
 	query := `
 		SELECT
-			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
+			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.travel_vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
 			a.responses->>'first_name', a.responses->>'last_name', u.email,
 			NULLIF(a.responses->>'age', '')::smallint,
 			a.responses->>'university', a.responses->>'major',
 			a.responses->>'country_of_residence',
-			NULLIF(a.responses->>'hackathons_attended', '')::smallint
+			NULLIF(a.responses->>'hackathons_attended', '')::smallint,
+			a.travel_status
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
@@ -119,11 +164,12 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 		var review ApplicationReviewWithDetails
 		if err := rows.Scan(
 			&review.ID, &review.ApplicationID, &review.AdminID,
-			&review.Vote, &review.Notes,
+			&review.Vote, &review.TravelVote, &review.Notes,
 			&review.AssignedAt, &review.ReviewedAt,
 			&review.CreatedAt, &review.UpdatedAt,
 			&review.FirstName, &review.LastName, &review.Email, &review.Age,
 			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttended,
+			&review.TravelStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -145,13 +191,14 @@ func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adm
 
 	query := `
 		SELECT
-			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.notes,
+			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.travel_vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
 			a.responses->>'first_name', a.responses->>'last_name', u.email,
 			NULLIF(a.responses->>'age', '')::smallint,
 			a.responses->>'university', a.responses->>'major',
 			a.responses->>'country_of_residence',
-			NULLIF(a.responses->>'hackathons_attended', '')::smallint
+			NULLIF(a.responses->>'hackathons_attended', '')::smallint,
+			a.travel_status
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
@@ -170,11 +217,12 @@ func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adm
 		var review ApplicationReviewWithDetails
 		if err := rows.Scan(
 			&review.ID, &review.ApplicationID, &review.AdminID,
-			&review.Vote, &review.Notes,
+			&review.Vote, &review.TravelVote, &review.Notes,
 			&review.AssignedAt, &review.ReviewedAt,
 			&review.CreatedAt, &review.UpdatedAt,
 			&review.FirstName, &review.LastName, &review.Email, &review.Age,
 			&review.University, &review.Major, &review.CountryOfResidence, &review.HackathonsAttended,
+			&review.TravelStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -569,13 +617,13 @@ func (s *ApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, adminI
 		INSERT INTO application_reviews (application_id, admin_id)
 		VALUES ($1, $2)
 		ON CONFLICT (application_id, admin_id) DO NOTHING
-		RETURNING id, application_id, admin_id, vote, notes, assigned_at, reviewed_at, created_at, updated_at
+		RETURNING id, application_id, admin_id, vote, travel_vote, notes, assigned_at, reviewed_at, created_at, updated_at
 	`
 
 	var review ApplicationReview
 	err = tx.QueryRowContext(ctx, insertQuery, applicationID, adminID).Scan(
 		&review.ID, &review.ApplicationID, &review.AdminID,
-		&review.Vote, &review.Notes,
+		&review.Vote, &review.TravelVote, &review.Notes,
 		&review.AssignedAt, &review.ReviewedAt,
 		&review.CreatedAt, &review.UpdatedAt,
 	)

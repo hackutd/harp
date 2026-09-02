@@ -2,6 +2,7 @@ import {
   deriveSections,
   formatResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
@@ -11,8 +12,8 @@ interface ApplicationSummaryProps {
   responses: Record<string, unknown>;
   userEmail?: string;
   hasResume: boolean;
-  /** Section that hosts the resume; defaults to "links". */
-  resumeSectionId?: string;
+  /** Section that hosts the resume; defaults to "links". Pass null to omit the resume row (e.g. RSVP schemas). */
+  resumeSectionId?: string | null;
 }
 
 function SummaryRow({
@@ -97,15 +98,17 @@ export function ApplicationSummary({
               {sectionId === "personal" && userEmail && (
                 <SummaryRow label="Email" value={userEmail} />
               )}
-              {fields.map((field) => (
-                <SummaryRow
-                  key={field.id}
-                  label={stripLabelLinks(field.label)}
-                  value={formatResponseValue(responses[field.id], field)}
-                  truncateLabel={field.type === "checkbox"}
-                  stacked={field.type === "textarea"}
-                />
-              ))}
+              {fields.map((field) =>
+                isFieldVisible(field, responses) ? (
+                  <SummaryRow
+                    key={field.id}
+                    label={stripLabelLinks(field.label)}
+                    value={formatResponseValue(responses[field.id], field)}
+                    truncateLabel={field.type === "checkbox"}
+                    stacked={field.type === "textarea"}
+                  />
+                ) : null,
+              )}
               {sectionId === resumeSectionId && (
                 <SummaryRow
                   label="Resume"

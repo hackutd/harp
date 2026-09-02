@@ -1,4 +1,4 @@
-import { ClipboardPen, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardPen } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -9,6 +9,14 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -23,7 +31,7 @@ import { useApplicationDetail } from "@/pages/admin/all-applicants/hooks/useAppl
 import { formatName } from "@/pages/admin/all-applicants/utils";
 import { useRedactApplicants } from "@/shared/hooks";
 import { errorAlert } from "@/shared/lib/api";
-import { formatApplicantLabel } from "@/shared/lib/redaction";
+import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 
 import { fetchReviewNotes as apiFetchReviewNotes } from "./api";
 import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
@@ -64,6 +72,23 @@ export default function ReviewsPage() {
   // Single derived selected review (fixes redundant .find() calls)
   const selectedReview = reviews.find((r) => r.id === selectedId) ?? null;
   const selectedApplicationId = selectedReview?.application_id ?? null;
+
+  const selectedIndex = filteredReviews.findIndex((r) => r.id === selectedId);
+  const canPrevious = selectedIndex > 0;
+  const canNext =
+    selectedIndex !== -1 && selectedIndex < filteredReviews.length - 1;
+
+  const handlePreviousReview = useCallback(() => {
+    if (selectedIndex > 0) {
+      setSelectedId(filteredReviews[selectedIndex - 1].id);
+    }
+  }, [filteredReviews, selectedIndex]);
+
+  const handleNextReview = useCallback(() => {
+    if (selectedIndex !== -1 && selectedIndex < filteredReviews.length - 1) {
+      setSelectedId(filteredReviews[selectedIndex + 1].id);
+    }
+  }, [filteredReviews, selectedIndex]);
 
   // --- Assigned tab detail (via existing hook) ---
   const assignedApplicationId =
@@ -231,87 +256,120 @@ export default function ReviewsPage() {
     />
   );
 
-  // --- Detail panel ---
-  let detailPanel: React.ReactNode = null;
-
-  if (tab === "assigned" && selectedReview) {
-    detailPanel = (
+  // --- Detail sheets ---
+  const detailPanel: React.ReactNode = (
+    <>
       <ApplicationDetailPanel
         application={assignedDetail}
         loading={assignedDetailLoading}
+        open={tab === "assigned" && !!selectedReview}
         onClose={clearSelection}
+        canPrevious={canPrevious}
+        canNext={canNext}
+        onPrevious={handlePreviousReview}
+        onNext={handleNextReview}
         onGrade={() => {
           navigate(`/admin/reviews/grade?review=${selectedId}`);
         }}
       />
-    );
-  } else if (tab === "completed" && selectedReview) {
-    detailPanel = (
-      <Card className="shrink-0 flex flex-col h-full w-1/2 rounded-l-none border-l-0 py-0! gap-0!">
-        {/* Header */}
-        <div className="flex items-center justify-between shrink-0 bg-gray-50 border-b px-4 py-3 rounded-tr-xl">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-sm">
-              {redact
-                ? formatApplicantLabel(selectedReview.application_id)
-                : formatName(
-                    selectedReview.first_name,
-                    selectedReview.last_name,
-                  )}
-            </p>
-            <VoteBadge vote={selectedReview.vote} />
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="cursor-pointer"
-            onClick={clearSelection}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
 
-        {/* Application details */}
-        <CardContent className="flex-1 overflow-auto py-4">
-          {completedDetailLoading ? (
-            <div className="space-y-6 py-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-5 w-3/4" />
+      <Sheet
+        open={tab === "completed" && !!selectedReview}
+        onOpenChange={(isOpen) => !isOpen && clearSelection()}
+      >
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-3xl">
+          <SheetHeader className="border-b px-6 py-4 pr-14">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <SheetTitle className="truncate text-lg">
+                  {selectedReview
+                    ? redact
+                      ? formatApplicantLabel(selectedReview.application_id)
+                      : formatName(
+                          selectedReview.first_name,
+                          selectedReview.last_name,
+                        )
+                    : "Review"}
+                </SheetTitle>
+                <SheetDescription className="truncate">
+                  {selectedReview
+                    ? redact
+                      ? maskEmail(selectedReview.email)
+                      : selectedReview.email
+                    : ""}
+                </SheetDescription>
+              </div>
+              {selectedReview && (
+                <div className="shrink-0">
+                  <VoteBadge vote={selectedReview.vote} />
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            completedAppDetail && (
-              <>
-                <ApplicationDetailsPanel
-                  application={completedAppDetail}
-                  selectedReview={selectedReview}
-                  isExpanded={false}
-                />
+          </SheetHeader>
 
-                {/* Reviewer notes section */}
-                <div className="mt-6 border-t pt-4">
-                  <ReviewerNotesList
-                    notes={otherReviewerNotes}
-                    loading={false}
-                  />
+          <div className="flex items-center justify-between border-b px-4 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canPrevious}
+              onClick={handlePreviousReview}
+            >
+              <ChevronLeft className="size-4" />
+              Previous person
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canNext}
+              onClick={handleNextReview}
+            >
+              Next person
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="p-6">
+              {completedDetailLoading ? (
+                <div className="space-y-6 py-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-5 w-full" />
+                      <Skeleton className="h-5 w-3/4" />
+                    </div>
+                  ))}
                 </div>
-              </>
-            )
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
+              ) : (
+                completedAppDetail &&
+                selectedReview && (
+                  <>
+                    <ApplicationDetailsPanel
+                      application={completedAppDetail}
+                      selectedReview={selectedReview}
+                      isExpanded={false}
+                    />
+
+                    {/* Reviewer notes section */}
+                    <div className="mt-6 border-t pt-4">
+                      <ReviewerNotesList
+                        notes={otherReviewerNotes}
+                        loading={false}
+                      />
+                    </div>
+                  </>
+                )
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
 
   return (
     <div className="flex flex-1 min-h-0">
-      <Card
-        className={`overflow-hidden flex flex-col h-full ${selectedId ? "w-1/2 rounded-r-none" : "w-full"}`}
-      >
+      <Card className="overflow-hidden flex flex-col h-full w-full">
         <CardHeader className="shrink-0 flex flex-row items-center pb-2 justify-between">
           <div className="flex items-center gap-4">
             <ReviewsTabToggle

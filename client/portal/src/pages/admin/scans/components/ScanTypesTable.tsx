@@ -6,7 +6,7 @@ import {
   Trash2,
   UserCheck,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -27,7 +27,6 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -39,14 +38,10 @@ import {
 } from "@/components/ui/table";
 import { usePointsConfigStore } from "@/shared/stores";
 
-import type { ScanStat, ScanType, ScanTypeCategory } from "../types";
-import {
-  categoryColors,
-  categoryIcons,
-  categoryOptions,
-  toSnakeCase,
-  validate,
-} from "../utils";
+import type { ScanStat, ScanType } from "../types";
+import { categoryColors, categoryIcons, toSnakeCase, validate } from "../utils";
+import type { ScanTypeFormValues } from "./ScanTypeFormDialog";
+import { ScanTypeFormDialog } from "./ScanTypeFormDialog";
 
 interface ScanTypesTableProps {
   scanTypes: ScanType[];
@@ -71,82 +66,61 @@ export function ScanTypesTable({
   onSave,
   onRebalance,
 }: ScanTypesTableProps) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editDisplayName, setEditDisplayName] = useState("");
-  const [editPoints, setEditPoints] = useState("0");
-  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-  const [pendingNew, setPendingNew] = useState<ScanType | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ScanType | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ScanType | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
-  const editRowRef = useRef<HTMLTableRowElement>(null);
   const pointsName = usePointsConfigStore((s) => s.pointsName);
 
-  // When there's a pending new row, append it so it renders in the table
-  const effectiveTypes = pendingNew ? [...scanTypes, pendingNew] : scanTypes;
-
   const displayTypes = isSuperAdmin
-    ? effectiveTypes
-    : effectiveTypes.filter((st) => st.is_active);
+    ? scanTypes
+    : scanTypes.filter((st) => st.is_active);
 
   const statsMap = new Map(stats.map((s) => [s.scan_type, s.count]));
 
-  const startEditing = (index: number) => {
-    setEditingIndex(index);
-    if (scanTypes[index]) {
-      setEditDisplayName(scanTypes[index].display_name);
-      setEditPoints(String(scanTypes[index].points ?? 0));
-    }
+  const openCreate = () => {
+    setEditTarget(null);
+    setFormOpen(true);
   };
 
-  const saveDisplayName = useCallback(() => {
-    if (editingIndex === null) return;
+  const openEdit = (scanType: ScanType) => {
+    if (!isSuperAdmin) return;
+    setEditTarget(scanType);
+    setFormOpen(true);
+  };
 
-    const trimmed = editDisplayName.trim();
-    const parsedPoints = Number.parseInt(editPoints, 10);
-    const points = Number.isNaN(parsedPoints) ? 0 : parsedPoints;
+  const handleSubmit = async (values: ScanTypeFormValues) => {
+    let updated: ScanType[];
 
-    // Pending new row — save only if user typed something, otherwise no-op
-    if (pendingNew) {
-      if (!trimmed) return;
-      const newType: ScanType = {
-        ...pendingNew,
-        display_name: trimmed,
-        name: toSnakeCase(trimmed),
-        points,
-      };
-      const updated = [...scanTypes, newType];
-
-      const error = validate(updated);
-      if (error) {
-        toast.error(error);
-        return;
-      }
-
-      setPendingNew(null);
-      onSave(updated);
-      return;
+    if (editTarget) {
+      // Only re-derive `name` when the display name actually changed — it's the
+      // key historical scans and scan_stats are keyed by, so a points-only edit
+      // must not rename the scan type.
+      const nameChanged = values.display_name !== editTarget.display_name;
+      updated = scanTypes.map((st) =>
+        st.name === editTarget.name
+          ? {
+              ...st,
+              display_name: values.display_name,
+              name: nameChanged ? toSnakeCase(values.display_name) : st.name,
+              category: values.category,
+              points: values.points,
+              is_active: values.is_active,
+            }
+          : st,
+      );
+    } else {
+      updated = [
+        ...scanTypes,
+        {
+          name: toSnakeCase(values.display_name),
+          display_name: values.display_name,
+          category: values.category,
+          points: values.points,
+          is_active: values.is_active,
+        },
+      ];
     }
-
-    // Editing an existing row
-    const current = scanTypes[editingIndex];
-    if (!current) return;
-
-    // No change — skip save
-    const nameChanged = trimmed !== current.display_name;
-    if (!nameChanged && points === current.points) return;
-
-    // Only re-derive `name` when the display name actually changed — it's the
-    // key historical scans and scan_stats are keyed by, so a points-only edit
-    // must not rename the scan type.
-    const updated = scanTypes.map((st, i) =>
-      i === editingIndex
-        ? {
-            ...st,
-            display_name: trimmed,
-            name: nameChanged ? toSnakeCase(trimmed) : st.name,
-            points,
-          }
-        : st,
-    );
 
     const error = validate(updated);
     if (error) {
@@ -154,40 +128,20 @@ export function ScanTypesTable({
       return;
     }
 
-    onSave(updated);
-  }, [
-    editingIndex,
-    editDisplayName,
-    editPoints,
-    scanTypes,
-    pendingNew,
-    onSave,
-  ]);
-
-  // Ref to avoid stale closures in event listeners
-  const saveDisplayNameRef = useRef(saveDisplayName);
-  useEffect(() => {
-    saveDisplayNameRef.current = saveDisplayName;
-  }, [saveDisplayName]);
-
-  const closeEditing = useCallback(() => {
-    saveDisplayNameRef.current();
-    setPendingNew(null);
-    setEditingIndex(null);
-  }, []);
-
-  const saveCategory = (index: number, category: ScanTypeCategory) => {
-    if (effectiveTypes[index].category === category) return;
-
-    // For pending new row, just update the pending state
-    if (pendingNew && index === scanTypes.length) {
-      setPendingNew({ ...pendingNew, category });
-      return;
+    const result = await onSave(updated);
+    if (result.success) {
+      toast.success(editTarget ? "Scan type updated" : "Scan type created");
+      setFormOpen(false);
+    } else {
+      toast.error(result.error ?? "Failed to save scan types");
     }
+  };
 
-    const updated = scanTypes.map((st, i) =>
-      i === index ? { ...st, category } : st,
-    );
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    const updated = scanTypes.filter((st) => st.name !== deleteTarget.name);
+    setDeleteTarget(null);
 
     const error = validate(updated);
     if (error) {
@@ -195,87 +149,13 @@ export function ScanTypesTable({
       return;
     }
 
-    onSave(updated);
-  };
-
-  const saveActive = (index: number, isActive: boolean) => {
-    if (effectiveTypes[index].is_active === isActive) return;
-
-    // For pending new row, just update the pending state
-    if (pendingNew && index === scanTypes.length) {
-      setPendingNew({ ...pendingNew, is_active: isActive });
-      return;
+    const result = await onSave(updated);
+    if (result.success) {
+      toast.success("Scan type deleted");
+    } else {
+      toast.error(result.error ?? "Failed to delete scan type");
     }
-
-    const updated = scanTypes.map((st, i) =>
-      i === index ? { ...st, is_active: isActive } : st,
-    );
-
-    onSave(updated);
   };
-
-  const handleAdd = () => {
-    const newType: ScanType = {
-      name: "",
-      display_name: "",
-      category: "other",
-      is_active: true,
-      points: 0,
-    };
-    setPendingNew(newType);
-    setEditingIndex(scanTypes.length);
-    setEditDisplayName("");
-    setEditPoints("0");
-  };
-
-  const handleDelete = (index: number) => {
-    // Deleting the pending new row — just discard it
-    if (pendingNew && index === scanTypes.length) {
-      setPendingNew(null);
-      setEditingIndex(null);
-      return;
-    }
-
-    const updated = scanTypes.filter((_, i) => i !== index);
-
-    const error = validate(updated);
-    if (error) {
-      toast.error(error);
-      return;
-    }
-
-    onSave(updated);
-    setEditingIndex(null);
-  };
-
-  // Close editing when clicking outside the row
-  useEffect(() => {
-    if (editingIndex === null) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      // Don't close edit row if clicking inside a dialog overlay (e.g. delete confirmation)
-      if ((target as Element).closest?.("[role='alertdialog']")) return;
-      if ((target as Element).closest?.("[data-radix-portal]")) return;
-      if (editRowRef.current && !editRowRef.current.contains(target)) {
-        closeEditing();
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setPendingNew(null);
-        setEditingIndex(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [editingIndex, closeEditing]);
 
   if (displayTypes.length === 0 && !isSuperAdmin) {
     return (
@@ -317,147 +197,13 @@ export function ScanTypesTable({
                 <TableHead className="w-24">{pointsName}</TableHead>
                 <TableHead className="w-24">Scans</TableHead>
                 {isSuperAdmin && <TableHead>Active</TableHead>}
+                {isSuperAdmin && <TableHead className="w-16" />}
               </TableRow>
             </TableHeader>
             <TableBody>
               {displayTypes.map((scanType, index) => {
-                const isEditing = isSuperAdmin && editingIndex === index;
                 const Icon = categoryIcons[scanType.category] ?? UserCheck;
                 const count = statsMap.get(scanType.name) ?? 0;
-
-                if (isEditing) {
-                  return (
-                    <TableRow
-                      key={scanType.name || `new-${index}`}
-                      ref={editRowRef}
-                      className="[&>td]:py-3 bg-muted/30"
-                    >
-                      <TableCell>
-                        <Button
-                          className="cursor-pointer"
-                          size="sm"
-                          disabled={!scanType.is_active}
-                          onClick={() => onSelect(scanType)}
-                        >
-                          <ScanLine className="mr-1 size-3" />
-                          Scan
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={editDisplayName}
-                          onChange={(e) => setEditDisplayName(e.target.value)}
-                          onBlur={(e) => {
-                            // Don't save on blur if focus moved to another element in the edit row —
-                            // the category/active/delete buttons handle their own saves
-                            if (
-                              editRowRef.current?.contains(
-                                e.relatedTarget as Node,
-                              )
-                            )
-                              return;
-                            saveDisplayName();
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              closeEditing();
-                            }
-                          }}
-                          placeholder="e.g. Sunday Lunch"
-                          className="h-8 text-sm font-light shadow-none bg-transparent pl-2 rounded-sm focus-visible:ring-1"
-                          autoFocus
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {categoryOptions.map((opt) => {
-                            const CatIcon =
-                              categoryIcons[opt.value as ScanTypeCategory];
-                            const isSelected = scanType.category === opt.value;
-                            return (
-                              <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() =>
-                                  saveCategory(
-                                    index,
-                                    opt.value as ScanTypeCategory,
-                                  )
-                                }
-                                className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-sm cursor-pointer transition-opacity ${
-                                  categoryColors[opt.value as ScanTypeCategory]
-                                } ${isSelected ? "opacity-100 ring-1 ring-current" : "opacity-40 hover:opacity-70"}`}
-                              >
-                                <CatIcon className="size-3" />
-                                {opt.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={editPoints}
-                          onChange={(e) => setEditPoints(e.target.value)}
-                          onBlur={(e) => {
-                            if (
-                              editRowRef.current?.contains(
-                                e.relatedTarget as Node,
-                              )
-                            )
-                              return;
-                            saveDisplayName();
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              closeEditing();
-                            }
-                          }}
-                          className="h-8 w-20 text-sm font-light shadow-none bg-transparent pl-2 rounded-sm focus-visible:ring-1"
-                        />
-                      </TableCell>
-                      <TableCell className="tabular-nums">{count}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => saveActive(index, true)}
-                              className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded-sm cursor-pointer transition-opacity bg-green-100 text-green-800 ${
-                                scanType.is_active
-                                  ? "opacity-100 ring-1 ring-current"
-                                  : "opacity-40 hover:opacity-70"
-                              }`}
-                            >
-                              Yes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => saveActive(index, false)}
-                              className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded-sm cursor-pointer transition-opacity bg-red-100 text-red-800 ${
-                                !scanType.is_active
-                                  ? "opacity-100 ring-1 ring-current"
-                                  : "opacity-40 hover:opacity-70"
-                              }`}
-                            >
-                              No
-                            </button>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-red-500 cursor-pointer"
-                            onClick={() => setDeleteIndex(index)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                }
 
                 return (
                   <TableRow
@@ -466,7 +212,7 @@ export function ScanTypesTable({
                       isSuperAdmin ? "cursor-pointer hover:bg-muted/50" : ""
                     } ${!scanType.is_active ? "opacity-50" : ""}`}
                     onClick={
-                      isSuperAdmin ? () => startEditing(index) : undefined
+                      isSuperAdmin ? () => openEdit(scanType) : undefined
                     }
                   >
                     <TableCell>
@@ -522,6 +268,22 @@ export function ScanTypesTable({
                         </Badge>
                       </TableCell>
                     )}
+                    {isSuperAdmin && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="cursor-pointer text-muted-foreground hover:text-red-500 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(scanType);
+                          }}
+                          title="Delete"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
@@ -531,7 +293,7 @@ export function ScanTypesTable({
           {isSuperAdmin && (
             <Button
               variant="outline"
-              onClick={handleAdd}
+              onClick={openCreate}
               className="w-full mt-3 border-dashed cursor-pointer"
             >
               <Plus className="size-4 mr-2" />
@@ -541,10 +303,18 @@ export function ScanTypesTable({
         </div>
       </CardContent>
 
+      <ScanTypeFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        scanType={editTarget}
+        saving={saving}
+        onSubmit={handleSubmit}
+      />
+
       <AlertDialog
-        open={deleteIndex !== null}
+        open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteIndex(null);
+          if (!open) setDeleteTarget(null);
         }}
       >
         <AlertDialogContent>
@@ -552,13 +322,8 @@ export function ScanTypesTable({
             <AlertDialogTitle>Delete scan type</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete{" "}
-              <strong>
-                {deleteIndex !== null
-                  ? effectiveTypes[deleteIndex]?.display_name ||
-                    "this scan type"
-                  : "this scan type"}
-              </strong>
-              ? This action cannot be undone.
+              <strong>{deleteTarget?.display_name || "this scan type"}</strong>?
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -567,10 +332,7 @@ export function ScanTypesTable({
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 cursor-pointer"
-              onClick={() => {
-                if (deleteIndex !== null) handleDelete(deleteIndex);
-                setDeleteIndex(null);
-              }}
+              onClick={handleDelete}
             >
               Delete
             </AlertDialogAction>

@@ -5,6 +5,7 @@ import { errorAlert } from "@/shared/lib/api";
 import type { UserRole } from "@/types";
 
 import {
+  deleteUser as apiDeleteUser,
   fetchUsers as apiFetchUsers,
   toggleReviewAssignment,
   updateUserRole as apiUpdateUserRole,
@@ -21,12 +22,14 @@ interface UserManagementState {
   searchInput: string;
   togglingId: string | null;
   updatingRoleId: string | null;
+  deletingId: string | null;
 
   fetchUsers: (params?: FetchUsersParams) => Promise<void>;
   setSearchInput: (value: string) => void;
   toggleRole: (role: UserRole) => void;
   handleToggle: (userId: string, currentStatus: boolean) => Promise<void>;
   updateUserRole: (userId: string, newRole: UserRole) => Promise<boolean>;
+  deleteUser: (userId: string) => Promise<boolean>;
 }
 
 export const useUserManagementStore = create<UserManagementState>(
@@ -39,6 +42,7 @@ export const useUserManagementStore = create<UserManagementState>(
     searchInput: "",
     togglingId: null,
     updatingRoleId: null,
+    deletingId: null,
 
     fetchUsers: async (params?: FetchUsersParams) => {
       const state = get();
@@ -130,6 +134,29 @@ export const useUserManagementStore = create<UserManagementState>(
         }
       } catch {
         set({ updatingRoleId: null });
+        return false;
+      }
+    },
+
+    deleteUser: async (userId: string) => {
+      set({ deletingId: userId });
+      try {
+        const res = await apiDeleteUser(userId);
+        if (res.status === 204) {
+          // Drop the row locally rather than refetching so the cursor stays put;
+          // the next fetch reconciles the page.
+          set((state) => ({
+            users: state.users.filter((u) => u.id !== userId),
+            deletingId: null,
+          }));
+          return true;
+        } else {
+          errorAlert(res);
+          set({ deletingId: null });
+          return false;
+        }
+      } catch {
+        set({ deletingId: null });
         return false;
       }
     },

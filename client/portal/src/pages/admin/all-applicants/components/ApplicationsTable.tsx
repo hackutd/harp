@@ -2,7 +2,6 @@ import { Maximize2 } from "lucide-react";
 import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -39,10 +38,11 @@ export const ApplicationsTable = memo(function ApplicationsTable({
       {loading && (
         <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse table-fixed min-w-[1400px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
+      <Table className="border-collapse table-fixed min-w-[1500px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-28">Status</TableHead>
+            <TableHead className="w-28">Travel RSVP</TableHead>
             <TableHead className="w-48">
               {redact ? "Applicant" : "Name"}
             </TableHead>
@@ -65,7 +65,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={16} className="text-center text-gray-500">
+              <TableCell colSpan={17} className="text-center text-gray-500">
                 No applications found
               </TableCell>
             </TableRow>
@@ -76,31 +76,29 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                 : formatName(app.first_name, app.last_name);
               const email = redact ? maskEmail(app.email) : app.email;
 
+              const isSelected = selectedId === app.id;
+
               return (
                 <TableRow
                   key={app.id}
-                  className={`group hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
+                  data-state={isSelected ? "selected" : undefined}
+                  onClick={() => onSelectApplication(app.id)}
+                  className="group cursor-pointer hover:bg-muted [&>td]:py-3"
                 >
-                  <TableCell>
+                  <TableCell className="relative">
                     <Badge className={getStatusColor(app.status)}>
                       {app.status}
                     </Badge>
+                    <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                      <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate" title={name}>
-                        {name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="opacity-0 cursor-pointer group-hover:opacity-100 transition-opacity h-6 w-6 shrink-0"
-                        onClick={() => onSelectApplication(app.id)}
-                      >
-                        <Maximize2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
+                    <Badge className={getStatusColor(app.travel_rsvp_status)}>
+                      {app.travel_rsvp_status}
+                    </Badge>
                   </TableCell>
+                  <TableCell title={name}>{name}</TableCell>
                   <TableCell title={email}>{email}</TableCell>
                   <TableCell title={app.phone ?? undefined}>
                     {app.phone ?? "-"}

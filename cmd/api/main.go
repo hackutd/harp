@@ -89,10 +89,13 @@ func main() {
 			publicAPIKey: env.GetString("PUBLIC_API_KEY", ""),
 		},
 		rateLimiter: ratelimiter.Config{
-			// Limit 20 requests every 5 seconds per IP
-			RequestPerTimeFrame: env.GetInt("RATELIMITER_REQUESTS_COUNT", 20),
-			TimeFrame:           time.Second * 5,
-			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
+			// Limit 20 requests every 5 seconds per signed-in user. Requests
+			// without a verified session fall back to a per-IP bucket with a
+			// larger budget, since a whole venue can sit behind one NAT.
+			RequestPerTimeFrame:   env.GetInt("RATELIMITER_REQUESTS_COUNT", 20),
+			IPRequestPerTimeFrame: env.GetInt("RATELIMITER_IP_REQUESTS_COUNT", 200),
+			TimeFrame:             time.Second * 5,
+			Enabled:               env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
 		frontendURL:      frontendURL,
 		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
@@ -199,9 +202,13 @@ func main() {
 		logger.Infow("gcs client initialized", "bucket", cfg.gcs.bucketName)
 	}
 
-	// Init rate limiter
+	// Init rate limiters
 	rateLimiter := ratelimiter.NewFixedWindowLimiter(
 		cfg.rateLimiter.RequestPerTimeFrame,
+		cfg.rateLimiter.TimeFrame,
+	)
+	ipRateLimiter := ratelimiter.NewFixedWindowLimiter(
+		cfg.rateLimiter.IPRequestPerTimeFrame,
 		cfg.rateLimiter.TimeFrame,
 	)
 
@@ -224,6 +231,8 @@ func main() {
 		gcsClient:         gcsClient,
 		appleWalletPasses: appleWalletPasses,
 		rateLimiter:       rateLimiter,
+		ipRateLimiter:     ipRateLimiter,
+		sessionUserID:     supertokensSessionUserID,
 	}
 
 	// Metrics collected

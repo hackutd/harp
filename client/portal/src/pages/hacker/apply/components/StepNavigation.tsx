@@ -72,7 +72,7 @@ export function StepNavigation({
                 <AlertDialogTitle>Submit your application?</AlertDialogTitle>
                 <AlertDialogDescription>
                   Once submitted, you won&apos;t be able to make any further
-                  edits to your application. Please double-check your answers
+                  edits to your application. Please double check your answers
                   before continuing.
                 </AlertDialogDescription>
               </AlertDialogHeader>

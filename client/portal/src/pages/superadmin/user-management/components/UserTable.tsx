@@ -1,7 +1,9 @@
+import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -19,7 +21,11 @@ import {
 } from "@/components/ui/tooltip";
 import type { UserRole } from "@/types";
 
-import type { AdminUser, PendingRoleChange } from "../types";
+import type {
+  AdminUser,
+  PendingRoleChange,
+  PendingUserDeletion,
+} from "../types";
 import {
   allRoles,
   formatDate,
@@ -34,8 +40,12 @@ interface UserTableProps {
   loading: boolean;
   togglingId: string | null;
   updatingRoleId: string | null;
+  deletingId: string | null;
+  /** The signed-in super admin, who cannot delete their own account. */
+  currentUserId: string | null;
   onToggle: (userId: string, currentStatus: boolean) => void;
   onRoleChange: (change: PendingRoleChange) => void;
+  onDelete: (deletion: PendingUserDeletion) => void;
 }
 
 export function UserTable({
@@ -43,8 +53,11 @@ export function UserTable({
   loading,
   togglingId,
   updatingRoleId,
+  deletingId,
+  currentUserId,
   onToggle,
   onRoleChange,
+  onDelete,
 }: UserTableProps) {
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const editingRoleCellRef = useRef<HTMLTableCellElement | null>(null);
@@ -92,6 +105,7 @@ export function UserTable({
               </Tooltip>
             </TableHead>
             <TableHead>Created</TableHead>
+            <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -116,12 +130,15 @@ export function UserTable({
                 <TableCell>
                   <Skeleton className="h-4 w-20" />
                 </TableCell>
+                <TableCell className="w-10">
+                  <Skeleton className="size-7 rounded-md" />
+                </TableCell>
               </TableRow>
             ))
           ) : users.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="text-center text-muted-foreground h-24"
               >
                 No users found
@@ -240,6 +257,31 @@ export function UserTable({
                     )}
                   </TableCell>
                   <TableCell>{formatDate(user.created_at)}</TableCell>
+                  <TableCell className="w-10">
+                    {user.id === currentUserId ? null : deletingId ===
+                      user.id ? (
+                      <Skeleton className="size-7 rounded-md" />
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="cursor-pointer text-muted-foreground hover:text-red-500 shrink-0"
+                        disabled={deletingId !== null}
+                        title="Delete account"
+                        aria-label={`Delete account for ${user.email}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete({
+                            userId: user.id,
+                            email: user.email,
+                            name,
+                          });
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })

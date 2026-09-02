@@ -29,8 +29,15 @@ type application struct {
 	mailer            mailer.Client
 	gcsClient         gcs.Client
 	appleWalletPasses appleWalletPassGenerator
-	rateLimiter       ratelimiter.Limiter
-	dispatcherCancel  context.CancelFunc
+	// rateLimiter buckets requests by verified session user ID; ipRateLimiter
+	// is the fallback for requests without one. Split so the shared-IP budget
+	// (a venue full of hackers behind one NAT) can be tuned independently.
+	rateLimiter   ratelimiter.Limiter
+	ipRateLimiter ratelimiter.Limiter
+	// sessionUserID resolves the SuperTokens user ID for a request without
+	// requiring a session. Injected so tests can stub it.
+	sessionUserID    sessionUserIDResolver
+	dispatcherCancel context.CancelFunc
 }
 
 type config struct {
@@ -137,12 +144,14 @@ func (app *application) mount() http.Handler {
 	// Applied at root level so it intercepts /auth/* requests.
 	r.Use(supertokens.Middleware)
 
-	// Ratelimiter
-	if app.config.rateLimiter.Enabled {
-		r.Use(app.RateLimiterMiddleware)
-	}
-
 	r.Route("/v1", func(r chi.Router) {
+		// Ratelimiter. Scoped to the API so the SPA shell and static assets
+		// (served from /*) are never throttled; /auth/* is handled by the
+		// SuperTokens middleware above and never reaches this router.
+		if app.config.rateLimiter.Enabled {
+			r.Use(app.RateLimiterMiddleware)
+		}
+
 		// Public API (key auth)
 		r.Route("/public", func(r chi.Router) {
 			r.Use(app.APIKeyMiddleware)
@@ -200,6 +209,23 @@ func (app *application) mount() http.Handler {
 				// even after applications close.
 				r.Get("/me/resume-url", app.getMyResumeDownloadURLHandler)
 
+				// RSVP is gated by its own toggle, not ApplicationsEnabled:
+				// applications are typically closed by the time acceptances go out.
+				r.Get("/me/rsvp", app.getMyRSVPHandler)
+				r.Group(func(r chi.Router) {
+					r.Use(app.RSVPEnabledMiddleware)
+					r.Post("/me/rsvp", app.submitMyRSVPHandler)
+				})
+
+				// Travel RSVP (proof of travel) mirrors the RSVP gating with its own toggle
+				r.Get("/me/travel-rsvp", app.getMyTravelRSVPHandler)
+				r.Get("/me/travel-rsvp/receipt-url", app.getMyTravelReceiptURLHandler)
+				r.Group(func(r chi.Router) {
+					r.Use(app.TravelRSVPEnabledMiddleware)
+					r.Post("/me/travel-rsvp", app.submitMyTravelRSVPHandler)
+					r.Post("/me/travel-rsvp/receipt-upload-url", app.generateTravelReceiptUploadURLHandler)
+				})
+
 				r.Group(func(r chi.Router) {
 					r.Use(app.ApplicationsEnabledMiddleware)
 					r.Patch("/me", app.updateApplicationHandler)
@@ -220,6 +246,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/stats", app.getApplicationStatsHandler)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
+						r.Get("/{applicationID}/travel-receipt-urls", app.getTravelReceiptURLsHandler)
 
 						// Assigned Applications
 						r.Get("/{applicationID}/notes", app.getApplicationNotes)
@@ -289,6 +316,7 @@ func (app *application) mount() http.Handler {
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
 					r.Post("/reset-hackathon", app.resetHackathonHandler)
+					r.Get("/forms/summary", app.getFormsOverview)
 
 					// Hacker links
 					r.Route("/hacker-links", func(r chi.Router) {
@@ -300,8 +328,17 @@ func (app *application) mount() http.Handler {
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
+						r.Get("/schema-contract", app.getSchemaContract)
 						r.Get("/application-schema", app.getApplicationSchema)
 						r.Put("/application-schema", app.updateApplicationSchema)
+						r.Get("/rsvp-schema", app.getRSVPSchema)
+						r.Put("/rsvp-schema", app.updateRSVPSchema)
+						r.Get("/rsvp-enabled", app.getRSVPEnabled)
+						r.Put("/rsvp-enabled", app.setRSVPEnabled)
+						r.Get("/travel-rsvp-schema", app.getTravelRSVPSchema)
+						r.Put("/travel-rsvp-schema", app.updateTravelRSVPSchema)
+						r.Get("/travel-rsvp-enabled", app.getTravelRSVPEnabled)
+						r.Put("/travel-rsvp-enabled", app.setTravelRSVPEnabled)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
@@ -349,6 +386,10 @@ func (app *application) mount() http.Handler {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+						r.Patch("/{applicationID}/travel-status", app.setApplicationTravelStatus)
+						// Repair hatches for the one-shot hacker RSVPs
+						r.Post("/{applicationID}/rsvp/reset", app.resetApplicationRSVPHandler)
+						r.Post("/{applicationID}/travel-rsvp/reset", app.resetApplicationTravelRSVPHandler)
 					})
 
 					// Outbound decision emails
@@ -361,6 +402,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/users", func(r chi.Router) {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
+						r.Delete("/{userID}", app.deleteUserHandler)
 					})
 
 					// Scheduled push notifications

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -9,11 +10,13 @@ import {
 } from "@/components/ui/card";
 import { SearchBar } from "@/pages/admin/_shared";
 import { PaginationControls } from "@/pages/admin/all-applicants/components/PaginationControls";
+import { useUserStore } from "@/shared/stores";
 
+import { DeleteUserDialog } from "./components/DeleteUserDialog";
 import { RoleChangeDialog } from "./components/RoleChangeDialog";
 import { UserTable } from "./components/UserTable";
 import { useUserManagementStore } from "./store";
-import type { PendingRoleChange } from "./types";
+import type { PendingRoleChange, PendingUserDeletion } from "./types";
 import {
   allRoles,
   MIN_SEARCH_LENGTH,
@@ -32,14 +35,19 @@ export default function UserManagementPage() {
     prevCursor,
     togglingId,
     updatingRoleId,
+    deletingId,
     fetchUsers,
     setSearchInput,
     toggleRole,
     handleToggle,
     updateUserRole,
+    deleteUser,
   } = useUserManagementStore();
+  const currentUserId = useUserStore((s) => s.user?.id ?? null);
   const [pendingRoleChange, setPendingRoleChange] =
     useState<PendingRoleChange | null>(null);
+  const [pendingDeletion, setPendingDeletion] =
+    useState<PendingUserDeletion | null>(null);
   const isFirstRender = useRef(true);
 
   useEffect(() => {
@@ -68,6 +76,16 @@ export default function UserManagementPage() {
     const { userId, newRole } = pendingRoleChange;
     setPendingRoleChange(null);
     await updateUserRole(userId, newRole);
+  }
+
+  async function handleConfirmDeletion() {
+    if (!pendingDeletion) return;
+    const { userId, email, name } = pendingDeletion;
+    const success = await deleteUser(userId);
+    setPendingDeletion(null);
+    if (success) {
+      toast.success(`Deleted ${name || email}`);
+    }
   }
 
   const search =
@@ -131,8 +149,11 @@ export default function UserManagementPage() {
             loading={loading}
             togglingId={togglingId}
             updatingRoleId={updatingRoleId}
+            deletingId={deletingId}
+            currentUserId={currentUserId}
             onToggle={handleToggle}
             onRoleChange={setPendingRoleChange}
+            onDelete={setPendingDeletion}
           />
         </CardContent>
       </Card>
@@ -145,6 +166,13 @@ export default function UserManagementPage() {
         }
         onConfirm={handleConfirmRoleChange}
         onCancel={() => setPendingRoleChange(null)}
+      />
+
+      <DeleteUserDialog
+        pendingDeletion={pendingDeletion}
+        deleting={deletingId !== null}
+        onConfirm={handleConfirmDeletion}
+        onCancel={() => setPendingDeletion(null)}
       />
     </div>
   );

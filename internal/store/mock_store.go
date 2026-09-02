@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -62,9 +63,12 @@ func (m *MockUsersStore) UpdateRole(ctx context.Context, userID string, role Use
 	return args.Get(0).(*User), args.Error(1)
 }
 
-func (m *MockUsersStore) Delete(ctx context.Context, userID string) error {
+func (m *MockUsersStore) Delete(ctx context.Context, userID string) (*DeletedUserPaths, error) {
 	args := m.Called(userID)
-	return args.Error(0)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DeletedUserPaths), args.Error(1)
 }
 
 func (m *MockUsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {
@@ -114,7 +118,17 @@ func (m *MockApplicationStore) Update(ctx context.Context, app *Application) err
 	return args.Error(0)
 }
 
-func (m *MockApplicationStore) Submit(ctx context.Context, app *Application) error {
+func (m *MockApplicationStore) Submit(ctx context.Context, app *Application, travelOptInFieldID string) error {
+	args := m.Called(app, travelOptInFieldID)
+	return args.Error(0)
+}
+
+func (m *MockApplicationStore) SubmitRSVP(ctx context.Context, app *Application) error {
+	args := m.Called(app)
+	return args.Error(0)
+}
+
+func (m *MockApplicationStore) SubmitTravelRSVP(ctx context.Context, app *Application) error {
 	args := m.Called(app)
 	return args.Error(0)
 }
@@ -141,6 +155,40 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*Application), args.Error(1)
+}
+
+func (m *MockApplicationStore) SetTravelStatus(ctx context.Context, id string, status TravelStatus, approvedAmountCents *int64) (*Application, error) {
+	args := m.Called(id, status, approvedAmountCents)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Application), args.Error(1)
+}
+
+func (m *MockApplicationStore) GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*FormOperationsStats), args.Error(1)
+}
+
+func (m *MockApplicationStore) ResetRSVP(ctx context.Context, id string) (*Application, []string, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	receipts, _ := args.Get(1).([]string)
+	return args.Get(0).(*Application), receipts, args.Error(2)
+}
+
+func (m *MockApplicationStore) ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	receipts, _ := args.Get(1).([]string)
+	return args.Get(0).(*Application), receipts, args.Error(2)
 }
 
 func (m *MockApplicationStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
@@ -198,6 +246,14 @@ type MockSettingsStore struct {
 	mock.Mock
 }
 
+func (m *MockSettingsStore) GetMany(ctx context.Context, keys ...string) (map[string]json.RawMessage, error) {
+	args := m.Called(keys)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]json.RawMessage), args.Error(1)
+}
+
 func (m *MockSettingsStore) GetApplicationSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -208,6 +264,52 @@ func (m *MockSettingsStore) GetApplicationSchema(ctx context.Context) ([]Applica
 
 func (m *MockSettingsStore) UpdateApplicationSchema(ctx context.Context, fields []ApplicationSchemaField) error {
 	args := m.Called(fields)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ApplicationSchemaField), args.Error(1)
+}
+
+func (m *MockSettingsStore) UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	args := m.Called(fields)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetRSVPEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ApplicationSchemaField), args.Error(1)
+}
+
+func (m *MockSettingsStore) UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error {
+	args := m.Called(fields)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetTravelRSVPEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetTravelRSVPEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
 	return args.Error(0)
 }
 
@@ -439,12 +541,12 @@ type MockHackathonStore struct {
 	mock.Mock
 }
 
-func (m *MockHackathonStore) Reset(ctx context.Context, opts ResetOptions) ([]string, error) {
+func (m *MockHackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPaths, error) {
 	args := m.Called(opts)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(*ResetPaths), args.Error(1)
 }
 
 // MockApplicationReviewsStore is a mock implementation of the ApplicationReviews interface
@@ -452,12 +554,17 @@ type MockApplicationReviewsStore struct {
 	mock.Mock
 }
 
-func (m *MockApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, notes *string) (*ApplicationReview, error) {
-	args := m.Called(reviewID, adminID, vote, notes)
+func (m *MockApplicationReviewsStore) SubmitVote(ctx context.Context, reviewID string, adminID string, vote ReviewVote, travelVote *bool, notes *string) (*ApplicationReview, error) {
+	args := m.Called(reviewID, adminID, vote, travelVote, notes)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*ApplicationReview), args.Error(1)
+}
+
+func (m *MockApplicationReviewsStore) GetTravelStatusByReviewID(ctx context.Context, reviewID string, adminID string) (TravelStatus, error) {
+	args := m.Called(reviewID, adminID)
+	return args.Get(0).(TravelStatus), args.Error(1)
 }
 
 func (m *MockApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error) {

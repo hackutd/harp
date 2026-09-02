@@ -24,7 +24,13 @@ const DashboardPage = lazy(
   () => import("@/pages/hacker/dashboard/DashboardPage"),
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
-const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
+const ApplicationDetailPage = lazy(
+  () => import("@/pages/hacker/application/ApplicationDetailPage"),
+);
+const HackerRSVPPage = lazy(() => import("@/pages/hacker/rsvp/RSVPPage"));
+const HackerTravelRSVPPage = lazy(
+  () => import("@/pages/hacker/travel-rsvp/TravelRSVPPage"),
+);
 const HackerLayout = lazy(() => import("@/layouts/HackerLayout"));
 const HackerScanPage = lazy(() => import("@/pages/hacker/scan/ScanPage"));
 const HackerSchedulePage = lazy(
@@ -43,8 +49,8 @@ const HackerPackPage = lazy(
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
-const SuperAdminApplicationPage = lazy(
-  () => import("@/pages/superadmin/application/ApplicationPage"),
+const SuperAdminFormsPage = lazy(
+  () => import("@/pages/superadmin/forms/FormsPage"),
 );
 const SuperAdminReviewsPage = lazy(
   () => import("@/pages/superadmin/reviews/ReviewsPage"),
@@ -120,11 +126,37 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
           },
+          // The standalone status page is gone — the dashboard shows the
+          // status cards now. Redirect stale links/bookmarks.
           {
             path: "status",
+            element: <Navigate to="/app" replace />,
+          },
+          {
+            path: "status/application",
+            element: <Navigate to="/app/application" replace />,
+          },
+          {
+            path: "application",
             element: (
               <Suspense fallback={<PageLoader />}>
-                <StatusPage />
+                <ApplicationDetailPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "rsvp",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerRSVPPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "travel-rsvp",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <HackerTravelRSVPPage />
               </Suspense>
             ),
           },
@@ -265,8 +297,45 @@ export const router = createBrowserRouter([
             path: "sa/application",
             element: (
               <RequireSuperAdmin>
+                <Navigate
+                  to="/admin/sa/forms/application?tab=builder"
+                  replace
+                />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/rsvp",
+            element: (
+              <RequireSuperAdmin>
+                <Navigate to="/admin/sa/forms/rsvp?tab=builder" replace />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/travel-rsvp",
+            element: (
+              <RequireSuperAdmin>
+                <Navigate to="/admin/sa/forms/travel?tab=builder" replace />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/forms",
+            element: (
+              <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
-                  <SuperAdminApplicationPage />
+                  <SuperAdminFormsPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/forms/:formKey",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminFormsPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),

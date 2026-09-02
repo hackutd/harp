@@ -80,21 +80,20 @@ export const ReviewsTable = memo(function ReviewsTable({
             reviews.map((review) => (
               <TableRow
                 key={review.id}
-                className={`group cursor-pointer hover:bg-muted/50 [&>td]:py-3 ${selectedId === review.id ? "bg-muted/50" : ""}`}
+                data-state={selectedId === review.id ? "selected" : undefined}
+                className="group cursor-pointer hover:bg-muted [&>td]:py-3"
                 onClick={() => onSelectReview(review.id)}
               >
-                <TableCell>
+                <TableCell className="relative">
                   <VoteBadge vote={review.vote} />
+                  <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                    <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                  </span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
-                  <div className="flex items-center justify-between gap-4">
-                    <span>
-                      {redact
-                        ? formatApplicantLabel(review.application_id)
-                        : formatName(review.first_name, review.last_name)}
-                    </span>
-                    <Maximize2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  {redact
+                    ? formatApplicantLabel(review.application_id)
+                    : formatName(review.first_name, review.last_name)}
                 </TableCell>
                 <TableCell>
                   {redact ? maskEmail(review.email) : review.email}

@@ -1,5 +1,7 @@
 // Application Review feature types
 
+import type { TravelStatus } from "@/types";
+
 export type ReviewVote = "accept" | "waitlist" | "reject";
 
 export interface Review {
@@ -7,6 +9,7 @@ export interface Review {
   admin_id: string;
   application_id: string;
   vote: ReviewVote | null;
+  travel_vote: boolean | null;
   notes: string | null;
   assigned_at: string;
   reviewed_at: string | null;
@@ -21,6 +24,7 @@ export interface Review {
   major: string | null;
   country_of_residence: string | null;
   hackathons_attended: number | null;
+  travel_status: TravelStatus;
 }
 
 export interface ReviewNote {
@@ -40,5 +44,7 @@ export interface NotesListResponse {
 
 export interface SubmitVotePayload {
   vote: ReviewVote;
+  /** Required when the applicant requested travel reimbursement; omitted otherwise. */
+  travel_vote?: boolean;
   notes?: string;
 }

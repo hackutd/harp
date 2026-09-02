@@ -18,9 +18,10 @@ type ScheduledNotification struct {
 	SentAt         *time.Time `json:"sent_at"`
 	RecipientCount int        `json:"recipient_count"`
 	ScheduleID     *string    `json:"schedule_id"`
-	CreatedBy      string     `json:"created_by"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	// Nil once the author's account is deleted; the notification outlives them.
+	CreatedBy *string   `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ScheduleNotificationGenerationResult summarizes a bulk generation run.

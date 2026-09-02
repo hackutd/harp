@@ -103,6 +103,54 @@ export function getResponseValue<T>(
   return val as T;
 }
 
+/**
+ * A conditional-field controller parsed from validation.show_if / required_if.
+ * The raw expression is either a checkbox field id ("field", satisfied when
+ * the answer is true) or a select equality ("field=Value", satisfied when the
+ * answer equals the value).
+ */
+export interface FieldCondition {
+  field: string;
+  /** Expected select value; undefined means the controller is a checkbox. */
+  value?: string;
+}
+
+/**
+ * The condition controlling visibility ("show_if") or requirement
+ * ("required_if") for a field, if it declares one in its validation map
+ * (e.g. travel questions controlled by travel_reimbursement, or flight
+ * fields controlled by travel_rsvp_mode=Flying).
+ */
+export function getFieldCondition(
+  field: ApplicationSchemaField,
+  key: "show_if" | "required_if",
+): FieldCondition | undefined {
+  const v = field.validation?.[key];
+  if (typeof v !== "string" || v === "") return undefined;
+  const eq = v.indexOf("=");
+  if (eq > 0) return { field: v.slice(0, eq), value: v.slice(eq + 1) };
+  return { field: v };
+}
+
+/** True when the condition's controller answer satisfies it. */
+export function conditionSatisfied(
+  condition: FieldCondition,
+  values: Record<string, unknown> | undefined | null,
+): boolean {
+  const actual = values?.[condition.field];
+  if (condition.value !== undefined) return actual === condition.value;
+  return actual === true;
+}
+
+/** True when a field should be shown given the current answer values. */
+export function isFieldVisible(
+  field: ApplicationSchemaField,
+  values: Record<string, unknown> | undefined | null,
+): boolean {
+  const condition = getFieldCondition(field, "show_if");
+  return !condition || conditionSatisfied(condition, values);
+}
+
 /** Build a Zod schema for a single field based on its ApplicationSchemaField definition. */
 function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
   const validation = field.validation ?? {};
@@ -168,14 +216,41 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
 
 /**
  * Build a Zod object schema from an array of ApplicationSchemaField definitions.
- * Returns a z.object() with one key per field.
+ * Returns a z.object() with one key per field. Fields with a "required_if"
+ * validation key become required when their controlling checkbox is checked.
  */
 export function buildZodSchema(fields: ApplicationSchemaField[]) {
   const shape: Record<string, z.ZodType> = {};
   for (const field of fields) {
     shape[field.id] = buildFieldZod(field);
   }
-  return z.object(shape);
+
+  const conditional = fields
+    .map((f) => ({ field: f, condition: getFieldCondition(f, "required_if") }))
+    .filter(
+      (c): c is { field: ApplicationSchemaField; condition: FieldCondition } =>
+        !!c.condition,
+    );
+
+  return z.object(shape).superRefine((data, ctx) => {
+    for (const { field, condition } of conditional) {
+      if (!conditionSatisfied(condition, data)) continue;
+
+      const value = data[field.id];
+      const empty =
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "") ||
+        (Array.isArray(value) && value.length === 0);
+      if (empty) {
+        ctx.addIssue({
+          code: "custom",
+          path: [field.id],
+          message: `${stripLabelLinks(field.label)} is required`,
+        });
+      }
+    }
+  });
 }
 
 /** Build default form values from schema fields. */
@@ -251,7 +326,7 @@ export function renderLabel(label: string): ReactNode {
           target: "_blank",
           rel: "noopener noreferrer",
           className:
-            "underline underline-offset-4 text-blue-600 hover:text-blue-800",
+            "bg-[linear-gradient(currentColor,currentColor)] bg-[position:0_100%] bg-[length:0_1px] bg-no-repeat text-blue-600 transition-[background-size,color] duration-300 ease-out hover:bg-[length:100%_1px] hover:text-blue-800 motion-reduce:transition-none",
         },
         match[1],
       ),

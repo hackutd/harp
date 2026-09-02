@@ -32,6 +32,7 @@ const SORTABLE_COLUMNS: { key: SortableColumn; label: string }[] = [
   { key: "accept_votes", label: "Accept" },
   { key: "reject_votes", label: "Reject" },
   { key: "waitlist_votes", label: "Waitlist" },
+  { key: "travel_yes_votes", label: "Travel Y/N" },
 ];
 
 export const ReviewsTable = memo(function ReviewsTable({
@@ -77,6 +78,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                 </Button>
               </TableHead>
             ))}
+            <TableHead>Travel</TableHead>
             <TableHead>Reviews</TableHead>
             <TableHead>AI %</TableHead>
             <TableHead>Submitted</TableHead>
@@ -86,7 +88,7 @@ export const ReviewsTable = memo(function ReviewsTable({
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={10} className="text-center text-gray-500">
+              <TableCell colSpan={12} className="text-center text-gray-500">
                 No applications found
               </TableCell>
             </TableRow>
@@ -94,19 +96,20 @@ export const ReviewsTable = memo(function ReviewsTable({
             applications.map((app) => (
               <TableRow
                 key={app.id}
-                className={`group cursor-pointer hover:bg-muted/50 [&>td]:py-3 ${selectedId === app.id ? "bg-muted/50" : ""}`}
+                data-state={selectedId === app.id ? "selected" : undefined}
+                className="group cursor-pointer hover:bg-muted [&>td]:py-3"
                 onClick={() => onSelectApplication(app.id)}
               >
-                <TableCell>
+                <TableCell className="relative">
                   <Badge className={getStatusColor(app.status)}>
                     {app.status}
                   </Badge>
+                  <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                    <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                  </span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
-                  <div className="flex items-center justify-between gap-4">
-                    <span>{formatName(app.first_name, app.last_name)}</span>
-                    <Maximize2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  {formatName(app.first_name, app.last_name)}
                 </TableCell>
                 <TableCell>{app.email}</TableCell>
                 <TableCell className="text-center">
@@ -117,6 +120,28 @@ export const ReviewsTable = memo(function ReviewsTable({
                 </TableCell>
                 <TableCell className="text-center">
                   {app.waitlist_votes}
+                </TableCell>
+                <TableCell className="text-center">
+                  {app.travel_status === "not_requested"
+                    ? "-"
+                    : `${app.travel_yes_votes}/${app.travel_no_votes}`}
+                </TableCell>
+                <TableCell className="text-center whitespace-nowrap">
+                  {app.travel_status === "not_requested" ? (
+                    "-"
+                  ) : (
+                    <Badge
+                      className={
+                        app.travel_status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : app.travel_status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                      }
+                    >
+                      {app.travel_status}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-center whitespace-nowrap">
                   {app.reviews_completed}/{app.reviews_assigned}

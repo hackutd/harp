@@ -34,7 +34,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/shared/hooks";
 import { getFieldPresets } from "@/shared/lib/field-presets";
-import { renderLabel } from "@/shared/lib/schema-utils";
+import {
+  conditionSatisfied,
+  getFieldCondition,
+  renderLabel,
+} from "@/shared/lib/schema-utils";
 import { cn } from "@/shared/lib/utils";
 import type { ApplicationSchemaField } from "@/types";
 
@@ -58,6 +62,8 @@ const selectItem =
 interface SchemaStepRendererProps {
   sectionLabel: string;
   fields: ApplicationSchemaField[];
+  /** Optional visual override for the section heading. */
+  headingClassName?: string;
   /** Extra content rendered before the fields (e.g., read-only email). */
   header?: React.ReactNode;
 }
@@ -65,39 +71,84 @@ interface SchemaStepRendererProps {
 export function SchemaStepRenderer({
   sectionLabel,
   fields,
+  headingClassName,
   header,
 }: SchemaStepRendererProps) {
   const form = useFormContext<ApplicationFormValues>();
+
+  // Conditional fields (validation.show_if / required_if) are controlled by
+  // another field — a checkbox ("field") or a select value ("field=Value"):
+  // hidden until the condition holds, and required while visible.
+  const conditions = fields.map((f) => ({
+    showIf: getFieldCondition(f, "show_if"),
+    requiredIf: getFieldCondition(f, "required_if"),
+  }));
+  const controllerIds = [
+    ...new Set(
+      conditions.flatMap((c) =>
+        [c.showIf?.field, c.requiredIf?.field].filter(
+          (id): id is string => !!id,
+        ),
+      ),
+    ),
+  ];
+  const controllerValues = form.watch(controllerIds);
+  const watchedValues: Record<string, unknown> = {};
+  controllerIds.forEach((id, i) => {
+    watchedValues[id] = controllerValues[i];
+  });
+
+  const visibleFields: ApplicationSchemaField[] = [];
+  fields.forEach((f, i) => {
+    const { showIf, requiredIf } = conditions[i];
+    if (showIf && !conditionSatisfied(showIf, watchedValues)) return;
+    if (
+      !f.required &&
+      requiredIf &&
+      conditionSatisfied(requiredIf, watchedValues)
+    ) {
+      visibleFields.push({ ...f, required: true });
+    } else {
+      visibleFields.push(f);
+    }
+  });
 
   // Index where the trailing run of all-optional fields begins — the point
   // below which everything is optional. Anchoring the "OPTIONAL" divider here
   // (rather than at the first optional field) keeps it from landing above a
   // field that still has required fields after it, e.g. phone, which precedes
   // the required age field.
-  let optionalStart = fields.length;
-  for (let i = fields.length - 1; i >= 0; i--) {
-    if (fields[i].required) break;
+  let optionalStart = visibleFields.length;
+  for (let i = visibleFields.length - 1; i >= 0; i--) {
+    if (visibleFields[i].required) break;
     optionalStart = i;
   }
   // Only show the divider when required fields precede the optional run.
   const firstOptionalIndex =
-    optionalStart > 0 && optionalStart < fields.length ? optionalStart : -1;
+    optionalStart > 0 && optionalStart < visibleFields.length
+      ? optionalStart
+      : -1;
 
   return (
     <div className="space-y-7">
-      <h1 className="text-3xl font-light tracking-tight text-black">
+      <h1
+        className={cn(
+          "text-3xl font-light tracking-tight text-black",
+          headingClassName,
+        )}
+      >
         {sectionLabel}
       </h1>
 
       {header}
 
-      {fields.length === 0 && (
+      {visibleFields.length === 0 && (
         <p className="text-sm font-light text-[#8A8A8A]">
           No fields configured.
         </p>
       )}
 
-      {fields.map((field, index) => (
+      {visibleFields.map((field, index) => (
         <div key={field.id} className="space-y-7">
           {index === firstOptionalIndex && (
             <div className="flex items-center gap-3 pt-1">
@@ -336,16 +387,19 @@ function SchemaFormField({
           control={form.control}
           name={field.id}
           render={({ field: formField }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  className="mt-0.5"
-                  checked={formField.value ?? false}
-                  onCheckedChange={formField.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-snug">
-                <FormLabel className="text-sm font-extralight">
+            <FormItem className="flex flex-row items-start gap-2.5 space-y-0">
+              {/* h-6 matches the label's leading-6 line box, so the box centers
+                  on the first line of text however many lines it wraps to. */}
+              <div className="flex h-6 shrink-0 items-center">
+                <FormControl>
+                  <Checkbox
+                    checked={formField.value ?? false}
+                    onCheckedChange={formField.onChange}
+                  />
+                </FormControl>
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <FormLabel className="block text-sm leading-6 font-extralight">
                   {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>

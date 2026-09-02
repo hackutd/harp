@@ -23,12 +23,13 @@ func withNotificationRouteParam(req *http.Request, id string) *http.Request {
 }
 
 func newTestNotification(id string) store.ScheduledNotification {
+	createdBy := "superadmin-1"
 	return store.ScheduledNotification{
 		ID:          id,
 		Title:       "Applications closing soon",
 		Body:        "Submit your application before midnight",
 		ScheduledAt: time.Now().Add(time.Hour),
-		CreatedBy:   "superadmin-1",
+		CreatedBy:   &createdBy,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -71,7 +72,9 @@ func TestCreateScheduledNotification(t *testing.T) {
 		mockNotifs.On("Create", mock.AnythingOfType("*store.ScheduledNotification")).Run(func(args mock.Arguments) {
 			n := args.Get(0).(*store.ScheduledNotification)
 			n.ID = "new-notif"
-			assert.Equal(t, "superadmin-1", n.CreatedBy)
+			if assert.NotNil(t, n.CreatedBy) {
+				assert.Equal(t, "superadmin-1", *n.CreatedBy)
+			}
 		}).Return(nil).Once()
 
 		body := `{"title":"Test","body":"Hello","scheduled_at":"2030-01-01T00:00:00Z","target_role":"hacker"}`

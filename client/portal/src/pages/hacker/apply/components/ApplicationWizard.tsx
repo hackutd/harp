@@ -4,11 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
+import { IncompleteFormAlert } from "@/components/IncompleteFormAlert";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest, postRequest } from "@/shared/lib/api";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-defaults";
+import {
+  collectIncompleteSections,
+  scrollToFirstInvalidField,
+} from "@/shared/lib/form-errors";
 import {
   buildDefaultValues,
   deriveSections,
@@ -25,7 +30,6 @@ import {
   updateMyApplication,
   uploadResumeToSignedURL as uploadToSignedURL,
 } from "../api";
-import { AgreementsStep } from "../steps/AgreementsStep";
 import { ReviewStep } from "../steps/ReviewStep";
 import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
 import { SponsorInfoStep } from "../steps/SponsorInfoStep";
@@ -177,6 +181,17 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     mode: "onTouched",
   });
 
+  // Set once a submit attempt fails validation. The list itself is derived from
+  // the live errors so it shrinks as the hacker fills the gaps in, and
+  // disappears once nothing is left.
+  const [showIncomplete, setShowIncomplete] = useState(false);
+  const { errors: formErrors } = form.formState;
+  const incompleteSections = useMemo(
+    () =>
+      showIncomplete ? collectIncompleteSections(schemaFields, formErrors) : [],
+    [showIncomplete, formErrors, schemaFields],
+  );
+
   // Load existing application data and check if applications are enabled
   useEffect(() => {
     const loadApplication = async () => {
@@ -320,7 +335,12 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     if (isResumeBusy) return;
     setApiError(null);
     const isValid = await validateCurrentStep();
-    if (!isValid) return;
+    if (!isValid) {
+      // Several fields are custom popover triggers that never take focus, so
+      // point the user at the first gap explicitly.
+      scrollToFirstInvalidField();
+      return;
+    }
 
     // Save progress before advancing
     cancelPendingAutosave();
@@ -356,13 +376,24 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     setSubmitting(true);
     setApiError(null);
 
-    // Validate all fields
+    // Validate all fields. On failure, name the sections still missing answers
+    // rather than sending the hacker back through every step to find them.
     const isValid = await form.trigger();
     if (!isValid) {
-      setApiError("Please complete all required fields before submitting");
+      const sections = collectIncompleteSections(
+        schemaFields,
+        form.formState.errors,
+      );
+      if (sections.length > 0) {
+        setShowIncomplete(true);
+      } else {
+        setApiError("Please complete all required fields before submitting");
+      }
       setSubmitting(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    setShowIncomplete(false);
 
     // Save current state first
     cancelPendingAutosave();
@@ -386,7 +417,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       if (application?.id) {
         localStorage.removeItem(stepStorageKey(application.id));
       }
-      navigate("/app/status", {
+      navigate("/app", {
         state: { justSubmitted: submitRes.data.id },
       });
     } else {
@@ -542,7 +573,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         </p>
         <button
           type="button"
-          onClick={() => navigate("/app/status")}
+          onClick={() => navigate("/app")}
           className="text-sm font-light text-black underline underline-offset-2"
         >
           View status
@@ -584,16 +615,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           isDeletingResume={isDeletingResume}
           onResumeSelected={uploadResume}
           onDeleteResume={removeResume}
-        />
-      );
-    }
-
-    // Agreements section gets a dedicated accordion-based layout
-    if (section === "agreements") {
-      return (
-        <AgreementsStep
-          sectionLabel={sectionLabels[section] ?? section}
-          fields={fields}
         />
       );
     }
@@ -642,6 +663,16 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       />
 
       <div className="pt-6">
+        {incompleteSections.length > 0 && (
+          <IncompleteFormAlert
+            sections={incompleteSections}
+            onJumpToSection={(sectionId) =>
+              goToStep(sectionStepMap[sectionId] ?? 0)
+            }
+            className="mb-6"
+          />
+        )}
+
         {apiError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -656,7 +687,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
             autosaveState === "error"
               ? "text-red-500"
               : autosaveState === "saved"
-                ? "text-[#09D082]"
+                ? "text-emerald-600"
                 : "text-[#8A8A8A]"
           }`}
         >

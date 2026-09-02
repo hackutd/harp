@@ -15,6 +15,216 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /*
+   * Chromatic palette
+   *
+   * The schedule's red/amber/emerald/sky/violet 400 colors are the canonical
+   * values. Related Tailwind families are aliases of these ramps so legacy
+   * utilities (yellow, green, blue, purple, etc.) cannot drift visually.
+   */
+  --color-red-50: color-mix(in srgb, var(--portal-red) 10%, white);
+  --color-red-100: color-mix(in srgb, var(--portal-red) 20%, white);
+  --color-red-200: color-mix(in srgb, var(--portal-red) 35%, white);
+  --color-red-300: color-mix(in srgb, var(--portal-red) 65%, white);
+  --color-red-400: var(--portal-red);
+  --color-red-500: color-mix(in srgb, var(--portal-red) 90%, black);
+  --color-red-600: color-mix(in srgb, var(--portal-red) 80%, black);
+  --color-red-700: color-mix(in srgb, var(--portal-red) 65%, black);
+  --color-red-800: color-mix(in srgb, var(--portal-red) 50%, black);
+  --color-red-900: color-mix(in srgb, var(--portal-red) 35%, black);
+  --color-red-950: color-mix(in srgb, var(--portal-red) 20%, black);
+
+  --color-amber-50: color-mix(in srgb, var(--portal-orange) 10%, white);
+  --color-amber-100: color-mix(in srgb, var(--portal-orange) 20%, white);
+  --color-amber-200: color-mix(in srgb, var(--portal-orange) 35%, white);
+  --color-amber-300: color-mix(in srgb, var(--portal-orange) 65%, white);
+  --color-amber-400: var(--portal-orange);
+  --color-amber-500: color-mix(in srgb, var(--portal-orange) 90%, black);
+  --color-amber-600: color-mix(in srgb, var(--portal-orange) 80%, black);
+  --color-amber-700: color-mix(in srgb, var(--portal-orange) 65%, black);
+  --color-amber-800: color-mix(in srgb, var(--portal-orange) 50%, black);
+  --color-amber-900: color-mix(in srgb, var(--portal-orange) 35%, black);
+  --color-amber-950: color-mix(in srgb, var(--portal-orange) 20%, black);
+
+  --color-emerald-50: color-mix(in srgb, var(--portal-green) 10%, white);
+  --color-emerald-100: color-mix(in srgb, var(--portal-green) 20%, white);
+  --color-emerald-200: color-mix(in srgb, var(--portal-green) 35%, white);
+  --color-emerald-300: color-mix(in srgb, var(--portal-green) 65%, white);
+  --color-emerald-400: var(--portal-green);
+  --color-emerald-500: color-mix(in srgb, var(--portal-green) 90%, black);
+  --color-emerald-600: color-mix(in srgb, var(--portal-green) 80%, black);
+  --color-emerald-700: color-mix(in srgb, var(--portal-green) 65%, black);
+  --color-emerald-800: color-mix(in srgb, var(--portal-green) 50%, black);
+  --color-emerald-900: color-mix(in srgb, var(--portal-green) 35%, black);
+  --color-emerald-950: color-mix(in srgb, var(--portal-green) 20%, black);
+
+  --color-sky-50: color-mix(in srgb, var(--portal-blue) 10%, white);
+  --color-sky-100: color-mix(in srgb, var(--portal-blue) 20%, white);
+  --color-sky-200: color-mix(in srgb, var(--portal-blue) 35%, white);
+  --color-sky-300: color-mix(in srgb, var(--portal-blue) 65%, white);
+  --color-sky-400: var(--portal-blue);
+  --color-sky-500: color-mix(in srgb, var(--portal-blue) 90%, black);
+  --color-sky-600: color-mix(in srgb, var(--portal-blue) 80%, black);
+  --color-sky-700: color-mix(in srgb, var(--portal-blue) 65%, black);
+  --color-sky-800: color-mix(in srgb, var(--portal-blue) 50%, black);
+  --color-sky-900: color-mix(in srgb, var(--portal-blue) 35%, black);
+  --color-sky-950: color-mix(in srgb, var(--portal-blue) 20%, black);
+
+  --color-violet-50: color-mix(in srgb, var(--portal-purple) 10%, white);
+  --color-violet-100: color-mix(in srgb, var(--portal-purple) 20%, white);
+  --color-violet-200: color-mix(in srgb, var(--portal-purple) 35%, white);
+  --color-violet-300: color-mix(in srgb, var(--portal-purple) 65%, white);
+  --color-violet-400: var(--portal-purple);
+  --color-violet-500: color-mix(in srgb, var(--portal-purple) 90%, black);
+  --color-violet-600: color-mix(in srgb, var(--portal-purple) 80%, black);
+  --color-violet-700: color-mix(in srgb, var(--portal-purple) 65%, black);
+  --color-violet-800: color-mix(in srgb, var(--portal-purple) 50%, black);
+  --color-violet-900: color-mix(in srgb, var(--portal-purple) 35%, black);
+  --color-violet-950: color-mix(in srgb, var(--portal-purple) 20%, black);
+
+  /* Red aliases. */
+  --color-rose-50: var(--color-red-50);
+  --color-rose-100: var(--color-red-100);
+  --color-rose-200: var(--color-red-200);
+  --color-rose-300: var(--color-red-300);
+  --color-rose-400: var(--color-red-400);
+  --color-rose-500: var(--color-red-500);
+  --color-rose-600: var(--color-red-600);
+  --color-rose-700: var(--color-red-700);
+  --color-rose-800: var(--color-red-800);
+  --color-rose-900: var(--color-red-900);
+  --color-rose-950: var(--color-red-950);
+
+  /* Orange aliases. */
+  --color-orange-50: var(--color-amber-50);
+  --color-orange-100: var(--color-amber-100);
+  --color-orange-200: var(--color-amber-200);
+  --color-orange-300: var(--color-amber-300);
+  --color-orange-400: var(--color-amber-400);
+  --color-orange-500: var(--color-amber-500);
+  --color-orange-600: var(--color-amber-600);
+  --color-orange-700: var(--color-amber-700);
+  --color-orange-800: var(--color-amber-800);
+  --color-orange-900: var(--color-amber-900);
+  --color-orange-950: var(--color-amber-950);
+  --color-yellow-50: var(--color-amber-50);
+  --color-yellow-100: var(--color-amber-100);
+  --color-yellow-200: var(--color-amber-200);
+  --color-yellow-300: var(--color-amber-300);
+  --color-yellow-400: var(--color-amber-400);
+  --color-yellow-500: var(--color-amber-500);
+  --color-yellow-600: var(--color-amber-600);
+  --color-yellow-700: var(--color-amber-700);
+  --color-yellow-800: var(--color-amber-800);
+  --color-yellow-900: var(--color-amber-900);
+  --color-yellow-950: var(--color-amber-950);
+
+  /* Green aliases. */
+  --color-lime-50: var(--color-emerald-50);
+  --color-lime-100: var(--color-emerald-100);
+  --color-lime-200: var(--color-emerald-200);
+  --color-lime-300: var(--color-emerald-300);
+  --color-lime-400: var(--color-emerald-400);
+  --color-lime-500: var(--color-emerald-500);
+  --color-lime-600: var(--color-emerald-600);
+  --color-lime-700: var(--color-emerald-700);
+  --color-lime-800: var(--color-emerald-800);
+  --color-lime-900: var(--color-emerald-900);
+  --color-lime-950: var(--color-emerald-950);
+  --color-green-50: var(--color-emerald-50);
+  --color-green-100: var(--color-emerald-100);
+  --color-green-200: var(--color-emerald-200);
+  --color-green-300: var(--color-emerald-300);
+  --color-green-400: var(--color-emerald-400);
+  --color-green-500: var(--color-emerald-500);
+  --color-green-600: var(--color-emerald-600);
+  --color-green-700: var(--color-emerald-700);
+  --color-green-800: var(--color-emerald-800);
+  --color-green-900: var(--color-emerald-900);
+  --color-green-950: var(--color-emerald-950);
+  --color-teal-50: var(--color-emerald-50);
+  --color-teal-100: var(--color-emerald-100);
+  --color-teal-200: var(--color-emerald-200);
+  --color-teal-300: var(--color-emerald-300);
+  --color-teal-400: var(--color-emerald-400);
+  --color-teal-500: var(--color-emerald-500);
+  --color-teal-600: var(--color-emerald-600);
+  --color-teal-700: var(--color-emerald-700);
+  --color-teal-800: var(--color-emerald-800);
+  --color-teal-900: var(--color-emerald-900);
+  --color-teal-950: var(--color-emerald-950);
+
+  /* Blue aliases. */
+  --color-cyan-50: var(--color-sky-50);
+  --color-cyan-100: var(--color-sky-100);
+  --color-cyan-200: var(--color-sky-200);
+  --color-cyan-300: var(--color-sky-300);
+  --color-cyan-400: var(--color-sky-400);
+  --color-cyan-500: var(--color-sky-500);
+  --color-cyan-600: var(--color-sky-600);
+  --color-cyan-700: var(--color-sky-700);
+  --color-cyan-800: var(--color-sky-800);
+  --color-cyan-900: var(--color-sky-900);
+  --color-cyan-950: var(--color-sky-950);
+  --color-blue-50: var(--color-sky-50);
+  --color-blue-100: var(--color-sky-100);
+  --color-blue-200: var(--color-sky-200);
+  --color-blue-300: var(--color-sky-300);
+  --color-blue-400: var(--color-sky-400);
+  --color-blue-500: var(--color-sky-500);
+  --color-blue-600: var(--color-sky-600);
+  --color-blue-700: var(--color-sky-700);
+  --color-blue-800: var(--color-sky-800);
+  --color-blue-900: var(--color-sky-900);
+  --color-blue-950: var(--color-sky-950);
+
+  /* Purple aliases. */
+  --color-indigo-50: var(--color-violet-50);
+  --color-indigo-100: var(--color-violet-100);
+  --color-indigo-200: var(--color-violet-200);
+  --color-indigo-300: var(--color-violet-300);
+  --color-indigo-400: var(--color-violet-400);
+  --color-indigo-500: var(--color-violet-500);
+  --color-indigo-600: var(--color-violet-600);
+  --color-indigo-700: var(--color-violet-700);
+  --color-indigo-800: var(--color-violet-800);
+  --color-indigo-900: var(--color-violet-900);
+  --color-indigo-950: var(--color-violet-950);
+  --color-purple-50: var(--color-violet-50);
+  --color-purple-100: var(--color-violet-100);
+  --color-purple-200: var(--color-violet-200);
+  --color-purple-300: var(--color-violet-300);
+  --color-purple-400: var(--color-violet-400);
+  --color-purple-500: var(--color-violet-500);
+  --color-purple-600: var(--color-violet-600);
+  --color-purple-700: var(--color-violet-700);
+  --color-purple-800: var(--color-violet-800);
+  --color-purple-900: var(--color-violet-900);
+  --color-purple-950: var(--color-violet-950);
+  --color-fuchsia-50: var(--color-violet-50);
+  --color-fuchsia-100: var(--color-violet-100);
+  --color-fuchsia-200: var(--color-violet-200);
+  --color-fuchsia-300: var(--color-violet-300);
+  --color-fuchsia-400: var(--color-violet-400);
+  --color-fuchsia-500: var(--color-violet-500);
+  --color-fuchsia-600: var(--color-violet-600);
+  --color-fuchsia-700: var(--color-violet-700);
+  --color-fuchsia-800: var(--color-violet-800);
+  --color-fuchsia-900: var(--color-violet-900);
+  --color-fuchsia-950: var(--color-violet-950);
+  --color-pink-50: var(--color-violet-50);
+  --color-pink-100: var(--color-violet-100);
+  --color-pink-200: var(--color-violet-200);
+  --color-pink-300: var(--color-violet-300);
+  --color-pink-400: var(--color-violet-400);
+  --color-pink-500: var(--color-violet-500);
+  --color-pink-600: var(--color-violet-600);
+  --color-pink-700: var(--color-violet-700);
+  --color-pink-800: var(--color-violet-800);
+  --color-pink-900: var(--color-violet-900);
+  --color-pink-950: var(--color-violet-950);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -30,6 +240,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

@@ -62,6 +62,7 @@ func newTestApplication(t *testing.T) *application {
 	mockStore := store.NewMockStore()
 
 	rateLimiter := ratelimiter.NewFixedWindowLimiter(20, 5*time.Second)
+	ipRateLimiter := ratelimiter.NewFixedWindowLimiter(200, 5*time.Second)
 
 	return &application{
 		config: config{
@@ -74,17 +75,32 @@ func newTestApplication(t *testing.T) *application {
 				publicAPIKey: "test-api-key",
 			},
 			rateLimiter: ratelimiter.Config{
-				RequestPerTimeFrame: 20,
-				TimeFrame:           5 * time.Second,
-				Enabled:             true,
+				RequestPerTimeFrame:   20,
+				IPRequestPerTimeFrame: 200,
+				TimeFrame:             5 * time.Second,
+				Enabled:               true,
 			},
 		},
-		store:       mockStore,
-		logger:      logger,
-		mailer:      &mailer.MockClient{},
-		gcsClient:   &gcs.MockClient{},
-		rateLimiter: rateLimiter,
+		store:         mockStore,
+		logger:        logger,
+		mailer:        &mailer.MockClient{},
+		gcsClient:     &gcs.MockClient{},
+		rateLimiter:   rateLimiter,
+		ipRateLimiter: ipRateLimiter,
+		// Real resolver: with no session cookie it reports false without
+		// contacting the core, so tests exercise the IP fallback by default.
+		sessionUserID: supertokensSessionUserID,
 	}
+}
+
+// Stand-in for SuperTokens session resolution so rate limiter tests can vary
+// the user per request without a running core. Requests without the header
+// behave like requests with no verifiable session.
+const testSessionUserHeader = "X-Test-Session-User"
+
+func headerSessionUserID(_ http.ResponseWriter, r *http.Request) (string, bool) {
+	id := r.Header.Get(testSessionUserHeader)
+	return id, id != ""
 }
 
 func executeRequest(req *http.Request, mux http.Handler) *httptest.ResponseRecorder {

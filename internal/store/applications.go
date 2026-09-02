@@ -21,6 +21,25 @@ const (
 	StatusWaitlisted ApplicationStatus = "waitlisted"
 )
 
+// RSVPStatus tracks whether an accepted hacker has claimed or declined their spot
+type RSVPStatus string
+
+const (
+	RSVPPending   RSVPStatus = "pending"
+	RSVPConfirmed RSVPStatus = "confirmed"
+	RSVPDeclined  RSVPStatus = "declined"
+)
+
+// TravelStatus tracks the travel reimbursement review state for an application
+type TravelStatus string
+
+const (
+	TravelNotRequested TravelStatus = "not_requested"
+	TravelPending      TravelStatus = "pending"
+	TravelApproved     TravelStatus = "approved"
+	TravelRejected     TravelStatus = "rejected"
+)
+
 // PaginationDirection for bidirectional cursor traversal
 type PaginationDirection string
 
@@ -33,10 +52,11 @@ const (
 type ApplicationSortBy string
 
 const (
-	SortByCreatedAt     ApplicationSortBy = "created_at"
-	SortByAcceptVotes   ApplicationSortBy = "accept_votes"
-	SortByRejectVotes   ApplicationSortBy = "reject_votes"
-	SortByWaitlistVotes ApplicationSortBy = "waitlist_votes"
+	SortByCreatedAt      ApplicationSortBy = "created_at"
+	SortByAcceptVotes    ApplicationSortBy = "accept_votes"
+	SortByRejectVotes    ApplicationSortBy = "reject_votes"
+	SortByWaitlistVotes  ApplicationSortBy = "waitlist_votes"
+	SortByTravelYesVotes ApplicationSortBy = "travel_yes_votes"
 )
 
 // ApplicationCursor represents pagination cursor
@@ -48,39 +68,56 @@ type ApplicationCursor struct {
 
 // ApplicationListFilters for query filtering
 type ApplicationListFilters struct {
-	Status *ApplicationStatus
-	Search *string
-	SortBy ApplicationSortBy
+	Status           *ApplicationStatus
+	TravelStatus     *TravelStatus
+	RSVPStatus       *RSVPStatus
+	TravelRSVPStatus *RSVPStatus
+	HasReceipts      *bool
+	TravelRequested  *bool
+	Search           *string
+	SortBy           ApplicationSortBy
 }
 
 // ApplicationListItem is a lightweight view for admin listing
 type ApplicationListItem struct {
-	ID                 string            `json:"id"`
-	UserID             string            `json:"user_id"`
-	Email              string            `json:"email"`
-	Status             ApplicationStatus `json:"status"`
-	FirstName          *string           `json:"first_name"`
-	LastName           *string           `json:"last_name"`
-	Phone              *string           `json:"phone"`
-	Age                *int16            `json:"age"`
-	CountryOfResidence *string           `json:"country_of_residence"`
-	Gender             *string           `json:"gender"`
-	University         *string           `json:"university"`
-	Major              *string           `json:"major"`
-	LevelOfStudy       *string           `json:"level_of_study"`
-	HackathonsAttended *int16            `json:"hackathons_attended"`
-	SubmittedAt        *time.Time        `json:"submitted_at"`
-	CreatedAt          time.Time         `json:"created_at"`
-	UpdatedAt          time.Time         `json:"updated_at"`
-	AcceptVotes        int               `json:"accept_votes"`
-	RejectVotes        int               `json:"reject_votes"`
-	WaitlistVotes      int               `json:"waitlist_votes"`
-	ReviewsAssigned    int               `json:"reviews_assigned"`
-	ReviewsCompleted   int               `json:"reviews_completed"`
-	AIPercent          *int              `json:"ai_percent"`
-	HasResume          bool              `json:"has_resume"`
-	MealGroup          *string           `json:"meal_group"`
-	Points             int               `json:"points"`
+	ID                        string            `json:"id"`
+	UserID                    string            `json:"user_id"`
+	Email                     string            `json:"email"`
+	Status                    ApplicationStatus `json:"status"`
+	FirstName                 *string           `json:"first_name"`
+	LastName                  *string           `json:"last_name"`
+	Phone                     *string           `json:"phone"`
+	Age                       *int16            `json:"age"`
+	CountryOfResidence        *string           `json:"country_of_residence"`
+	Gender                    *string           `json:"gender"`
+	University                *string           `json:"university"`
+	Major                     *string           `json:"major"`
+	LevelOfStudy              *string           `json:"level_of_study"`
+	HackathonsAttended        *int16            `json:"hackathons_attended"`
+	SubmittedAt               *time.Time        `json:"submitted_at"`
+	CreatedAt                 time.Time         `json:"created_at"`
+	UpdatedAt                 time.Time         `json:"updated_at"`
+	AcceptVotes               int               `json:"accept_votes"`
+	RejectVotes               int               `json:"reject_votes"`
+	WaitlistVotes             int               `json:"waitlist_votes"`
+	ReviewsAssigned           int               `json:"reviews_assigned"`
+	ReviewsCompleted          int               `json:"reviews_completed"`
+	AIPercent                 *int              `json:"ai_percent"`
+	HasResume                 bool              `json:"has_resume"`
+	MealGroup                 *string           `json:"meal_group"`
+	Points                    int               `json:"points"`
+	TravelStatus              TravelStatus      `json:"travel_status"`
+	TravelYesVotes            int               `json:"travel_yes_votes"`
+	TravelNoVotes             int               `json:"travel_no_votes"`
+	TravelApprovedAmountCents *int64            `json:"travel_approved_amount_cents"`
+	// RSVPStatus and TravelRSVPStatus let the review UI tell whether the hacker
+	// has already acted on a one-shot RSVP, which pins the travel decision.
+	RSVPStatus               RSVPStatus `json:"rsvp_status"`
+	TravelRSVPStatus         RSVPStatus `json:"travel_rsvp_status"`
+	RSVPSubmittedAt          *time.Time `json:"rsvp_submitted_at"`
+	TravelRSVPSubmittedAt    *time.Time `json:"travel_rsvp_submitted_at"`
+	ReceiptCount             int        `json:"receipt_count"`
+	EstimatedTravelCostCents *int64     `json:"estimated_travel_cost_cents"`
 }
 
 // ApplicationListResult contains paginated results
@@ -100,6 +137,52 @@ type ApplicationStats struct {
 	Waitlisted        int64   `json:"waitlisted"`
 	Draft             int64   `json:"draft"`
 	AcceptanceRate    float64 `json:"acceptance_rate"`
+}
+
+// FormOperationsStats is the super-admin operational view of the three
+// participant forms. Counts use people rather than files unless the field name
+// explicitly says ReceiptFiles.
+type FormOperationsStats struct {
+	Applications ApplicationFormStats `json:"applications"`
+	RSVP         RSVPFormStats        `json:"rsvp"`
+	Travel       TravelFormStats      `json:"travel"`
+}
+
+type ApplicationFormStats struct {
+	Started          int64      `json:"started"`
+	Drafts           int64      `json:"drafts"`
+	Submitted        int64      `json:"submitted"`
+	AwaitingDecision int64      `json:"awaiting_decision"`
+	Accepted         int64      `json:"accepted"`
+	Rejected         int64      `json:"rejected"`
+	Waitlisted       int64      `json:"waitlisted"`
+	CompletionRate   float64    `json:"completion_rate"`
+	LatestSubmission *time.Time `json:"latest_submission"`
+}
+
+type RSVPFormStats struct {
+	Eligible       int64      `json:"eligible"`
+	Pending        int64      `json:"pending"`
+	Confirmed      int64      `json:"confirmed"`
+	Declined       int64      `json:"declined"`
+	ResponseRate   float64    `json:"response_rate"`
+	LatestResponse *time.Time `json:"latest_response"`
+}
+
+type TravelFormStats struct {
+	Requested                  int64      `json:"requested"`
+	DecisionPending            int64      `json:"decision_pending"`
+	Approved                   int64      `json:"approved"`
+	Rejected                   int64      `json:"rejected"`
+	FormEligible               int64      `json:"form_eligible"`
+	FormPending                int64      `json:"form_pending"`
+	FormSubmitted              int64      `json:"form_submitted"`
+	FormDeclined               int64      `json:"form_declined"`
+	PeopleWithReceipts         int64      `json:"people_with_receipts"`
+	ReceiptFiles               int64      `json:"receipt_files"`
+	RequestedEstimateCents     int64      `json:"requested_estimate_cents"`
+	ApprovedAmountCents        int64      `json:"approved_amount_cents"`
+	LatestTravelFormSubmission *time.Time `json:"latest_travel_form_submission"`
 }
 
 // EncodeCursor creates a base64-encoded cursor string for created_at sorting
@@ -155,6 +238,20 @@ type Application struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	MealGroup   *string    `json:"meal_group"`
+
+	RSVPStatus      RSVPStatus      `json:"rsvp_status"`
+	RSVPResponses   json.RawMessage `json:"rsvp_responses" swaggertype:"object"`
+	RSVPSubmittedAt *time.Time      `json:"rsvp_submitted_at"`
+
+	TravelStatus              TravelStatus `json:"travel_status"`
+	TravelYesVotes            int          `json:"travel_yes_votes"`
+	TravelNoVotes             int          `json:"travel_no_votes"`
+	TravelApprovedAmountCents *int64       `json:"travel_approved_amount_cents"`
+
+	TravelRSVPStatus      RSVPStatus      `json:"travel_rsvp_status"`
+	TravelRSVPResponses   json.RawMessage `json:"travel_rsvp_responses" swaggertype:"object"`
+	TravelRSVPSubmittedAt *time.Time      `json:"travel_rsvp_submitted_at"`
+	TravelReceiptPaths    StringArray     `json:"travel_receipt_paths" swaggertype:"array,string"`
 }
 
 type ApplicationsStore struct {
@@ -165,7 +262,10 @@ type ApplicationsStore struct {
 const applicationSelectCols = `
 	id, user_id, status, responses, resume_path, ai_percent,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
-	submitted_at, created_at, updated_at, meal_group`
+	submitted_at, created_at, updated_at, meal_group,
+	rsvp_status, rsvp_responses, rsvp_submitted_at,
+	travel_status, travel_yes_votes, travel_no_votes, travel_approved_amount_cents,
+	travel_rsvp_status, travel_rsvp_responses, travel_rsvp_submitted_at, travel_receipt_paths`
 
 // scanApplication scans a row into an Application struct
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
@@ -173,6 +273,9 @@ func scanApplication(row interface{ Scan(dest ...any) error }, app *Application)
 		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
+		&app.RSVPStatus, &app.RSVPResponses, &app.RSVPSubmittedAt,
+		&app.TravelStatus, &app.TravelYesVotes, &app.TravelNoVotes, &app.TravelApprovedAmountCents,
+		&app.TravelRSVPStatus, &app.TravelRSVPResponses, &app.TravelRSVPSubmittedAt, &app.TravelReceiptPaths,
 	)
 }
 
@@ -219,12 +322,15 @@ func (s *ApplicationsStore) Create(ctx context.Context, app *Application) error 
 	query := `
 		INSERT INTO applications (user_id)
 		VALUES ($1)
-		RETURNING id, status, responses, created_at, updated_at
+		RETURNING id, status, responses, created_at, updated_at, rsvp_status, rsvp_responses, travel_status, travel_rsvp_status, travel_rsvp_responses
 	`
 
 	err := s.db.QueryRowContext(ctx, query, app.UserID).Scan(
 		&app.ID, &app.Status, &app.Responses,
 		&app.CreatedAt, &app.UpdatedAt,
+		&app.RSVPStatus, &app.RSVPResponses,
+		&app.TravelStatus,
+		&app.TravelRSVPStatus, &app.TravelRSVPResponses,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "applications_user_id_key") {
@@ -262,23 +368,85 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 	return nil
 }
 
-func (s *ApplicationsStore) Submit(ctx context.Context, app *Application) error {
+// Submit finalizes a draft application. travelOptInFieldID names the schema
+// checkbox that opts the applicant into travel reimbursement review; it is
+// passed in rather than hard-coded because super admins can edit the schema.
+// An empty ID (no such field in the schema) means no one requests travel.
+func (s *ApplicationsStore) Submit(ctx context.Context, app *Application, travelOptInFieldID string) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		UPDATE applications
-		SET status = 'submitted', submitted_at = NOW()
+		SET status = 'submitted', submitted_at = NOW(),
+		    travel_status = CASE
+		        WHEN $2::text != '' AND responses->($2::text) = 'true'::jsonb THEN 'pending'::travel_status
+		        ELSE 'not_requested'::travel_status
+		    END
 		WHERE id = $1 AND status = 'draft'
-		RETURNING status, submitted_at, updated_at
+		RETURNING status, submitted_at, updated_at, travel_status
 	`
 
-	err := s.db.QueryRowContext(ctx, query, app.ID).Scan(
-		&app.Status, &app.SubmittedAt, &app.UpdatedAt,
+	err := s.db.QueryRowContext(ctx, query, app.ID, travelOptInFieldID).Scan(
+		&app.Status, &app.SubmittedAt, &app.UpdatedAt, &app.TravelStatus,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrConflict // Already submitted or not found
+		}
+		return err
+	}
+	return nil
+}
+
+// SubmitRSVP records the hacker's one-shot RSVP decision. The WHERE clause
+// enforces the state machine in SQL: only accepted applications with a
+// pending RSVP can transition, so concurrent submits resolve to ErrConflict.
+func (s *ApplicationsStore) SubmitRSVP(ctx context.Context, app *Application) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET rsvp_status = $2, rsvp_responses = $3, rsvp_submitted_at = NOW()
+		WHERE id = $1 AND status = 'accepted' AND rsvp_status = 'pending'
+		RETURNING rsvp_status, rsvp_responses, rsvp_submitted_at, updated_at
+	`
+
+	err := s.db.QueryRowContext(ctx, query, app.ID, app.RSVPStatus, app.RSVPResponses).Scan(
+		&app.RSVPStatus, &app.RSVPResponses, &app.RSVPSubmittedAt, &app.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrConflict // Already RSVP'd or not accepted
+		}
+		return err
+	}
+	return nil
+}
+
+// SubmitTravelRSVP records the hacker's one-shot travel RSVP (proof of travel).
+// The WHERE clause enforces the state machine in SQL: only accepted hackers who
+// claimed their spot and have approved travel with a pending travel RSVP can
+// transition, so concurrent submits resolve to ErrConflict.
+func (s *ApplicationsStore) SubmitTravelRSVP(ctx context.Context, app *Application) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET travel_rsvp_status = $2, travel_rsvp_responses = $3, travel_receipt_paths = $4, travel_rsvp_submitted_at = NOW()
+		WHERE id = $1 AND status = 'accepted' AND rsvp_status = 'confirmed'
+		  AND travel_status = 'approved' AND travel_rsvp_status = 'pending'
+		RETURNING travel_rsvp_status, travel_rsvp_responses, travel_receipt_paths, travel_rsvp_submitted_at, updated_at
+	`
+
+	err := s.db.QueryRowContext(ctx, query, app.ID, app.TravelRSVPStatus, app.TravelRSVPResponses, app.TravelReceiptPaths).Scan(
+		&app.TravelRSVPStatus, &app.TravelRSVPResponses, &app.TravelReceiptPaths, &app.TravelRSVPSubmittedAt, &app.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrConflict // Already submitted or not eligible
 		}
 		return err
 	}
@@ -295,6 +463,8 @@ func sortColumnName(sortBy ApplicationSortBy) string {
 		return "a.reject_votes"
 	case SortByWaitlistVotes:
 		return "a.waitlist_votes"
+	case SortByTravelYesVotes:
+		return "a.travel_yes_votes"
 	default:
 		return "a.created_at"
 	}
@@ -303,7 +473,7 @@ func sortColumnName(sortBy ApplicationSortBy) string {
 // isVoteSort returns true if sorting by a vote column instead of created_at
 func isVoteSort(sortBy ApplicationSortBy) bool {
 	switch sortBy {
-	case SortByAcceptVotes, SortByRejectVotes, SortByWaitlistVotes:
+	case SortByAcceptVotes, SortByRejectVotes, SortByWaitlistVotes, SortByTravelYesVotes:
 		return true
 	default:
 		return false
@@ -319,6 +489,8 @@ func getVoteVal(item ApplicationListItem, sortBy ApplicationSortBy) int {
 		return item.RejectVotes
 	case SortByWaitlistVotes:
 		return item.WaitlistVotes
+	case SortByTravelYesVotes:
+		return item.TravelYesVotes
 	default:
 		return 0
 	}
@@ -376,84 +548,110 @@ func (s *ApplicationsStore) List(
 		       a.submitted_at, a.created_at, a.updated_at,
 		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
 		       a.resume_path IS NOT NULL AS has_resume, a.meal_group,
-		       (SELECT COALESCE(SUM(s.points), 0) FROM scans s WHERE s.user_id = a.user_id) AS points
+		       (SELECT COALESCE(SUM(s.points), 0) FROM scans s WHERE s.user_id = a.user_id) AS points,
+		       a.travel_status, a.travel_yes_votes, a.travel_no_votes, a.travel_approved_amount_cents,
+		       a.rsvp_status, a.travel_rsvp_status,
+		       a.rsvp_submitted_at, a.travel_rsvp_submitted_at,
+		       CARDINALITY(a.travel_receipt_paths) AS receipt_count,
+		       a.travel_estimated_cost_cents AS estimated_travel_cost_cents
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
-	searchClause := `AND ($5::text IS NULL OR (
-		    u.email ILIKE '%' || $5 || '%'
-		    OR a.responses->>'first_name' ILIKE '%' || $5 || '%'
-		    OR a.responses->>'last_name' ILIKE '%' || $5 || '%'
-		))`
+	// Each predicate is appended only when the caller actually set it. The old
+	// shape ran every filter as ($6::travel_status IS NULL OR a.travel_status = $6),
+	// which Postgres can only fold away while it is still building custom plans --
+	// once a cached statement settles on a generic plan the OR stops being an
+	// index condition and the partial indexes on these columns go unused.
+	conds := make([]string, 0, 8)
+	args := make([]any, 0, 10)
+
+	// param binds a value and returns the placeholder that refers to it, so the
+	// numbering stays correct however many filters are present.
+	param := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if filters.Status != nil {
+		conds = append(conds, "a.status = "+param(*filters.Status)+"::application_status")
+	}
+
+	// A backward page walks ASC from the cursor and is reversed after scanning.
+	asc := direction == DirectionBackward && cursor != nil
+
+	cmp := "<"
+	if asc {
+		cmp = ">"
+	}
+	if cursor != nil {
+		if voteSort {
+			// Vote-column sorting pages on (sort_val, id); an older cursor
+			// minted before a vote sort was picked has no sort value.
+			if cursor.SortVal != nil {
+				conds = append(conds, fmt.Sprintf("(%s, a.id) %s (%s, %s::uuid)",
+					col, cmp, param(*cursor.SortVal), param(cursor.ID)))
+			}
+		} else {
+			conds = append(conds, fmt.Sprintf("(a.created_at, a.id) %s (%s, %s::uuid)",
+				cmp, param(cursor.CreatedAt), param(cursor.ID)))
+		}
+	}
+
+	if searchParam != nil {
+		p := param(*searchParam) + "::text"
+		conds = append(conds, fmt.Sprintf(`(
+			    u.email ILIKE '%%' || %s || '%%'
+			    OR a.responses->>'first_name' ILIKE '%%' || %s || '%%'
+			    OR a.responses->>'last_name' ILIKE '%%' || %s || '%%'
+			)`, p, p, p))
+	}
+
+	if filters.TravelStatus != nil {
+		conds = append(conds, "a.travel_status = "+param(*filters.TravelStatus)+"::travel_status")
+	}
+	if filters.RSVPStatus != nil {
+		conds = append(conds, "a.rsvp_status = "+param(*filters.RSVPStatus)+"::rsvp_status")
+	}
+	if filters.TravelRSVPStatus != nil {
+		conds = append(conds, "a.travel_rsvp_status = "+param(*filters.TravelRSVPStatus)+"::rsvp_status")
+	}
+	// The receipt and travel-requested filters become literal predicates rather
+	// than bound booleans: written this way, travel_status != 'not_requested'
+	// matches idx_applications_travel_status's own predicate exactly.
+	if filters.HasReceipts != nil {
+		if *filters.HasReceipts {
+			conds = append(conds, "CARDINALITY(a.travel_receipt_paths) > 0")
+		} else {
+			conds = append(conds, "CARDINALITY(a.travel_receipt_paths) = 0")
+		}
+	}
+	if filters.TravelRequested != nil {
+		if *filters.TravelRequested {
+			conds = append(conds, "a.travel_status != 'not_requested'")
+		} else {
+			conds = append(conds, "a.travel_status = 'not_requested'")
+		}
+	}
+
+	where := ""
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, "\n\t\t\t  AND ")
+	}
+
+	orderDir := "DESC"
+	if asc {
+		orderDir = "ASC"
+	}
 
 	// Fetch limit+1 to determine hasMore
 	queryLimit := limit + 1
 
-	var statusParam any
-	if filters.Status != nil {
-		statusParam = *filters.Status
-	}
+	query := fmt.Sprintf(`%s
+			%s
+			ORDER BY %s %s, a.id %s
+			LIMIT %s`, selectCols, where, col, orderDir, orderDir, param(queryLimit))
 
-	var rows *sql.Rows
-	var err error
-
-	if voteSort {
-		// Vote-column sorting: cursor uses (sort_val, id)
-		var cursorVal *int
-		var cursorID *string
-		if cursor != nil {
-			cursorVal = cursor.SortVal
-			cursorID = &cursor.ID
-		}
-
-		var query string
-		if direction == DirectionBackward && cursor != nil {
-			// Backward: fetch items AFTER cursor in ASC order, then reverse
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND ($2::int IS NULL OR (%s, a.id) > ($2, $3::uuid))
-				  %s
-				ORDER BY %s ASC, a.id ASC
-				LIMIT $4`, selectCols, col, searchClause, col)
-		} else {
-			// Forward (default): DESC order
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND ($2::int IS NULL OR (%s, a.id) < ($2, $3::uuid))
-				  %s
-				ORDER BY %s DESC, a.id DESC
-				LIMIT $4`, selectCols, col, searchClause, col)
-		}
-
-		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorVal, cursorID, queryLimit, searchParam)
-	} else {
-		// Default created_at sorting
-		var cursorTime *time.Time
-		var cursorID *string
-		if cursor != nil {
-			cursorTime = &cursor.CreatedAt
-			cursorID = &cursor.ID
-		}
-
-		var query string
-		if direction == DirectionBackward && cursor != nil {
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND (a.created_at, a.id) > ($2, $3::uuid)
-				  %s
-				ORDER BY a.created_at ASC, a.id ASC
-				LIMIT $4`, selectCols, searchClause)
-		} else {
-			query = fmt.Sprintf(`%s
-				WHERE ($1::application_status IS NULL OR a.status = $1)
-				  AND ($2::timestamptz IS NULL OR (a.created_at, a.id) < ($2, $3::uuid))
-				  %s
-				ORDER BY a.created_at DESC, a.id DESC
-				LIMIT $4`, selectCols, searchClause)
-		}
-
-		rows, err = s.db.QueryContext(ctx, query, statusParam, cursorTime, cursorID, queryLimit, searchParam)
-	}
+	rows, err := s.db.QueryContext(ctx, query, args...)
 
 	if err != nil {
 		return nil, err
@@ -472,6 +670,10 @@ func (s *ApplicationsStore) List(
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
 			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
 			&item.HasResume, &item.MealGroup, &item.Points,
+			&item.TravelStatus, &item.TravelYesVotes, &item.TravelNoVotes, &item.TravelApprovedAmountCents,
+			&item.RSVPStatus, &item.TravelRSVPStatus,
+			&item.RSVPSubmittedAt, &item.TravelRSVPSubmittedAt,
+			&item.ReceiptCount, &item.EstimatedTravelCostCents,
 		); err != nil {
 			return nil, err
 		}
@@ -558,6 +760,157 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 	return &app, nil
 }
 
+// SetTravelStatus sets the travel reimbursement decision on an application.
+// The WHERE clause enforces the state machine in SQL:
+//   - the applicant must have requested travel (travel_status != 'not_requested')
+//   - the application must be in a status that can carry a decision; a draft has
+//     not asked for anything yet and a rejected applicant has nothing to reimburse
+//   - a submitted travel RSVP pins the travel status, since revoking approval
+//     would strand the details and receipts the hacker already sent. Re-setting
+//     the status to its current value stays allowed so the call is idempotent.
+//
+// Refusals come back as one of the ErrTravel* conflicts (all of which wrap
+// ErrConflict), or ErrNotFound when no such application exists.
+func (s *ApplicationsStore) SetTravelStatus(ctx context.Context, id string, status TravelStatus, approvedAmountCents *int64) (*Application, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE applications
+		SET travel_status = $2::travel_status,
+		    travel_approved_amount_cents = CASE
+		        WHEN $2::travel_status = 'approved'::travel_status THEN $3::bigint
+		        ELSE NULL::bigint
+		    END,
+		    updated_at = NOW()
+		WHERE id = $1
+		  AND travel_status != 'not_requested'
+		  AND status IN ('submitted', 'accepted', 'waitlisted')
+		  AND (travel_rsvp_status = 'pending' OR travel_status = $2::travel_status)
+		RETURNING ` + applicationSelectCols
+
+	var app Application
+	err := scanApplication(s.db.QueryRowContext(ctx, query, id, status, approvedAmountCents), &app)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, s.travelStatusConflict(ctx, id)
+		}
+		return nil, err
+	}
+
+	return &app, nil
+}
+
+// travelStatusConflict inspects the row a SetTravelStatus update did not match
+// so the caller can report which guard rejected the decision.
+func (s *ApplicationsStore) travelStatusConflict(ctx context.Context, id string) error {
+	var (
+		appStatus        ApplicationStatus
+		travelStatus     TravelStatus
+		travelRSVPStatus RSVPStatus
+	)
+
+	err := s.db.QueryRowContext(ctx,
+		`SELECT status, travel_status, travel_rsvp_status FROM applications WHERE id = $1`, id,
+	).Scan(&appStatus, &travelStatus, &travelRSVPStatus)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	switch {
+	case travelStatus == TravelNotRequested:
+		return ErrTravelNotRequested
+	case appStatus != StatusSubmitted && appStatus != StatusAccepted && appStatus != StatusWaitlisted:
+		return ErrTravelStatusNotDecidable
+	case travelRSVPStatus != RSVPPending:
+		return ErrTravelRSVPSubmitted
+	default:
+		// The row satisfies every guard, so a concurrent write moved it between
+		// the update and this read.
+		return ErrConflict
+	}
+}
+
+// ResetRSVP clears a submitted RSVP so the hacker can claim or decline their
+// spot again. The travel RSVP is cleared along with it: it is only reachable
+// through a confirmed RSVP, so leaving it behind would strand travel details
+// under a spot that is no longer claimed. Returns the detached receipt paths so
+// the caller can remove the objects from storage.
+func (s *ApplicationsStore) ResetRSVP(ctx context.Context, id string) (*Application, []string, error) {
+	query := `
+		UPDATE applications
+		SET rsvp_status = 'pending',
+		    rsvp_responses = '{}'::jsonb,
+		    rsvp_submitted_at = NULL,
+		    travel_rsvp_status = 'pending',
+		    travel_rsvp_responses = '{}'::jsonb,
+		    travel_rsvp_submitted_at = NULL,
+		    travel_receipt_paths = '{}',
+		    updated_at = NOW()
+		WHERE id = $1
+		RETURNING ` + applicationSelectCols
+
+	return s.resetRSVPState(ctx, id, query)
+}
+
+// ResetTravelRSVP clears a submitted travel RSVP so the hacker can fill the
+// travel form again, and returns the detached receipt paths so the caller can
+// remove the objects from storage. The event RSVP is left untouched.
+func (s *ApplicationsStore) ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error) {
+	query := `
+		UPDATE applications
+		SET travel_rsvp_status = 'pending',
+		    travel_rsvp_responses = '{}'::jsonb,
+		    travel_rsvp_submitted_at = NULL,
+		    travel_receipt_paths = '{}',
+		    updated_at = NOW()
+		WHERE id = $1
+		RETURNING ` + applicationSelectCols
+
+	return s.resetRSVPState(ctx, id, query)
+}
+
+// resetRSVPState runs an RSVP reset, reading the receipt paths inside the same
+// transaction so the caller never deletes objects for an update that rolled back.
+func (s *ApplicationsStore) resetRSVPState(ctx context.Context, id string, query string) (*Application, []string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback()
+
+	var receiptPaths StringArray
+	err = tx.QueryRowContext(ctx,
+		`SELECT travel_receipt_paths FROM applications WHERE id = $1 FOR UPDATE`, id,
+	).Scan(&receiptPaths)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, ErrNotFound
+		}
+		return nil, nil, err
+	}
+
+	var app Application
+	if err := scanApplication(tx.QueryRowContext(ctx, query, id), &app); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, ErrNotFound
+		}
+		return nil, nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+
+	return &app, receiptPaths, nil
+}
+
 // GetStats returns aggregated application statistics
 func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -591,6 +944,88 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 	reviewed := stats.Submitted + stats.Accepted + stats.Rejected + stats.Waitlisted
 	if reviewed > 0 {
 		stats.AcceptanceRate = float64(stats.Accepted) / float64(reviewed) * 100
+	}
+
+	return &stats, nil
+}
+
+// GetFormOperationsStats returns the cross-form funnel and travel financial
+// totals used by the super-admin Forms & Responses workspace. Currency is
+// returned as integer cents so dashboard totals do not accumulate float error.
+func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT
+			COUNT(*),
+			COUNT(*) FILTER (WHERE status = 'draft'),
+			COUNT(*) FILTER (WHERE status != 'draft'),
+			COUNT(*) FILTER (WHERE status = 'submitted'),
+			COUNT(*) FILTER (WHERE status = 'accepted'),
+			COUNT(*) FILTER (WHERE status = 'rejected'),
+			COUNT(*) FILTER (WHERE status = 'waitlisted'),
+			MAX(submitted_at),
+
+			COUNT(*) FILTER (WHERE status = 'accepted'),
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'pending'),
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed'),
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'declined'),
+			MAX(rsvp_submitted_at),
+
+			COUNT(*) FILTER (WHERE travel_status != 'not_requested'),
+			COUNT(*) FILTER (WHERE travel_status = 'pending'),
+			COUNT(*) FILTER (WHERE travel_status = 'approved'),
+			COUNT(*) FILTER (WHERE travel_status = 'rejected'),
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed' AND travel_status = 'approved'),
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed' AND travel_status = 'approved' AND travel_rsvp_status = 'pending'),
+			COUNT(*) FILTER (WHERE travel_rsvp_status = 'confirmed'),
+			COUNT(*) FILTER (WHERE travel_rsvp_status = 'declined'),
+			COUNT(*) FILTER (WHERE CARDINALITY(travel_receipt_paths) > 0),
+			COALESCE(SUM(CARDINALITY(travel_receipt_paths)), 0),
+			COALESCE(SUM(travel_estimated_cost_cents) FILTER (WHERE travel_status != 'not_requested'), 0),
+			COALESCE(SUM(travel_approved_amount_cents) FILTER (WHERE travel_status = 'approved'), 0),
+			MAX(travel_rsvp_submitted_at)
+		FROM applications`
+
+	var stats FormOperationsStats
+	err := s.db.QueryRowContext(ctx, query).Scan(
+		&stats.Applications.Started,
+		&stats.Applications.Drafts,
+		&stats.Applications.Submitted,
+		&stats.Applications.AwaitingDecision,
+		&stats.Applications.Accepted,
+		&stats.Applications.Rejected,
+		&stats.Applications.Waitlisted,
+		&stats.Applications.LatestSubmission,
+		&stats.RSVP.Eligible,
+		&stats.RSVP.Pending,
+		&stats.RSVP.Confirmed,
+		&stats.RSVP.Declined,
+		&stats.RSVP.LatestResponse,
+		&stats.Travel.Requested,
+		&stats.Travel.DecisionPending,
+		&stats.Travel.Approved,
+		&stats.Travel.Rejected,
+		&stats.Travel.FormEligible,
+		&stats.Travel.FormPending,
+		&stats.Travel.FormSubmitted,
+		&stats.Travel.FormDeclined,
+		&stats.Travel.PeopleWithReceipts,
+		&stats.Travel.ReceiptFiles,
+		&stats.Travel.RequestedEstimateCents,
+		&stats.Travel.ApprovedAmountCents,
+		&stats.Travel.LatestTravelFormSubmission,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if stats.Applications.Started > 0 {
+		stats.Applications.CompletionRate = float64(stats.Applications.Submitted) / float64(stats.Applications.Started) * 100
+	}
+	if stats.RSVP.Eligible > 0 {
+		stats.RSVP.ResponseRate = float64(stats.RSVP.Confirmed+stats.RSVP.Declined) / float64(stats.RSVP.Eligible) * 100
 	}
 
 	return &stats, nil
