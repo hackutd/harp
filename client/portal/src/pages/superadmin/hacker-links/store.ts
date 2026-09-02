@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { errorAlert } from "@/shared/lib/api";
 
+import { fetchHackerPackURL, updateHackerPackURL } from "../settings/api";
 import {
   createHackerLink as apiCreateHackerLink,
   deleteHackerLink as apiDeleteHackerLink,
@@ -16,27 +17,45 @@ function sortByOrder(links: HackerLink[]): HackerLink[] {
 
 export interface HackerLinksState {
   links: HackerLink[];
+  // Empty when no Notion embed is saved, which also hides the built-in
+  // Hacker Pack card on the hacker home page.
+  hackerPackURL: string;
   loading: boolean;
   saving: boolean;
+  savingHackerPack: boolean;
 
   fetch: (signal?: AbortSignal) => Promise<void>;
   createLink: (payload: HackerLinkPayload) => Promise<string | null>;
   updateLink: (id: string, payload: HackerLinkPayload) => Promise<boolean>;
   deleteLink: (id: string) => Promise<boolean>;
+  saveHackerPackURL: (url: string) => Promise<boolean>;
 }
 
 export const useHackerLinksStore = create<HackerLinksState>((set) => ({
   links: [],
+  hackerPackURL: "",
   loading: false,
   saving: false,
+  savingHackerPack: false,
 
   fetch: async (signal?: AbortSignal) => {
     set({ loading: true });
-    const res = await fetchHackerLinks(signal);
+
+    const [linksRes, packRes] = await Promise.all([
+      fetchHackerLinks(signal),
+      fetchHackerPackURL(signal),
+    ]);
+
     if (signal?.aborted) return;
+
     const links =
-      res.status === 200 && res.data ? sortByOrder(res.data.hacker_links) : [];
-    set({ links, loading: false });
+      linksRes.status === 200 && linksRes.data
+        ? sortByOrder(linksRes.data.hacker_links)
+        : [];
+    const hackerPackURL =
+      packRes.status === 200 && packRes.data ? packRes.data.url.trim() : "";
+
+    set({ links, hackerPackURL, loading: false });
   },
 
   createLink: async (payload: HackerLinkPayload) => {
@@ -83,6 +102,18 @@ export const useHackerLinksStore = create<HackerLinksState>((set) => ({
     }
     errorAlert(res);
     set({ saving: false });
+    return false;
+  },
+
+  saveHackerPackURL: async (url: string) => {
+    set({ savingHackerPack: true });
+    const res = await updateHackerPackURL(url);
+    if (res.status === 200 && res.data) {
+      set({ hackerPackURL: res.data.url.trim(), savingHackerPack: false });
+      return true;
+    }
+    errorAlert(res);
+    set({ savingHackerPack: false });
     return false;
   },
 }));

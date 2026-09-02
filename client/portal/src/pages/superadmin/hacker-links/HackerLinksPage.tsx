@@ -1,4 +1,11 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Mail,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -20,13 +27,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { HackerLinkIconComponent } from "@/shared/lib/hacker-link-icons";
 import {
   HACKER_LINK_ICON_OPTIONS,
   hackerLinkIcon,
 } from "@/shared/lib/hacker-link-icons";
+import { cn } from "@/shared/lib/utils";
 
+import { HackerPackEmbedCard } from "./components/HackerPackEmbedCard";
 import { useHackerLinksStore } from "./store";
 import type { HackerLink, HackerLinkPayload } from "./types";
+
+// Fixed cards the hacker home page renders ahead of the configurable links
+// (see pages/hacker/dashboard/DashboardPage.tsx QUICK_LINKS). Shown in the
+// preview for context only — they aren't managed here.
+const BUILT_IN_LINKS = [
+  { label: "Hacker Pack", icon: BookOpen },
+  { label: "FAQ", icon: MessageSquare },
+  { label: "Contact", icon: Mail },
+] as const;
+
+interface PreviewCardProps {
+  label: string;
+  icon: HackerLinkIconComponent;
+  href?: string;
+  muted?: boolean;
+}
+
+// Mirrors the quick-link card markup on /app. Built-in cards render as inert
+// divs; configured links stay clickable so their URLs can be sanity-checked.
+function PreviewCard({ label, icon: Icon, href, muted }: PreviewCardProps) {
+  const className = cn(
+    "flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4",
+    href && "active:scale-[0.98]",
+    muted && "opacity-40",
+  );
+  const content = (
+    <>
+      <Icon className="size-5 text-black" strokeWidth={1.5} />
+      <span className="text-sm font-normal text-black">{label}</span>
+    </>
+  );
+  return href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className}
+    >
+      {content}
+    </a>
+  ) : (
+    <div className={className}>{content}</div>
+  );
+}
 
 interface FormState {
   label: string;
@@ -52,8 +106,18 @@ function formFromLink(link: HackerLink): FormState {
 }
 
 export default function HackerLinksPage() {
-  const { links, loading, saving, fetch, createLink, updateLink, deleteLink } =
-    useHackerLinksStore();
+  const {
+    links,
+    hackerPackURL,
+    loading,
+    saving,
+    savingHackerPack,
+    fetch,
+    createLink,
+    updateLink,
+    deleteLink,
+    saveHackerPackURL,
+  } = useHackerLinksStore();
   const [editingID, setEditingID] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
@@ -126,45 +190,53 @@ export default function HackerLinksPage() {
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
-      {/* Hacker-side preview — mirrors the quick-link cards on /app */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Hacker preview</CardTitle>
-          <CardDescription>
-            How these links appear on the hacker home page. Each card opens its
-            URL in a new tab.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-xl bg-[#F5F5F3] p-4">
-            {links.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No links configured. Add one on the right.
-              </p>
-            ) : (
+      <div className="space-y-4">
+        {/* Hacker-side preview — mirrors the quick-link cards on /app */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Hacker preview</CardTitle>
+            <CardDescription>
+              How the quick links appear on the hacker home page. Hacker Pack,
+              FAQ, and Contact are built in and shown for reference; the links
+              you configure here open in a new tab.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="rounded-xl bg-[#F5F5F3] p-4">
               <div className="grid grid-cols-3 gap-3">
-                {links.map((link) => {
-                  const Icon = hackerLinkIcon(link.icon);
-                  return (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4 active:scale-[0.98]"
-                    >
-                      <Icon className="size-5 text-black" strokeWidth={1.5} />
-                      <span className="text-sm font-normal text-black">
-                        {link.label}
-                      </span>
-                    </a>
-                  );
-                })}
+                {BUILT_IN_LINKS.map(({ label, icon }) => (
+                  <PreviewCard
+                    key={label}
+                    label={label}
+                    icon={icon}
+                    muted={label === "Hacker Pack" && !hackerPackURL}
+                  />
+                ))}
+                {links.map((link) => (
+                  <PreviewCard
+                    key={link.id}
+                    label={link.label}
+                    icon={hackerLinkIcon(link.icon)}
+                    href={link.url}
+                  />
+                ))}
               </div>
+            </div>
+            {!hackerPackURL && (
+              <p className="text-xs text-muted-foreground">
+                Hacker Pack is hidden on the hacker home page until a Notion
+                embed is saved below.
+              </p>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <HackerPackEmbedCard
+          url={hackerPackURL}
+          saving={savingHackerPack}
+          onSave={saveHackerPackURL}
+        />
+      </div>
 
       {/* Editor */}
       <Card>

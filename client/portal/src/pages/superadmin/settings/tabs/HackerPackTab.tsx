@@ -8,21 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorAlert } from "@/shared/lib/api";
 
 import { fetchHackerPackURL, updateHackerPackURL } from "../api";
-
-const PLACEHOLDER = `<iframe src="https://your-workspace.notion.site/ebd/..." width="100%" height="600" frameborder="0" allowfullscreen />`;
-
-function toEmbedCode(url: string): string {
-  if (!url) return "";
-  return `<iframe src="${url}" width="100%" height="600" frameborder="0" allowfullscreen />`;
-}
-
-function extractEmbedURL(value: string): string | null {
-  const match = value.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);
-  if (!match) return null;
-  const src = match[1].trim();
-  if (!/^https?:\/\//i.test(src)) return null;
-  return src;
-}
+import {
+  extractEmbedURL,
+  HACKER_PACK_EMBED_HELP,
+  HACKER_PACK_EMBED_PLACEHOLDER,
+  toEmbedCode,
+} from "../hackerPackEmbed";
 
 export default function HackerPackTab() {
   const [embedCode, setEmbedCode] = useState("");
@@ -32,9 +23,7 @@ export default function HackerPackTab() {
   const validationError = useMemo(() => {
     const trimmed = embedCode.trim();
     if (!trimmed) return null;
-    if (!extractEmbedURL(trimmed)) {
-      return 'Paste the full <iframe ... /> embed code copied from Notion\'s "Embed this page" option.';
-    }
+    if (!extractEmbedURL(trimmed)) return HACKER_PACK_EMBED_HELP;
     return null;
   }, [embedCode]);
 
@@ -108,7 +97,7 @@ export default function HackerPackTab() {
 
         <Textarea
           id="hacker-pack-embed"
-          placeholder={PLACEHOLDER}
+          placeholder={HACKER_PACK_EMBED_PLACEHOLDER}
           value={embedCode}
           disabled={loading || saving}
           onChange={(e) => setEmbedCode(e.target.value)}
