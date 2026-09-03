@@ -38,6 +38,8 @@ type application struct {
 	// requiring a session. Injected so tests can stub it.
 	sessionUserID    sessionUserIDResolver
 	dispatcherCancel context.CancelFunc
+	// pushClient is the HTTP client the dispatcher uses to reach push services.
+	pushClient *http.Client
 }
 
 type config struct {
@@ -60,6 +62,9 @@ type vapidConfig struct {
 	publicKey  string
 	privateKey string
 	subject    string
+	// allowedEndpointHosts is the push-service host allowlist (exact or
+	// subdomain match) that subscription endpoints must fall under.
+	allowedEndpointHosts []string
 }
 
 type supertokensConfig struct {

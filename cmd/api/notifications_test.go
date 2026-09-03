@@ -113,6 +113,54 @@ func TestSubscribePush(t *testing.T) {
 		mockSubs.AssertExpectations(t)
 	})
 
+	t.Run("returns 400 for endpoints off the push-service allowlist", func(t *testing.T) {
+		for _, endpoint := range []string{
+			"http://fcm.googleapis.com/fcm/send/abc",
+			"https://10.0.0.5/admin",
+			"https://169.254.169.254/computeMetadata/v1/",
+			"https://evil.example.com/fcm.googleapis.com",
+			"https://fcm.googleapis.com.evil.example.com/x",
+			"https://user@fcm.googleapis.com/x",
+		} {
+			app := newTestApplication(t)
+			app.config.vapid.publicKey = "test-public-key"
+			mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+
+			body := `{"endpoint":"` + endpoint + `","p256dh":"key","auth":"auth-secret"}`
+			req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			req = setUserContext(req, newTestUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.subscribePushHandler))
+			checkResponseCode(t, http.StatusBadRequest, rr.Code)
+			mockSubs.AssertNotCalled(t, "Upsert", mock.Anything)
+		}
+	})
+
+	t.Run("accepts subdomains of allowed hosts", func(t *testing.T) {
+		for _, endpoint := range []string{
+			"https://updates.push.services.mozilla.com/wpush/v2/abc",
+			"https://web.push.apple.com/QAbc",
+			"https://wns2-par02p.notify.windows.com/w/?token=abc",
+		} {
+			app := newTestApplication(t)
+			app.config.vapid.publicKey = "test-public-key"
+			mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+			mockSubs.On("Upsert", mock.AnythingOfType("*store.PushSubscription")).Return(nil).Once()
+
+			body := `{"endpoint":"` + endpoint + `","p256dh":"key","auth":"auth-secret"}`
+			req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			req = setUserContext(req, newTestUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.subscribePushHandler))
+			checkResponseCode(t, http.StatusNoContent, rr.Code)
+			mockSubs.AssertExpectations(t)
+		}
+	})
+
 	t.Run("returns 400 on missing endpoint", func(t *testing.T) {
 		app := newTestApplication(t)
 		app.config.vapid.publicKey = "test-public-key"
@@ -139,6 +187,12 @@ func TestSubscribePush(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.subscribePushHandler))
 		checkResponseCode(t, http.StatusServiceUnavailable, rr.Code)
 	})
+}
+
+func TestParsePushEndpointHosts(t *testing.T) {
+	assert.Equal(t, defaultPushEndpointHosts, parsePushEndpointHosts(""))
+	assert.Equal(t, defaultPushEndpointHosts, parsePushEndpointHosts(" , "))
+	assert.Equal(t, []string{"push.example.com", "127.0.0.1"}, parsePushEndpointHosts(" Push.Example.com, 127.0.0.1 ,"))
 }
 
 func TestUnsubscribePush(t *testing.T) {

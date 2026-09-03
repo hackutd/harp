@@ -80,6 +80,9 @@ func newTestApplication(t *testing.T) *application {
 				TimeFrame:             5 * time.Second,
 				Enabled:               true,
 			},
+			vapid: vapidConfig{
+				allowedEndpointHosts: defaultPushEndpointHosts,
+			},
 		},
 		store:         mockStore,
 		logger:        logger,
