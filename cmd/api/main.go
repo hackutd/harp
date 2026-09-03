@@ -107,9 +107,10 @@ func main() {
 			googleClientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
 		},
 		vapid: vapidConfig{
-			publicKey:  env.GetString("VAPID_PUBLIC_KEY", ""),
-			privateKey: env.GetString("VAPID_PRIVATE_KEY", ""),
-			subject:    env.GetString("VAPID_SUBJECT", "noreply@example.com"),
+			publicKey:            env.GetString("VAPID_PUBLIC_KEY", ""),
+			privateKey:           env.GetString("VAPID_PRIVATE_KEY", ""),
+			subject:              env.GetString("VAPID_SUBJECT", "noreply@example.com"),
+			allowedEndpointHosts: parsePushEndpointHosts(env.GetString("PUSH_ENDPOINT_ALLOWED_HOSTS", "")),
 		},
 		appleWallet: appleWalletConfig{
 			enabled:               env.GetBool("APPLE_WALLET_ENABLED", false),
@@ -248,6 +249,7 @@ func main() {
 
 	dispatcherCtx, cancelDispatcher := context.WithCancel(context.Background())
 	app.dispatcherCancel = cancelDispatcher
+	app.pushClient = newPushHTTPClient()
 	go app.runNotificationDispatcher(dispatcherCtx)
 
 	log.Fatal(app.run(mux))
