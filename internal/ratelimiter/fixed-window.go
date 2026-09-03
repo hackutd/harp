@@ -5,44 +5,62 @@ import (
 	"time"
 )
 
+type bucket struct {
+	count   int
+	resetAt time.Time
+}
+
+// FixedWindowLimiter allows up to limit requests per key in each window.
+// Windows are reset lazily on the next request for the key, and expired keys
+// are swept from the map at most once per window, so no per-key goroutines
+// are spawned.
 type FixedWindowLimiter struct {
-	sync.RWMutex
-	clients map[string]int
-	limit   int
-	window  time.Duration
+	mu        sync.Mutex
+	clients   map[string]*bucket
+	limit     int
+	window    time.Duration
+	nextSweep time.Time
+	now       func() time.Time
 }
 
 func NewFixedWindowLimiter(limit int, window time.Duration) *FixedWindowLimiter {
 	return &FixedWindowLimiter{
-		clients: make(map[string]int),
+		clients: make(map[string]*bucket),
 		limit:   limit,
 		window:  window,
+		now:     time.Now,
 	}
 }
 
 func (rl *FixedWindowLimiter) Allow(key string) (bool, time.Duration) {
-	rl.RLock()
-	count, exists := rl.clients[key]
-	rl.RUnlock()
+	now := rl.now()
 
-	if !exists || count < rl.limit {
-		rl.Lock()
-		if !exists {
-			go rl.resetCount(key)
-		}
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
 
-		rl.clients[key]++
-		rl.Unlock()
-
-		return true, 0
+	if !now.Before(rl.nextSweep) {
+		rl.sweep(now)
 	}
 
-	return false, rl.window
+	w, ok := rl.clients[key]
+	if !ok || !now.Before(w.resetAt) {
+		w = &bucket{resetAt: now.Add(rl.window)}
+		rl.clients[key] = w
+	}
+
+	if w.count >= rl.limit {
+		return false, w.resetAt.Sub(now)
+	}
+	w.count++
+	return true, 0
 }
 
-func (rl *FixedWindowLimiter) resetCount(key string) {
-	time.Sleep(rl.window)
-	rl.Lock()
-	delete(rl.clients, key)
-	rl.Unlock()
+// sweep drops every expired bucket. Caller must hold mu.
+func (rl *FixedWindowLimiter) sweep(now time.Time) {
+	for key, w := range rl.clients {
+		if !now.Before(w.resetAt) {
+			delete(rl.clients, key)
+		}
+	}
+	rl.nextSweep = now.Add(rl.window)
 }

@@ -97,6 +97,10 @@ func main() {
 			TimeFrame:             time.Second * 5,
 			Enabled:               env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
+		clientIP: clientIPConfig{
+			header:         env.GetString("CLIENT_IP_HEADER", "CF-Connecting-IP"),
+			trustedProxies: env.GetInt("CLIENT_IP_TRUSTED_PROXIES", 0),
+		},
 		frontendURL:      frontendURL,
 		publicCORSOrigin: env.GetString("PUBLIC_CORS_ORIGIN", ""),
 		supertokens: supertokensConfig{
