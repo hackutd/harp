@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { isGoogleAuthEnabled } from "@/shared/auth";
+import { isMobileViewport } from "@/shared/hooks";
 import { useUserStore } from "@/shared/stores";
 
 export default function AuthCallback() {
@@ -33,8 +34,11 @@ export default function AuthCallback() {
         const { user, authError: error } = useUserStore.getState();
 
         if (user) {
-          // Redirect based on role
-          if (user.role === "admin" || user.role === "super_admin") {
+          // Redirect based on role. The admin portal is desktop-only, so
+          // admins signing in on a small screen land in the hacker app.
+          const isAdmin = user.role === "admin" || user.role === "super_admin";
+
+          if (isAdmin && !isMobileViewport()) {
             navigate("/admin/all-applicants", { replace: true });
           } else {
             navigate("/app", { replace: true });
