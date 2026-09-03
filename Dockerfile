@@ -13,7 +13,7 @@ ENV VITE_GOOGLE_AUTH_ENABLED=$VITE_GOOGLE_AUTH_ENABLED
 RUN npm run build
 
 # Stage 2: Build backend
-FROM golang:1.24.13 AS builder
+FROM golang:1.27.1 AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
