@@ -6,10 +6,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hackutd/harp/internal/auth"
 	"github.com/hackutd/harp/internal/ratelimiter"
 	"github.com/hackutd/harp/internal/store"
@@ -80,7 +83,11 @@ func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		limiter, key := app.rateLimiterFor(w, r)
 		if allow, retryAfter := limiter.Allow(key); !allow {
-			app.rateLimiterExceededResponse(w, r, key, retryAfter.String())
+			seconds := int(math.Ceil(retryAfter.Seconds()))
+			if seconds < 1 {
+				seconds = 1
+			}
+			app.rateLimiterExceededResponse(w, r, key, strconv.Itoa(seconds))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -98,10 +105,29 @@ func (app *application) rateLimiterFor(w http.ResponseWriter, r *http.Request) (
 	return app.ipRateLimiter, "ip:" + clientIP(r)
 }
 
-// middleware.RealIP rewrites RemoteAddr to the bare forwarded IP behind a
-// proxy, but without one RemoteAddr keeps its port, which would make every
-// connection its own bucket.
+// clientIPMiddleware picks how the client address is derived, per config:
+// a single-IP header the edge proxy overwrites on every request (Cloudflare's
+// CF-Connecting-IP), the X-Forwarded-For entry a known number of proxies deep,
+// or the TCP peer when nothing sits in front of the server. Forwarded headers
+// are never trusted implicitly, since a client can set them freely.
+func (app *application) clientIPMiddleware() func(http.Handler) http.Handler {
+	switch {
+	case app.config.clientIP.header != "":
+		return middleware.ClientIPFromHeader(app.config.clientIP.header)
+	case app.config.clientIP.trustedProxies > 0:
+		return middleware.ClientIPFromXFFTrustedProxies(app.config.clientIP.trustedProxies)
+	default:
+		return middleware.ClientIPFromRemoteAddr
+	}
+}
+
+// clientIP prefers the address resolved by the configured ClientIPFrom*
+// middleware (see clientIPMiddleware); when that yields nothing the TCP peer
+// is used, minus its ephemeral port so one host is one bucket.
 func clientIP(r *http.Request) string {
+	if ip := middleware.GetClientIP(r.Context()); ip != "" {
+		return ip
+	}
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		return host
 	}
