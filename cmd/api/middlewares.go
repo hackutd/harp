@@ -394,3 +394,31 @@ func (app *application) AdminFAQEditPermissionMiddleware(next http.Handler) http
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (app *application) AdminTrackEditPermissionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetAdminTrackEditEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if user.Role == store.RoleAdmin && !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("admin track editing is disabled"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}

@@ -102,6 +102,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/schedule",
 		"admin/sponsors",
 		"admin/faq",
+		"admin/tracks",
 		"superadmin/applications",
 		"superadmin/emails",
 		"superadmin/hacker-links",
@@ -158,6 +159,7 @@ func (app *application) mount() http.Handler {
 			r.Get("/schedule", app.getPublicScheduleHandler)
 			r.Get("/sponsors", app.getPublicSponsorsHandler)
 			r.Get("/faq", app.getPublicFAQHandler)
+			r.Get("/tracks", app.getPublicTracksHandler)
 		})
 
 		// Legal document links. Unauthenticated on purpose: the login page
@@ -308,6 +310,20 @@ func (app *application) mount() http.Handler {
 							r.Delete("/{faqID}", app.deleteFAQHandler)
 						})
 					})
+
+					// Challenge tracks
+					r.Route("/tracks", func(r chi.Router) {
+						r.Get("/", app.listTracksHandler)
+						r.Get("/edit-permission", app.getTrackEditPermissionHandler)
+
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminTrackEditPermissionMiddleware)
+							r.Post("/", app.createTrackHandler)
+							r.Put("/{trackID}", app.updateTrackHandler)
+							r.Delete("/{trackID}", app.deleteTrackHandler)
+							r.Put("/{trackID}/logo", app.uploadTrackLogoHandler)
+						})
+					})
 				})
 			})
 
@@ -348,6 +364,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/admin-sponsor-edit-toggle", app.setAdminSponsorEditToggle)
 						r.Get("/admin-faq-edit-toggle", app.getAdminFAQEditToggle)
 						r.Post("/admin-faq-edit-toggle", app.setAdminFAQEditToggle)
+						r.Get("/admin-track-edit-toggle", app.getAdminTrackEditToggle)
+						r.Post("/admin-track-edit-toggle", app.setAdminTrackEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Get("/hacker-pack-url", app.getHackerPackURL)

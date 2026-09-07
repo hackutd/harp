@@ -27,6 +27,7 @@ type ResetHackathonPayload struct {
 	ResetNotifications bool `json:"reset_notifications"`
 	ResetSponsors      bool `json:"reset_sponsors"`
 	ResetFAQs          bool `json:"reset_faqs"`
+	ResetTracks        bool `json:"reset_tracks"`
 	ResetConfig        bool `json:"reset_config"`
 }
 
@@ -40,6 +41,7 @@ func (p ResetHackathonPayload) toStoreOptions() store.ResetOptions {
 		Settings:      p.ResetSettings,
 		Sponsors:      p.ResetSponsors,
 		FAQs:          p.ResetFAQs,
+		Tracks:        p.ResetTracks,
 		Config:        p.ResetConfig,
 	}
 }
@@ -53,6 +55,7 @@ type ResetHackathonResponse struct {
 	ResetNotifications bool `json:"reset_notifications"`
 	ResetSponsors      bool `json:"reset_sponsors"`
 	ResetFAQs          bool `json:"reset_faqs"`
+	ResetTracks        bool `json:"reset_tracks"`
 	ResetConfig        bool `json:"reset_config"`
 	// ResumesDeleted counts the resume files queued for removal from object
 	// storage. Deletion happens in the background, so a file may still fail;
@@ -66,7 +69,7 @@ type ResetHackathonResponse struct {
 // resetHackathonHandler resets hackathon data based on options
 //
 //	@Summary		Reset hackathon data (Super Admin)
-//	@Description	Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.
+//	@Description	Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, challenge tracks, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.
 //	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
@@ -123,6 +126,7 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		ResetNotifications: req.ResetNotifications,
 		ResetSponsors:      req.ResetSponsors,
 		ResetFAQs:          req.ResetFAQs,
+		ResetTracks:        req.ResetTracks,
 		ResetConfig:        req.ResetConfig,
 		ResumesDeleted:     resumesQueued,
 		ReceiptsDeleted:    receiptsQueued,

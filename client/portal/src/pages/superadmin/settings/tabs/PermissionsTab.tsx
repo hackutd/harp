@@ -72,6 +72,7 @@ export default function PermissionsTab() {
     useState(true);
   const [adminSponsorEditEnabled, setAdminSponsorEditEnabled] = useState(true);
   const [adminFAQEditEnabled, setAdminFAQEditEnabled] = useState(true);
+  const [adminTrackEditEnabled, setAdminTrackEditEnabled] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [applicationsSaving, setApplicationsSaving] = useState(false);
@@ -80,6 +81,7 @@ export default function PermissionsTab() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [sponsorSaving, setSponsorSaving] = useState(false);
   const [faqSaving, setFaqSaving] = useState(false);
+  const [trackSaving, setTrackSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -91,6 +93,7 @@ export default function PermissionsTab() {
         scheduleRes,
         sponsorRes,
         faqRes,
+        trackRes,
       ] = await Promise.all([
         getRequest<{ enabled: boolean }>(
           "/applications/enabled",
@@ -115,6 +118,10 @@ export default function PermissionsTab() {
         getRequest<{ enabled: boolean }>(
           "/superadmin/settings/admin-faq-edit-toggle",
           "admin FAQ edit toggle",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/admin-track-edit-toggle",
+          "admin track edit toggle",
         ),
       ]);
 
@@ -152,6 +159,12 @@ export default function PermissionsTab() {
         setAdminFAQEditEnabled(faqRes.data.enabled);
       } else {
         errorAlert(faqRes);
+      }
+
+      if (trackRes.status === 200 && trackRes.data) {
+        setAdminTrackEditEnabled(trackRes.data.enabled);
+      } else {
+        errorAlert(trackRes);
       }
 
       setLoading(false);
@@ -298,6 +311,28 @@ export default function PermissionsTab() {
     setFaqSaving(false);
   }
 
+  async function handleTrackToggle(nextValue: boolean) {
+    setTrackSaving(true);
+    const res = await postRequest<{ enabled: boolean }>(
+      "/superadmin/settings/admin-track-edit-toggle",
+      { enabled: nextValue },
+      "admin track edit toggle",
+    );
+
+    if (res.status === 200 && res.data) {
+      setAdminTrackEditEnabled(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Admins can now edit challenge tracks."
+          : "Admins are now blocked from editing challenge tracks.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setTrackSaving(false);
+  }
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg text-zinc-100">Permissions</h3>
@@ -357,6 +392,15 @@ export default function PermissionsTab() {
         checked={adminFAQEditEnabled}
         disabled={loading || faqSaving}
         onCheckedChange={handleFAQToggle}
+      />
+
+      <PermissionToggle
+        id="admin-track-edit-toggle"
+        label="Admin Track Editing"
+        description="When disabled, only super admins can create, update, or delete challenge tracks."
+        checked={adminTrackEditEnabled}
+        disabled={loading || trackSaving}
+        onCheckedChange={handleTrackToggle}
       />
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>

@@ -508,6 +508,14 @@ type AdminFAQEditToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
+type SetAdminTrackEditTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminTrackEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 type SetHackathonDateRangePayload struct {
 	StartDate string `json:"start_date" validate:"required"`
 	EndDate   string `json:"end_date" validate:"required"`
@@ -792,6 +800,68 @@ func (app *application) setAdminFAQEditToggle(w http.ResponseWriter, r *http.Req
 	}
 
 	response := AdminFAQEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getAdminTrackEditToggle returns whether admins can edit challenge tracks
+//
+//	@Summary		Get admin track edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete challenge tracks
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminTrackEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-track-edit-toggle [get]
+func (app *application) getAdminTrackEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminTrackEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminTrackEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminTrackEditToggle updates whether admins can edit challenge tracks
+//
+//	@Summary		Set admin track edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete challenge tracks
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminTrackEditTogglePayload	true	"Admin track editing enabled state"
+//	@Success		200		{object}	AdminTrackEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-track-edit-toggle [post]
+func (app *application) setAdminTrackEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminTrackEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminTrackEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminTrackEditToggleResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

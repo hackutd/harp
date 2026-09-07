@@ -371,6 +371,16 @@ func (m *MockSettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled 
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetAdminTrackEditEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetAdminTrackEditEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -758,6 +768,47 @@ func (m *MockFAQsStore) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+// MockTracksStore is a mock implementation of the Tracks interface
+type MockTracksStore struct {
+	mock.Mock
+}
+
+func (m *MockTracksStore) List(ctx context.Context) ([]Track, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]Track), args.Error(1)
+}
+
+func (m *MockTracksStore) GetByID(ctx context.Context, id string) (*Track, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Track), args.Error(1)
+}
+
+func (m *MockTracksStore) Create(ctx context.Context, track *Track) error {
+	args := m.Called(track)
+	return args.Error(0)
+}
+
+func (m *MockTracksStore) Update(ctx context.Context, track *Track) error {
+	args := m.Called(track)
+	return args.Error(0)
+}
+
+func (m *MockTracksStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockTracksStore) UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error {
+	args := m.Called(id, logoData, logoContentType)
+	return args.Error(0)
+}
+
 // MockHackerLinksStore is a mock implementation of the HackerLinks interface
 type MockHackerLinksStore struct {
 	mock.Mock
@@ -922,6 +973,7 @@ func NewMockStore() Storage {
 		Schedule:               &MockScheduleStore{},
 		Sponsors:               &MockSponsorsStore{},
 		FAQs:                   &MockFAQsStore{},
+		Tracks:                 &MockTracksStore{},
 		HackerLinks:            &MockHackerLinksStore{},
 		PushSubscriptions:      &MockPushSubscriptionsStore{},
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
