@@ -129,7 +129,11 @@ export default function GradingPage() {
         currentApp ? (
           <>
             <p className="font-semibold">
-              {formatName(currentApp.first_name, currentApp.last_name)}
+              {formatName(
+                currentApp.first_name,
+                currentApp.last_name,
+                currentApp.email,
+              )}
             </p>
             <Badge className={getStatusColor(currentApp.status)}>
               {currentApp.status}

@@ -240,7 +240,11 @@ export default function ReviewsPage() {
           Grade{" "}
           {redact
             ? formatApplicantLabel(reviews[0].application_id)
-            : formatName(reviews[0].first_name, reviews[0].last_name)}
+            : formatName(
+                reviews[0].first_name,
+                reviews[0].last_name,
+                reviews[0].email,
+              )}
         </TooltipContent>
       </Tooltip>
     ) : undefined;
@@ -288,6 +292,7 @@ export default function ReviewsPage() {
                       : formatName(
                           selectedReview.first_name,
                           selectedReview.last_name,
+                          selectedReview.email,
                         )
                     : "Review"}
                 </SheetTitle>

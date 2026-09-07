@@ -225,7 +225,7 @@ func (app *application) submitMyTravelRSVPHandler(w http.ResponseWriter, r *http
 		}
 
 		if validationErrors := validateResponses(schema, responses, true); len(validationErrors) > 0 {
-			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}
 

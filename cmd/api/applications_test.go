@@ -413,6 +413,139 @@ func TestSubmitApplication(t *testing.T) {
 		mockSettings.AssertExpectations(t)
 	})
 
+	t.Run("should return 400 with the field id when a required multi_select is empty", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","last_name":"Doe","dietary_restrictions":[]}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: "dietary_restrictions", Type: "multi_select", Label: "Dietary Restrictions", Required: true, Options: []string{"Vegan", "Halal"}},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Error  string   `json:"error"`
+			Fields []string `json:"fields"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Contains(t, body.Error, "dietary_restrictions is required")
+		// The field ids let the form blame the question instead of showing the
+		// raw message.
+		assert.Equal(t, []string{"dietary_restrictions"}, body.Fields)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should report every offending field id once", func(t *testing.T) {
+		user := newTestUser()
+		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Fields []string `json:"fields"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"first_name", "last_name"}, body.Fields)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should not require a field hidden by an unsatisfied show_if", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+
+		// travel_origin is required, but its controlling checkbox is unchecked,
+		// so the form never asks for it and submit must not block on it.
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: travelOptInFieldID, Type: "checkbox", Label: "Travel reimbursement"},
+			{
+				ID: "travel_origin", Type: "text", Label: "Traveling from", Required: true,
+				Validation: map[string]interface{}{"show_if": travelOptInFieldID},
+			},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockApps.On("Submit", application, travelOptInFieldID).Return(nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should require a field once its show_if condition holds", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","last_name":"Doe","travel_reimbursement":true}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: travelOptInFieldID, Type: "checkbox", Label: "Travel reimbursement"},
+			{
+				ID: "travel_origin", Type: "text", Label: "Traveling from", Required: true,
+				Validation: map[string]interface{}{"show_if": travelOptInFieldID},
+			},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Fields []string `json:"fields"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"travel_origin"}, body.Fields)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
 	t.Run("should return 409 when application already submitted", func(t *testing.T) {
 		user := newTestUser()
 		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusSubmitted}

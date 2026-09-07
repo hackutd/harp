@@ -159,7 +159,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		}
 
 		if validationErrors := validateResponses(schema, responses, false); len(validationErrors) > 0 {
-			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}
 
@@ -196,7 +196,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 //	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	store.Application
-//	@Failure		400	{object}	object{error=string}	"Missing required fields"
+//	@Failure		400	{object}	object{error=string,fields=[]string}	"Missing required fields; fields lists the offending schema field ids"
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		404	{object}	object{error=string}
 //	@Failure		409	{object}	object{error=string}	"Application not in draft status"
@@ -245,7 +245,7 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	validationErrors := validateResponses(schema, responses, true)
 
 	if len(validationErrors) > 0 {
-		app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+		app.validationErrorResponse(w, r, validationErrors)
 		return
 	}
 
@@ -262,15 +262,57 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// fieldValidationError ties a validation failure to the schema field it belongs
+// to, so the handler can report both the message and the offending field id.
+type fieldValidationError struct {
+	Field   string
+	Message string
+}
+
+// validationMessages returns the human-readable half of each error.
+func validationMessages(errs []fieldValidationError) []string {
+	messages := make([]string, 0, len(errs))
+	for _, e := range errs {
+		messages = append(messages, e.Message)
+	}
+	return messages
+}
+
+// validationFieldIDs returns the offending field ids, deduplicated and in the
+// order they were reported.
+func validationFieldIDs(errs []fieldValidationError) []string {
+	seen := make(map[string]struct{}, len(errs))
+	fields := make([]string, 0, len(errs))
+	for _, e := range errs {
+		if _, ok := seen[e.Field]; ok {
+			continue
+		}
+		seen[e.Field] = struct{}{}
+		fields = append(fields, e.Field)
+	}
+	return fields
+}
+
 // validateResponses checks each response value against its schema field definition.
-// Returns a list of human-readable validation error strings. When enforceRequired
-// is false, missing/empty required fields are allowed (used for draft saves) while
-// type checks on present values still apply.
-func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, enforceRequired bool) []string {
-	var errs []string
+// Returns one entry per failure, carrying the field id and a human-readable
+// message. When enforceRequired is false, missing/empty required fields are
+// allowed (used for draft saves) while type checks on present values still apply.
+func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, enforceRequired bool) []fieldValidationError {
+	var errs []fieldValidationError
+	fail := func(fieldID, message string) {
+		errs = append(errs, fieldValidationError{Field: fieldID, Message: message})
+	}
 
 	for _, field := range schema {
 		val, exists := responses[field.ID]
+
+		// A field hidden by an unsatisfied validation.show_if isn't being asked,
+		// so it is never required — the client doesn't render it either. Type
+		// checks on any leftover value still apply.
+		hidden := false
+		if showIf, ok := field.Validation["show_if"].(string); ok && showIf != "" {
+			hidden = !conditionSatisfied(showIf, responses)
+		}
 
 		// A field with validation.required_if is required only when its
 		// controller condition holds (e.g. travel questions are required only
@@ -284,10 +326,13 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 				}
 			}
 		}
+		if hidden {
+			required = false
+		}
 
 		// Required check
 		if enforceRequired && required && (!exists || isEmpty(val)) {
-			errs = append(errs, field.ID+" is required")
+			fail(field.ID, field.ID+" is required")
 			continue
 		}
 
@@ -301,65 +346,65 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 		case "text", "textarea", "phone":
 			s, ok := val.(string)
 			if !ok {
-				errs = append(errs, field.ID+" must be a string")
+				fail(field.ID, field.ID+" must be a string")
 				continue
 			}
 			if maxLen, ok := field.Validation["maxLength"]; ok {
 				if ml, ok := maxLen.(float64); ok && float64(len(s)) > ml {
-					errs = append(errs, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
+					fail(field.ID, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
 				}
 			}
 
 		case "number":
 			n, ok := val.(float64)
 			if !ok {
-				errs = append(errs, field.ID+" must be a number")
+				fail(field.ID, field.ID+" must be a number")
 				continue
 			}
 			if minVal, ok := field.Validation["min"]; ok {
 				if mv, ok := minVal.(float64); ok && n < mv {
-					errs = append(errs, fmt.Sprintf("%s must be at least %v", field.ID, mv))
+					fail(field.ID, fmt.Sprintf("%s must be at least %v", field.ID, mv))
 				}
 			}
 			if maxVal, ok := field.Validation["max"]; ok {
 				if mv, ok := maxVal.(float64); ok && n > mv {
-					errs = append(errs, fmt.Sprintf("%s must be at most %v", field.ID, mv))
+					fail(field.ID, fmt.Sprintf("%s must be at most %v", field.ID, mv))
 				}
 			}
 
 		case "select":
 			s, ok := val.(string)
 			if !ok {
-				errs = append(errs, field.ID+" must be a string")
+				fail(field.ID, field.ID+" must be a string")
 				continue
 			}
 			if len(field.Options) > 0 && !containsString(field.Options, s) {
-				errs = append(errs, field.ID+" has invalid option: "+s)
+				fail(field.ID, field.ID+" has invalid option: "+s)
 			}
 
 		case "multi_select":
 			arr, ok := val.([]interface{})
 			if !ok {
-				errs = append(errs, field.ID+" must be an array")
+				fail(field.ID, field.ID+" must be an array")
 				continue
 			}
 			for _, item := range arr {
 				s, ok := item.(string)
 				if !ok {
-					errs = append(errs, field.ID+" array items must be strings")
+					fail(field.ID, field.ID+" array items must be strings")
 					break
 				}
 				if len(field.Options) > 0 && !containsString(field.Options, s) {
-					errs = append(errs, field.ID+" has invalid option: "+s)
+					fail(field.ID, field.ID+" has invalid option: "+s)
 				}
 			}
 
 		case "checkbox":
 			b, ok := val.(bool)
 			if !ok {
-				errs = append(errs, field.ID+" must be a boolean")
-			} else if enforceRequired && field.Required && !b {
-				errs = append(errs, field.ID+" must be checked")
+				fail(field.ID, field.ID+" must be a boolean")
+			} else if enforceRequired && required && !b {
+				fail(field.ID, field.ID+" must be checked")
 			}
 		}
 	}

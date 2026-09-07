@@ -106,7 +106,11 @@ export default function GradingPage() {
             <p className="font-semibold">
               {redact
                 ? formatApplicantLabel(currentReview.application_id)
-                : formatName(currentReview.first_name, currentReview.last_name)}
+                : formatName(
+                    currentReview.first_name,
+                    currentReview.last_name,
+                    currentReview.email,
+                  )}
             </p>
             <VoteBadge vote={currentReview.vote} />
           </>
