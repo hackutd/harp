@@ -169,6 +169,12 @@ export interface ApiResponse<T = unknown> {
   status: number;
   data?: T;
   error?: string;
+  /**
+   * Field ids an endpoint blamed for a failed request, when it reports them.
+   * Lets a form map a server-side rejection back onto its own inputs instead of
+   * showing the raw message.
+   */
+  fields?: string[];
 }
 
 export interface Scan {

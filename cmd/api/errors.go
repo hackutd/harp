@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/hackutd/harp/internal/store"
@@ -29,6 +30,17 @@ func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Reques
 
 	writeJSONError(w, http.StatusBadRequest,
 		err.Error())
+}
+
+// validationErrorResponse reports schema-validation failures. The message keeps
+// its historical shape for compatibility; the field ids let the form map each
+// failure back onto the question that caused it.
+func (app *application) validationErrorResponse(w http.ResponseWriter, r *http.Request, errs []fieldValidationError) {
+	message := fmt.Sprintf("validation errors: %v", validationMessages(errs))
+
+	app.logger.Warnw("validation failed", "method", r.Method, "path", r.URL.Path, "error", message)
+
+	writeJSONFieldError(w, http.StatusBadRequest, message, validationFieldIDs(errs))
 }
 
 func (app *application) conflictResponse(w http.ResponseWriter, r *http.Request, err error) {

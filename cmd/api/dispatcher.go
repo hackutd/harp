@@ -63,6 +63,7 @@ func (app *application) dispatchDueNotifications(ctx context.Context) {
 		VAPIDPrivateKey: app.config.vapid.privateKey,
 		Subscriber:      app.config.vapid.subject,
 		TTL:             60 * 60, // 1 hour
+		HTTPClient:      app.pushClient,
 	}
 
 	for _, n := range due {
@@ -102,6 +103,12 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 	var toPrune []string
 
 	for _, sub := range subs {
+		if err := validatePushEndpoint(sub.Endpoint, app.config.vapid.allowedEndpointHosts); err != nil {
+			app.logger.Warnw("pruning subscription with disallowed endpoint", "endpoint", sub.Endpoint)
+			toPrune = append(toPrune, sub.Endpoint)
+			continue
+		}
+
 		webpushSub := &webpush.Subscription{
 			Endpoint: sub.Endpoint,
 			Keys: webpush.Keys{
@@ -116,7 +123,7 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 			continue
 		}
 
-		_, _ = io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, pushResponseBodyCap))
 		resp.Body.Close()
 
 		switch {

@@ -223,6 +223,49 @@ func TestIntegrationSubmitVote(t *testing.T) {
 	}
 }
 
+func TestIntegrationReviewQueueToleratesBadNumbers(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	s := &ApplicationReviewsStore{db: db}
+	ctx := context.Background()
+	admin := "44444444-4444-4444-4444-444444444444"
+
+	// responses is free-text JSONB, so age can hold a decimal or an out-of-range
+	// value. A bare ::smallint cast would fail the whole query and 500 the
+	// grading queue for every admin; these must read as NULL instead.
+	if _, err := db.ExecContext(ctx, `
+		UPDATE applications
+		SET responses = responses || '{"age":"20.5","hackathons_attended":"99999"}'
+		WHERE id = 'aaaaaaaa-0000-0000-0000-000000000002'
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	pending, err := s.GetPendingByAdminID(ctx, admin)
+	if err != nil {
+		t.Fatalf("GetPendingByAdminID: %v", err)
+	}
+	if len(pending) == 0 {
+		t.Fatal("expected pending reviews")
+	}
+	for _, r := range pending {
+		if r.ApplicationID == "aaaaaaaa-0000-0000-0000-000000000002" && r.Age != nil {
+			t.Errorf("age = %v, want nil for an unparseable value", *r.Age)
+		}
+	}
+
+	if _, err := db.ExecContext(ctx, `
+		UPDATE application_reviews SET vote = 'accept', reviewed_at = NOW()
+		WHERE id = 'bbbbbbbb-0000-0000-0000-000000000001'
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GetCompletedByAdminID(ctx, admin); err != nil {
+		t.Fatalf("GetCompletedByAdminID: %v", err)
+	}
+}
+
 func TestIntegrationSettingsCache(t *testing.T) {
 	db := integrationDB(t)
 	defer db.Close()

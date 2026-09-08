@@ -37,6 +37,18 @@ func writeJSONError(w http.ResponseWriter, status int, message string) error {
 	return writeJSON(w, status, &envolope{Error: message})
 }
 
+// writeJSONFieldError writes the standard error envelope plus the ids of the
+// fields the request was rejected for, so a client form can blame its own
+// inputs instead of surfacing the raw message.
+func writeJSONFieldError(w http.ResponseWriter, status int, message string, fields []string) error {
+	type envelope struct {
+		Error  string   `json:"error"`
+		Fields []string `json:"fields,omitempty"`
+	}
+
+	return writeJSON(w, status, &envelope{Error: message, Fields: fields})
+}
+
 func (app *application) jsonResponse(w http.ResponseWriter, status int, data any) error {
 	type envelope struct {
 		Data any `json:"data"`

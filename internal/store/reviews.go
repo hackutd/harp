@@ -141,10 +141,16 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.travel_vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
 			a.responses->>'first_name', a.responses->>'last_name', u.email,
-			NULLIF(a.responses->>'age', '')::smallint,
+			-- responses is free-text JSONB, so these can hold any string. A bare
+			-- ::smallint cast makes one bad value fail the whole query and 500 the
+			-- grading queue for every admin, so only values that provably fit are
+			-- cast; anything else reads as NULL (see ApplicationsStore.List).
+			CASE WHEN a.responses->>'age' ~ '^[0-9]{1,3}$'
+			     THEN (a.responses->>'age')::smallint END,
 			a.responses->>'university', a.responses->>'major',
 			a.responses->>'country_of_residence',
-			NULLIF(a.responses->>'hackathons_attended', '')::smallint,
+			CASE WHEN a.responses->>'hackathons_attended' ~ '^[0-9]{1,4}$'
+			     THEN (a.responses->>'hackathons_attended')::smallint END,
 			a.travel_status
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
@@ -194,10 +200,16 @@ func (s *ApplicationReviewsStore) GetCompletedByAdminID(ctx context.Context, adm
 			ar.id, ar.application_id, ar.admin_id, ar.vote, ar.travel_vote, ar.notes,
 			ar.assigned_at, ar.reviewed_at, ar.created_at, ar.updated_at,
 			a.responses->>'first_name', a.responses->>'last_name', u.email,
-			NULLIF(a.responses->>'age', '')::smallint,
+			-- responses is free-text JSONB, so these can hold any string. A bare
+			-- ::smallint cast makes one bad value fail the whole query and 500 the
+			-- grading queue for every admin, so only values that provably fit are
+			-- cast; anything else reads as NULL (see ApplicationsStore.List).
+			CASE WHEN a.responses->>'age' ~ '^[0-9]{1,3}$'
+			     THEN (a.responses->>'age')::smallint END,
 			a.responses->>'university', a.responses->>'major',
 			a.responses->>'country_of_residence',
-			NULLIF(a.responses->>'hackathons_attended', '')::smallint,
+			CASE WHEN a.responses->>'hackathons_attended' ~ '^[0-9]{1,4}$'
+			     THEN (a.responses->>'hackathons_attended')::smallint END,
 			a.travel_status
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id

@@ -73,7 +73,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
             applications.map((app) => {
               const name = redact
                 ? formatApplicantLabel(app.id)
-                : formatName(app.first_name, app.last_name);
+                : formatName(app.first_name, app.last_name, app.email);
               const email = redact ? maskEmail(app.email) : app.email;
 
               const isSelected = selectedId === app.id;

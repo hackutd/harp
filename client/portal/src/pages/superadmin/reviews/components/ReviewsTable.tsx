@@ -111,7 +111,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                   </span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
-                  {formatName(app.first_name, app.last_name)}
+                  {formatName(app.first_name, app.last_name, app.email)}
                 </TableCell>
                 <TableCell>{app.email}</TableCell>
                 <TableCell className="text-center">

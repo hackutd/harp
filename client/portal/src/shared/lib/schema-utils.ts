@@ -151,6 +151,26 @@ export function isFieldVisible(
   return !condition || conditionSatisfied(condition, values);
 }
 
+/**
+ * Number fields answered as a whole count, with a floor the stored schema can
+ * raise but not lower. Keyed by field id (not type) so it applies to exactly the
+ * well-known fields — the same approach as getFieldPresets in field-presets.ts.
+ * Add an id here to give another number field the same treatment.
+ *
+ * Age is here because the seeded schema declares min: 0, which would otherwise
+ * accept "0" as an age (and, being a plain number field, "20.5" as well).
+ */
+const WHOLE_NUMBER_FIELDS: Record<string, { min: number }> = {
+  age: { min: 1 },
+};
+
+/** Whole-number rule for a field id, or undefined if it has none. */
+export function getWholeNumberRule(
+  fieldId: string,
+): { min: number } | undefined {
+  return WHOLE_NUMBER_FIELDS[fieldId];
+}
+
 /** Build a Zod schema for a single field based on its ApplicationSchemaField definition. */
 function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
   const validation = field.validation ?? {};
@@ -158,7 +178,11 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
   switch (field.type) {
     case "text": {
       if (field.required) {
-        return z.string().min(1, `${field.label} is required`);
+        // Trim-aware, so a whitespace-only answer fails here rather than making
+        // it all the way to the server, which trims before its own check.
+        return z
+          .string()
+          .refine((v) => v.trim() !== "", `${field.label} is required`);
       }
       return z.string().optional().default("");
     }
@@ -180,18 +204,43 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
     }
     case "number": {
       let n = z.coerce.number({ message: `${field.label} is required` });
-      if (typeof validation.min === "number")
-        n = n.min(validation.min as number);
-      if (typeof validation.max === "number")
-        n = n.max(validation.max as number);
-      if (field.required && typeof validation.min !== "number") n = n.min(0);
-      return n;
+      const whole = getWholeNumberRule(field.id);
+      if (whole) n = n.int(`${field.label} must be a whole number`);
+
+      const schemaMin =
+        typeof validation.min === "number"
+          ? (validation.min as number)
+          : undefined;
+      // A whole-number field's floor is the higher of the two, so a super admin
+      // can raise age's minimum but not drop it back below the rule.
+      const min = whole
+        ? Math.max(schemaMin ?? whole.min, whole.min)
+        : schemaMin;
+
+      if (typeof min === "number")
+        n = n.min(min, `${field.label} must be at least ${min}`);
+      if (typeof validation.max === "number") {
+        const max = validation.max as number;
+        n = n.max(max, `${field.label} must be at most ${max}`);
+      }
+      if (field.required && typeof min !== "number") n = n.min(0);
+
+      // Numbers default to undefined rather than 0 (see buildDefaultValues), so
+      // an untouched required field fails while an optional one passes.
+      return field.required ? n : n.optional();
     }
     case "textarea": {
       let s = z.string();
-      if (field.required) s = s.min(1, `${field.label} is required`);
-      if (typeof validation.maxLength === "number")
-        s = s.max(validation.maxLength as number);
+      if (typeof validation.maxLength === "number") {
+        const maxLength = validation.maxLength as number;
+        s = s.max(
+          maxLength,
+          `${field.label} must be ${maxLength} characters or fewer`,
+        );
+      }
+      if (field.required) {
+        return s.refine((v) => v.trim() !== "", `${field.label} is required`);
+      }
       return s;
     }
     case "select": {
@@ -200,8 +249,12 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
       }
       return z.string().optional().default("");
     }
-    case "multi_select":
+    case "multi_select": {
+      if (field.required) {
+        return z.array(z.string()).min(1, `${field.label} is required`);
+      }
       return z.array(z.string()).optional().default([]);
+    }
     case "checkbox":
       if (field.required) {
         return z.literal(true, {
@@ -216,33 +269,43 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
 
 /**
  * Build a Zod object schema from an array of ApplicationSchemaField definitions.
- * Returns a z.object() with one key per field. Fields with a "required_if"
- * validation key become required when their controlling checkbox is checked.
+ * Returns a z.object() with one key per field.
+ *
+ * Requiredness for conditional fields is decided in the refinement rather than
+ * in the per-field schema, because it depends on another field's answer:
+ * - a field hidden by an unsatisfied "show_if" is never required (the step
+ *   validator triggers every field in a section, including hidden ones, so
+ *   enforcing it would block the step with nothing on screen to fix);
+ * - a field with "required_if" becomes required once its controller is set.
  */
 export function buildZodSchema(fields: ApplicationSchemaField[]) {
+  const conditional = fields.map((f) => ({
+    field: f,
+    showIf: getFieldCondition(f, "show_if"),
+    requiredIf: getFieldCondition(f, "required_if"),
+  }));
+
   const shape: Record<string, z.ZodType> = {};
-  for (const field of fields) {
-    shape[field.id] = buildFieldZod(field);
+  for (const { field, showIf } of conditional) {
+    // A show_if-gated field is shaped as optional; the refinement below applies
+    // its requiredness only while it is actually visible.
+    shape[field.id] = buildFieldZod(
+      showIf ? { ...field, required: false } : field,
+    );
   }
 
-  const conditional = fields
-    .map((f) => ({ field: f, condition: getFieldCondition(f, "required_if") }))
-    .filter(
-      (c): c is { field: ApplicationSchemaField; condition: FieldCondition } =>
-        !!c.condition,
-    );
+  const refined = conditional.filter((c) => c.showIf || c.requiredIf);
 
   return z.object(shape).superRefine((data, ctx) => {
-    for (const { field, condition } of conditional) {
-      if (!conditionSatisfied(condition, data)) continue;
+    for (const { field, showIf, requiredIf } of refined) {
+      if (showIf && !conditionSatisfied(showIf, data)) continue;
 
-      const value = data[field.id];
-      const empty =
-        value === undefined ||
-        value === null ||
-        (typeof value === "string" && value.trim() === "") ||
-        (Array.isArray(value) && value.length === 0);
-      if (empty) {
+      const required =
+        field.required ||
+        (!!requiredIf && conditionSatisfied(requiredIf, data));
+      if (!required) continue;
+
+      if (isEmptyValue(data[field.id])) {
         ctx.addIssue({
           code: "custom",
           path: [field.id],
@@ -253,6 +316,17 @@ export function buildZodSchema(fields: ApplicationSchemaField[]) {
   });
 }
 
+/** True when an answer counts as unanswered: blank, unchecked, or nothing picked. */
+function isEmptyValue(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    value === false ||
+    (typeof value === "string" && value.trim() === "") ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
 /** Build default form values from schema fields. */
 export function buildDefaultValues(
   fields: ApplicationSchemaField[],
@@ -260,8 +334,11 @@ export function buildDefaultValues(
   const defaults: Record<string, unknown> = {};
   for (const field of fields) {
     switch (field.type) {
+      // Numbers start blank rather than at 0: a pre-filled 0 satisfies a
+      // required field (and age's seeded min of 0) without the hacker ever
+      // answering it.
       case "number":
-        defaults[field.id] = 0;
+        defaults[field.id] = undefined;
         break;
       case "multi_select":
         defaults[field.id] = [];

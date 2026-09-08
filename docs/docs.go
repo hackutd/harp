@@ -3049,12 +3049,18 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Missing required fields",
+                        "description": "Missing required fields; fields lists the offending schema field ids",
                         "schema": {
                             "type": "object",
                             "properties": {
                                 "error": {
                                     "type": "string"
+                                },
+                                "fields": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 }
                             }
                         }
