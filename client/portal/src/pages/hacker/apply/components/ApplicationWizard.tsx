@@ -32,10 +32,12 @@ import {
   uploadResumeToSignedURL as uploadToSignedURL,
 } from "../api";
 import {
+  changedAnswers,
   createDraftSaver,
   draftStepIds,
   reconcileDraftStep,
   reconcileDraftValues,
+  stillBlamed,
 } from "../draft";
 import { ReviewStep } from "../steps/ReviewStep";
 import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
@@ -71,9 +73,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [refreshingSchema, setRefreshingSchema] = useState(false);
-  const [incompleteDescription, setIncompleteDescription] = useState(
-    "Answer the questions below, then submit again.",
-  );
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
   const [applicationsEnabled, setApplicationsEnabled] = useState<boolean>(
@@ -195,23 +194,34 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   }, [applySchema]);
 
   const reportValidationFailure = useCallback(
-    async (res: ApiResponse<Application>, context: "save" | "submit") => {
+    async (
+      res: ApiResponse<Application>,
+      context: "save" | "submit",
+      sent: Record<string, unknown>,
+    ) => {
       const schema = await refreshSchema();
       const fields = new Map(schema.map((field) => [field.id, field]));
-      const blamed = (res.fields ?? []).filter((id) => fields.has(id));
+      const blamed = stillBlamed(
+        (res.fields ?? []).filter((id) => fields.has(id)),
+        sent,
+        form.getValues(),
+      );
       serverFieldIds.current = blamed;
+      // Let the questions themselves answer first — where the client schema can
+      // see the problem it names it ("must be at most 100") instead of the
+      // generic fallback below, and re-validating clears anything it accepts.
+      await form.trigger(blamed as (keyof typeof form.formState.errors)[]);
       for (const id of blamed) {
+        if (form.formState.errors[id]) continue;
         form.setError(id, {
           type: "server",
           message: `${stripLabelLinks(fields.get(id)!.label)} needs a valid answer`,
         });
       }
-      setIncompleteDescription(
-        context === "save"
-          ? "Review these answers so your draft can be saved."
-          : "Review these answers, then submit again.",
-      );
-      setShowIncomplete(true);
+      // The summary card belongs to a submit attempt. A failed autosave has
+      // already said its piece on the question itself and in the save line
+      // under the form, so it does not get to interrupt the hacker mid-answer.
+      if (context === "submit") setShowIncomplete(true);
     },
     [form, refreshSchema],
   );
@@ -226,6 +236,35 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       showIncomplete ? collectIncompleteSections(schemaFields, formErrors) : [],
     [showIncomplete, formErrors, schemaFields],
   );
+
+  // mode: "onTouched" only re-checks an answer once its input has been blurred,
+  // and the popover selects, comboboxes, and checkbox groups never fire a blur
+  // at all — so a question flagged by a failed save or a Continue kept its
+  // error, and its line in the summary above, long after the hacker fixed it.
+  // Re-validate a flagged question as soon as its own answer changes. Only that
+  // question: a server-blamed answer the client schema accepts would otherwise
+  // be cleared by an edit made somewhere else on the form.
+  const answerSnapshot = useRef<Record<string, string>>({});
+  useEffect(() => {
+    const { snapshot, changed } = changedAnswers(
+      answerSnapshot.current,
+      values,
+    );
+    answerSnapshot.current = snapshot;
+    const flagged = changed.filter((id) => formErrors[id]);
+    if (flagged.length > 0) {
+      void form.trigger(flagged as (keyof typeof form.formState.errors)[]);
+    }
+  }, [values, formErrors, form]);
+
+  // With every flagged question fixed the summary has nothing left to show, so
+  // retire the flag too — otherwise the next Continue-time error would revive
+  // the banner under the description of a failure already dealt with.
+  useEffect(() => {
+    if (showIncomplete && incompleteSections.length === 0) {
+      setShowIncomplete(false);
+    }
+  }, [showIncomplete, incompleteSections]);
 
   // Load existing application data and check if applications are enabled
   useEffect(() => {
@@ -304,8 +343,16 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
             serverFieldIds.current = [];
           }
         },
-        onFailure: async (res) => {
-          if (res.status === 400) await reportValidationFailure(res, "save");
+        onFailure: async (res, snapshot) => {
+          // A save that fails because the hacker pressed Submit is a submit
+          // failure: it earns the summary card, an autosave in the background
+          // does not.
+          if (res.status === 400)
+            await reportValidationFailure(
+              res,
+              submissionInProgress.current ? "submit" : "save",
+              snapshot.values,
+            );
           setSaveError(
             res.status === 400
               ? "Some answers need attention before your draft can be saved."
@@ -448,7 +495,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       // Save first: the response may introduce new questions or choices. Read
       // the reconciled schema synchronously rather than awaiting a React render.
       const saved = await saveDraft();
-      if (saved.response.status !== 200 || !saved.response.data) return;
+      if (saved.response.status !== 200 || !saved.response.data) {
+        // The save reported which questions it choked on; bring that summary
+        // into view rather than leaving Submit looking like it did nothing.
+        if (saved.response.status === 400)
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       if (!saved.current) {
         setApiError(
           "Your answers changed while saving. Please review and submit again.",
@@ -461,7 +514,6 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         currentValues,
       ).safeParse(currentValues);
       form.clearErrors();
-      setIncompleteDescription("Review these answers, then submit again.");
       if (!validation.success) {
         for (const issue of validation.error.issues) {
           const id = String(issue.path[0]);
@@ -473,6 +525,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       }
       setShowIncomplete(false);
 
+      const submitted = form.getValues();
       const res = await postRequest<Application>(
         "/applications/me/submit",
         {},
@@ -489,7 +542,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       }
 
       if (res.status === 400) {
-        await reportValidationFailure(res, "submit");
+        await reportValidationFailure(res, "submit", submitted);
         setApiError(
           "Some answers are missing or invalid. Review your application and try again.",
         );
@@ -770,7 +823,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
               goToStep(sectionStepMap[sectionId] ?? 0)
             }
             className="mb-6"
-            description={incompleteDescription}
+            description="Review these answers, then submit again."
           />
         )}
 

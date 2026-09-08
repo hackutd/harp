@@ -68,7 +68,10 @@ export function createDraftSaver({
   ) => Promise<ApiResponse<Application>>;
   onStart: () => void;
   onSaved: (application: Application) => void;
-  onFailure: (response: ApiResponse<Application>) => Promise<void>;
+  onFailure: (
+    response: ApiResponse<Application>,
+    snapshot: DraftSnapshot,
+  ) => Promise<void>;
   onFinish: (result: DraftSaveResult) => void;
 }): () => Promise<DraftSaveResult> {
   let chain: Promise<unknown> = Promise.resolve();
@@ -82,7 +85,7 @@ export function createDraftSaver({
       if (response.status === 200 && response.data) {
         onSaved(response.data);
       } else {
-        await onFailure(response);
+        await onFailure(response, snapshot);
       }
       const result = {
         response,
@@ -96,4 +99,43 @@ export function createDraftSaver({
     chain = next.catch(() => undefined);
     return next;
   };
+}
+
+/**
+ * Ids whose answer differs between the previous snapshot and the current
+ * values, along with the snapshot to compare against next time. Answers are
+ * compared by their JSON shape because react-hook-form hands back a fresh deep
+ * clone on every update, so a multi_select array is never reference-equal to
+ * itself. Ids missing from `previous` count as unchanged — the first sighting
+ * only seeds the snapshot, so an answer the server flagged is not treated as
+ * edited before the hacker has touched it.
+ */
+export function changedAnswers(
+  previous: Record<string, string>,
+  values: Record<string, unknown>,
+): { snapshot: Record<string, string>; changed: string[] } {
+  const snapshot: Record<string, string> = {};
+  const changed: string[] = [];
+  for (const [id, value] of Object.entries(values)) {
+    snapshot[id] = JSON.stringify(value ?? null);
+    if (id in previous && previous[id] !== snapshot[id]) changed.push(id);
+  }
+  return { snapshot, changed };
+}
+
+/**
+ * Of the questions the server blamed, the ones whose answer has not changed
+ * since that request went out. Reporting a failure involves a round trip of its
+ * own, so a fix typed in the meantime would otherwise land back on screen as a
+ * fresh complaint about an answer that is already correct.
+ */
+export function stillBlamed(
+  blamed: string[],
+  sent: Record<string, unknown>,
+  current: Record<string, unknown>,
+): string[] {
+  return blamed.filter(
+    (id) =>
+      JSON.stringify(sent[id] ?? null) === JSON.stringify(current[id] ?? null),
+  );
 }

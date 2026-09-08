@@ -16,6 +16,7 @@ const bundle = await build({
       export { buildApplicationResolver } from './src/pages/hacker/apply/validations.ts';
       export { buildZodSchema, getObsoleteOptions, isFieldVisible } from './src/shared/lib/schema-utils.ts';
       export * from './src/shared/lib/phone-input.ts';
+      export { createFormControl } from 'react-hook-form';
     `,
     resolveDir: project,
     loader: "ts",
@@ -41,6 +42,9 @@ const {
   draftResponses,
   createDraftSaver,
   updateMyApplication,
+  changedAnswers,
+  stillBlamed,
+  createFormControl,
 } = module.exports;
 const originalFetch = globalThis.fetch;
 const { splitPhoneNumber, formatPhoneNational, joinPhoneNumber } =
@@ -340,4 +344,123 @@ test("international phone numbers round-trip without lost digits or country code
   }
   const longer = { countryCode: "49", national: "1234567890123" };
   assert.equal(formatPhoneNational(longer).replace(/\D/g, ""), longer.national);
+});
+
+test("only the edited answer counts as changed, and the first sighting seeds the snapshot", () => {
+  const seed = changedAnswers(
+    {},
+    { level_of_study: "Senior", dietary: ["vegan"] },
+  );
+  assert.deepEqual(
+    seed.changed,
+    [],
+    "a flagged answer is not 'edited' before it is touched",
+  );
+
+  const untouched = changedAnswers(seed.snapshot, {
+    level_of_study: "Senior",
+    dietary: ["vegan"],
+  });
+  assert.deepEqual(
+    untouched.changed,
+    [],
+    "react-hook-form re-clones arrays on every update; identity must not count as a change",
+  );
+
+  const edited = changedAnswers(seed.snapshot, {
+    level_of_study: "Senior",
+    dietary: ["vegan", "halal"],
+  });
+  assert.deepEqual(edited.changed, ["dietary"]);
+});
+
+test("a flagged question clears once its own answer changes, and only that question", async () => {
+  const questions = [
+    field({ id: "level_of_study" }),
+    field({
+      id: "hackathons_attended",
+      type: "number",
+      section: "experience",
+      options: undefined,
+    }),
+  ];
+  const { control, ...form } = createFormControl({
+    resolver: buildApplicationResolver(questions),
+    defaultValues: { level_of_study: "", hackathons_attended: undefined },
+    mode: "onTouched",
+  });
+  control._subscribe({ formState: { errors: true }, callback: () => {} });
+  const flagged = () => Object.keys(control._formState.errors);
+  const answer = async (id, value) =>
+    control
+      .register(id)
+      .onChange({ target: { name: id, value }, type: "change" });
+
+  // Continue with both questions blank flags them.
+  await form.trigger(["level_of_study", "hackathons_attended"]);
+  assert.deepEqual(flagged().sort(), ["hackathons_attended", "level_of_study"]);
+
+  // Answering does not clear the flag on its own: mode "onTouched" waits for a
+  // blur, which popover selects and comboboxes never fire.
+  await answer("level_of_study", "Undergraduate");
+  assert.ok(flagged().includes("level_of_study"));
+
+  // Re-validating the edited question is what clears it, and it leaves the
+  // other flagged question — including a server-set error — alone.
+  form.setError("hackathons_attended", {
+    type: "server",
+    message: "needs a valid answer",
+  });
+  await form.trigger(["level_of_study"]);
+  assert.deepEqual(flagged(), ["hackathons_attended"]);
+
+  await answer("hackathons_attended", 12);
+  await form.trigger(["hackathons_attended"]);
+  assert.deepEqual(flagged(), []);
+});
+
+test("blame is dropped for an answer edited while the failing request was in flight", () => {
+  const sent = { hackathons_attended: 1000, first_name: "Ada" };
+  assert.deepEqual(
+    stillBlamed(["hackathons_attended"], sent, {
+      hackathons_attended: 1000,
+      first_name: "Ada",
+    }),
+    ["hackathons_attended"],
+    "an untouched answer is still the one the server rejected",
+  );
+  assert.deepEqual(
+    stillBlamed(["hackathons_attended"], sent, {
+      hackathons_attended: 10,
+      first_name: "Ada",
+    }),
+    [],
+    "a fix typed during the round trip must not come back as a fresh complaint",
+  );
+});
+
+test("a failed save hands back the values it sent so late blame can be checked", async () => {
+  globalThis.fetch = async () =>
+    Response.json(
+      { error: "validation errors", fields: ["hackathons_attended"] },
+      { status: 400 },
+    );
+  let state = { values: { hackathons_attended: 1000 }, schema, revision: 0 };
+  let reported;
+  const save = createDraftSaver({
+    read: () => state,
+    request: updateMyApplication,
+    onStart() {},
+    onSaved() {
+      assert.fail("unexpected success");
+    },
+    async onFailure(response, snapshot) {
+      // The hacker fixes the answer while the failure is being reported.
+      state = { values: { hackathons_attended: 10 }, schema, revision: 1 };
+      reported = stillBlamed(response.fields, snapshot.values, state.values);
+    },
+    onFinish() {},
+  });
+  await save();
+  assert.deepEqual(reported, []);
 });
