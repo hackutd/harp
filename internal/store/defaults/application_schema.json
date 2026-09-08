@@ -1,0 +1,376 @@
+[
+  {
+    "id": "first_name",
+    "type": "text",
+    "label": "First Name",
+    "required": true,
+    "section": "personal",
+    "display_order": 1
+  },
+  {
+    "id": "last_name",
+    "type": "text",
+    "label": "Last Name",
+    "required": true,
+    "section": "personal",
+    "display_order": 2
+  },
+  {
+    "id": "phone",
+    "type": "phone",
+    "label": "Phone Number",
+    "required": false,
+    "section": "personal",
+    "display_order": 3
+  },
+  {
+    "id": "age",
+    "type": "number",
+    "label": "Age",
+    "required": true,
+    "section": "personal",
+    "display_order": 4,
+    "validation": {
+      "min": 0,
+      "max": 120
+    }
+  },
+  {
+    "id": "country_of_residence",
+    "type": "text",
+    "label": "Country of Residence",
+    "required": false,
+    "section": "personal",
+    "display_order": 5
+  },
+  {
+    "id": "gender",
+    "type": "text",
+    "label": "Gender",
+    "required": false,
+    "section": "personal",
+    "display_order": 6
+  },
+  {
+    "id": "race",
+    "type": "text",
+    "label": "Race",
+    "required": false,
+    "section": "personal",
+    "display_order": 7
+  },
+  {
+    "id": "ethnicity",
+    "type": "text",
+    "label": "Ethnicity",
+    "required": false,
+    "section": "personal",
+    "display_order": 8
+  },
+  {
+    "id": "university",
+    "type": "text",
+    "label": "University",
+    "required": true,
+    "section": "education",
+    "display_order": 10
+  },
+  {
+    "id": "major",
+    "type": "text",
+    "label": "Major",
+    "required": true,
+    "section": "education",
+    "display_order": 11
+  },
+  {
+    "id": "level_of_study",
+    "type": "select",
+    "label": "Level of Study",
+    "required": true,
+    "section": "education",
+    "display_order": 12,
+    "options": [
+      "Freshman",
+      "Sophomore",
+      "Junior",
+      "Senior",
+      "Graduate",
+      "PhD",
+      "Other"
+    ]
+  },
+  {
+    "id": "github",
+    "type": "text",
+    "label": "GitHub",
+    "required": false,
+    "section": "links",
+    "display_order": 20
+  },
+  {
+    "id": "linkedin",
+    "type": "text",
+    "label": "LinkedIn",
+    "required": false,
+    "section": "links",
+    "display_order": 21
+  },
+  {
+    "id": "website",
+    "type": "text",
+    "label": "Personal Website",
+    "required": false,
+    "section": "links",
+    "display_order": 22
+  },
+  {
+    "id": "hackathons_attended",
+    "type": "number",
+    "label": "Hackathons Attended",
+    "required": false,
+    "section": "experience",
+    "display_order": 30,
+    "validation": {
+      "min": 0,
+      "max": 100
+    }
+  },
+  {
+    "id": "experience_level",
+    "type": "select",
+    "label": "Software Experience",
+    "required": false,
+    "section": "experience",
+    "display_order": 31,
+    "options": [
+      "Beginner",
+      "Intermediate",
+      "Advanced",
+      "Expert"
+    ]
+  },
+  {
+    "id": "heard_about",
+    "type": "text",
+    "label": "How did you hear about us?",
+    "required": false,
+    "section": "experience",
+    "display_order": 32
+  },
+  {
+    "id": "saq_1",
+    "type": "textarea",
+    "label": "Why do you want to attend this hackathon?",
+    "required": true,
+    "section": "short_answers",
+    "display_order": 40,
+    "validation": {
+      "maxLength": 1000
+    }
+  },
+  {
+    "id": "saq_2",
+    "type": "textarea",
+    "label": "How many hackathons have you submitted to and what did you learn from them?",
+    "required": true,
+    "section": "short_answers",
+    "display_order": 41,
+    "validation": {
+      "maxLength": 1000
+    }
+  },
+  {
+    "id": "saq_3",
+    "type": "textarea",
+    "label": "If you haven't been to a hackathon, what do you hope to learn from this hackathon?",
+    "required": true,
+    "section": "short_answers",
+    "display_order": 42,
+    "validation": {
+      "maxLength": 1000
+    }
+  },
+  {
+    "id": "saq_4",
+    "type": "textarea",
+    "label": "What are you looking forward to do at this hackathon?",
+    "required": true,
+    "section": "short_answers",
+    "display_order": 43,
+    "validation": {
+      "maxLength": 1000
+    }
+  },
+  {
+    "id": "shirt_size",
+    "type": "select",
+    "label": "Shirt Size",
+    "required": false,
+    "section": "logistics",
+    "display_order": 50,
+    "options": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+    ]
+  },
+  {
+    "id": "dietary_restrictions",
+    "type": "multi_select",
+    "label": "Dietary Restrictions",
+    "required": false,
+    "section": "logistics",
+    "display_order": 51,
+    "options": [
+      "Vegan",
+      "Vegetarian",
+      "Halal",
+      "Nuts",
+      "Fish",
+      "Wheat",
+      "Dairy",
+      "Eggs",
+      "No Beef",
+      "No Pork"
+    ]
+  },
+  {
+    "id": "accommodations",
+    "type": "textarea",
+    "label": "Accommodations",
+    "required": false,
+    "section": "logistics",
+    "display_order": 52
+  },
+  {
+    "id": "travel_reimbursement",
+    "type": "checkbox",
+    "label": "I would like to apply for travel reimbursement",
+    "required": false,
+    "section": "travel",
+    "section_label": "Travel Reimbursement",
+    "display_order": 53
+  },
+  {
+    "id": "travel_origin",
+    "type": "text",
+    "label": "Where will you be traveling from? (City, State/Country)",
+    "required": false,
+    "section": "travel",
+    "section_label": "Travel Reimbursement",
+    "display_order": 54,
+    "validation": {
+      "show_if": "travel_reimbursement",
+      "required_if": "travel_reimbursement"
+    }
+  },
+  {
+    "id": "travel_mode",
+    "type": "select",
+    "label": "How do you plan to travel?",
+    "required": false,
+    "section": "travel",
+    "section_label": "Travel Reimbursement",
+    "display_order": 55,
+    "options": [
+      "Car",
+      "Bus",
+      "Train",
+      "Flight",
+      "Other"
+    ],
+    "validation": {
+      "show_if": "travel_reimbursement",
+      "required_if": "travel_reimbursement"
+    }
+  },
+  {
+    "id": "travel_estimated_cost",
+    "type": "number",
+    "label": "Estimated round-trip travel cost (USD)",
+    "required": false,
+    "section": "travel",
+    "section_label": "Travel Reimbursement",
+    "display_order": 56,
+    "validation": {
+      "min": 0,
+      "show_if": "travel_reimbursement",
+      "required_if": "travel_reimbursement"
+    }
+  },
+  {
+    "id": "travel_has_team",
+    "type": "select",
+    "label": "Do you already have a team for the event?",
+    "required": false,
+    "section": "travel",
+    "section_label": "Travel Reimbursement",
+    "display_order": 57,
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "validation": {
+      "show_if": "travel_reimbursement",
+      "required_if": "travel_reimbursement"
+    }
+  },
+  {
+    "id": "travel_justification",
+    "type": "textarea",
+    "label": "Why do you need travel reimbursement to attend?",
+    "required": false,
+    "section": "travel",
+    "section_label": "Travel Reimbursement",
+    "display_order": 58,
+    "validation": {
+      "maxLength": 1000,
+      "show_if": "travel_reimbursement",
+      "required_if": "travel_reimbursement"
+    }
+  },
+  {
+    "id": "ack_mlh_coc",
+    "type": "checkbox",
+    "label": "I have read and agree to the [MLH Code of Conduct](https://mlh.io/code-of-conduct)",
+    "required": true,
+    "section": "agreements",
+    "display_order": 60
+  },
+  {
+    "id": "ack_mlh_data_sharing",
+    "type": "checkbox",
+    "label": "I authorize sharing my application/registration information with Major League Hacking for event administration, ranking, and MLH administration in-line with the [MLH Privacy Policy](https://mlh.io/privacy).",
+    "required": true,
+    "section": "agreements",
+    "display_order": 61
+  },
+  {
+    "id": "ack_mlh_contest_terms",
+    "type": "checkbox",
+    "label": "I agree to the [MLH Contest Terms and Conditions](https://github.com/MLH/mlh-policies/blob/main/contest-terms.md).",
+    "required": true,
+    "section": "agreements",
+    "display_order": 62
+  },
+  {
+    "id": "ack_mlh_privacy_policy",
+    "type": "checkbox",
+    "label": "I agree to the [MLH Privacy Policy](https://mlh.io/privacy).",
+    "required": true,
+    "section": "agreements",
+    "display_order": 63
+  },
+  {
+    "id": "opt_in_mlh_emails",
+    "type": "checkbox",
+    "label": "I authorize MLH to send me occasional emails about relevant events, career opportunities, and community announcements",
+    "required": false,
+    "section": "agreements",
+    "display_order": 64
+  }
+]

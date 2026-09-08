@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export default function GradingPage() {
 
   const reviews = useAdminGradingStore((s) => s.reviews);
   const loading = useAdminGradingStore((s) => s.loading);
+  const error = useAdminGradingStore((s) => s.error);
   const currentIndex = useAdminGradingStore((s) => s.currentIndex);
   const detail = useAdminGradingStore((s) => s.detail);
   const detailLoading = useAdminGradingStore((s) => s.detailLoading);
@@ -32,7 +33,6 @@ export default function GradingPage() {
   const localNotes = useAdminGradingStore((s) => s.localNotes);
   const localTravelVote = useAdminGradingStore((s) => s.localTravelVote);
   const fetchReviews = useAdminGradingStore((s) => s.fetchReviews);
-  const loadDetail = useAdminGradingStore((s) => s.loadDetail);
   const navigateNext = useAdminGradingStore((s) => s.navigateNext);
   const navigatePrev = useAdminGradingStore((s) => s.navigatePrev);
   const submitVote = useAdminGradingStore((s) => s.submitVote);
@@ -40,38 +40,39 @@ export default function GradingPage() {
   const setLocalTravelVote = useAdminGradingStore((s) => s.setLocalTravelVote);
   const reset = useAdminGradingStore((s) => s.reset);
 
-  const [aiPercent, setAiPercent] = useState<number | null>(null);
+  const aiPercent = detail?.ai_percent ?? null;
+  const setAiPercent = (percent: number) => {
+    useAdminGradingStore.setState((state) => ({
+      detail:
+        state.detail && state.detail.id === detail?.id
+          ? { ...state.detail, ai_percent: percent }
+          : state.detail,
+    }));
+  };
   const redact = useRedactApplicants();
 
   const currentReview = reviews[currentIndex] ?? null;
 
-  // Initialize
+  const targetReviewId = searchParams.get("review") ?? undefined;
   useEffect(() => {
-    const targetReviewId = searchParams.get("review");
-
+    const controller = new AbortController();
     reset();
-    fetchReviews().then(() => {
-      const revs = useAdminGradingStore.getState().reviews;
-      if (revs.length > 0) {
-        const targetIndex = targetReviewId
-          ? revs.findIndex((r) => r.id === targetReviewId)
-          : -1;
-        const idx = targetIndex >= 0 ? targetIndex : 0;
-        useAdminGradingStore.setState({ currentIndex: idx });
-        loadDetail(revs[idx].application_id);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Sync AI percent from detail
-  useEffect(() => {
-    setAiPercent(detail?.ai_percent ?? null);
-  }, [detail]);
+    void fetchReviews(targetReviewId, controller.signal);
+    return () => {
+      controller.abort();
+      reset();
+    };
+  }, [fetchReviews, reset, targetReviewId]);
 
   const handleVote = useCallback(
     (vote: ReviewVote) => {
-      if (currentReview && !submitting && !currentReview.vote) {
+      if (
+        currentReview &&
+        !loading &&
+        !error &&
+        !submitting &&
+        !currentReview.vote
+      ) {
         // A travel yes/no is required when the applicant requested travel
         if (
           currentReview.travel_status !== "not_requested" &&
@@ -82,11 +83,11 @@ export default function GradingPage() {
         submitVote(currentReview.id, vote);
       }
     },
-    [currentReview, submitting, submitVote, localTravelVote],
+    [currentReview, loading, error, submitting, submitVote, localTravelVote],
   );
 
   useGradingKeyboardShortcuts({
-    disabled: submitting,
+    disabled: submitting || loading || !!error,
     canAct: !!currentReview?.id && !currentReview?.vote,
     escapeUrl: "/admin/reviews",
     onNavigateNext: navigateNext,
@@ -116,8 +117,10 @@ export default function GradingPage() {
       totalCount={reviews.length}
       onNavigateNext={navigateNext}
       onNavigatePrev={navigatePrev}
-      canNavigatePrev={!loading && currentIndex > 0}
-      canNavigateNext={!loading && currentIndex < reviews.length - 1}
+      canNavigatePrev={!loading && !error && !submitting && currentIndex > 0}
+      canNavigateNext={
+        !loading && !error && !submitting && currentIndex < reviews.length - 1
+      }
       detailsPanel={
         <GradingDetailsPanel application={detail} loading={detailLoading}>
           {currentReview && (
@@ -158,7 +161,17 @@ export default function GradingPage() {
       }
       emptyState={
         <div className="flex flex-col items-center justify-center h-full gap-4">
-          <p className="text-muted-foreground">No pending reviews to grade.</p>
+          <p
+            className="text-muted-foreground"
+            role={error ? "alert" : undefined}
+          >
+            {error || "No pending reviews to grade."}
+          </p>
+          {error && (
+            <Button onClick={() => void fetchReviews(targetReviewId)}>
+              Retry
+            </Button>
+          )}
           <Button
             variant="outline"
             className="cursor-pointer"

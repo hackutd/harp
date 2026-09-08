@@ -15,6 +15,7 @@ import type {
 export interface ApplicationsState {
   applications: ApplicationListItem[];
   loading: boolean;
+  error: string | null;
   nextCursor: string | null;
   prevCursor: string | null;
   hasMore: boolean;
@@ -23,6 +24,7 @@ export interface ApplicationsState {
   currentSortBy?: ApplicationSortBy;
   stats: ApplicationStats | null;
   statsLoading: boolean;
+  statsError: string | null;
   fetchApplications: (
     params?: FetchParams,
     signal?: AbortSignal,
@@ -38,9 +40,12 @@ interface ApplicationsStoreConfig {
 }
 
 export function createApplicationsStore(config: ApplicationsStoreConfig) {
+  let fetchSequence = 0;
+  let statsSequence = 0;
   return create<ApplicationsState>((set, get) => ({
     applications: [],
     loading: false,
+    error: null,
     nextCursor: null,
     prevCursor: null,
     hasMore: false,
@@ -49,9 +54,11 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
     currentSortBy: config.defaultSortBy,
     stats: null,
     statsLoading: false,
+    statsError: null,
 
     fetchApplications: async (params?: FetchParams, signal?: AbortSignal) => {
-      set({ loading: true });
+      const requestId = ++fetchSequence;
+      set({ loading: true, error: null });
 
       let status: ApplicationStatus | null;
       if (params && "status" in params && params.status !== undefined) {
@@ -74,6 +81,13 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
         sortBy = get().currentSortBy;
       }
 
+      // Remember the requested view immediately so retries and assignment
+      // refreshes keep filters even while another fetch is pending.
+      set({
+        currentStatus: status,
+        currentSearch: search,
+        currentSortBy: sortBy,
+      });
       const res = await apiFetchApplications(
         {
           ...params,
@@ -84,7 +98,11 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
         signal,
       );
 
-      if (signal?.aborted) return;
+      if (requestId !== fetchSequence) return;
+      if (signal?.aborted) {
+        set({ loading: false });
+        return;
+      }
 
       if (res.status === 200 && res.data) {
         set({
@@ -99,6 +117,7 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
         });
       } else {
         set({
+          error: res.error || "Unable to load applications. Please try again.",
           applications: [],
           nextCursor: null,
           prevCursor: null,
@@ -109,16 +128,25 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
     },
 
     fetchStats: async (signal?: AbortSignal) => {
-      set({ statsLoading: true });
+      const requestId = ++statsSequence;
+      set({ statsLoading: true, statsError: null });
 
       const res = await fetchApplicationStats(signal);
 
-      if (signal?.aborted) return;
+      if (requestId !== statsSequence) return;
+      if (signal?.aborted) {
+        set({ statsLoading: false });
+        return;
+      }
 
       if (res.status === 200 && res.data) {
         set({ stats: res.data, statsLoading: false });
       } else {
-        set({ stats: null, statsLoading: false });
+        set({
+          stats: null,
+          statsLoading: false,
+          statsError: res.error || "Unable to load application statistics.",
+        });
       }
     },
 
@@ -127,7 +155,10 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
     },
 
     resetPagination: () => {
+      ++fetchSequence;
       set({
+        error: null,
+        loading: false,
         applications: [],
         nextCursor: null,
         prevCursor: null,

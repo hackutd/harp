@@ -273,13 +273,18 @@ func (s *ApplicationReviewsStore) GetNotesByApplicationID(ctx context.Context, a
 	return notes, nil
 }
 
-// BatchAssignmentResult contains stats about a batch assignment operation
+// BatchAssignmentResult reports the committed changes and any remaining shortage
+// among the submitted applications considered by this run.
 type BatchAssignmentResult struct {
-	ReviewsCreated int `json:"reviews_created"`
+	ReviewsCreated          int `json:"reviews_created"`
+	ReviewsRemoved          int `json:"reviews_removed"`
+	ReviewsPerApplication   int `json:"reviews_per_application"`
+	ApplicationsBelowTarget int `json:"applications_below_target"`
+	ReviewsUnfilled         int `json:"reviews_unfilled"`
 }
 
-// BatchAssign assigns reviews to admins for submitted applications needing more reviews.
-// Uses workload balancing — admins with fewer pending reviews are assigned first.
+// BatchAssign recovers inaccessible pending reviews and fills submitted
+// applications' assignment targets with distinct, currently eligible reviewers.
 func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
 	defer cancel()
@@ -290,255 +295,209 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	defer tx.Rollback()
 
-	// Ensure all super_admins exist in the review assignment setting.
-	// This acts as a backfill for any super_admins that were created before this setting existed
-	// or were added to the database manually.
-	var entries []ReviewAssignmentEntry
-
-	selectSettingQuery := `SELECT value FROM settings WHERE key = $1 FOR UPDATE`
-	var value []byte
-	err = tx.QueryRowContext(ctx, selectSettingQuery, SettingsKeyReviewAssignmentToggle).Scan(&value)
-
-	isNewSetting := false
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-		isNewSetting = true
-		entries = []ReviewAssignmentEntry{}
-	} else {
-		if jerr := json.Unmarshal(value, &entries); jerr != nil {
-			var ids []string
-			if jerr2 := json.Unmarshal(value, &ids); jerr2 == nil {
-				entries = []ReviewAssignmentEntry{}
-				for _, id := range ids {
-					entries = append(entries, ReviewAssignmentEntry{ID: id, Enabled: true})
-				}
-			} else {
-				entries = []ReviewAssignmentEntry{}
-			}
-		}
-	}
-
-	// Only run the full backfill query if entries might be out of sync
-	needsBackfill := isNewSetting
-	if !isNewSetting {
-		var adminCount int
-		countQuery := `SELECT COUNT(*) FROM users WHERE role = 'super_admin'`
-		if err := tx.QueryRowContext(ctx, countQuery).Scan(&adminCount); err != nil {
-			return nil, err
-		}
-		needsBackfill = adminCount != len(entries)
-	}
-
-	if needsBackfill {
-		backfillAdminsQuery := `
-			SELECT u.id
-			FROM users u
-			WHERE u.role = 'super_admin'
-		`
-		adminRows, err := tx.QueryContext(ctx, backfillAdminsQuery)
-		if err != nil {
-			return nil, err
-		}
-
-		var allAdminIDs []string
-		for adminRows.Next() {
-			var id string
-			if err := adminRows.Scan(&id); err != nil {
-				adminRows.Close()
-				return nil, err
-			}
-			allAdminIDs = append(allAdminIDs, id)
-		}
-		adminRows.Close()
-		if err := adminRows.Err(); err != nil {
-			return nil, err
-		}
-
-		existingAdminMap := make(map[string]bool)
-		for _, entry := range entries {
-			existingAdminMap[entry.ID] = true
-		}
-
-		changesMade := false
-		for _, adminID := range allAdminIDs {
-			if _, exists := existingAdminMap[adminID]; !exists {
-				entries = append(entries, ReviewAssignmentEntry{ID: adminID, Enabled: true})
-				changesMade = true
-			}
-		}
-
-		if changesMade || isNewSetting {
-			jsonValue, err := json.Marshal(entries)
-			if err != nil {
-				return nil, err
-			}
-
-			upsertQuery := `
-				INSERT INTO settings (key, value)
-				VALUES ($1, $2)
-				ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-			`
-			if _, err := tx.ExecContext(ctx, upsertQuery, SettingsKeyReviewAssignmentToggle, string(jsonValue)); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Remove pending assignments owned by admins who are not listed in the
-	// review assignment setting so those applications can be redistributed
-	// to enabled admins. The setting is stored in `settings` with key
-	// 'review_assignment_toggle' as a JSONB array of objects {"id","enabled"}.
-	cleanupQuery := `
-		DELETE FROM application_reviews ar
-		WHERE ar.vote IS NULL
-		AND EXISTS (
-			SELECT 1
-			FROM settings s
-			CROSS JOIN jsonb_array_elements(s.value) AS elem
-			WHERE s.key = 'review_assignment_toggle'
-			AND elem->>'id' = ar.admin_id::text
-			AND (elem->'enabled')::boolean = false
-		);
-		`
-
-	if _, err := tx.ExecContext(ctx, cleanupQuery); err != nil {
+	// Serialize batches even when this setting has not been created yet.
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO settings (key, value) VALUES ($1, '[]'::jsonb)
+		ON CONFLICT (key) DO NOTHING
+	`, SettingsKeyReviewAssignmentToggle); err != nil {
 		return nil, err
 	}
+	var value []byte
+	if err := tx.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = $1 FOR UPDATE`,
+		SettingsKeyReviewAssignmentToggle).Scan(&value); err != nil {
+		return nil, err
+	}
+	entries, err := parseReviewAssignmentEntries(value)
+	if err != nil || entries == nil {
+		// Match the toggle setting's existing default-enabled behavior.
+		entries = []ReviewAssignmentEntry{}
+	}
+	disabledIDs := []string{}
+	listed := make(map[string]bool, len(entries))
+	for _, entry := range entries {
+		listed[entry.ID] = true
+		if !entry.Enabled {
+			disabledIDs = append(disabledIDs, entry.ID)
+		}
+	}
 
-	// Get admins sorted by pending workload (fewest pending first)
-	adminsQuery := `
-		SELECT u.id
-		FROM users u
-		LEFT JOIN application_reviews ar 
-			ON u.id = ar.admin_id AND ar.vote IS NULL
-		LEFT JOIN settings s 
-			ON s.key = 'review_assignment_toggle'
-		WHERE u.role IN ('admin', 'super_admin')
-		AND NOT EXISTS (
-			SELECT 1
-			FROM jsonb_array_elements(s.value) AS elem
-			WHERE elem->>'id' = u.id::text
-				AND (elem->'enabled')::boolean = false
+	result := &BatchAssignmentResult{ReviewsPerApplication: reviewsPerApp}
+	removed, err := tx.ExecContext(ctx, `
+		DELETE FROM application_reviews ar
+		WHERE ar.vote IS NULL AND (
+			ar.admin_id::text = ANY($1::text[]) OR NOT EXISTS (
+				SELECT 1 FROM users u
+				WHERE u.id = ar.admin_id AND u.role IN ('admin', 'super_admin')
+			)
 		)
-		GROUP BY u.id, u.created_at
-		ORDER BY COUNT(ar.id) ASC, u.created_at ASC;
-	`
+	`, disabledIDs)
+	if err != nil {
+		return nil, err
+	}
+	n, err := removed.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	result.ReviewsRemoved = int(n)
 
-	adminRows, err := tx.QueryContext(ctx, adminsQuery)
+	// Read workloads after cleanup. Creation time and ID provide stable ties.
+	adminRows, err := tx.QueryContext(ctx, `
+		SELECT u.id, u.role, COUNT(ar.id), NOT (u.id::text = ANY($1::text[]))
+		FROM users u
+		LEFT JOIN application_reviews ar ON ar.admin_id = u.id AND ar.vote IS NULL
+		WHERE u.role IN ('admin', 'super_admin')
+		GROUP BY u.id
+		ORDER BY u.created_at, u.id
+	`, disabledIDs)
 	if err != nil {
 		return nil, err
 	}
 	defer adminRows.Close()
-
-	var adminIDs []string
+	type reviewer struct {
+		ID      string
+		Pending int
+	}
+	var admins []reviewer
 	for adminRows.Next() {
-		var id string
-		if err := adminRows.Scan(&id); err != nil {
+		var admin reviewer
+		var role UserRole
+		var enabled bool
+		if err := adminRows.Scan(&admin.ID, &role, &admin.Pending, &enabled); err != nil {
 			return nil, err
 		}
-		adminIDs = append(adminIDs, id)
+		if role == RoleSuperAdmin && !listed[admin.ID] {
+			entries = append(entries, ReviewAssignmentEntry{ID: admin.ID, Enabled: true})
+		}
+		if enabled {
+			admins = append(admins, admin)
+		}
 	}
 	if err := adminRows.Err(); err != nil {
 		return nil, err
 	}
+	adminRows.Close()
 
-	if len(adminIDs) == 0 {
-		return &BatchAssignmentResult{}, nil
+	// Normalize legacy settings and retain the super-admin backfill.
+	encoded, err := json.Marshal(entries)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE settings SET value = $2, updated_at = NOW() WHERE key = $1`,
+		SettingsKeyReviewAssignmentToggle, string(encoded)); err != nil {
+		return nil, err
 	}
 
-	// Get submitted applications needing reviews
-	appsQuery := `
-		SELECT id, user_id, reviews_assigned
-		FROM applications
+	appRows, err := tx.QueryContext(ctx, `
+		SELECT id, user_id, reviews_assigned FROM applications
 		WHERE status = 'submitted' AND reviews_assigned < $1
-		ORDER BY reviews_assigned ASC, submitted_at ASC
+		ORDER BY reviews_assigned, submitted_at, id
 		FOR UPDATE
-	`
-
-	appRows, err := tx.QueryContext(ctx, appsQuery, reviewsPerApp)
+	`, reviewsPerApp)
 	if err != nil {
 		return nil, err
 	}
 	defer appRows.Close()
-
-	type appInfo struct {
-		ID              string
-		UserID          string
-		ReviewsAssigned int
+	type application struct {
+		ID       string
+		UserID   string
+		Assigned int
 	}
-
-	var apps []appInfo
+	var apps []application
+	appIDs := []string{}
 	for appRows.Next() {
-		var a appInfo
-		if err := appRows.Scan(&a.ID, &a.UserID, &a.ReviewsAssigned); err != nil {
+		var app application
+		if err := appRows.Scan(&app.ID, &app.UserID, &app.Assigned); err != nil {
 			return nil, err
 		}
-		apps = append(apps, a)
+		apps = append(apps, app)
+		appIDs = append(appIDs, app.ID)
 	}
 	if err := appRows.Err(); err != nil {
 		return nil, err
 	}
+	appRows.Close()
 
-	if len(apps) == 0 {
-		return &BatchAssignmentResult{}, nil
+	// Both pending and completed reviews reserve their reviewer/application pair.
+	pairs := make(map[string]map[string]bool, len(apps))
+	if len(apps) > 0 {
+		rows, err := tx.QueryContext(ctx, `
+			SELECT application_id, admin_id FROM application_reviews
+			WHERE application_id = ANY($1::uuid[])
+		`, appIDs)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var appID, adminID string
+			if err := rows.Scan(&appID, &adminID); err != nil {
+				return nil, err
+			}
+			if pairs[appID] == nil {
+				pairs[appID] = make(map[string]bool)
+			}
+			pairs[appID][adminID] = true
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+		rows.Close()
 	}
 
-	// Round-robin assignment with workload balancing.
-	// Build the full list of (application_id, admin_id) pairs in Go, then
-	// issue a single bulk INSERT to avoid N network roundtrips to the DB.
-	var pairAppIDs []string
-	var pairAdminIDs []string
-	adminIndex := 0
-
+	var pairAppIDs, pairAdminIDs []string
 	for _, app := range apps {
-		needed := reviewsPerApp - app.ReviewsAssigned
-
-		for range needed {
-			for range adminIDs {
-				adminID := adminIDs[adminIndex]
-				adminIndex = (adminIndex + 1) % len(adminIDs)
-
-				// Skip self-review
-				if adminID == app.UserID {
+		if pairs[app.ID] == nil {
+			pairs[app.ID] = make(map[string]bool)
+		}
+		for range reviewsPerApp - app.Assigned {
+			best := -1
+			for i, admin := range admins {
+				if admin.ID == app.UserID || pairs[app.ID][admin.ID] {
 					continue
 				}
-
-				pairAppIDs = append(pairAppIDs, app.ID)
-				pairAdminIDs = append(pairAdminIDs, adminID)
+				if best == -1 || admin.Pending < admins[best].Pending {
+					best = i
+				}
+			}
+			if best == -1 {
 				break
 			}
+			admin := &admins[best]
+			pairs[app.ID][admin.ID] = true
+			admin.Pending++
+			pairAppIDs = append(pairAppIDs, app.ID)
+			pairAdminIDs = append(pairAdminIDs, admin.ID)
 		}
 	}
-
-	reviewsCreated := 0
 	if len(pairAppIDs) > 0 {
-		insertQuery := `
+		inserted, err := tx.ExecContext(ctx, `
 			INSERT INTO application_reviews (application_id, admin_id)
 			SELECT * FROM unnest($1::uuid[], $2::uuid[])
 			ON CONFLICT (application_id, admin_id) DO NOTHING
-		`
-
-		result, err := tx.ExecContext(ctx, insertQuery, pairAppIDs, pairAdminIDs)
+		`, pairAppIDs, pairAdminIDs)
 		if err != nil {
 			return nil, err
 		}
-
-		rowsAffected, err := result.RowsAffected()
+		n, err := inserted.RowsAffected()
 		if err != nil {
 			return nil, err
 		}
-		reviewsCreated = int(rowsAffected)
+		result.ReviewsCreated = int(n)
 	}
 
+	// Use actual counters after insertion, never the number of attempted pairs.
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(SUM($2 - reviews_assigned), 0)
+		FROM applications
+		WHERE id = ANY($1::uuid[]) AND reviews_assigned < $2
+	`, appIDs, reviewsPerApp).Scan(&result.ApplicationsBelowTarget, &result.ReviewsUnfilled); err != nil {
+		return nil, err
+	}
+	// Cleanup and backfill must also commit when no new assignments are possible.
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-
-	return &BatchAssignmentResult{
-		ReviewsCreated: reviewsCreated,
-	}, nil
+	return result, nil
 }
 
 // SetAIPercent sets the AI-generated percent on an application, only if the admin is assigned to it and it hasn't been set yet.

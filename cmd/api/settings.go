@@ -433,10 +433,10 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// setReviewsPerApp sets the number of reviews required per application
+// setReviewsPerApp sets the assignment target per application
 //
 //	@Summary		Set reviews per application (Super Admin)
-//	@Description	Sets the number of reviews required per application
+//	@Description	Sets the reviewer assignment target per application; run batch assignment to fill it
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json

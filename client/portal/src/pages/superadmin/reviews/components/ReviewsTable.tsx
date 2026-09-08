@@ -18,6 +18,7 @@ import type {
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
 
 interface ReviewsTableProps {
+  reviewsPerApp: number | null;
   applications: ApplicationListItem[];
   loading: boolean;
   selectedId: string | null;
@@ -36,6 +37,7 @@ const SORTABLE_COLUMNS: { key: SortableColumn; label: string }[] = [
 ];
 
 export const ReviewsTable = memo(function ReviewsTable({
+  reviewsPerApp,
   applications,
   loading,
   selectedId,
@@ -144,7 +146,17 @@ export const ReviewsTable = memo(function ReviewsTable({
                   )}
                 </TableCell>
                 <TableCell className="text-center whitespace-nowrap">
-                  {app.reviews_completed}/{app.reviews_assigned}
+                  <div>
+                    {app.reviews_completed} completed · {app.reviews_assigned}{" "}
+                    assigned
+                  </div>
+                  {app.status === "submitted" && reviewsPerApp !== null && (
+                    <div className="text-xs text-muted-foreground">
+                      Target {reviewsPerApp}
+                      {app.reviews_assigned < reviewsPerApp &&
+                        ` · ${reviewsPerApp - app.reviews_assigned} assignment${reviewsPerApp - app.reviews_assigned === 1 ? "" : "s"} missing`}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>
                   {app.ai_percent != null ? `${app.ai_percent}%` : "-"}

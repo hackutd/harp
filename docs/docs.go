@@ -8194,7 +8194,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Sets the number of reviews required per application",
+                "description": "Sets the reviewer assignment target per application; run batch assignment to fill it",
                 "consumes": [
                     "application/json"
                 ],
@@ -11790,7 +11790,19 @@ const docTemplate = `{
         "store.BatchAssignmentResult": {
             "type": "object",
             "properties": {
+                "applications_below_target": {
+                    "type": "integer"
+                },
                 "reviews_created": {
+                    "type": "integer"
+                },
+                "reviews_per_application": {
+                    "type": "integer"
+                },
+                "reviews_removed": {
+                    "type": "integer"
+                },
+                "reviews_unfilled": {
                     "type": "integer"
                 }
             }

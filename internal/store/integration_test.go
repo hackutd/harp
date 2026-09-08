@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -252,6 +253,42 @@ func TestIntegrationSettingsCache(t *testing.T) {
 	}
 	if _, ok := many[SettingsKeyRSVPEnabled]; !ok {
 		t.Error("GetMany missed rsvp_enabled")
+	}
+}
+
+// TestIntegrationRestoreDefaultFormSchema covers the write behind the
+// resetschema command: the upsert reaches a key that has no row yet, replaces
+// one that does, and drops the cached copy on the way out.
+func TestIntegrationRestoreDefaultFormSchema(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	s := newSettingsStore(db)
+	ctx := context.Background()
+
+	edited := []ApplicationSchemaField{{ID: "only_field", Type: "text", Label: "Only Field"}}
+	if err := s.UpdateApplicationSchema(ctx, edited); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.RestoreDefaultFormSchema(ctx, SettingsKeyApplicationSchema); err != nil {
+		t.Fatal(err)
+	}
+
+	want, err := DefaultFormSchemaFields(SettingsKeyApplicationSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.GetApplicationSchema(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("restored schema has %d field(s), want the %d shipped default(s)", len(got), len(want))
+	}
+
+	if err := s.RestoreDefaultFormSchema(ctx, "not_a_form_schema"); err == nil {
+		t.Error("expected an error for a key with no shipped default")
 	}
 }
 

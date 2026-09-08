@@ -349,7 +349,7 @@ func TestBatchAssignReviews(t *testing.T) {
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
 	t.Run("should batch assign reviews", func(t *testing.T) {
-		result := &store.BatchAssignmentResult{ReviewsCreated: 15}
+		result := &store.BatchAssignmentResult{ReviewsCreated: 15, ReviewsRemoved: 2, ReviewsPerApplication: 3, ApplicationsBelowTarget: 1, ReviewsUnfilled: 2}
 
 		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
 		mockReviews.On("BatchAssign", 3).Return(result, nil).Once()
@@ -366,7 +366,7 @@ func TestBatchAssignReviews(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Equal(t, 15, body.Data.ReviewsCreated)
+		assert.Equal(t, *result, body.Data)
 
 		mockReviews.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
