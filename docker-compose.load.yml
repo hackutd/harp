@@ -1,0 +1,6 @@
+services:
+  k6:
+    image: grafana/k6:2.2.0
+    working_dir: /load
+    volumes:
+      - ./load:/load

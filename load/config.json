@@ -1,0 +1,5 @@
+{
+  "baseUrl": "https://your-portal.example.com",
+  "scenario": "load.js",
+  "sessionsFile": "sessions.json"
+}

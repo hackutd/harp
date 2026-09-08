@@ -54,3 +54,6 @@ lerna-debug.log*
 docs/swagger.json
 docs/swagger.yaml
 
+# k6 load-testing: real session cookies (never commit; keep your pool local)
+/load/sessions.json
+
