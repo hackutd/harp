@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.14.0](https://github.com/hackutd/harp/compare/v0.13.0...v0.14.0) (2026-09-08)
+
+
+### Features
+
+* public endpoint for tracks ([#159](https://github.com/hackutd/harp/issues/159)) ([4228aef](https://github.com/hackutd/harp/commit/4228aefeb92f130c42b114c5612e28c18c548c65))
+
+
+### Bug Fixes
+
+* (sa): form unwanted scroll ([e216a57](https://github.com/hackutd/harp/commit/e216a57ee85175925565ed87c17960b1d5ee4519))
+* a more balanced review process & confirmation dialogs ([#156](https://github.com/hackutd/harp/issues/156)) ([831806d](https://github.com/hackutd/harp/commit/831806d40248085e2401573020ce16ed5f197d20))
+* error messaging on applications ([#157](https://github.com/hackutd/harp/issues/157)) ([72533ac](https://github.com/hackutd/harp/commit/72533acfa7073884e53c9dfbaf3271e37abff1b9))
+* **notifications:** restrict push endpoints to known push services and bound dispatcher requests ([#153](https://github.com/hackutd/harp/issues/153)) ([9ca9dff](https://github.com/hackutd/harp/commit/9ca9dffe513669c2d355689a613faed4c95e7c94))
+* **ratelimiter:** atomic fixed-window counting and explicit client-IP trust ([#155](https://github.com/hackutd/harp/issues/155)) ([dd215e6](https://github.com/hackutd/harp/commit/dd215e69f45b9a34eddddf81b086d12a8b3145ad))
+* required conditional check against application form ([95030e0](https://github.com/hackutd/harp/commit/95030e07918e629bce96e23d8ab823f91001ed55))
+
 ## [0.13.0](https://github.com/hackutd/harp/compare/v0.12.0...v0.13.0) (2026-09-02)
 
 
