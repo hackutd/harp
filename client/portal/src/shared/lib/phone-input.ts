@@ -81,7 +81,13 @@ export function formatPhoneNational({
     return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
   }
   // Other countries use neutral digit groups instead of imposing a US mask.
-  return national.match(/.{1,3}/g)?.join(" ") ?? "";
+  const groups: string[] = [];
+  let remaining = national;
+  while (remaining.length > 4) {
+    groups.push(remaining.slice(0, 3));
+    remaining = remaining.slice(3);
+  }
+  return [...groups, remaining].join(" ");
 }
 
 export function joinPhoneNumber({ countryCode, national }: PhoneParts): string {
