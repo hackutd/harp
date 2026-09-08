@@ -1,6 +1,6 @@
 import { AlertCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router";
 
 import { IncompleteFormAlert } from "@/components/IncompleteFormAlert";
@@ -15,25 +15,33 @@ import {
 } from "@/shared/lib/form-errors";
 import {
   buildDefaultValues,
+  buildZodSchema,
   deriveSections,
+  getObsoleteOptions,
   groupFieldsBySection,
   resolveResumeSectionId,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
-import type { Application, ApplicationSchemaField } from "@/types";
+import type { ApiResponse, Application, ApplicationSchemaField } from "@/types";
 
 import {
   deleteMyResume as deleteResume,
   MAX_RESUME_SIZE_BYTES as MAX_RESUME_UPLOAD_SIZE_BYTES,
   requestResumeUploadURL as getResumeUploadURL,
-  type UpdateApplicationPayload,
   updateMyApplication,
   uploadResumeToSignedURL as uploadToSignedURL,
 } from "../api";
+import {
+  createDraftSaver,
+  draftStepIds,
+  reconcileDraftStep,
+  reconcileDraftValues,
+} from "../draft";
 import { ReviewStep } from "../steps/ReviewStep";
 import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
 import { SponsorInfoStep } from "../steps/SponsorInfoStep";
 import { buildApplicationResolver } from "../validations";
+import { OutdatedAnswersNotice } from "./OutdatedAnswersNotice";
 import { StepIndicator } from "./StepIndicator";
 import { StepNavigation } from "./StepNavigation";
 
@@ -51,49 +59,6 @@ function stepStorageKey(applicationId: string): string {
   return `harp-apply-step:${applicationId}`;
 }
 
-/** Sections that become wizard steps, derived dynamically from the schema. */
-
-/**
- * Extract form values from the API Application object.
- * Responses are a flat key-value object; ack fields are top-level.
- */
-function transformApplicationToFormData(
-  app: Application,
-  schemaFields: ApplicationSchemaField[],
-): Record<string, unknown> {
-  const defaults = buildDefaultValues(schemaFields);
-  const responses = app.responses ?? {};
-
-  // Merge stored responses over defaults
-  const data: Record<string, unknown> = { ...defaults };
-  for (const [key, value] of Object.entries(responses)) {
-    if (value !== null && value !== undefined) {
-      data[key] = value;
-    }
-  }
-
-  return data;
-}
-
-/**
- * Transform form data into the API payload shape: { responses: {...} }
- */
-function transformFormDataToPayload(
-  data: Record<string, unknown>,
-  schemaFields: ApplicationSchemaField[],
-): UpdateApplicationPayload {
-  const schemaFieldIds = new Set(schemaFields.map((f) => f.id));
-  const responses: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(data)) {
-    if (schemaFieldIds.has(key)) {
-      responses[key] = value;
-    }
-  }
-
-  return { responses };
-}
-
 export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -103,13 +68,18 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const [application, setApplication] = useState<Application | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [refreshingSchema, setRefreshingSchema] = useState(false);
+  const [incompleteDescription, setIncompleteDescription] = useState(
+    "Answer the questions below, then submit again.",
+  );
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
   const [applicationsEnabled, setApplicationsEnabled] = useState<boolean>(
     DEFAULT_FEATURE_FLAGS.applicationsEnabled,
   );
-  // Schema is captured once from the initial load; mutation responses
-  // (PATCH/DELETE) don't embed it and must not wipe it.
+  // GET/PATCH and resume deletion can carry updated questions.
   const [schemaFields, setSchemaFields] = useState<ApplicationSchemaField[]>(
     [],
   );
@@ -118,9 +88,11 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   const isDraft = application?.status === "draft";
 
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Serializes saves so a slow request can't land after (and overwrite) a
-  // newer one.
-  const saveChain = useRef<Promise<boolean>>(Promise.resolve(true));
+  const schemaRef = useRef<ApplicationSchemaField[]>([]);
+  const editRevision = useRef(0);
+  const reconcilingSchema = useRef(false);
+  const submissionInProgress = useRef(false);
+  const serverFieldIds = useRef<string[]>([]);
 
   // Derive sections from the schema
   const schemaSections = useMemo(
@@ -182,6 +154,67 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     defaultValues: buildDefaultValues(schemaFields),
     mode: "onTouched",
   });
+  const values = useWatch({ control: form.control });
+
+  const applySchema = useCallback(
+    (schema: ApplicationSchemaField[] | undefined) => {
+      if (
+        !schema ||
+        JSON.stringify(schema) === JSON.stringify(schemaRef.current)
+      )
+        return;
+      const previous = schemaRef.current;
+      schemaRef.current = schema;
+      setSchemaFields(schema);
+      setCurrentStep((index) => reconcileDraftStep(index, previous, schema));
+      const current = form.getValues();
+      const reconciled = reconcileDraftValues(current, schema);
+      // Add newly introduced defaults without resetting answers or dirty state.
+      reconcilingSchema.current = true;
+      for (const field of schema) {
+        if (!(field.id in current))
+          form.setValue(field.id, reconciled[field.id]);
+      }
+      reconcilingSchema.current = false;
+    },
+    [form],
+  );
+
+  const refreshSchema = useCallback(async () => {
+    setRefreshingSchema(true);
+    const res = await getRequest<Application>(
+      "/applications/me",
+      "application",
+    );
+    const schema =
+      res.status === 200 ? res.data?.application_schema : undefined;
+    if (schema) applySchema(schema);
+    setRefreshFailed(!schema);
+    setRefreshingSchema(false);
+    return schema ?? schemaRef.current;
+  }, [applySchema]);
+
+  const reportValidationFailure = useCallback(
+    async (res: ApiResponse<Application>, context: "save" | "submit") => {
+      const schema = await refreshSchema();
+      const fields = new Map(schema.map((field) => [field.id, field]));
+      const blamed = (res.fields ?? []).filter((id) => fields.has(id));
+      serverFieldIds.current = blamed;
+      for (const id of blamed) {
+        form.setError(id, {
+          type: "server",
+          message: `${stripLabelLinks(fields.get(id)!.label)} needs a valid answer`,
+        });
+      }
+      setIncompleteDescription(
+        context === "save"
+          ? "Review these answers so your draft can be saved."
+          : "Review these answers, then submit again.",
+      );
+      setShowIncomplete(true);
+    },
+    [form, refreshSchema],
+  );
 
   // Set once a submit attempt fails validation. The list itself is derived from
   // the live errors so it shrinks as the hacker fills the gaps in, and
@@ -196,23 +229,29 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // Load existing application data and check if applications are enabled
   useEffect(() => {
+    const controller = new AbortController();
     const loadApplication = async () => {
       const [appRes, enabledRes] = await Promise.all([
-        getRequest<Application>("/applications/me", "application"),
+        getRequest<Application>(
+          "/applications/me",
+          "application",
+          controller.signal,
+        ),
         getRequest<{ enabled: boolean }>(
           "/applications/enabled",
           "applications status",
+          controller.signal,
         ),
       ]);
+      if (controller.signal.aborted) return;
 
       if (appRes.status === 200 && appRes.data) {
         const app = appRes.data;
         setApplication(app);
         const schema = app.application_schema ?? [];
+        schemaRef.current = schema;
         setSchemaFields(schema);
-        const formData = transformApplicationToFormData(app, schema);
-        const defaults = buildDefaultValues(schema);
-        form.reset({ ...defaults, ...formData });
+        form.reset(reconcileDraftValues(app.responses ?? {}, schema));
 
         // Restore the step the user last left off on
         if (app.status === "draft") {
@@ -237,32 +276,54 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       setLoading(false);
     };
     loadApplication();
+    return () => controller.abort();
   }, [form]);
 
   // Clamp so the index stays valid if the schema-driven steps ever shrink
   const safeCurrentStep = Math.min(currentStep, steps.length - 1);
 
   // Save the current form values as a draft. Saves run one at a time.
-  const saveDraft = useCallback((): Promise<boolean> => {
-    const run = async (): Promise<boolean> => {
-      setAutosaveState("saving");
-      const payload = transformFormDataToPayload(
-        form.getValues(),
-        schemaFields,
-      );
-      const res = await updateMyApplication(payload);
-      if (res.status === 200 && res.data) {
-        setApplication(res.data);
-        setAutosaveState("saved");
-        return true;
-      }
-      setAutosaveState("error");
-      return false;
-    };
-    const next = saveChain.current.then(run, run);
-    saveChain.current = next.catch(() => false);
-    return next;
-  }, [form, schemaFields]);
+  const saveDraft = useMemo(
+    () =>
+      createDraftSaver({
+        read: () => ({
+          values: form.getValues(),
+          schema: schemaRef.current,
+          revision: editRevision.current,
+        }),
+        request: updateMyApplication,
+        onStart: () => {
+          setAutosaveState("saving");
+          setSaveError(null);
+        },
+        onSaved: (app) => {
+          setApplication(app);
+          applySchema(app.application_schema);
+          if (serverFieldIds.current.length) {
+            form.clearErrors(serverFieldIds.current);
+            serverFieldIds.current = [];
+          }
+        },
+        onFailure: async (res) => {
+          if (res.status === 400) await reportValidationFailure(res, "save");
+          setSaveError(
+            res.status === 400
+              ? "Some answers need attention before your draft can be saved."
+              : "Couldn't save your changes. Please try again.",
+          );
+        },
+        onFinish: ({ response, current }) => {
+          setAutosaveState(
+            response.status === 200 && response.data
+              ? current
+                ? "saved"
+                : "idle"
+              : "error",
+          );
+        },
+      }),
+    [applySchema, form, reportValidationFailure],
+  );
 
   const cancelPendingAutosave = useCallback(() => {
     if (autosaveTimer.current) {
@@ -284,12 +345,18 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   // Compiler skip optimizing this component entirely.
   useEffect(() => {
     if (loading || !applicationsEnabled || !isDraft) return;
+    let lastValues = JSON.stringify(form.getValues());
     const unsubscribe = form.subscribe({
       formState: { values: true },
-      callback: ({ name }) => {
+      callback: ({ name, values: currentValues }) => {
+        const serialized = JSON.stringify(currentValues);
+        const changed = serialized !== lastValues;
+        lastValues = serialized;
         // Ignore programmatic bulk updates like form.reset
-        if (!name) return;
-        scheduleAutosave();
+        if (!name || !changed || reconcilingSchema.current) return;
+        editRevision.current += 1;
+        setAutosaveState("idle");
+        if (!submissionInProgress.current) scheduleAutosave();
       },
     });
     return () => {
@@ -334,7 +401,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   };
 
   const goToNextStep = async () => {
-    if (isResumeBusy) return;
+    if (isResumeBusy || saving || submitting) return;
     setApiError(null);
     const isValid = await validateCurrentStep();
     if (!isValid) {
@@ -347,117 +414,95 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     // Save progress before advancing
     cancelPendingAutosave();
     setSaving(true);
-    const saved = await saveDraft();
+    const { response, current } = await saveDraft();
     setSaving(false);
 
-    if (!saved) {
-      setApiError("Failed to save progress");
-      return;
-    }
+    if (response.status !== 200 || !response.data || !current) return;
 
-    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+    const stepCount = draftStepIds(schemaRef.current).length;
+    setCurrentStep((prev) => Math.min(prev + 1, stepCount - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const goToPreviousStep = () => {
-    if (isResumeBusy) return;
+    if (isResumeBusy || submitting) return;
     setApiError(null);
     setCurrentStep((prev) => Math.max(prev - 1, 0));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const goToStep = (stepIndex: number) => {
-    if (isResumeBusy) return;
+    if (isResumeBusy || submitting) return;
     setApiError(null);
     setCurrentStep(stepIndex);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const submitApplication = async () => {
-    if (isResumeBusy) return;
+    if (isResumeBusy || submissionInProgress.current) return;
+    submissionInProgress.current = true;
     setSubmitting(true);
     setApiError(null);
-
-    // Validate all fields. On failure, name the sections still missing answers
-    // rather than sending the hacker back through every step to find them.
-    const isValid = await form.trigger();
-    if (!isValid) {
-      const sections = collectIncompleteSections(
-        schemaFields,
-        form.formState.errors,
-      );
-      if (sections.length > 0) {
-        setShowIncomplete(true);
-      } else {
-        setApiError("Please complete all required fields before submitting");
-      }
-      setSubmitting(false);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    setShowIncomplete(false);
-
-    // Save current state first
     cancelPendingAutosave();
-    const saved = await saveDraft();
-
-    if (!saved) {
-      setApiError("Failed to save before submitting");
-      setSubmitting(false);
-      return;
-    }
-
-    // Now submit
-    const submitRes = await postRequest<Application>(
-      "/applications/me/submit",
-      {},
-      "application",
-    );
-
-    if (submitRes.status === 200 && submitRes.data) {
-      setApplication(submitRes.data);
-      if (application?.id) {
-        localStorage.removeItem(stepStorageKey(application.id));
+    try {
+      // Save first: the response may introduce new questions or choices. Read
+      // the reconciled schema synchronously rather than awaiting a React render.
+      const saved = await saveDraft();
+      if (saved.response.status !== 200 || !saved.response.data) return;
+      if (!saved.current) {
+        setApiError(
+          "Your answers changed while saving. Please review and submit again.",
+        );
+        return;
       }
-      navigate("/app", {
-        state: { justSubmitted: submitRes.data.id },
-      });
-      setSubmitting(false);
-      return;
-    }
+      const currentValues = form.getValues();
+      const validation = buildZodSchema(
+        schemaRef.current,
+        currentValues,
+      ).safeParse(currentValues);
+      form.clearErrors();
+      setIncompleteDescription("Review these answers, then submit again.");
+      if (!validation.success) {
+        for (const issue of validation.error.issues) {
+          const id = String(issue.path[0]);
+          form.setError(id, { type: "submit", message: issue.message });
+        }
+        setShowIncomplete(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      setShowIncomplete(false);
 
-    // The server re-validates against the live schema, so it can still reject a
-    // form the client considered complete — e.g. a question a super admin made
-    // required after this page loaded. Blame the fields it named so the hacker
-    // gets the same "which section, which question" summary as a client-side
-    // failure, instead of a raw message naming a field id.
-    const fieldsById = new Map(schemaFields.map((f) => [f.id, f]));
-    const blamed = (submitRes.fields ?? []).filter((id) => fieldsById.has(id));
-    if (blamed.length > 0) {
-      for (const id of blamed) {
-        // The server reports which questions it rejected, not why in
-        // hacker-readable terms (its own messages name field ids), so keep the
-        // wording broad enough to cover missing and invalid alike.
-        form.setError(id, {
-          type: "server",
-          message: `${stripLabelLinks(fieldsById.get(id)!.label)} needs a valid answer`,
+      const res = await postRequest<Application>(
+        "/applications/me/submit",
+        {},
+        "application",
+      );
+      if (res.status === 200 && res.data) {
+        setApplication(res.data);
+        if (application?.id)
+          localStorage.removeItem(stepStorageKey(application.id));
+        navigate("/app", {
+          state: { justSubmitted: res.data.id },
         });
+        return;
       }
-      setShowIncomplete(true);
-      setSubmitting(false);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
 
-    // A 400 here is always schema validation; anything the client can't map to
-    // a question is still not worth showing verbatim.
-    const message =
-      submitRes.status === 400
-        ? "Some answers are missing or invalid. Please review your application and try again."
-        : submitRes.error || "Failed to submit application";
-    setApiError(message);
-    errorAlert(submitRes, message);
-    setSubmitting(false);
+      if (res.status === 400) {
+        await reportValidationFailure(res, "submit");
+        setApiError(
+          "Some answers are missing or invalid. Review your application and try again.",
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        const message = "Couldn't submit your application. Please try again.";
+        setApiError(message);
+        errorAlert(res, message);
+      }
+    } finally {
+      submissionInProgress.current = false;
+      setSubmitting(false);
+    }
   };
 
   const uploadResume = async (file: File) => {
@@ -513,7 +558,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     });
     if (saveRes.status === 200 && saveRes.data) {
       setApplication(saveRes.data);
-      setAutosaveState("saved");
+      applySchema(saveRes.data.application_schema);
     } else {
       setApiError(saveRes.error || "Failed to save resume");
       errorAlert(saveRes);
@@ -541,7 +586,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const res = await deleteResume();
     if (res.status === 200 && res.data) {
       setApplication(res.data);
-      setAutosaveState("saved");
+      applySchema(res.data.application_schema);
     } else {
       setApiError(res.error || "Failed to delete resume");
       errorAlert(res);
@@ -679,11 +724,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
   // The top back button always exits to the homepage; step navigation
   // happens only through the bottom bar. Flush any pending autosave first.
-  const handleBack = () => {
-    if (autosaveTimer.current) {
-      cancelPendingAutosave();
-      void saveDraft();
-    }
+  const handleBack = async () => {
+    if (saving || submitting || isResumeBusy) return;
+    cancelPendingAutosave();
+    setSaving(true);
+    const { response, current } = await saveDraft();
+    setSaving(false);
+    if (response.status !== 200 || !response.data || !current) return;
     navigate("/app");
   };
 
@@ -696,6 +743,26 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       />
 
       <div className="pt-6">
+        <OutdatedAnswersNotice
+          schema={schemaFields}
+          values={values}
+          onJumpToSection={(sectionId) =>
+            goToStep(sectionStepMap[sectionId] ?? 0)
+          }
+          onClear={(field) => {
+            if (submitting) return;
+            const value = form.getValues(field.id);
+            const obsolete = getObsoleteOptions(field, value);
+            const next =
+              field.type === "multi_select" && Array.isArray(value)
+                ? value.filter((item) => !obsolete.includes(item))
+                : "";
+            form.setValue(field.id, next, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }}
+        />
         {incompleteSections.length > 0 && (
           <IncompleteFormAlert
             sections={incompleteSections}
@@ -703,7 +770,27 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
               goToStep(sectionStepMap[sectionId] ?? 0)
             }
             className="mb-6"
+            description={incompleteDescription}
           />
+        )}
+
+        {refreshFailed && (
+          <div role="alert" className="mb-4 space-y-2 text-sm font-light">
+            <p>
+              Couldn't refresh the questions. Your answers are still on this
+              page.
+            </p>
+            <button
+              type="button"
+              disabled={refreshingSchema || submitting}
+              className="underline underline-offset-2"
+              onClick={() => void refreshSchema()}
+            >
+              {refreshingSchema
+                ? "Refreshing..."
+                : "Retry refreshing questions"}
+            </button>
+          </div>
         )}
 
         {apiError && (
@@ -716,7 +803,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
         <p
           aria-live="polite"
-          className={`mb-4 h-4 text-xs font-light ${
+          className={`mb-4 min-h-4 text-xs font-light ${
             autosaveState === "error"
               ? "text-red-500"
               : autosaveState === "saved"
@@ -725,14 +812,30 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           }`}
         >
           {autosaveState === "saving" && "Saving..."}
-          {autosaveState === "saved" && "Saved"}
-          {autosaveState === "error" &&
-            "Couldn't save your changes — check your connection"}
+          {autosaveState === "saved" && "Draft saved"}
+          {autosaveState === "error" && (
+            <>
+              {saveError}{" "}
+              <button
+                type="button"
+                disabled={saving || submitting}
+                className="underline underline-offset-2"
+                onClick={() => {
+                  cancelPendingAutosave();
+                  void saveDraft();
+                }}
+              >
+                Try saving again
+              </button>
+            </>
+          )}
         </p>
 
         <FormProvider {...form}>
           <form onSubmit={(e) => e.preventDefault()}>
-            {renderStep()}
+            <fieldset disabled={submitting} className="min-w-0">
+              {renderStep()}
+            </fieldset>
 
             <StepNavigation
               currentStep={safeCurrentStep}

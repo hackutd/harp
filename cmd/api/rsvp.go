@@ -157,7 +157,7 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		if validationErrors := validateResponses(schema, responses, true); len(validationErrors) > 0 {
+		if validationErrors := validateResponses(schema, responses, finalValidation); len(validationErrors) > 0 {
 			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}

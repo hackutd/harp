@@ -158,7 +158,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 			return
 		}
 
-		if validationErrors := validateResponses(schema, responses, false); len(validationErrors) > 0 {
+		if validationErrors := validateResponses(schema, responses, draftValidation); len(validationErrors) > 0 {
 			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}
@@ -242,7 +242,7 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Validate responses against schema
-	validationErrors := validateResponses(schema, responses, true)
+	validationErrors := validateResponses(schema, responses, finalValidation)
 
 	if len(validationErrors) > 0 {
 		app.validationErrorResponse(w, r, validationErrors)
@@ -293,11 +293,18 @@ func validationFieldIDs(errs []fieldValidationError) []string {
 	return fields
 }
 
-// validateResponses checks each response value against its schema field definition.
-// Returns one entry per failure, carrying the field id and a human-readable
-// message. When enforceRequired is false, missing/empty required fields are
-// allowed (used for draft saves) while type checks on present values still apply.
-func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, enforceRequired bool) []fieldValidationError {
+type responseValidationMode int
+
+const (
+	finalValidation responseValidationMode = iota
+	draftValidation
+)
+
+// validateResponses checks answers against the live schema. Drafts may retain
+// obsolete choices so schema edits cannot prevent saving progress. Final saves
+// require current choices and required answers. Both modes enforce types and
+// length/numeric limits on present values.
+func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, mode responseValidationMode) []fieldValidationError {
 	var errs []fieldValidationError
 	fail := func(fieldID, message string) {
 		errs = append(errs, fieldValidationError{Field: fieldID, Message: message})
@@ -331,7 +338,7 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 		}
 
 		// Required check
-		if enforceRequired && required && (!exists || isEmpty(val)) {
+		if mode == finalValidation && required && (!exists || isEmpty(val)) {
 			fail(field.ID, field.ID+" is required")
 			continue
 		}
@@ -378,7 +385,7 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 				fail(field.ID, field.ID+" must be a string")
 				continue
 			}
-			if len(field.Options) > 0 && !containsString(field.Options, s) {
+			if mode == finalValidation && len(field.Options) > 0 && !containsString(field.Options, s) {
 				fail(field.ID, field.ID+" has invalid option: "+s)
 			}
 
@@ -394,7 +401,7 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 					fail(field.ID, field.ID+" array items must be strings")
 					break
 				}
-				if len(field.Options) > 0 && !containsString(field.Options, s) {
+				if mode == finalValidation && len(field.Options) > 0 && !containsString(field.Options, s) {
 					fail(field.ID, field.ID+" has invalid option: "+s)
 				}
 			}
@@ -403,7 +410,7 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 			b, ok := val.(bool)
 			if !ok {
 				fail(field.ID, field.ID+" must be a boolean")
-			} else if enforceRequired && required && !b {
+			} else if mode == finalValidation && required && !b {
 				fail(field.ID, field.ID+" must be checked")
 			}
 		}
