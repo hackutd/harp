@@ -1,4 +1,4 @@
-FROM golang:1.24.13
+FROM golang:1.27.1
 WORKDIR /app
 
 # Install dev tools: air (hot reload), swag (swagger), task (taskfile runner)
