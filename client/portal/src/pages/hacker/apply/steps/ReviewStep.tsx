@@ -114,7 +114,8 @@ export function ReviewStep({
           Review
         </h1>
         <p className="text-sm font-light text-[#8A8A8A]">
-          Check your answers before submitting
+          Check your answers before submitting. Once you submit, your
+          application can no longer be edited.
         </p>
       </div>
 

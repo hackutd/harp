@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "format": "prettier --write \"{src,branding}/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"{src,branding}/**/*.{ts,tsx,css,json}\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:reviews": "node --test scripts/review-regressions.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -74,6 +75,7 @@
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "esbuild": "0.27.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-boundaries": "^6.0.2",

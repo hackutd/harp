@@ -3,11 +3,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
 )
 
@@ -159,7 +158,7 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 		}
 
 		if validationErrors := validateResponses(schema, responses, true); len(validationErrors) > 0 {
-			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}
 

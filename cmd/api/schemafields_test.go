@@ -154,3 +154,28 @@ func TestSchemaContractFieldID(t *testing.T) {
 	assert.Equal(t, travelOptInFieldID, schemaContractFieldID(fields, travelOptInFieldID))
 	assert.Empty(t, schemaContractFieldID(nil, travelOptInFieldID))
 }
+
+// The reset script writes the shipped defaults straight to the settings table,
+// bypassing the editors that normally enforce these bindings — so the defaults
+// themselves have to satisfy them.
+func TestDefaultSchemasSatisfyContracts(t *testing.T) {
+	tests := []struct {
+		key       string
+		contracts []SchemaFieldContract
+	}{
+		{store.SettingsKeyApplicationSchema, applicationSchemaContracts},
+		{store.SettingsKeyRSVPSchema, nil},
+		{store.SettingsKeyTravelRSVPSchema, travelRSVPSchemaContracts},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			fields, err := store.DefaultFormSchemaFields(tt.key)
+			require.NoError(t, err)
+
+			warnings, err := validateSchemaFields(tt.contracts, fields)
+			require.NoError(t, err)
+			assert.Empty(t, warnings)
+		})
+	}
+}

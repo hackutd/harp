@@ -37,6 +37,7 @@ import { getFieldPresets } from "@/shared/lib/field-presets";
 import {
   conditionSatisfied,
   getFieldCondition,
+  getWholeNumberRule,
   renderLabel,
 } from "@/shared/lib/schema-utils";
 import { cn } from "@/shared/lib/utils";
@@ -244,7 +245,10 @@ function SchemaFormField({
         />
       );
 
-    case "number":
+    case "number": {
+      // Well-known count fields (age) take whole numbers only, so the decimal
+      // point never makes it into the value.
+      const whole = getWholeNumberRule(field.id);
       return (
         <FormField
           control={form.control}
@@ -260,20 +264,26 @@ function SchemaFormField({
                   className={underlineField}
                   type="text"
                   inputMode="numeric"
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
                   {...formField}
-                  value={formField.value ?? 0}
-                  // Select the whole value on focus so the leading 0 is
-                  // replaced by the first keystroke instead of prepended.
+                  value={formField.value ?? ""}
+                  // Select the whole value on focus so the first keystroke
+                  // replaces it instead of appending to it.
                   onFocus={(e) => e.target.select()}
                   onMouseUp={(e) => e.preventDefault()}
                   onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^\d.-]/g, "");
+                    const cleaned = e.target.value.replace(
+                      whole ? /[^\d-]/g : /[^\d.-]/g,
+                      "",
+                    );
+                    // Empty stays undefined rather than collapsing to 0, so a
+                    // required number the hacker never answered still fails.
                     if (cleaned === "" || cleaned === "-") {
-                      formField.onChange(0);
+                      formField.onChange(undefined);
                       return;
                     }
                     const num = Number(cleaned);
-                    formField.onChange(Number.isNaN(num) ? 0 : num);
+                    formField.onChange(Number.isNaN(num) ? undefined : num);
                   }}
                 />
               </FormControl>
@@ -282,6 +292,7 @@ function SchemaFormField({
           )}
         />
       );
+    }
 
     case "textarea":
       return (
@@ -338,11 +349,14 @@ function SchemaFormField({
           name={field.id}
           render={() => (
             <FormItem>
-              <FormLabel className={fieldLabel}>{field.label}</FormLabel>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
               <FormDescription className="text-xs font-light">
                 Select all that apply
               </FormDescription>
-              <div className="mt-2 grid grid-cols-2 gap-3">
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(field.options ?? []).map((opt) => (
                   <FormField
                     key={opt}
@@ -351,22 +365,27 @@ function SchemaFormField({
                     render={({ field: formField }) => {
                       const value = (formField.value as string[]) || [];
                       return (
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={value.includes(opt)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  formField.onChange([...value, opt]);
-                                } else {
-                                  formField.onChange(
-                                    value.filter((v) => v !== opt),
-                                  );
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="cursor-pointer text-sm font-light">
+                        <FormItem className="flex flex-row items-start gap-2 space-y-0">
+                          {/* h-5 matches the label's leading-5 line box, so the
+                              box stays on the first line of an option that
+                              wraps to two. */}
+                          <div className="flex h-5 shrink-0 items-center">
+                            <FormControl>
+                              <Checkbox
+                                checked={value.includes(opt)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    formField.onChange([...value, opt]);
+                                  } else {
+                                    formField.onChange(
+                                      value.filter((v) => v !== opt),
+                                    );
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                          </div>
+                          <FormLabel className="min-w-0 cursor-pointer text-sm leading-5 font-light break-words">
                             {opt}
                           </FormLabel>
                         </FormItem>

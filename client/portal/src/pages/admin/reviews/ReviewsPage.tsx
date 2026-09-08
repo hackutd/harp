@@ -45,7 +45,8 @@ import type { ReviewNote } from "./types";
 
 export default function ReviewsPage() {
   const navigate = useNavigate();
-  const { tab, reviews, loading, setTab, fetchReviews } = useReviewsStore();
+  const { tab, reviews, loading, error, setTab, fetchReviews } =
+    useReviewsStore();
   const refreshKey = refreshAssignedPage((state) => state.refreshKey);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -214,12 +215,13 @@ export default function ReviewsPage() {
   }, [tab, selectedId]);
 
   // --- Descriptions ---
-  const description =
-    tab === "assigned" ? (
-      <>{filteredReviews.length} review(s) assigned to you</>
-    ) : (
-      <>{filteredReviews.length} completed review(s)</>
-    );
+  const description = error ? (
+    <>Unable to load reviews</>
+  ) : tab === "assigned" ? (
+    <>{filteredReviews.length} review(s) assigned to you</>
+  ) : (
+    <>{filteredReviews.length} completed review(s)</>
+  );
 
   // --- Header actions ---
   const headerActions =
@@ -240,13 +242,24 @@ export default function ReviewsPage() {
           Grade{" "}
           {redact
             ? formatApplicantLabel(reviews[0].application_id)
-            : formatName(reviews[0].first_name, reviews[0].last_name)}
+            : formatName(
+                reviews[0].first_name,
+                reviews[0].last_name,
+                reviews[0].email,
+              )}
         </TooltipContent>
       </Tooltip>
     ) : undefined;
 
   // --- Table ---
-  const table = (
+  const table = error ? (
+    <div className="flex flex-col items-center gap-3 p-6" role="alert">
+      <p className="text-muted-foreground">{error}</p>
+      <Button variant="outline" onClick={() => void fetchReviews()}>
+        Retry
+      </Button>
+    </div>
+  ) : (
     <ReviewsTable
       reviews={filteredReviews}
       loading={loading}
@@ -288,6 +301,7 @@ export default function ReviewsPage() {
                       : formatName(
                           selectedReview.first_name,
                           selectedReview.last_name,
+                          selectedReview.email,
                         )
                     : "Review"}
                 </SheetTitle>

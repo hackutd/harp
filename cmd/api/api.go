@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/hackutd/harp/internal/gcs"
 	"github.com/hackutd/harp/internal/mailer"
@@ -38,6 +38,8 @@ type application struct {
 	// requiring a session. Injected so tests can stub it.
 	sessionUserID    sessionUserIDResolver
 	dispatcherCancel context.CancelFunc
+	// pushClient is the HTTP client the dispatcher uses to reach push services.
+	pushClient *http.Client
 }
 
 type config struct {
@@ -50,16 +52,28 @@ type config struct {
 	gcs              gcsConfig
 	auth             authConfig
 	rateLimiter      ratelimiter.Config
+	clientIP         clientIPConfig
 	supertokens      supertokensConfig
 	publicCORSOrigin string
 	vapid            vapidConfig
 	appleWallet      appleWalletConfig
 }
 
+// clientIPConfig selects the trusted source of the client address used for
+// per-IP rate limiting. header wins when set; otherwise trustedProxies > 0
+// reads X-Forwarded-For; otherwise the TCP peer address is used.
+type clientIPConfig struct {
+	header         string
+	trustedProxies int
+}
+
 type vapidConfig struct {
 	publicKey  string
 	privateKey string
 	subject    string
+	// allowedEndpointHosts is the push-service host allowlist (exact or
+	// subdomain match) that subscription endpoints must fall under.
+	allowedEndpointHosts []string
 }
 
 type supertokensConfig struct {
@@ -120,7 +134,7 @@ func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	r.Use(app.clientIPMiddleware())
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 

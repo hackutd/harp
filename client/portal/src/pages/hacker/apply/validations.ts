@@ -1,11 +1,13 @@
-import { buildZodSchema } from "@/shared/lib/schema-utils";
+import { buildSchemaResolver } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
 
 /**
- * Build the full application form schema from the dynamic application_schema.
+ * Build the form resolver for the dynamic application_schema. The schema is
+ * rebuilt per validation pass so conditional questions (show_if / required_if)
+ * are judged against the answers on screen.
  */
-export function buildApplicationSchema(fields: ApplicationSchemaField[]) {
-  return buildZodSchema(fields);
+export function buildApplicationResolver(fields: ApplicationSchemaField[]) {
+  return buildSchemaResolver(fields);
 }
 
 // Select options — provide human-readable labels for field values

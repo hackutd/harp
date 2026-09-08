@@ -81,6 +81,9 @@ type Storage struct {
 		SetRSVPEnabled(ctx context.Context, enabled bool) error
 		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
 		UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		// RestoreDefaultFormSchema overwrites one of the editable form
+		// schemas with the default HARP ships with.
+		RestoreDefaultFormSchema(ctx context.Context, key string) error
 		GetTravelRSVPEnabled(ctx context.Context) (bool, error)
 		SetTravelRSVPEnabled(ctx context.Context, enabled bool) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)

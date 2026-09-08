@@ -357,7 +357,7 @@ func (s *SettingsStore) GetReviewsPerApplication(ctx context.Context) (int, erro
 	return count, nil
 }
 
-// SetReviewsPerApplication updates the number of reviews required per application
+// SetReviewsPerApplication updates the reviewer assignment target per application
 func (s *SettingsStore) SetReviewsPerApplication(ctx context.Context, value int) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

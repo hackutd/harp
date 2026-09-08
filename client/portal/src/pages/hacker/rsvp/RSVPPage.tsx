@@ -1,4 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
@@ -27,7 +26,7 @@ import {
 } from "@/shared/lib/form-errors";
 import {
   buildDefaultValues,
-  buildZodSchema,
+  buildSchemaResolver,
   deriveSections,
   groupFieldsBySection,
 } from "@/shared/lib/schema-utils";
@@ -71,10 +70,10 @@ export default function RSVPPage() {
   const schema = useMemo(() => rsvp?.rsvp_schema ?? [], [rsvp]);
   const sections = useMemo(() => deriveSections(schema), [schema]);
   const grouped = useMemo(() => groupFieldsBySection(schema), [schema]);
-  const formSchema = useMemo(() => buildZodSchema(schema), [schema]);
+  const resolver = useMemo(() => buildSchemaResolver(schema), [schema]);
 
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    resolver,
     defaultValues: buildDefaultValues(schema),
     mode: "onTouched",
   });

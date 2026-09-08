@@ -267,6 +267,11 @@ func (m *MockSettingsStore) UpdateApplicationSchema(ctx context.Context, fields 
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) RestoreDefaultFormSchema(ctx context.Context, key string) error {
+	args := m.Called(key)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

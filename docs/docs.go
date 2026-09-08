@@ -3518,12 +3518,18 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Missing required fields",
+                        "description": "Missing required fields; fields lists the offending schema field ids",
                         "schema": {
                             "type": "object",
                             "properties": {
                                 "error": {
                                     "type": "string"
+                                },
+                                "fields": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 }
                             }
                         }
@@ -8853,7 +8859,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Sets the number of reviews required per application",
+                "description": "Sets the reviewer assignment target per application; run batch assignment to fill it",
                 "consumes": [
                     "application/json"
                 ],
@@ -12540,7 +12546,19 @@ const docTemplate = `{
         "store.BatchAssignmentResult": {
             "type": "object",
             "properties": {
+                "applications_below_target": {
+                    "type": "integer"
+                },
                 "reviews_created": {
+                    "type": "integer"
+                },
+                "reviews_per_application": {
+                    "type": "integer"
+                },
+                "reviews_removed": {
+                    "type": "integer"
+                },
+                "reviews_unfilled": {
                     "type": "integer"
                 }
             }

@@ -21,10 +21,21 @@ export function getStatusColor(status: string): string {
   }
 }
 
+/**
+ * Display name for an applicant, falling back to their email.
+ *
+ * Walk-ins get an application row with empty responses (see WalkInsStore), so
+ * first_name/last_name are null for them forever and there is no name to
+ * recover — without the fallback those rows read as "-" in every admin view.
+ * Pass the email only from non-redacted branches; redacted views use
+ * formatApplicantLabel/maskEmail instead.
+ */
 export function formatName(
   firstName: string | null,
   lastName: string | null,
+  fallbackEmail?: string | null,
 ): string {
-  if (!firstName && !lastName) return "-";
-  return `${firstName ?? ""} ${lastName ?? ""}`.trim();
+  const name = `${firstName ?? ""} ${lastName ?? ""}`.trim();
+  if (name) return name;
+  return fallbackEmail || "-";
 }

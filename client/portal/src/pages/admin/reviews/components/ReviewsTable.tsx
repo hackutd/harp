@@ -93,7 +93,11 @@ export const ReviewsTable = memo(function ReviewsTable({
                 <TableCell className="whitespace-nowrap">
                   {redact
                     ? formatApplicantLabel(review.application_id)
-                    : formatName(review.first_name, review.last_name)}
+                    : formatName(
+                        review.first_name,
+                        review.last_name,
+                        review.email,
+                      )}
                 </TableCell>
                 <TableCell>
                   {redact ? maskEmail(review.email) : review.email}

@@ -71,9 +71,13 @@ export function StepNavigation({
               <AlertDialogHeader>
                 <AlertDialogTitle>Submit your application?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Once submitted, you won&apos;t be able to make any further
-                  edits to your application. Please double check your answers
-                  before continuing.
+                  Submitting is{" "}
+                  <strong className="font-medium text-foreground">final</strong>
+                  . You{" "}
+                  <strong className="font-medium text-foreground">
+                    cannot edit
+                  </strong>{" "}
+                  your application afterwards, so double check your answers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

@@ -1,4 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
@@ -19,6 +18,7 @@ import {
   deriveSections,
   groupFieldsBySection,
   resolveResumeSectionId,
+  stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { Application, ApplicationSchemaField } from "@/types";
 
@@ -33,7 +33,7 @@ import {
 import { ReviewStep } from "../steps/ReviewStep";
 import { SchemaStepRenderer } from "../steps/SchemaStepRenderer";
 import { SponsorInfoStep } from "../steps/SponsorInfoStep";
-import { buildApplicationSchema } from "../validations";
+import { buildApplicationResolver } from "../validations";
 import { StepIndicator } from "./StepIndicator";
 import { StepNavigation } from "./StepNavigation";
 
@@ -169,14 +169,16 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     [schemaFields],
   );
 
-  // Build Zod schema dynamically from application_schema
-  const formSchema = useMemo(
-    () => buildApplicationSchema(schemaFields),
+  // Validate against a schema rebuilt from the current answers, so a question
+  // that only applies once another is answered (e.g. the travel questions
+  // behind the reimbursement opt-in) is enforced as soon as it appears.
+  const resolver = useMemo(
+    () => buildApplicationResolver(schemaFields),
     [schemaFields],
   );
 
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    resolver,
     defaultValues: buildDefaultValues(schemaFields),
     mode: "onTouched",
   });
@@ -420,10 +422,41 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
       navigate("/app", {
         state: { justSubmitted: submitRes.data.id },
       });
-    } else {
-      setApiError(submitRes.error || "Failed to submit application");
-      errorAlert(submitRes);
+      setSubmitting(false);
+      return;
     }
+
+    // The server re-validates against the live schema, so it can still reject a
+    // form the client considered complete — e.g. a question a super admin made
+    // required after this page loaded. Blame the fields it named so the hacker
+    // gets the same "which section, which question" summary as a client-side
+    // failure, instead of a raw message naming a field id.
+    const fieldsById = new Map(schemaFields.map((f) => [f.id, f]));
+    const blamed = (submitRes.fields ?? []).filter((id) => fieldsById.has(id));
+    if (blamed.length > 0) {
+      for (const id of blamed) {
+        // The server reports which questions it rejected, not why in
+        // hacker-readable terms (its own messages name field ids), so keep the
+        // wording broad enough to cover missing and invalid alike.
+        form.setError(id, {
+          type: "server",
+          message: `${stripLabelLinks(fieldsById.get(id)!.label)} needs a valid answer`,
+        });
+      }
+      setShowIncomplete(true);
+      setSubmitting(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    // A 400 here is always schema validation; anything the client can't map to
+    // a question is still not worth showing verbatim.
+    const message =
+      submitRes.status === 400
+        ? "Some answers are missing or invalid. Please review your application and try again."
+        : submitRes.error || "Failed to submit application";
+    setApiError(message);
+    errorAlert(submitRes, message);
     setSubmitting(false);
   };
 

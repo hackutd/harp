@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -222,6 +223,49 @@ func TestIntegrationSubmitVote(t *testing.T) {
 	}
 }
 
+func TestIntegrationReviewQueueToleratesBadNumbers(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	s := &ApplicationReviewsStore{db: db}
+	ctx := context.Background()
+	admin := "44444444-4444-4444-4444-444444444444"
+
+	// responses is free-text JSONB, so age can hold a decimal or an out-of-range
+	// value. A bare ::smallint cast would fail the whole query and 500 the
+	// grading queue for every admin; these must read as NULL instead.
+	if _, err := db.ExecContext(ctx, `
+		UPDATE applications
+		SET responses = responses || '{"age":"20.5","hackathons_attended":"99999"}'
+		WHERE id = 'aaaaaaaa-0000-0000-0000-000000000002'
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	pending, err := s.GetPendingByAdminID(ctx, admin)
+	if err != nil {
+		t.Fatalf("GetPendingByAdminID: %v", err)
+	}
+	if len(pending) == 0 {
+		t.Fatal("expected pending reviews")
+	}
+	for _, r := range pending {
+		if r.ApplicationID == "aaaaaaaa-0000-0000-0000-000000000002" && r.Age != nil {
+			t.Errorf("age = %v, want nil for an unparseable value", *r.Age)
+		}
+	}
+
+	if _, err := db.ExecContext(ctx, `
+		UPDATE application_reviews SET vote = 'accept', reviewed_at = NOW()
+		WHERE id = 'bbbbbbbb-0000-0000-0000-000000000001'
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GetCompletedByAdminID(ctx, admin); err != nil {
+		t.Fatalf("GetCompletedByAdminID: %v", err)
+	}
+}
+
 func TestIntegrationSettingsCache(t *testing.T) {
 	db := integrationDB(t)
 	defer db.Close()
@@ -252,6 +296,42 @@ func TestIntegrationSettingsCache(t *testing.T) {
 	}
 	if _, ok := many[SettingsKeyRSVPEnabled]; !ok {
 		t.Error("GetMany missed rsvp_enabled")
+	}
+}
+
+// TestIntegrationRestoreDefaultFormSchema covers the write behind the
+// resetschema command: the upsert reaches a key that has no row yet, replaces
+// one that does, and drops the cached copy on the way out.
+func TestIntegrationRestoreDefaultFormSchema(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	s := newSettingsStore(db)
+	ctx := context.Background()
+
+	edited := []ApplicationSchemaField{{ID: "only_field", Type: "text", Label: "Only Field"}}
+	if err := s.UpdateApplicationSchema(ctx, edited); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.RestoreDefaultFormSchema(ctx, SettingsKeyApplicationSchema); err != nil {
+		t.Fatal(err)
+	}
+
+	want, err := DefaultFormSchemaFields(SettingsKeyApplicationSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.GetApplicationSchema(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("restored schema has %d field(s), want the %d shipped default(s)", len(got), len(want))
+	}
+
+	if err := s.RestoreDefaultFormSchema(ctx, "not_a_form_schema"); err == nil {
+		t.Error("expected an error for a key with no shipped default")
 	}
 }
 
