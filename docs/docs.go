@@ -5358,7 +5358,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background; the response reports how many were queued.",
+                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 while a previous run is still sending.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5411,6 +5411,17 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "properties": {

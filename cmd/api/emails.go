@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/hackutd/harp/internal/mailer"
 	"github.com/hackutd/harp/internal/store"
@@ -14,6 +15,10 @@ import (
 // mailer backends open a fresh connection per message, so an unbounded fan-out
 // over hundreds of applicants would exhaust connections.
 const decisionEmailConcurrency = 10
+
+// decisionEmailMarkTimeout bounds the per-recipient sent-marker write that
+// follows each successful send.
+const decisionEmailMarkTimeout = 10 * time.Second
 
 const (
 	decisionEmailModeDecision     = "decision"
@@ -40,7 +45,7 @@ type DecisionEmailStatsResponse struct {
 // "decisions are out" announcement.
 //
 //	@Summary		Send decision emails (Super Admin)
-//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background; the response reports how many were queued.
+//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 while a previous run is still sending.
 //	@Tags			superadmin/emails
 //	@Accept			json
 //	@Produce		json
@@ -49,6 +54,7 @@ type DecisionEmailStatsResponse struct {
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
 //	@Failure		403		{object}	object{error=string}
+//	@Failure		409		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/superadmin/emails/decisions [post]
@@ -89,6 +95,24 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		statuses = payload.Statuses
 	}
 
+	// The send runs in the background and can take minutes. Recipients are
+	// marked as emailed one by one, after each successful send, so a process
+	// exit mid-run leaves the unsent remainder unmarked and retryable. That
+	// means the marker cannot double as the double-click guard; a single
+	// in-flight run per process fills that role instead. It is taken before
+	// the recipient query so a second request cannot snapshot recipients the
+	// current run is still working through.
+	if !app.decisionEmailInFlight.CompareAndSwap(false, true) {
+		app.conflictResponse(w, r, errors.New("decision emails are already being sent"))
+		return
+	}
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			app.decisionEmailInFlight.Store(false)
+		}
+	}()
+
 	recipients, err := app.store.Application.GetDecisionEmailRecipients(r.Context(), statuses, kind, !payload.ResendAll)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -116,20 +140,6 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Mark before sending. The send runs in the background and can take
-	// minutes, so this is what stops a double-click or a concurrent request
-	// from blasting everyone twice. Failed sends are un-marked afterwards so a
-	// later run retries only them.
-	applicationIDs := make([]string, len(recipients))
-	for i, recipient := range recipients {
-		applicationIDs[i] = recipient.ApplicationID
-	}
-
-	if err := app.store.Application.SetDecisionEmailSent(r.Context(), applicationIDs, kind, true); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
 	app.logger.Infow("dispatching decision emails",
 		"mode", payload.Mode,
 		"queued", len(recipients),
@@ -137,7 +147,13 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		"admin_id", admin.ID,
 	)
 
-	go app.dispatchDecisionEmails(recipients, kind)
+	handedOff = true
+	app.backgroundJobs.Add(1)
+	go func() {
+		defer app.backgroundJobs.Done()
+		defer app.decisionEmailInFlight.Store(false)
+		app.dispatchDecisionEmails(recipients, kind)
+	}()
 
 	if err := app.jsonResponse(w, http.StatusOK, SendDecisionEmailsResponse{
 		Mode:    payload.Mode,
@@ -148,14 +164,16 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 	}
 }
 
-// dispatchDecisionEmails sends to every recipient with bounded concurrency and
-// hands failures back by clearing their sent marker. It runs outside the
-// request, so it must not use the request context.
+// dispatchDecisionEmails sends to every recipient with bounded concurrency,
+// stamping each recipient's sent marker only once their message has been
+// accepted. Failed sends stay unmarked so a later run retries only them. It
+// runs outside the request, so it must not use the request context.
 func (app *application) dispatchDecisionEmails(recipients []store.DecisionEmailRecipient, kind store.DecisionEmailKind) {
 	var (
 		wg        sync.WaitGroup
 		mu        sync.Mutex
-		failedIDs []string
+		failed    int
+		unmarked  int
 		semaphore = make(chan struct{}, decisionEmailConcurrency)
 	)
 
@@ -184,7 +202,22 @@ func (app *application) dispatchDecisionEmails(recipients []store.DecisionEmailR
 					"user_id", recipient.UserID,
 				)
 				mu.Lock()
-				failedIDs = append(failedIDs, recipient.ApplicationID)
+				failed++
+				mu.Unlock()
+				return
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), decisionEmailMarkTimeout)
+			defer cancel()
+			if err := app.store.Application.SetDecisionEmailSent(ctx, []string{recipient.ApplicationID}, kind, true); err != nil {
+				app.logger.Errorw("failed to mark decision email as sent",
+					"error", err,
+					"kind", kind,
+					"user_id", recipient.UserID,
+					"application_id", recipient.ApplicationID,
+				)
+				mu.Lock()
+				unmarked++
 				mu.Unlock()
 			}
 		}()
@@ -192,20 +225,11 @@ func (app *application) dispatchDecisionEmails(recipients []store.DecisionEmailR
 
 	wg.Wait()
 
-	if len(failedIDs) > 0 {
-		if err := app.store.Application.SetDecisionEmailSent(context.Background(), failedIDs, kind, false); err != nil {
-			app.logger.Errorw("failed to clear sent marker for failed decision emails",
-				"error", err,
-				"kind", kind,
-				"count", len(failedIDs),
-			)
-		}
-	}
-
 	app.logger.Infow("finished dispatching decision emails",
 		"kind", kind,
-		"sent", len(recipients)-len(failedIDs),
-		"failed", len(failedIDs),
+		"sent", len(recipients)-failed,
+		"failed", failed,
+		"sent_but_unmarked", unmarked,
 	)
 }
 

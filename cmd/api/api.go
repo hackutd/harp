@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -40,6 +42,12 @@ type application struct {
 	dispatcherCancel context.CancelFunc
 	// pushClient is the HTTP client the dispatcher uses to reach push services.
 	pushClient *http.Client
+	// backgroundJobs tracks work handed off from a request to a goroutine
+	// (e.g. decision email sends) so shutdown can drain it before exiting.
+	backgroundJobs sync.WaitGroup
+	// decisionEmailInFlight is set while a decision email run is sending, so
+	// a concurrent request cannot start a second run over the same recipients.
+	decisionEmailInFlight atomic.Bool
 }
 
 type config struct {
@@ -484,7 +492,9 @@ func (app *application) run(mux http.Handler) error {
 			app.dispatcherCancel()
 		}
 
-		shutdown <- server.Shutdown(ctx)
+		err := server.Shutdown(ctx)
+		app.drainBackgroundJobs(ctx)
+		shutdown <- err
 	}()
 
 	app.logger.Infow("server has started", "addr", app.config.addr, "env", app.config.env)
@@ -502,4 +512,20 @@ func (app *application) run(mux http.Handler) error {
 	app.logger.Infow("server has stopped", "addr", app.config.addr, "env", app.config.env)
 
 	return nil
+}
+
+// drainBackgroundJobs waits for request-spawned goroutines to finish, giving
+// up when ctx expires so shutdown stays bounded.
+func (app *application) drainBackgroundJobs(ctx context.Context) {
+	done := make(chan struct{})
+	go func() {
+		app.backgroundJobs.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		app.logger.Warnw("shutdown timed out waiting for background jobs", "error", ctx.Err())
+	}
 }
