@@ -1101,7 +1101,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Automatically assigns the next submitted application needing review to the current admin and returns it",
+                "description": "Automatically assigns the next submitted application needing review to the current admin and returns it. Super admins who have disabled their review assignment toggle are refused.",
                 "produces": [
                     "application/json"
                 ],
@@ -1128,7 +1128,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Forbidden",
+                        "description": "Review assignment disabled for this super admin",
                         "schema": {
                             "type": "object",
                             "properties": {

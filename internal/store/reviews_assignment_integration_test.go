@@ -292,8 +292,11 @@ func TestIntegrationBatchAssign(t *testing.T) {
 					if _, err := (&UsersStore{db: db}).UpdateRole(ctx, admins[0], RoleHacker); err != nil {
 						t.Fatal(err)
 					}
-				} else if err := (&SettingsStore{db: db}).SetReviewAssignmentToggle(ctx, admins[0], false); err != nil {
-					t.Fatal(err)
+				} else {
+					batchTestExec(t, db, "UPDATE users SET role='super_admin' WHERE id=$1", admins[0])
+					if err := (&SettingsStore{db: db}).SetReviewAssignmentToggle(ctx, admins[0], false); err != nil {
+						t.Fatal(err)
+					}
 				}
 				r, err := s.BatchAssign(ctx, 2)
 				if err != nil {
@@ -350,6 +353,71 @@ func TestIntegrationBatchAssign(t *testing.T) {
 			if !entry.Enabled {
 				t.Errorf("legacy/backfilled reviewer disabled: %+v", entry)
 			}
+		}
+	})
+	t.Run("decided_application_pending_reviews_removed", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 2, 2)
+		batchTestBatch(t, s, 2)
+		pending, err := s.GetPendingByAdminID(ctx, admins[0])
+		if err != nil || len(pending) != 2 {
+			t.Fatalf("pending=%d err=%v", len(pending), err)
+		}
+		var decidedReview string
+		for _, p := range pending {
+			if p.ApplicationID == apps[0] {
+				decidedReview = p.ID
+			}
+		}
+		if _, err := s.SubmitVote(ctx, decidedReview, admins[0], ReviewVoteAccept, nil, nil); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := (&ApplicationsStore{db: db}).SetStatus(ctx, apps[0], StatusAccepted); err != nil {
+			t.Fatal(err)
+		}
+		// The queue hides the decided application before any batch runs.
+		for _, admin := range admins {
+			pending, err := s.GetPendingByAdminID(ctx, admin)
+			if err != nil || len(pending) != 1 || pending[0].ApplicationID != apps[1] {
+				t.Fatalf("admin queue after decision=%+v err=%v", pending, err)
+			}
+		}
+		r, err := s.BatchAssign(ctx, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := BatchAssignmentResult{ReviewsRemoved: 1, ReviewsPerApplication: 2}
+		if *r != want {
+			t.Errorf("result=%+v, want %+v", *r, want)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE application_id=$1 AND vote IS NOT NULL", apps[0]); n != 1 {
+			t.Errorf("completed reviews on decided application=%d, want 1", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE application_id=$1 AND vote IS NULL", apps[0]); n != 0 {
+			t.Errorf("pending reviews on decided application=%d, want 0", n)
+		}
+	})
+	t.Run("demoted_disabled_super_admin_becomes_eligible_admin", func(t *testing.T) {
+		db, s, admins, _ := batchTestSeed(t, 2, 2)
+		batchTestExec(t, db, "UPDATE users SET role='super_admin' WHERE id=$1", admins[0])
+		settings := &SettingsStore{db: db}
+		if err := settings.SetReviewAssignmentToggle(ctx, admins[0], false); err != nil {
+			t.Fatal(err)
+		}
+		if n := batchTestBatch(t, s, 2); n != 2 {
+			t.Fatalf("created=%d, want 2 (only the enabled admin)", n)
+		}
+		if _, err := (&UsersStore{db: db}).UpdateRole(ctx, admins[0], RoleAdmin); err != nil {
+			t.Fatal(err)
+		}
+		if n := batchTestBatch(t, s, 2); n != 2 {
+			t.Errorf("created=%d, want 2 for the demoted reviewer", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[0]); n != 2 {
+			t.Errorf("demoted reviewer assignments=%d, want 2", n)
+		}
+		entries, err := settings.GetAllReviewAssignmentToggles(ctx)
+		if err != nil || len(entries) != 0 {
+			t.Errorf("stale toggle entries=%+v err=%v", entries, err)
 		}
 	})
 	t.Run("simultaneous_batches", func(t *testing.T) {
