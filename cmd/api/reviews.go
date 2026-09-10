@@ -167,18 +167,30 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 // getNextReview assigns and returns the next application needing review
 //
 //	@Summary		Get next review assignment (Admin)
-//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
+//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it. Super admins who have disabled their review assignment toggle are refused.
 //	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	ReviewResponse
 //	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}	"Review assignment disabled for this super admin"
 //	@Failure		404	{object}	object{error=string}	"No applications need review"
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/reviews/next [get]
 func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
+
+	if user.Role == store.RoleSuperAdmin {
+		enabled, err := app.store.Settings.GetReviewAssignmentToggle(r.Context(), user.ID)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		if !enabled {
+			app.forbiddenResponse(w, r, errors.New("review assignment is disabled for this account"))
+			return
+		}
+	}
 
 	reviewsPerApp, err := app.store.Settings.GetReviewsPerApplication(r.Context())
 	if err != nil {

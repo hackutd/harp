@@ -341,6 +341,22 @@ func TestGetNextReview(t *testing.T) {
 		mockReviews.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
 	})
+
+	t.Run("should return 403 for a super admin with assignment disabled", func(t *testing.T) {
+		superAdmin := newSuperAdminUser()
+
+		mockSettings.On("GetReviewAssignmentToggle", superAdmin.ID).Return(false, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, superAdmin)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getNextReview))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+
+		mockReviews.AssertNotCalled(t, "AssignNextForAdmin", superAdmin.ID, 3)
+		mockSettings.AssertExpectations(t)
+	})
 }
 
 func TestBatchAssignReviews(t *testing.T) {

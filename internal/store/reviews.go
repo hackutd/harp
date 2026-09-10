@@ -131,7 +131,8 @@ func (s *ApplicationReviewsStore) GetTravelStatusByReviewID(ctx context.Context,
 }
 
 // GetPendingByAdminID returns all reviews assigned to an admin that haven't been voted on yet,
-// including application details for display
+// including application details for display. Reviews on applications that have
+// already been decided are omitted; the next BatchAssign removes them.
 func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -155,7 +156,7 @@ func (s *ApplicationReviewsStore) GetPendingByAdminID(ctx context.Context, admin
 		FROM application_reviews ar
 		JOIN applications a ON ar.application_id = a.id
 		JOIN users u ON a.user_id = u.id
-		WHERE ar.admin_id = $1 AND ar.vote IS NULL
+		WHERE ar.admin_id = $1 AND ar.vote IS NULL AND a.status = 'submitted'
 		ORDER BY ar.assigned_at ASC
 	`
 
@@ -295,8 +296,11 @@ type BatchAssignmentResult struct {
 	ReviewsUnfilled         int `json:"reviews_unfilled"`
 }
 
-// BatchAssign recovers inaccessible pending reviews and fills submitted
+// BatchAssign recovers pending reviews that can no longer be acted on (reviewer
+// disabled or demoted, application already decided) and fills submitted
 // applications' assignment targets with distinct, currently eligible reviewers.
+// The assignment toggle only applies to super admins; entries for users who
+// no longer hold that role are dropped so a demoted user is a regular admin.
 func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
 	defer cancel()
@@ -336,10 +340,14 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	result := &BatchAssignmentResult{ReviewsPerApplication: reviewsPerApp}
 	removed, err := tx.ExecContext(ctx, `
 		DELETE FROM application_reviews ar
-		WHERE ar.vote IS NULL AND (
-			ar.admin_id::text = ANY($1::text[]) OR NOT EXISTS (
+		USING applications a
+		WHERE a.id = ar.application_id AND ar.vote IS NULL AND (
+			a.status <> 'submitted' OR NOT EXISTS (
 				SELECT 1 FROM users u
-				WHERE u.id = ar.admin_id AND u.role IN ('admin', 'super_admin')
+				WHERE u.id = ar.admin_id AND (
+					u.role = 'admin' OR
+					(u.role = 'super_admin' AND NOT (u.id::text = ANY($1::text[])))
+				)
 			)
 		)
 	`, disabledIDs)
@@ -354,7 +362,8 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 
 	// Read workloads after cleanup. Creation time and ID provide stable ties.
 	adminRows, err := tx.QueryContext(ctx, `
-		SELECT u.id, u.role, COUNT(ar.id), NOT (u.id::text = ANY($1::text[]))
+		SELECT u.id, u.role, COUNT(ar.id),
+			NOT (u.role = 'super_admin' AND u.id::text = ANY($1::text[]))
 		FROM users u
 		LEFT JOIN application_reviews ar ON ar.admin_id = u.id AND ar.vote IS NULL
 		WHERE u.role IN ('admin', 'super_admin')
@@ -370,6 +379,7 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		Pending int
 	}
 	var admins []reviewer
+	superAdmins := make(map[string]bool)
 	for adminRows.Next() {
 		var admin reviewer
 		var role UserRole
@@ -377,8 +387,11 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 		if err := adminRows.Scan(&admin.ID, &role, &admin.Pending, &enabled); err != nil {
 			return nil, err
 		}
-		if role == RoleSuperAdmin && !listed[admin.ID] {
-			entries = append(entries, ReviewAssignmentEntry{ID: admin.ID, Enabled: true})
+		if role == RoleSuperAdmin {
+			superAdmins[admin.ID] = true
+			if !listed[admin.ID] {
+				entries = append(entries, ReviewAssignmentEntry{ID: admin.ID, Enabled: true})
+			}
 		}
 		if enabled {
 			admins = append(admins, admin)
@@ -389,7 +402,15 @@ func (s *ApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp
 	}
 	adminRows.Close()
 
-	// Normalize legacy settings and retain the super-admin backfill.
+	// Normalize legacy settings, retain the super-admin backfill, and drop
+	// entries for users who are no longer super admins.
+	current := entries[:0]
+	for _, entry := range entries {
+		if superAdmins[entry.ID] {
+			current = append(current, entry)
+		}
+	}
+	entries = current
 	encoded, err := json.Marshal(entries)
 	if err != nil {
 		return nil, err
