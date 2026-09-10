@@ -84,3 +84,13 @@ export interface OnboardingValues {
   privacy_policy_url: string;
   terms_url: string;
 }
+
+export interface ReopenApplicationsResult {
+  statuses: string[];
+  updated: number;
+}
+
+export interface ReopenTravelResult {
+  statuses: string[];
+  updated: number;
+}

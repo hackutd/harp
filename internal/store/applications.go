@@ -1304,3 +1304,54 @@ func (s *ApplicationsStore) GetDecisionEmailStats(ctx context.Context) (*Decisio
 
 	return &stats, nil
 }
+
+// ReopenByStatus sets every application whose status is in the given list back
+// to draft, clearing submitted_at so the hacker can re-edit and resubmit.
+// Returns the number of applications updated.
+func (s *ApplicationsStore) ReopenByStatus(ctx context.Context, statuses []ApplicationStatus) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	statusValues := make([]string, len(statuses))
+	for i, s := range statuses {
+		statusValues[i] = string(s)
+	}
+
+	query := `
+		UPDATE applications
+		SET status = 'draft', submitted_at = NULL, updated_at = NOW()
+		WHERE status = ANY($1::application_status[])`
+
+	result, err := s.db.ExecContext(ctx, query, statusValues)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
+// ReopenTravelByStatus sets the travel_status to pending and clears the approved amount
+// for all applications with the specified travel statuses where the travel RSVP is still pending.
+// Returns the number of applications updated.
+func (s *ApplicationsStore) ReopenTravelByStatus(ctx context.Context, statuses []TravelStatus) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	statusValues := make([]string, len(statuses))
+	for i, st := range statuses {
+		statusValues[i] = string(st)
+	}
+
+	query := `
+		UPDATE applications
+		SET travel_status = 'pending', travel_approved_amount_cents = NULL, updated_at = NOW()
+		WHERE travel_status = ANY($1::travel_status[])
+		  AND travel_rsvp_status = 'pending'`
+
+	result, err := s.db.ExecContext(ctx, query, statusValues)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}

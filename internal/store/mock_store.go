@@ -241,6 +241,16 @@ func (m *MockApplicationStore) GetMealGroupByUserID(ctx context.Context, userID 
 	return args.Get(0).(*string), args.Error(1)
 }
 
+func (m *MockApplicationStore) ReopenByStatus(ctx context.Context, statuses []ApplicationStatus) (int64, error) {
+	args := m.Called(statuses)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockApplicationStore) ReopenTravelByStatus(ctx context.Context, statuses []TravelStatus) (int64, error) {
+	args := m.Called(statuses)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // mock implementation of the Settings interface
 type MockSettingsStore struct {
 	mock.Mock

@@ -422,6 +422,8 @@ func (app *application) mount() http.Handler {
 						// Repair hatches for the one-shot hacker RSVPs
 						r.Post("/{applicationID}/rsvp/reset", app.resetApplicationRSVPHandler)
 						r.Post("/{applicationID}/travel-rsvp/reset", app.resetApplicationTravelRSVPHandler)
+						r.Post("/reopen", app.reopenApplicationsHandler)
+						r.Post("/travel/reopen", app.reopenTravelApplicationsHandler)
 					})
 
 					// Outbound decision emails

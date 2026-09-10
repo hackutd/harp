@@ -68,6 +68,8 @@ type Storage struct {
 		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)
 		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
 		GetMealGroupByUserID(ctx context.Context, userID string) (*string, error)
+		ReopenByStatus(ctx context.Context, statuses []ApplicationStatus) (int64, error)
+		ReopenTravelByStatus(ctx context.Context, statuses []TravelStatus) (int64, error)
 	}
 	Settings interface {
 		// GetMany reads several settings in one round trip and primes the

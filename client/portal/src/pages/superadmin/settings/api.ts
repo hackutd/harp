@@ -13,6 +13,8 @@ import type {
   OnboardingStatus,
   PointsEnabledResult,
   PointsNameResult,
+  ReopenApplicationsResult,
+  ReopenTravelResult,
   ResetHackathonOptions,
   ResetHackathonResult,
   URLSettingResult,
@@ -269,5 +271,23 @@ export async function updateTermsURL(
     "/superadmin/settings/terms-url",
     { url },
     "terms of service URL",
+  );
+}
+
+export async function reopenApplications(
+  statuses: string[],
+): Promise<ApiResponse<ReopenApplicationsResult>> {
+  return postRequest<ReopenApplicationsResult>(
+    "/superadmin/applications/reopen",
+    { statuses },
+  );
+}
+
+export async function reopenTravelApplications(
+  statuses: string[],
+): Promise<ApiResponse<ReopenTravelResult>> {
+  return postRequest<ReopenTravelResult>(
+    "/superadmin/applications/travel/reopen",
+    { statuses },
   );
 }
