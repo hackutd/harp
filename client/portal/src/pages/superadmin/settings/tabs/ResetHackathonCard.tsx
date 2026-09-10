@@ -23,7 +23,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { reopenApplications, reopenTravelApplications, resetHackathon } from "../api";
+import {
+  reopenApplications,
+  reopenTravelApplications,
+  resetHackathon,
+} from "../api";
 import type { ResetHackathonOptions } from "../types";
 
 const RESET_ITEMS: {
@@ -118,7 +122,9 @@ export function ResetHackathonCard() {
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reopenLoading, setReopenLoading] = useState(false);
   const [reopenStatuses, setReopenStatuses] = useState<string[]>([]);
-  const [reopenTravelStatuses, setReopenTravelStatuses] = useState<string[]>([]);
+  const [reopenTravelStatuses, setReopenTravelStatuses] = useState<string[]>(
+    [],
+  );
 
   const allSelected = Object.values(options).every(Boolean);
   const noneSelected = !Object.values(options).some(Boolean);
@@ -140,7 +146,8 @@ export function ResetHackathonCard() {
   };
 
   const handleReopen = async () => {
-    if (reopenStatuses.length === 0 && reopenTravelStatuses.length === 0) return;
+    if (reopenStatuses.length === 0 && reopenTravelStatuses.length === 0)
+      return;
 
     setReopenLoading(true);
     try {
@@ -170,14 +177,14 @@ export function ResetHackathonCard() {
         msgs.push(
           `${appsRes.data?.updated ?? 0} application${
             appsRes.data?.updated === 1 ? "" : "s"
-          }`
+          }`,
         );
       }
       if (travelRes) {
         msgs.push(
           `${travelRes.data?.updated ?? 0} travel reimbursement${
             travelRes.data?.updated === 1 ? "" : "s"
-          }`
+          }`,
         );
       }
 
@@ -186,7 +193,7 @@ export function ResetHackathonCard() {
     } catch (err) {
       toast.error(
         "An unexpected error occurred" +
-          (err instanceof Error ? `: ${err.message}` : "")
+          (err instanceof Error ? `: ${err.message}` : ""),
       );
     } finally {
       setReopenLoading(false);
@@ -223,13 +230,13 @@ export function ResetHackathonCard() {
       toast.success(
         notes.length > 0
           ? `Hackathon data reset successfully — ${notes.join("; ")}`
-          : "Hackathon data reset successfully"
+          : "Hackathon data reset successfully",
       );
       handleOpenChange(false);
     } catch (err) {
       toast.error(
         "An unexpected error occurred" +
-          (err instanceof Error ? `: ${err.message}` : "")
+          (err instanceof Error ? `: ${err.message}` : ""),
       );
     } finally {
       setLoading(false);
@@ -245,7 +252,8 @@ export function ResetHackathonCard() {
             Reopen Applications & Travel
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            Move application and travel reimbursement decisions back to a pending state.
+            Move application and travel reimbursement decisions back to a
+            pending state.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -263,7 +271,9 @@ export function ResetHackathonCard() {
                   Reopen Applications & Travel
                 </DialogTitle>
                 <DialogDescription className="text-zinc-400">
-                  Select statuses below. Matching applications and travel reimbursements will be moved back to draft or pending so hackers can edit or you can review them again.
+                  Select statuses below. Matching applications and travel
+                  reimbursements will be moved back to draft or pending so
+                  hackers can edit or you can review them again.
                 </DialogDescription>
               </DialogHeader>
 
@@ -290,10 +300,13 @@ export function ResetHackathonCard() {
                             checked={reopenStatuses.includes(status.id)}
                             onCheckedChange={(c) => {
                               if (c) {
-                                setReopenStatuses([...reopenStatuses, status.id]);
+                                setReopenStatuses([
+                                  ...reopenStatuses,
+                                  status.id,
+                                ]);
                               } else {
                                 setReopenStatuses(
-                                  reopenStatuses.filter((s) => s !== status.id)
+                                  reopenStatuses.filter((s) => s !== status.id),
                                 );
                               }
                             }}
@@ -331,10 +344,15 @@ export function ResetHackathonCard() {
                             checked={reopenTravelStatuses.includes(status.id)}
                             onCheckedChange={(c) => {
                               if (c) {
-                                setReopenTravelStatuses([...reopenTravelStatuses, status.id]);
+                                setReopenTravelStatuses([
+                                  ...reopenTravelStatuses,
+                                  status.id,
+                                ]);
                               } else {
                                 setReopenTravelStatuses(
-                                  reopenTravelStatuses.filter((s) => s !== status.id)
+                                  reopenTravelStatuses.filter(
+                                    (s) => s !== status.id,
+                                  ),
                                 );
                               }
                             }}
@@ -365,7 +383,10 @@ export function ResetHackathonCard() {
                 <Button
                   onClick={handleReopen}
                   loading={reopenLoading}
-                  disabled={reopenStatuses.length === 0 && reopenTravelStatuses.length === 0}
+                  disabled={
+                    reopenStatuses.length === 0 &&
+                    reopenTravelStatuses.length === 0
+                  }
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Reopen Selected
@@ -458,16 +479,17 @@ export function ResetHackathonCard() {
 
                 <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
                   <p className="text-xs leading-relaxed text-zinc-500">
-                    A full reset keeps user accounts and roles, contact and sender
-                    details, the application form schema, review count, admin
-                    permissions, meal-group names, and push-notification opt-ins.
+                    A full reset keeps user accounts and roles, contact and
+                    sender details, the application form schema, review count,
+                    admin permissions, meal-group names, and push-notification
+                    opt-ins.
                   </p>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirm" className="text-zinc-100">
                       Type{" "}
-                      <strong className="text-red-400">RESET HACKATHON</strong> to
-                      confirm
+                      <strong className="text-red-400">RESET HACKATHON</strong>{" "}
+                      to confirm
                     </Label>
                     <Input
                       id="confirm"
