@@ -26,6 +26,27 @@ const (
 
 var errPushEndpointNotAllowed = errors.New("endpoint must be an https URL on a supported push service")
 
+// pushEndpointHost is the loggable part of a push endpoint. The full URL is a
+// capability token (whoever holds it can notify that device), so only the host
+// ever reaches the logs.
+func pushEndpointHost(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return "invalid"
+	}
+	return u.Host
+}
+
+// pushSendError strips the endpoint URL that net/http embeds in transport
+// errors, for the same reason as pushEndpointHost.
+func pushSendError(err error) error {
+	var uerr *url.Error
+	if errors.As(err, &uerr) && uerr.Err != nil {
+		return uerr.Err
+	}
+	return err
+}
+
 // parsePushEndpointHosts turns a comma-separated env value into a host suffix
 // list, falling back to the built-in browser push services when empty.
 func parsePushEndpointHosts(raw string) []string {
