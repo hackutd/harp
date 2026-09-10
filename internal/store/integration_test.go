@@ -39,7 +39,7 @@ func seedIntegration(t *testing.T, db *sql.DB) {
 	t.Helper()
 	ctx := context.Background()
 	stmts := []string{
-		`TRUNCATE applications, application_reviews, users CASCADE`,
+		`TRUNCATE applications, application_reviews, walk_ins, users CASCADE`,
 		`INSERT INTO users (id, supertokens_user_id, email, role) VALUES
 		  ('11111111-1111-1111-1111-111111111111','st-1','alice@example.com','hacker'),
 		  ('22222222-2222-2222-2222-222222222222','st-2','bob@example.com','hacker'),
@@ -52,6 +52,8 @@ func seedIntegration(t *testing.T, db *sql.DB) {
 		     '{"first_name":"Bob","last_name":"Lee","travel_estimated_cost":1e20}', NOW(), 1, 'pending', 1, 'pending', 'pending', '{}', NULL),
 		  ('aaaaaaaa-0000-0000-0000-000000000003','33333333-3333-3333-3333-333333333333','draft',
 		     '{"first_name":"Carol","last_name":"Diaz"}', NULL, 0, 'not_requested', 0, 'pending', 'pending', '{}', NULL)`,
+		`INSERT INTO walk_ins (user_id, promoted_at, promoted_by) VALUES
+		  ('33333333-3333-3333-3333-333333333333', NOW(), '44444444-4444-4444-4444-444444444444')`,
 		`INSERT INTO application_reviews (id, application_id, admin_id) VALUES
 		  ('bbbbbbbb-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002','44444444-4444-4444-4444-444444444444'),
 		  ('bbbbbbbb-0000-0000-0000-000000000002','aaaaaaaa-0000-0000-0000-000000000003','44444444-4444-4444-4444-444444444444')`,
@@ -485,5 +487,52 @@ func TestIntegrationDeleteHacker(t *testing.T) {
 	want := map[string]int{"check_in": 1}
 	if len(got) != len(want) || got["check_in"] != want["check_in"] {
 		t.Errorf("scan_stats = %v, want %v", got, want)
+	}
+}
+
+// The EXISTS subquery joining walk_ins is only exercised here -- the handler
+// suite runs on MockStore, so a typo in it would ship unnoticed.
+func TestIntegrationGetCheckInEligibility(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	s := &ApplicationsStore{db: db}
+	ctx := context.Background()
+
+	cases := []struct {
+		name   string
+		userID string
+		want   CheckInEligibility
+	}{
+		{
+			"accepted and confirmed",
+			"11111111-1111-1111-1111-111111111111",
+			CheckInEligibility{Status: StatusAccepted, RSVPStatus: RSVPConfirmed, PromotedWalkIn: false},
+		},
+		{
+			"submitted and pending",
+			"22222222-2222-2222-2222-222222222222",
+			CheckInEligibility{Status: StatusSubmitted, RSVPStatus: RSVPPending, PromotedWalkIn: false},
+		},
+		{
+			"promoted walk-in keeps a pending rsvp",
+			"33333333-3333-3333-3333-333333333333",
+			CheckInEligibility{Status: StatusDraft, RSVPStatus: RSVPPending, PromotedWalkIn: true},
+		},
+	}
+
+	for _, tc := range cases {
+		got, err := s.GetCheckInEligibility(ctx, tc.userID)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if *got != tc.want {
+			t.Errorf("%s: got %+v, want %+v", tc.name, *got, tc.want)
+		}
+	}
+
+	_, err := s.GetCheckInEligibility(ctx, "99999999-9999-9999-9999-999999999999")
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown user: got %v, want ErrNotFound", err)
 	}
 }

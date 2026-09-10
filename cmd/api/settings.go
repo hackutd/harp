@@ -243,6 +243,76 @@ func (app *application) setRSVPEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type SetCheckInRequiresRSVPPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type CheckInRequiresRSVPResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getCheckInRequiresRSVP returns whether check-in requires a confirmed RSVP
+//
+//	@Summary		Get check-in RSVP requirement (Super Admin)
+//	@Description	Returns whether the scanner refuses to check in hackers who have not confirmed their RSVP
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	CheckInRequiresRSVPResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/check-in-requires-rsvp [get]
+func (app *application) getCheckInRequiresRSVP(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetCheckInRequiresRSVP(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := CheckInRequiresRSVPResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setCheckInRequiresRSVP updates whether check-in requires a confirmed RSVP
+//
+//	@Summary		Set check-in RSVP requirement (Super Admin)
+//	@Description	Sets whether the scanner refuses to check in hackers who have not confirmed their RSVP. Turn this off only for a hackathon that does not run the RSVP form at all, since every application then sits at 'pending'. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetCheckInRequiresRSVPPayload	true	"Enable or disable the RSVP requirement"
+//	@Success		200		{object}	CheckInRequiresRSVPResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/check-in-requires-rsvp [put]
+func (app *application) setCheckInRequiresRSVP(w http.ResponseWriter, r *http.Request) {
+	var req SetCheckInRequiresRSVPPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetCheckInRequiresRSVP(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := CheckInRequiresRSVPResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 type UpdateTravelRSVPSchemaPayload struct {
 	Fields []store.ApplicationSchemaField `json:"fields" validate:"required,dive"`
 }

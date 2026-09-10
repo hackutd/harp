@@ -68,6 +68,7 @@ export default function PermissionsTab() {
   );
   const [rsvpEnabled, setRSVPEnabled] = useState(true);
   const [travelRSVPEnabled, setTravelRSVPEnabled] = useState(true);
+  const [checkInRequiresRSVP, setCheckInRequiresRSVP] = useState(true);
   const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
     useState(true);
   const [adminSponsorEditEnabled, setAdminSponsorEditEnabled] = useState(true);
@@ -78,6 +79,7 @@ export default function PermissionsTab() {
   const [applicationsSaving, setApplicationsSaving] = useState(false);
   const [rsvpSaving, setRSVPSaving] = useState(false);
   const [travelRSVPSaving, setTravelRSVPSaving] = useState(false);
+  const [checkInRSVPSaving, setCheckInRSVPSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [sponsorSaving, setSponsorSaving] = useState(false);
   const [faqSaving, setFaqSaving] = useState(false);
@@ -90,6 +92,7 @@ export default function PermissionsTab() {
         applicationsRes,
         rsvpRes,
         travelRSVPRes,
+        checkInRSVPRes,
         scheduleRes,
         sponsorRes,
         faqRes,
@@ -106,6 +109,10 @@ export default function PermissionsTab() {
         getRequest<{ enabled: boolean }>(
           "/superadmin/settings/travel-rsvp-enabled",
           "travel RSVP enabled",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/check-in-requires-rsvp",
+          "check-in RSVP requirement",
         ),
         getRequest<{ enabled: boolean }>(
           "/superadmin/settings/admin-schedule-edit-toggle",
@@ -141,6 +148,12 @@ export default function PermissionsTab() {
         setTravelRSVPEnabled(travelRSVPRes.data.enabled);
       } else {
         errorAlert(travelRSVPRes);
+      }
+
+      if (checkInRSVPRes.status === 200 && checkInRSVPRes.data) {
+        setCheckInRequiresRSVP(checkInRSVPRes.data.enabled);
+      } else {
+        errorAlert(checkInRSVPRes);
       }
 
       if (scheduleRes.status === 200 && scheduleRes.data) {
@@ -243,6 +256,28 @@ export default function PermissionsTab() {
     }
 
     setTravelRSVPSaving(false);
+  }
+
+  async function handleCheckInRSVPToggle(nextValue: boolean) {
+    setCheckInRSVPSaving(true);
+    const res = await putRequest<{ enabled: boolean }>(
+      "/superadmin/settings/check-in-requires-rsvp",
+      { enabled: nextValue },
+      "check-in RSVP requirement",
+    );
+
+    if (res.status === 200 && res.data) {
+      setCheckInRequiresRSVP(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Check-in now requires a confirmed RSVP."
+          : "Check-in no longer requires an RSVP.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setCheckInRSVPSaving(false);
   }
 
   async function handleScheduleToggle(nextValue: boolean) {
@@ -365,6 +400,15 @@ export default function PermissionsTab() {
         checked={travelRSVPEnabled}
         disabled={loading || travelRSVPSaving}
         onCheckedChange={handleTravelRSVPToggle}
+      />
+
+      <PermissionToggle
+        id="check-in-requires-rsvp-toggle"
+        label="Require RSVP to Check In"
+        description="When enabled, the scanner turns away accepted hackers who declined or never answered their RSVP, so capacity and catering counts hold. Hackers promoted from the walk-in queue are always let in. Turn this off only if you are not running the RSVP form at all."
+        checked={checkInRequiresRSVP}
+        disabled={loading || checkInRSVPSaving}
+        onCheckedChange={handleCheckInRSVPToggle}
       />
 
       <PermissionToggle

@@ -373,6 +373,8 @@ func (app *application) mount() http.Handler {
 						r.Put("/rsvp-schema", app.updateRSVPSchema)
 						r.Get("/rsvp-enabled", app.getRSVPEnabled)
 						r.Put("/rsvp-enabled", app.setRSVPEnabled)
+						r.Get("/check-in-requires-rsvp", app.getCheckInRequiresRSVP)
+						r.Put("/check-in-requires-rsvp", app.setCheckInRequiresRSVP)
 						r.Get("/travel-rsvp-schema", app.getTravelRSVPSchema)
 						r.Put("/travel-rsvp-schema", app.updateTravelRSVPSchema)
 						r.Get("/travel-rsvp-enabled", app.getTravelRSVPEnabled)
