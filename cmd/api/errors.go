@@ -35,6 +35,17 @@ func (app *application) forbiddenResponse(w http.ResponseWriter, r *http.Request
 	writeJSONError(w, http.StatusForbidden, "forbidden")
 }
 
+// forbiddenMessageResponse refuses a request and tells the caller why.
+// forbiddenResponse hides the reason behind a flat "forbidden", which is the
+// right default for hacker-facing routes but useless on the admin scanner,
+// where a volunteer needs to know whether to send someone to the RSVP desk or
+// the walk-in line. Use it only where the caller is already trusted staff.
+func (app *application) forbiddenMessageResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.requestLogger(r).Warnw("forbidden", "error", err.Error())
+
+	writeJSONError(w, http.StatusForbidden, err.Error())
+}
+
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.requestLogger(r).Warnw("bad request", "error", err.Error())
 

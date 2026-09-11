@@ -173,8 +173,33 @@ export function getWholeNumberRule(
   return WHOLE_NUMBER_FIELDS[fieldId];
 }
 
+/** Saved choices no longer offered by a configured select; text presets are unrelated. */
+export function getObsoleteOptions(
+  field: ApplicationSchemaField,
+  value: unknown,
+): string[] {
+  if (!field.options?.length) return [];
+  const selections =
+    field.type === "select" && typeof value === "string" && value.trim()
+      ? [value]
+      : field.type === "multi_select" && Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : [];
+  return [
+    ...new Set(selections.filter((item) => !field.options!.includes(item))),
+  ];
+}
+
+export interface SchemaValidationOptions {
+  /** Draft navigation still checks required answers, but permits obsolete choices. */
+  enforceOptions?: boolean;
+}
+
 /** Build a Zod schema for a single field based on its ApplicationSchemaField definition. */
-function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
+function buildFieldZod(
+  field: ApplicationSchemaField,
+  { enforceOptions = true }: SchemaValidationOptions,
+): z.ZodType {
   const validation = field.validation ?? {};
   // Agreement labels carry markdown links; error messages name the question only.
   const label = stripLabelLinks(field.label);
@@ -191,17 +216,21 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
       return z.string().optional().default("");
     }
     case "phone": {
-      // Stored canonically as +1 followed by 10 US digits (see PhoneInput).
-      const usPhone = /^\+1\d{10}$/;
-      const msg = "Enter a 10-digit US phone number";
+      // Accept full international numbers while retaining existing +1 values.
+      const internationalPhone = /^\+[1-9]\d{6,14}$/;
+      const msg =
+        "Enter a country code and phone number with 7–15 digits in total";
       if (field.required) {
-        return z.string().min(1, `${label} is required`).regex(usPhone, msg);
+        return z
+          .string()
+          .min(1, `${label} is required`)
+          .regex(internationalPhone, msg);
       }
       return z
         .string()
         .optional()
         .default("")
-        .refine((v) => !v || usPhone.test(v), msg);
+        .refine((v) => !v || internationalPhone.test(v), msg);
     }
     case "number": {
       let n = z.coerce.number({ message: `${label} is required` });
@@ -245,16 +274,22 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
       return s;
     }
     case "select": {
-      if (field.required) {
-        return z.string().min(1, `${label} is required`);
-      }
-      return z.string().optional().default("");
+      const s = field.required
+        ? z.string().refine((v) => v.trim() !== "", `${label} is required`)
+        : z.string().optional().default("");
+      return s.refine(
+        (v) => !enforceOptions || getObsoleteOptions(field, v).length === 0,
+        `Choose a current option for ${label}`,
+      );
     }
     case "multi_select": {
-      if (field.required) {
-        return z.array(z.string()).min(1, `${label} is required`);
-      }
-      return z.array(z.string()).optional().default([]);
+      const s = field.required
+        ? z.array(z.string()).min(1, `${label} is required`)
+        : z.array(z.string()).optional().default([]);
+      return s.refine(
+        (v) => !enforceOptions || getObsoleteOptions(field, v).length === 0,
+        `Remove unavailable choices for ${label}`,
+      );
     }
     case "checkbox":
       if (field.required) {
@@ -296,6 +331,7 @@ function buildFieldZod(field: ApplicationSchemaField): z.ZodType {
 export function buildZodSchema(
   fields: ApplicationSchemaField[],
   values?: Record<string, unknown> | null,
+  options: SchemaValidationOptions = {},
 ) {
   const shape: Record<string, z.ZodType> = {};
 
@@ -309,7 +345,7 @@ export function buildZodSchema(
       (field.required ||
         (!!requiredIf && conditionSatisfied(requiredIf, values)));
 
-    shape[field.id] = buildFieldZod({ ...field, required });
+    shape[field.id] = buildFieldZod({ ...field, required }, options);
   }
 
   return z.object(shape);
@@ -337,6 +373,7 @@ function conditionControllerIds(fields: ApplicationSchemaField[]): string[] {
  */
 export function buildSchemaResolver(
   fields: ApplicationSchemaField[],
+  validationOptions: SchemaValidationOptions = {},
 ): Resolver<Record<string, unknown>> {
   const controllerIds = conditionControllerIds(fields);
   let cachedKey: string | undefined;
@@ -345,9 +382,9 @@ export function buildSchemaResolver(
   return (values, context, options) => {
     const key = JSON.stringify(controllerIds.map((id) => values[id] ?? null));
     if (!cachedResolver || key !== cachedKey) {
-      cachedResolver = zodResolver(buildZodSchema(fields, values)) as Resolver<
-        Record<string, unknown>
-      >;
+      cachedResolver = zodResolver(
+        buildZodSchema(fields, values, validationOptions),
+      ) as Resolver<Record<string, unknown>>;
       cachedKey = key;
     }
     return cachedResolver(values, context, options);

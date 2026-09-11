@@ -10,7 +10,8 @@
     "format": "prettier --write \"{src,branding}/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"{src,branding}/**/*.{ts,tsx,css,json}\"",
     "preview": "vite preview",
-    "test:reviews": "node --test scripts/review-regressions.test.mjs"
+    "test:reviews": "node --test scripts/review-regressions.test.mjs",
+    "test:applications": "node --test scripts/application-regressions.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

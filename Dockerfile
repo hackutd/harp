@@ -17,7 +17,22 @@ FROM golang:1.27.1 AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod download
+
+# proxy.golang.org intermittently resets HTTP/2 streams mid-zip from Cloud
+# Build's egress, failing the deploy on whichever module was in flight
+# ("stream error: stream ID N; INTERNAL_ERROR; received from peer"). The
+# trigger builds with --no-cache, so every deploy refetches the whole module
+# graph and gets hundreds of chances to hit it. HTTP/1.1 gives each fetch its
+# own connection so there are no shared streams to reset, GOMAXPROCS caps how
+# many run at once (go mod download sizes its worker pool from it), and the
+# retry covers whatever still slips through.
+ENV GODEBUG=http2client=0
+RUN for i in 1 2 3; do \
+      if GOMAXPROCS=4 go mod download; then break; fi; \
+      echo "go mod download failed (attempt $i), retrying" >&2; \
+      [ "$i" = 3 ] && exit 1; \
+      sleep $((i * 5)); \
+    done
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -X main.version=$(cat version.txt)" -o /app/api ./cmd/api

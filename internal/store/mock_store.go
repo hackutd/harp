@@ -191,9 +191,12 @@ func (m *MockApplicationStore) ResetTravelRSVP(ctx context.Context, id string) (
 	return args.Get(0).(*Application), receipts, args.Error(2)
 }
 
-func (m *MockApplicationStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
+func (m *MockApplicationStore) GetCheckInEligibility(ctx context.Context, userID string) (*CheckInEligibility, error) {
 	args := m.Called(userID)
-	return args.Get(0).(ApplicationStatus), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*CheckInEligibility), args.Error(1)
 }
 
 func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
@@ -291,6 +294,16 @@ func (m *MockSettingsStore) GetRSVPEnabled(ctx context.Context) (bool, error) {
 }
 
 func (m *MockSettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetCheckInRequiresRSVP(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error {
 	args := m.Called(enabled)
 	return args.Error(0)
 }

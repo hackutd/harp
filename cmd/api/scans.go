@@ -66,7 +66,7 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 // createScanHandler records a scan for a user
 //
 //	@Summary		Create a scan (Admin)
-//	@Description	Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.
+//	@Description	Records a scan for a user. Validates scan type exists and is active. Check-in scans require the user to be accepted and, unless the check_in_requires_rsvp setting is off, to have confirmed their RSVP; hackers promoted from the walk-in queue are exempt from the RSVP requirement. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.
 //	@Tags			admin/scans
 //	@Accept			json
 //	@Produce		json
@@ -75,8 +75,8 @@ func (app *application) getScanTypesHandler(w http.ResponseWriter, r *http.Reque
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
 //	@Failure		402		{object}	object{error=string}	"Insufficient points for shop scan"
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		409		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}	"Not accepted, RSVP not confirmed, or not yet checked in"
+//	@Failure		409		{object}	object{error=string}	"Already scanned for this type"
 //	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/scans [post]
@@ -158,23 +158,58 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		if !hasCheckIn {
-			app.forbiddenResponse(w, r, errors.New("user must check in before claiming items"))
+			app.forbiddenMessageResponse(w, r, errors.New("user must check in before claiming items"))
 			return
 		}
 	} else {
-		// Check-in scan: require accepted status.
-		status, err := app.store.Application.GetStatusByUserID(r.Context(), req.UserID)
+		// Check-in scan: the hacker must be accepted AND have claimed their spot,
+		// since capacity and catering are planned off the RSVP-confirmed count.
+
+		// Answer a re-scan as a duplicate before judging eligibility, so someone
+		// already inside the building is never turned away by a gate that did not
+		// exist when they checked in. Scoping to the requested type mirrors the
+		// uq_scans_user_scan_type_once index that Scans.Create relies on.
+		alreadyCheckedIn, err := app.store.Scans.HasCheckIn(r.Context(), req.UserID, []string{req.ScanType})
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		if alreadyCheckedIn {
+			app.conflictResponse(w, r, errors.New("user already checked in"))
+			return
+		}
+
+		eligibility, err := app.store.Application.GetCheckInEligibility(r.Context(), req.UserID)
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
-				app.forbiddenResponse(w, r, errors.New("user has no application"))
+				app.forbiddenMessageResponse(w, r, errors.New("no application on file — this hacker never applied"))
 				return
 			}
 			app.internalServerError(w, r, err)
 			return
 		}
-		if status != store.StatusAccepted {
-			app.forbiddenResponse(w, r, fmt.Errorf("user is not accepted (status: %s)", status))
+
+		if eligibility.Status != store.StatusAccepted {
+			app.forbiddenMessageResponse(w, r, fmt.Errorf("not accepted (status: %s)", eligibility.Status))
 			return
+		}
+
+		// A promoted walk-in never answers the RSVP form — being promoted at the
+		// door is their claim on a spot.
+		if eligibility.RSVPStatus != store.RSVPConfirmed && !eligibility.PromotedWalkIn {
+			requiresRSVP, err := app.store.Settings.GetCheckInRequiresRSVP(r.Context())
+			if err != nil {
+				app.internalServerError(w, r, err)
+				return
+			}
+			if requiresRSVP {
+				if eligibility.RSVPStatus == store.RSVPDeclined {
+					app.forbiddenMessageResponse(w, r, errors.New("rsvp declined — hacker gave up their spot"))
+				} else {
+					app.forbiddenMessageResponse(w, r, errors.New("rsvp not confirmed — hacker never claimed their spot"))
+				}
+				return
+			}
 		}
 	}
 

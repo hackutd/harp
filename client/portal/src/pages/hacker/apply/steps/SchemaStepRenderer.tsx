@@ -35,8 +35,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/shared/hooks";
 import { getFieldPresets } from "@/shared/lib/field-presets";
 import {
+  formatPhoneNational,
+  joinPhoneNumber,
+  type PhoneParts,
+  splitPhoneNumber,
+} from "@/shared/lib/phone-input";
+import {
   conditionSatisfied,
   getFieldCondition,
+  getObsoleteOptions,
   getWholeNumberRule,
   renderLabel,
 } from "@/shared/lib/schema-utils";
@@ -126,7 +133,9 @@ export function SchemaStepRenderer({
   }
   // Only show the divider when required fields precede the optional run.
   const firstOptionalIndex =
-    optionalStart > 0 && optionalStart < visibleFields.length
+    fields[0]?.section !== "personal" &&
+    optionalStart > 0 &&
+    optionalStart < visibleFields.length
       ? optionalStart
       : -1;
 
@@ -347,7 +356,7 @@ function SchemaFormField({
         <FormField
           control={form.control}
           name={field.id}
-          render={() => (
+          render={({ field: selectedField }) => (
             <FormItem>
               <FormLabel className={fieldLabel}>
                 {field.label}
@@ -356,6 +365,30 @@ function SchemaFormField({
               <FormDescription className="text-xs font-light">
                 Select all that apply
               </FormDescription>
+              {getObsoleteOptions(field, selectedField.value).map((option) => (
+                <div
+                  key={option}
+                  className="flex items-baseline justify-between gap-3 text-xs font-light text-[#8A8A8A]"
+                >
+                  <span className="min-w-0 break-words">
+                    {option} — No longer available
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Remove unavailable choice ${option}`}
+                    className="shrink-0 underline underline-offset-2 hover:text-black"
+                    onClick={() =>
+                      selectedField.onChange(
+                        (selectedField.value as string[]).filter(
+                          (value) => value !== option,
+                        ),
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(field.options ?? []).map((opt) => (
                   <FormField
@@ -434,49 +467,120 @@ function SchemaFormField({
   }
 }
 
-/** Strip a value down to its 10 US national digits (drops +1 and formatting). */
-function usNationalDigits(value: string): string {
-  return value.replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
-}
-
-/** Format up to 10 US national digits progressively as (XXX) XXX-XXXX. */
-function formatUSPhone(digits: string): string {
-  const d = digits.slice(0, 10);
-  if (d.length === 0) return "";
-  if (d.length < 4) return `(${d}`;
-  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
-  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-}
-
-/**
- * US phone entry with a live (XXX) XXX-XXXX mask. The user types digits
- * continuously — parentheses, the space, and the dash appear as they go, with
- * no separate segments to tab between. The value is stored canonically as
- * "+1XXXXXXXXXX" (or "" when empty) so validation and the payload stay simple,
- * and any pasted formatting or leading country code is stripped on the way in.
- */
+/** Editable numeric country code with a fixed + and a formatted national number. */
 function PhoneInput({
   formField,
 }: {
   formField: ControllerRenderProps<ApplicationFormValues>;
 }) {
-  const digits = usNationalDigits((formField.value as string) ?? "");
+  const value = (formField.value as string) ?? "";
+  const [entry, setEntry] = useState(() => ({
+    value,
+    ...splitPhoneNumber(value),
+  }));
+  // Only external value changes reset the split. Our own edits keep incomplete
+  // country codes (including blank) independent of the national digits.
+  if (value !== entry.value) setEntry({ value, ...splitPhoneNumber(value) });
+  const formatted = formatPhoneNational(entry);
+  const update = (parts: PhoneParts) => {
+    const next = joinPhoneNumber(parts);
+    setEntry({
+      value: next,
+      countryCode: parts.countryCode,
+      national: parts.national,
+    });
+    formField.onChange(next);
+  };
+
   return (
-    <FormControl>
-      <Input
-        className={underlineField}
-        type="tel"
-        inputMode="tel"
-        autoComplete="tel-national"
-        placeholder="(202) 555-1234"
-        {...formField}
-        value={formatUSPhone(digits)}
-        onChange={(e) => {
-          const d = usNationalDigits(e.target.value);
-          formField.onChange(d ? `+1${d}` : "");
-        }}
-      />
-    </FormControl>
+    <div className="space-y-2">
+      <div className="flex items-end gap-4">
+        <div className="flex w-16 shrink-0 items-baseline border-b border-[#D9D9D9] focus-within:border-black">
+          <span aria-hidden className="text-base font-light">
+            +
+          </span>
+          <Input
+            aria-label="Country code"
+            className={cn(underlineField, "min-w-0 border-b-0 pl-1")}
+            type="text"
+            inputMode="numeric"
+            autoComplete="tel-country-code"
+            placeholder="1"
+            value={entry.countryCode}
+            onBlur={formField.onBlur}
+            onChange={(e) =>
+              update({
+                countryCode: e.target.value.replace(/\D/g, "").slice(0, 3),
+                national: entry.national,
+              })
+            }
+          />
+        </div>
+        <FormControl>
+          <Input
+            className={cn(underlineField, "min-w-0 flex-1")}
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            placeholder={
+              entry.countryCode === "1" ? "(202) 555-1234" : "Phone number"
+            }
+            {...formField}
+            value={formatted}
+            onChange={(e) => {
+              const input = e.target;
+              const raw = input.value;
+              const pastedInternational = raw.trim().startsWith("+");
+              let parts = pastedInternational
+                ? splitPhoneNumber(raw)
+                : {
+                    countryCode: entry.countryCode,
+                    national: raw.replace(/\D/g, ""),
+                  };
+              let digitsBeforeCaret = raw
+                .slice(0, input.selectionStart ?? raw.length)
+                .replace(/\D/g, "").length;
+              if (pastedInternational)
+                digitsBeforeCaret = Math.max(
+                  0,
+                  digitsBeforeCaret - parts.countryCode.length,
+                );
+              // Backspacing a mask character should remove the preceding digit.
+              if (
+                (e.nativeEvent as InputEvent).inputType ===
+                  "deleteContentBackward" &&
+                parts.national === entry.national &&
+                raw.length < formatted.length &&
+                digitsBeforeCaret > 0
+              ) {
+                parts = {
+                  ...parts,
+                  national:
+                    parts.national.slice(0, digitsBeforeCaret - 1) +
+                    parts.national.slice(digitsBeforeCaret),
+                };
+                digitsBeforeCaret--;
+              }
+              update(parts);
+              const display = formatPhoneNational(parts);
+              let position = 0;
+              let remaining = digitsBeforeCaret;
+              while (position < display.length && remaining > 0) {
+                if (/\d/.test(display[position])) remaining--;
+                position++;
+              }
+              requestAnimationFrame(() => {
+                if (document.activeElement === input)
+                  input.setSelectionRange(position, position);
+              });
+            }}
+          />
+        </FormControl>
+      </div>
+      <FormDescription className="text-xs font-light">
+        Country code and phone number
+      </FormDescription>
+    </div>
   );
 }
 
@@ -497,50 +601,70 @@ function SchemaSelect({
   const [open, setOpen] = useState(false);
   const value = (formField.value as string) ?? "";
   const options = field.options ?? [];
+  const obsolete = getObsoleteOptions(field, value).length > 0;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <FormControl>
-        <PopoverTrigger
-          onBlur={formField.onBlur}
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <FormControl>
+          <PopoverTrigger
+            onBlur={formField.onBlur}
+            className={cn(
+              underlineField,
+              "flex w-full items-center justify-between gap-2 outline-none",
+              !value && "text-[#8A8A8A]",
+            )}
+          >
+            <span className={cn("min-w-0 truncate", !value && "text-sm")}>
+              {value || `Select ${field.label.toLowerCase()}`}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                open && "rotate-180",
+              )}
+            />
+          </PopoverTrigger>
+        </FormControl>
+        <PopoverContent
+          align="start"
+          sideOffset={-6}
           className={cn(
-            underlineField,
-            "flex w-full items-center justify-between gap-2 outline-none",
-            !value && "text-[#8A8A8A]",
+            selectContent,
+            "w-[var(--radix-popover-trigger-width)]",
           )}
         >
-          <span className={cn("truncate", !value && "text-sm")}>
-            {value || `Select ${field.label.toLowerCase()}`}
-          </span>
-          <ChevronDown
-            className={cn(
-              "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-              open && "rotate-180",
-            )}
-          />
-        </PopoverTrigger>
-      </FormControl>
-      <PopoverContent
-        align="start"
-        sideOffset={-6}
-        className={cn(selectContent, "w-[var(--radix-popover-trigger-width)]")}
-      >
-        {options.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            className={selectItem}
-            onClick={() => {
-              formField.onChange(opt);
-              setOpen(false);
-            }}
-          >
-            <span className="truncate">{opt}</span>
-            {opt === value && <Check className="size-4 shrink-0" />}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              className={selectItem}
+              onClick={() => {
+                formField.onChange(opt);
+                setOpen(false);
+              }}
+            >
+              <span className="min-w-0 truncate">{opt}</span>
+              {opt === value && <Check className="size-4 shrink-0" />}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+      {obsolete && (
+        <FormDescription className="text-xs font-light">
+          No longer available. Choose a current option before submitting.
+        </FormDescription>
+      )}
+      {value && (obsolete || !field.required) && (
+        <button
+          type="button"
+          className="text-xs font-light text-[#8A8A8A] underline underline-offset-2 hover:text-black"
+          onClick={() => formField.onChange("")}
+        >
+          Clear answer
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -618,7 +742,7 @@ function SchemaCombobox({
               !value && "text-[#8A8A8A]",
             )}
           >
-            <span className={cn("truncate", !value && "text-sm")}>
+            <span className={cn("min-w-0 truncate", !value && "text-sm")}>
               {value || `Select ${field.label.toLowerCase()}`}
             </span>
             <ChevronDown
@@ -679,7 +803,7 @@ function SchemaCombobox({
             !value && "text-[#8A8A8A]",
           )}
         >
-          <span className={cn("truncate", !value && "text-sm")}>
+          <span className={cn("min-w-0 truncate", !value && "text-sm")}>
             {value || `Select ${field.label.toLowerCase()}`}
           </span>
           <ChevronDown
@@ -776,7 +900,7 @@ function ComboboxContent({
               onSelect={() => handleSelect(opt)}
               className="cursor-pointer justify-between rounded-none border-b border-white/[0.08] px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/[0.07] data-[selected=true]:text-white"
             >
-              <span className="truncate">{opt}</span>
+              <span className="min-w-0 truncate">{opt}</span>
               {opt === value && <Check className="size-4 shrink-0" />}
             </CommandItem>
           ))}
