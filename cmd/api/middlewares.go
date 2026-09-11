@@ -166,7 +166,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 					app.internalServerError(w, r, err)
 					return
 				}
-				app.logger.Infow("created new user", "user_id", user.ID, "email", user.Email)
+				app.requestLogger(r).Infow("created new user", "user_id", user.ID, "auth_method", user.AuthMethod)
 			} else {
 				app.internalServerError(w, r, err)
 				return
@@ -180,7 +180,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				}
 				if *profilePictureURL != currentPicture {
 					if err := app.store.Users.UpdateProfilePicture(r.Context(), user.SuperTokensUserID, profilePictureURL); err != nil {
-						app.logger.Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
+						app.requestLogger(r).Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
 					} else {
 						user.ProfilePictureURL = profilePictureURL
 					}
@@ -195,7 +195,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				"role":         string(user.Role),
 				"portalUserId": user.ID,
 			}); err != nil {
-				app.logger.Warnw("failed to sync role to session", "error", err, "user_id", user.ID)
+				app.requestLogger(r).Warnw("failed to sync role to session", "error", err, "user_id", user.ID)
 			}
 		}
 

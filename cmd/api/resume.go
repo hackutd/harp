@@ -66,7 +66,7 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 	}
 
 	if app.gcsClient == nil {
-		app.logger.Warnw("resume upload url requested but gcs is not configured", "user_id", user.ID)
+		app.requestLogger(r).Warnw("resume upload url requested but gcs is not configured", "user_id", user.ID)
 		writeJSONError(w, http.StatusServiceUnavailable, "resume uploads are not configured")
 		return
 	}
@@ -200,10 +200,10 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 
 	if app.gcsClient != nil {
 		if err := app.gcsClient.DeleteObject(r.Context(), *application.ResumePath); err != nil {
-			app.logger.Warnw("failed to delete resume from gcs", "application_id", application.ID, "resume_path", *application.ResumePath, "error", err)
+			app.requestLogger(r).Warnw("failed to delete resume from gcs", "application_id", application.ID, "resume_path", *application.ResumePath, "error", err)
 		}
 	} else {
-		app.logger.Warnw("resume delete requested but gcs is not configured", "application_id", application.ID, "resume_path", *application.ResumePath)
+		app.requestLogger(r).Warnw("resume delete requested but gcs is not configured", "application_id", application.ID, "resume_path", *application.ResumePath)
 	}
 
 	application.ResumePath = nil
@@ -266,7 +266,7 @@ func (app *application) getMyResumeDownloadURLHandler(w http.ResponseWriter, r *
 	}
 
 	if app.gcsClient == nil {
-		app.logger.Warnw("resume download url requested but gcs is not configured", "user_id", user.ID)
+		app.requestLogger(r).Warnw("resume download url requested but gcs is not configured", "user_id", user.ID)
 		writeJSONError(w, http.StatusServiceUnavailable, "resume downloads are not configured")
 		return
 	}
@@ -323,7 +323,7 @@ func (app *application) getResumeDownloadURLHandler(w http.ResponseWriter, r *ht
 	}
 
 	if app.gcsClient == nil {
-		app.logger.Warnw("resume download url requested but gcs is not configured", "application_id", application.ID)
+		app.requestLogger(r).Warnw("resume download url requested but gcs is not configured", "application_id", application.ID)
 		writeJSONError(w, http.StatusServiceUnavailable, "resume downloads are not configured")
 		return
 	}

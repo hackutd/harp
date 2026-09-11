@@ -3,6 +3,7 @@ module github.com/hackutd/harp
 go 1.27.0
 
 require (
+	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/storage v1.60.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi/v5 v5.3.2
@@ -27,7 +28,6 @@ require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
-	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
 	cloud.google.com/go/monitoring v1.24.3 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.32.0 // indirect
