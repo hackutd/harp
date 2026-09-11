@@ -140,7 +140,7 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	app.logger.Infow("dispatching decision emails",
+	app.requestLogger(r).Infow("dispatching decision emails",
 		"mode", payload.Mode,
 		"queued", len(recipients),
 		"skipped", skipped,

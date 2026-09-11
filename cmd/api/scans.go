@@ -138,7 +138,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 		if inserted {
 			go func() {
 				if err := app.mailer.SendWalkInQueuedEmail(scannedUser.Email, position); err != nil {
-					app.logger.Errorw("failed to send walk-in queued email", "error", err)
+					app.requestLogger(r).Errorw("failed to send walk-in queued email", "error", err)
 				}
 			}()
 		}
@@ -262,7 +262,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 	} else {
 		mealGroup, err = app.store.Application.GetMealGroupByUserID(r.Context(), req.UserID)
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
-			app.logger.Warnw("failed to fetch meal group for scan response", "user_id", req.UserID, "error", err)
+			app.requestLogger(r).Warnw("failed to fetch meal group for scan response", "user_id", req.UserID, "error", err)
 		}
 	}
 
@@ -280,7 +280,7 @@ func (app *application) createScanHandler(w http.ResponseWriter, r *http.Request
 func (app *application) assignMealGroup(ctx context.Context, userID string) *string {
 	groups, err := app.store.Settings.GetMealGroups(ctx)
 	if err != nil {
-		app.logger.Warnw("failed to fetch meal groups for assignment", "error", err)
+		app.loggerFromContext(ctx).Warnw("failed to fetch meal groups for assignment", "error", err)
 		return nil
 	}
 
@@ -292,7 +292,7 @@ func (app *application) assignMealGroup(ctx context.Context, userID string) *str
 	if err != nil {
 		// If the user doesn't have an application, we can't assign a group
 		if !errors.Is(err, store.ErrNotFound) {
-			app.logger.Warnw("failed to fetch application for meal group assignment", "user_id", userID, "error", err)
+			app.loggerFromContext(ctx).Warnw("failed to fetch application for meal group assignment", "user_id", userID, "error", err)
 		}
 		return nil
 	}
@@ -305,7 +305,7 @@ func (app *application) assignMealGroup(ctx context.Context, userID string) *str
 
 	assigned, err := app.store.Application.SetMealGroup(ctx, hackerApp.ID, selectedGroup)
 	if err != nil {
-		app.logger.Warnw("failed to set meal group on application", "app_id", hackerApp.ID, "error", err)
+		app.loggerFromContext(ctx).Warnw("failed to set meal group on application", "app_id", hackerApp.ID, "error", err)
 		return nil
 	}
 
@@ -388,7 +388,7 @@ func (app *application) rebalanceScanStatsHandler(w http.ResponseWriter, r *http
 	}
 
 	admin := getUserFromContext(r.Context())
-	app.logger.Infow("scan stats rebalanced", "admin_id", admin.ID)
+	app.requestLogger(r).Infow("scan stats rebalanced", "admin_id", admin.ID)
 
 	if err := app.jsonResponse(w, http.StatusOK, ScanStatsResponse{Stats: stats}); err != nil {
 		app.internalServerError(w, r, err)

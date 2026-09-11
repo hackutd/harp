@@ -4197,7 +4197,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "Returns the health status of the API",
+                "description": "Returns the health status of the API, including database reachability. Responds 503 when the database cannot be reached.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4210,7 +4210,16 @@ const docTemplate = `{
                 "summary": "Health check endpoint",
                 "responses": {
                     "200": {
-                        "description": "status and environment",
+                        "description": "status, environment, version and database state",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "database unreachable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

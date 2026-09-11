@@ -48,6 +48,12 @@ type application struct {
 	// decisionEmailInFlight is set while a decision email run is sending, so
 	// a concurrent request cannot start a second run over the same recipients.
 	decisionEmailInFlight atomic.Bool
+	// dbPinger backs the health check's database probe; nil skips the probe.
+	dbPinger dbPinger
+}
+
+type dbPinger interface {
+	PingContext(ctx context.Context) error
 }
 
 type config struct {
@@ -65,6 +71,7 @@ type config struct {
 	publicCORSOrigin string
 	vapid            vapidConfig
 	appleWallet      appleWalletConfig
+	observability    observabilityConfig
 }
 
 // clientIPConfig selects the trusted source of the client address used for
@@ -143,8 +150,7 @@ func (app *application) mount() http.Handler {
 
 	r.Use(middleware.RequestID)
 	r.Use(app.clientIPMiddleware())
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(app.requestLoggingMiddleware)
 
 	// CORS
 	allowedOrigins := []string{}

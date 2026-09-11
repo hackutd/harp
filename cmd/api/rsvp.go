@@ -246,7 +246,7 @@ func (app *application) logRSVPReset(r *http.Request, kind string, application *
 		actorID = actor.ID
 	}
 
-	app.logger.Infow("rsvp reset by super admin",
+	app.requestLogger(r).Infow("rsvp reset by super admin",
 		"kind", kind,
 		"actor_id", actorID,
 		"application_id", application.ID,

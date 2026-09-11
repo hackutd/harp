@@ -108,7 +108,7 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 	resumesQueued, receiptsQueued := 0, 0
 	if opts.Applications {
 		if app.gcsClient == nil {
-			app.logger.Warnw("uploaded files left in object storage: no GCS client configured",
+			app.requestLogger(r).Warnw("uploaded files left in object storage: no GCS client configured",
 				"resumes", len(paths.Resumes), "travel_receipts", len(paths.TravelReceipts))
 		} else {
 			resumesQueued = len(paths.Resumes)

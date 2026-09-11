@@ -400,7 +400,7 @@ func (app *application) generateTravelReceiptUploadURLHandler(w http.ResponseWri
 	}
 
 	if app.gcsClient == nil {
-		app.logger.Warnw("travel receipt upload url requested but gcs is not configured", "user_id", user.ID)
+		app.requestLogger(r).Warnw("travel receipt upload url requested but gcs is not configured", "user_id", user.ID)
 		writeJSONError(w, http.StatusServiceUnavailable, "receipt uploads are not configured")
 		return
 	}
@@ -467,7 +467,7 @@ func (app *application) getMyTravelReceiptURLHandler(w http.ResponseWriter, r *h
 	}
 
 	if app.gcsClient == nil {
-		app.logger.Warnw("travel receipt download url requested but gcs is not configured", "user_id", user.ID)
+		app.requestLogger(r).Warnw("travel receipt download url requested but gcs is not configured", "user_id", user.ID)
 		writeJSONError(w, http.StatusServiceUnavailable, "receipt downloads are not configured")
 		return
 	}
@@ -525,7 +525,7 @@ func (app *application) getTravelReceiptURLsHandler(w http.ResponseWriter, r *ht
 	}
 
 	if app.gcsClient == nil {
-		app.logger.Warnw("travel receipt download urls requested but gcs is not configured", "application_id", application.ID)
+		app.requestLogger(r).Warnw("travel receipt download urls requested but gcs is not configured", "application_id", application.ID)
 		writeJSONError(w, http.StatusServiceUnavailable, "receipt downloads are not configured")
 		return
 	}
