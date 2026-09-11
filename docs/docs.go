@@ -6014,7 +6014,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; reminders whose send time has already passed are skipped.",
+                "description": "Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; sent, failed and currently-delivering reminders are left alone, and reminders whose send time has already passed are skipped.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6167,7 +6167,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Updates a pending notification. Returns 409 if already sent.",
+                "description": "Updates a pending notification. Returns 409 if already sent or currently being delivered.",
                 "consumes": [
                     "application/json"
                 ],

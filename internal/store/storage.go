@@ -203,6 +203,7 @@ type Storage struct {
 		MarkSent(ctx context.Context, id string, recipientCount int) error
 		ReleaseClaim(ctx context.Context, id, cause string) error
 		MarkFailed(ctx context.Context, id, cause string) error
+		ReleaseUnattempted(ctx context.Context, ids []string) error
 		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
 	}
 	WalkIns interface {

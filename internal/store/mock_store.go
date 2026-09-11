@@ -937,6 +937,11 @@ func (m *MockScheduledNotificationsStore) MarkFailed(ctx context.Context, id, ca
 	return args.Error(0)
 }
 
+func (m *MockScheduledNotificationsStore) ReleaseUnattempted(ctx context.Context, ids []string) error {
+	args := m.Called(ids)
+	return args.Error(0)
+}
+
 func (m *MockScheduledNotificationsStore) GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error) {
 	args := m.Called(lead, targetRole, createdBy, now)
 	if args.Get(0) == nil {

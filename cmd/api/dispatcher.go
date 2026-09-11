@@ -101,16 +101,39 @@ func (app *application) dispatchDueNotifications(ctx context.Context) {
 
 	// The whole batch has to finish inside the lease taken above, or a slow tail
 	// could be claimed by a second instance while this one is still sending.
-	// Anything left over keeps its claim and is picked up once the lease lapses.
-	batchDeadline := claimedAt.Add(dispatcherLease - dispatcherLeaseSafetyMargin)
+	app.dispatchBatch(ctx, due, options, claimedAt.Add(dispatcherLease-dispatcherLeaseSafetyMargin))
+}
 
+// dispatchBatch processes claimed notifications in order until batchDeadline.
+// Whatever it does not reach is handed back unattempted rather than left leased:
+// ClaimDue already charged those rows an attempt, and letting the lease lapse would
+// charge another on the next claim, so a slow push service could exhaust a
+// notification that was never once tried.
+func (app *application) dispatchBatch(ctx context.Context, due []store.ScheduledNotification, options *webpush.Options, batchDeadline time.Time) {
 	for i, n := range due {
 		if !time.Now().Before(batchDeadline) {
 			app.logger.Warnw("stopping dispatch batch before lease expiry",
 				"processed", i, "deferred", len(due)-i)
+			app.releaseUnattempted(ctx, due[i:])
 			return
 		}
 		app.processNotification(ctx, n, options, batchDeadline)
+	}
+}
+
+func (app *application) releaseUnattempted(ctx context.Context, deferred []store.ScheduledNotification) {
+	ids := make([]string, len(deferred))
+	for i, n := range deferred {
+		ids[i] = n.ID
+	}
+
+	// Same detached context as processNotification: this write is what stops the
+	// deferred rows burning an attempt, so it must run even during shutdown.
+	book, cancel := context.WithTimeout(context.WithoutCancel(ctx), dispatcherBookkeepingTimeout)
+	defer cancel()
+
+	if err := app.store.ScheduledNotifications.ReleaseUnattempted(book, ids); err != nil {
+		app.logger.Errorw("failed to release unattempted claims", "count", len(ids), "error", err)
 	}
 }
 

@@ -111,7 +111,7 @@ func (app *application) createScheduledNotificationHandler(w http.ResponseWriter
 // generateScheduleNotificationsHandler builds reminder notifications from the schedule.
 //
 //	@Summary		Generate notifications from schedule (Super Admin)
-//	@Description	Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; reminders whose send time has already passed are skipped.
+//	@Description	Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; sent, failed and currently-delivering reminders are left alone, and reminders whose send time has already passed are skipped.
 //	@Tags			superadmin/notifications
 //	@Accept			json
 //	@Produce		json
@@ -159,7 +159,7 @@ func (app *application) generateScheduleNotificationsHandler(w http.ResponseWrit
 // updateScheduledNotificationHandler updates a pending scheduled notification.
 //
 //	@Summary		Update scheduled notification (Super Admin)
-//	@Description	Updates a pending notification. Returns 409 if already sent.
+//	@Description	Updates a pending notification. Returns 409 if already sent or currently being delivered.
 //	@Tags			superadmin/notifications
 //	@Accept			json
 //	@Produce		json
@@ -205,6 +205,9 @@ func (app *application) updateScheduledNotificationHandler(w http.ResponseWriter
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			app.notFoundResponse(w, r, errors.New("notification not found"))
+			return
+		case errors.Is(err, store.ErrNotificationInFlight):
+			app.conflictResponse(w, r, errors.New("notification is being delivered right now, try again in a moment"))
 			return
 		case errors.Is(err, store.ErrConflict):
 			app.conflictResponse(w, r, errors.New("notification already sent"))

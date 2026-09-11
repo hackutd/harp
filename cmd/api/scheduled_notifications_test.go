@@ -232,6 +232,27 @@ func TestUpdateScheduledNotification(t *testing.T) {
 		mockNotifs.AssertExpectations(t)
 	})
 
+	t.Run("returns 409 while a dispatcher is delivering it", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		mockNotifs.On("Update", mock.AnythingOfType("*store.ScheduledNotification")).Return(store.ErrNotificationInFlight).Once()
+
+		body := `{"title":"Updated","body":"New body","scheduled_at":"2030-01-01T00:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		req = withNotificationRouteParam(req, "n-1")
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusConflict, rr.Code)
+		// Distinct from "already sent": the operator can simply retry this one.
+		require.Contains(t, rr.Body.String(), "being delivered")
+
+		mockNotifs.AssertExpectations(t)
+	})
+
 	t.Run("returns 404 if missing", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)

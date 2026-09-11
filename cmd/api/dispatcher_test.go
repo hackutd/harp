@@ -422,3 +422,64 @@ func TestDispatchDueNotifications(t *testing.T) {
 		require.NoError(t, recorder.releaseCtxErr, "bookkeeping ran on the cancelled context")
 	})
 }
+
+// TestDispatchBatch covers the batch deadline. ClaimDue charges every claimed row
+// an attempt up front, so rows the batch never reaches have to be handed back with
+// that attempt refunded — otherwise a slow push service could exhaust a
+// notification's attempts one deferral at a time without ever trying it.
+func TestDispatchBatch(t *testing.T) {
+	t.Run("hands back the rows it never reached when the deadline hits", func(t *testing.T) {
+		release := make(chan struct{})
+		hang := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			select {
+			case <-release:
+			case <-r.Context().Done():
+			}
+		}))
+		t.Cleanup(func() {
+			close(release)
+			hang.Close()
+		})
+
+		app := newTestDispatcherApp(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+		mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+
+		// n1's only subscription hangs, so its delivery runs into the batch
+		// deadline and is released for retry. n2 and n3 are never started.
+		mockSubs.On("ListByRole", mock.Anything).
+			Return([]store.PushSubscription{newTestPushSub(t, hang.URL)}, nil).Once()
+		mockNotifs.On("ReleaseClaim", "n1", mock.Anything).Return(nil).Once()
+		mockNotifs.On("ReleaseUnattempted", []string{"n2", "n3"}).Return(nil).Once()
+
+		now := time.Now()
+		due := []store.ScheduledNotification{claimed("n1", now, 1), claimed("n2", now, 1), claimed("n3", now, 1)}
+
+		app.dispatchBatch(context.Background(), due, newTestVAPIDOptions(t, hang), now.Add(300*time.Millisecond))
+
+		mockNotifs.AssertExpectations(t)
+		mockSubs.AssertNumberOfCalls(t, "ListByRole", 1)
+		mockNotifs.AssertNotCalled(t, "MarkSent", mock.Anything, mock.Anything)
+		mockNotifs.AssertNotCalled(t, "MarkFailed", mock.Anything, mock.Anything)
+	})
+
+	t.Run("processes the whole batch when the deadline is not reached", func(t *testing.T) {
+		live := newPushServer(t, http.StatusCreated)
+		app := newTestDispatcherApp(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+		mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+
+		mockSubs.On("ListByRole", mock.Anything).
+			Return([]store.PushSubscription{newTestPushSub(t, live.URL)}, nil).Twice()
+		mockNotifs.On("MarkSent", "n1", 1).Return(nil).Once()
+		mockNotifs.On("MarkSent", "n2", 1).Return(nil).Once()
+
+		now := time.Now()
+		due := []store.ScheduledNotification{claimed("n1", now, 1), claimed("n2", now, 1)}
+
+		app.dispatchBatch(context.Background(), due, newTestVAPIDOptions(t, live), now.Add(time.Minute))
+
+		mockNotifs.AssertExpectations(t)
+		mockNotifs.AssertNotCalled(t, "ReleaseUnattempted", mock.Anything)
+	})
+}
