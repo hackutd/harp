@@ -18,6 +18,15 @@ type ScheduledNotification struct {
 	SentAt         *time.Time `json:"sent_at"`
 	RecipientCount int        `json:"recipient_count"`
 	ScheduleID     *string    `json:"schedule_id"`
+	// ClaimedAt is a revocable delivery lease, not a delivery record: a dispatcher
+	// holds it while it fans out pushes, and it is cleared again on every outcome.
+	// Only SentAt means hackers were actually notified.
+	ClaimedAt *time.Time `json:"claimed_at"`
+	Attempts  int        `json:"attempts"`
+	// FailedAt is terminal — the dispatcher gave up. LastError says why, and is also
+	// set (without FailedAt) on a retryable failure so operators can see what happened.
+	FailedAt  *time.Time `json:"failed_at"`
+	LastError *string    `json:"last_error"`
 	// Nil once the author's account is deleted; the notification outlives them.
 	CreatedBy *string   `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
@@ -54,7 +63,7 @@ func (s *ScheduledNotificationsStore) GetByID(ctx context.Context, id string) (*
 	defer cancel()
 
 	query := `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at, claimed_at, attempts, failed_at, last_error
 		FROM scheduled_notifications
 		WHERE id = $1
 	`
@@ -63,6 +72,7 @@ func (s *ScheduledNotificationsStore) GetByID(ctx context.Context, id string) (*
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
 		&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+		&n.ClaimedAt, &n.Attempts, &n.FailedAt, &n.LastError,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -79,7 +89,7 @@ func (s *ScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNoti
 	defer cancel()
 
 	query := `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at, claimed_at, attempts, failed_at, last_error
 		FROM scheduled_notifications
 		ORDER BY scheduled_at DESC
 	`
@@ -96,6 +106,7 @@ func (s *ScheduledNotificationsStore) List(ctx context.Context) ([]ScheduledNoti
 		if err := rows.Scan(
 			&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
 			&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+			&n.ClaimedAt, &n.Attempts, &n.FailedAt, &n.LastError,
 		); err != nil {
 			return nil, err
 		}
@@ -110,7 +121,7 @@ func (s *ScheduledNotificationsStore) ListSentForRole(ctx context.Context, role 
 	defer cancel()
 
 	query := `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at, claimed_at, attempts, failed_at, last_error
 		FROM scheduled_notifications
 		WHERE sent_at IS NOT NULL AND (target_role IS NULL OR target_role = $1)
 		ORDER BY sent_at DESC
@@ -129,6 +140,7 @@ func (s *ScheduledNotificationsStore) ListSentForRole(ctx context.Context, role 
 		if err := rows.Scan(
 			&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
 			&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+			&n.ClaimedAt, &n.Attempts, &n.FailedAt, &n.LastError,
 		); err != nil {
 			return nil, err
 		}
@@ -142,16 +154,21 @@ func (s *ScheduledNotificationsStore) Update(ctx context.Context, n *ScheduledNo
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
+	// Editing clears any failure state, so re-saving a failed notification is the
+	// operator's retry button — no separate endpoint needed.
 	query := `
 		UPDATE scheduled_notifications
-		SET title = $1, body = $2, url = $3, target_role = $4, scheduled_at = $5
+		SET title = $1, body = $2, url = $3, target_role = $4, scheduled_at = $5,
+		    attempts = 0, failed_at = NULL, claimed_at = NULL, last_error = NULL
 		WHERE id = $6 AND sent_at IS NULL
-		RETURNING sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
+		RETURNING sent_at, recipient_count, schedule_id, created_by, created_at, updated_at,
+		          claimed_at, attempts, failed_at, last_error
 	`
 
 	err := s.db.QueryRowContext(ctx, query,
 		n.Title, n.Body, n.URL, n.TargetRole, n.ScheduledAt, n.ID,
-	).Scan(&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt)
+	).Scan(&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+		&n.ClaimedAt, &n.Attempts, &n.FailedAt, &n.LastError)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Could be not found or already sent — distinguish
@@ -191,7 +208,11 @@ func (s *ScheduledNotificationsStore) Delete(ctx context.Context, id string) err
 	return nil
 }
 
-func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error) {
+// ClaimDue leases up to limit due notifications to this dispatcher. The lease is
+// claimed_at, NOT sent_at: a process that dies mid-delivery leaves the row claimable
+// again once lease elapses, instead of dropping the notification forever. Rows that
+// have burned maxAttempts are left for MarkFailed rather than retried indefinitely.
+func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Time, lease time.Duration, maxAttempts, limit int) ([]ScheduledNotification, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
@@ -202,13 +223,17 @@ func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Tim
 	defer tx.Rollback()
 
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at
+		SELECT id, title, body, url, target_role, scheduled_at, sent_at, recipient_count, schedule_id, created_by, created_at, updated_at, claimed_at, attempts, failed_at, last_error
 		FROM scheduled_notifications
-		WHERE scheduled_at <= $1 AND sent_at IS NULL
+		WHERE scheduled_at <= $1
+		  AND sent_at IS NULL
+		  AND failed_at IS NULL
+		  AND attempts < $2
+		  AND (claimed_at IS NULL OR claimed_at < $3)
 		ORDER BY scheduled_at
+		LIMIT $4
 		FOR UPDATE SKIP LOCKED
-		LIMIT $2
-	`, now, limit)
+	`, now, maxAttempts, now.Add(-lease), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +245,7 @@ func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Tim
 		if err := rows.Scan(
 			&n.ID, &n.Title, &n.Body, &n.URL, &n.TargetRole, &n.ScheduledAt,
 			&n.SentAt, &n.RecipientCount, &n.ScheduleID, &n.CreatedBy, &n.CreatedAt, &n.UpdatedAt,
+			&n.ClaimedAt, &n.Attempts, &n.FailedAt, &n.LastError,
 		); err != nil {
 			rows.Close()
 			return nil, err
@@ -241,14 +267,21 @@ func (s *ScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Tim
 
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE scheduled_notifications
-		SET sent_at = now()
+		SET claimed_at = $2, attempts = attempts + 1
 		WHERE id = ANY($1::uuid[])
-	`, ids); err != nil {
+	`, ids, now); err != nil {
 		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
+	}
+
+	// Reflect the update we just committed so the caller can tell whether this was
+	// the final attempt without re-reading the rows.
+	for i := range claimed {
+		claimed[i].ClaimedAt = &now
+		claimed[i].Attempts++
 	}
 
 	return claimed, nil
@@ -342,14 +375,59 @@ func (s *ScheduledNotificationsStore) GenerateFromSchedule(ctx context.Context, 
 	return result, nil
 }
 
+// maxLastErrorLen bounds what a delivery failure can write into last_error.
+const maxLastErrorLen = 500
+
+func truncateCause(cause string) string {
+	if len(cause) <= maxLastErrorLen {
+		return cause
+	}
+	return cause[:maxLastErrorLen-1] + "\u2026"
+}
+
+// The three methods below resolve a lease taken by ClaimDue. Each guards on
+// sent_at IS NULL so nothing can un-send a completed notification, and none treat
+// zero rows affected as an error: the row may legitimately have been deleted
+// mid-flight by GenerateFromSchedule or the delete handler.
+
+// MarkSent records an actual delivery and releases the lease.
 func (s *ScheduledNotificationsStore) MarkSent(ctx context.Context, id string, recipientCount int) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE scheduled_notifications
-		SET recipient_count = $1
-		WHERE id = $2
+		SET sent_at = now(), recipient_count = $1, claimed_at = NULL, last_error = NULL
+		WHERE id = $2 AND sent_at IS NULL
 	`, recipientCount, id)
+	return err
+}
+
+// ReleaseClaim returns a notification to the pending pool after a retryable
+// failure. The attempts counter is left as ClaimDue incremented it, so repeated
+// failures still converge on MarkFailed.
+func (s *ScheduledNotificationsStore) ReleaseClaim(ctx context.Context, id, cause string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE scheduled_notifications
+		SET claimed_at = NULL, last_error = $1
+		WHERE id = $2 AND sent_at IS NULL
+	`, truncateCause(cause), id)
+	return err
+}
+
+// MarkFailed gives up on a notification for good. The row stays visible with its
+// reason rather than silently sitting in the pending list forever.
+func (s *ScheduledNotificationsStore) MarkFailed(ctx context.Context, id, cause string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE scheduled_notifications
+		SET failed_at = now(), claimed_at = NULL, last_error = $1
+		WHERE id = $2 AND sent_at IS NULL
+	`, truncateCause(cause), id)
 	return err
 }

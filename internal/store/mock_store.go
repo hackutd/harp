@@ -914,8 +914,8 @@ func (m *MockScheduledNotificationsStore) Delete(ctx context.Context, id string)
 	return args.Error(0)
 }
 
-func (m *MockScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error) {
-	args := m.Called(now, limit)
+func (m *MockScheduledNotificationsStore) ClaimDue(ctx context.Context, now time.Time, lease time.Duration, maxAttempts, limit int) ([]ScheduledNotification, error) {
+	args := m.Called(now, lease, maxAttempts, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -924,6 +924,16 @@ func (m *MockScheduledNotificationsStore) ClaimDue(ctx context.Context, now time
 
 func (m *MockScheduledNotificationsStore) MarkSent(ctx context.Context, id string, recipientCount int) error {
 	args := m.Called(id, recipientCount)
+	return args.Error(0)
+}
+
+func (m *MockScheduledNotificationsStore) ReleaseClaim(ctx context.Context, id, cause string) error {
+	args := m.Called(id, cause)
+	return args.Error(0)
+}
+
+func (m *MockScheduledNotificationsStore) MarkFailed(ctx context.Context, id, cause string) error {
+	args := m.Called(id, cause)
 	return args.Error(0)
 }
 

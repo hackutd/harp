@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -485,5 +486,143 @@ func TestIntegrationDeleteHacker(t *testing.T) {
 	want := map[string]int{"check_in": 1}
 	if len(got) != len(want) || got["check_in"] != want["check_in"] {
 		t.Errorf("scan_stats = %v, want %v", got, want)
+	}
+}
+
+// TestIntegrationNotificationLease pins the delivery-lease contract that keeps a
+// scheduled notification from being lost. ClaimDue used to set sent_at inside its
+// own transaction, so any interruption before the pushes went out marked the
+// notification delivered forever; these assertions are what stops that returning.
+func TestIntegrationNotificationLease(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `TRUNCATE scheduled_notifications CASCADE`); err != nil {
+		t.Fatalf("truncate failed: %v", err)
+	}
+
+	s := &ScheduledNotificationsStore{db: db}
+	lease := 2 * time.Minute
+	const maxAttempts = 5
+
+	due := ScheduledNotification{
+		Title:       "Opening Ceremony",
+		Body:        "Starting in 15 minutes",
+		ScheduledAt: time.Now().Add(-time.Minute),
+	}
+	if err := s.Create(ctx, &due); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	claimOnce := func(t *testing.T, at time.Time) *ScheduledNotification {
+		t.Helper()
+		rows, err := s.ClaimDue(ctx, at, lease, maxAttempts, 10)
+		if err != nil {
+			t.Fatalf("ClaimDue failed: %v", err)
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		return &rows[0]
+	}
+
+	// A claim is a lease, not a delivery record.
+	first := claimOnce(t, time.Now())
+	if first == nil {
+		t.Fatal("due notification was not claimed")
+	}
+	if first.SentAt != nil {
+		t.Error("sent_at was set at claim time; delivery had not been attempted")
+	}
+	if first.ClaimedAt == nil {
+		t.Error("claimed_at was not set")
+	}
+	if first.Attempts != 1 {
+		t.Errorf("attempts = %d, want 1", first.Attempts)
+	}
+
+	// A live lease keeps a second dispatcher off the same row.
+	if again := claimOnce(t, time.Now()); again != nil {
+		t.Error("notification was claimed twice while its lease was live")
+	}
+
+	// The crash-recovery path: a process that dies mid-delivery leaves a lease that
+	// expires, and the notification becomes claimable again instead of being lost.
+	recovered := claimOnce(t, time.Now().Add(lease+time.Minute))
+	if recovered == nil {
+		t.Fatal("expired lease was never reclaimed; the notification would be lost")
+	}
+	if recovered.Attempts != 2 {
+		t.Errorf("attempts = %d after reclaim, want 2", recovered.Attempts)
+	}
+
+	// A retryable failure hands the row straight back.
+	if err := s.ReleaseClaim(ctx, recovered.ID, "list subscriptions: db down"); err != nil {
+		t.Fatalf("ReleaseClaim failed: %v", err)
+	}
+	released, err := s.GetByID(ctx, recovered.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if released.ClaimedAt != nil || released.SentAt != nil {
+		t.Error("ReleaseClaim left the row leased or marked sent")
+	}
+	if released.LastError == nil {
+		t.Error("ReleaseClaim did not record a cause")
+	}
+	if claimOnce(t, time.Now()) == nil {
+		t.Error("released notification was not picked up again")
+	}
+
+	// Exhausting attempts takes the row out of the claim pool for good.
+	if _, err := db.ExecContext(ctx,
+		`UPDATE scheduled_notifications SET attempts = $1, claimed_at = NULL WHERE id = $2`,
+		maxAttempts, recovered.ID); err != nil {
+		t.Fatalf("attempt bump failed: %v", err)
+	}
+	if claimOnce(t, time.Now()) != nil {
+		t.Error("notification was claimed past its attempt limit")
+	}
+	if err := s.MarkFailed(ctx, recovered.ID, "gave up"); err != nil {
+		t.Fatalf("MarkFailed failed: %v", err)
+	}
+	failed, err := s.GetByID(ctx, recovered.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if failed.FailedAt == nil || failed.SentAt != nil {
+		t.Error("MarkFailed did not record a terminal, unsent failure")
+	}
+
+	// Editing clears the failure, which is the operator's retry path.
+	failed.Title = "Opening Ceremony (moved)"
+	failed.ScheduledAt = time.Now().Add(-time.Minute)
+	if err := s.Update(ctx, failed); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+	if failed.FailedAt != nil || failed.Attempts != 0 || failed.LastError != nil {
+		t.Errorf("Update did not reset failure state: failed_at=%v attempts=%d last_error=%v",
+			failed.FailedAt, failed.Attempts, failed.LastError)
+	}
+	requeued := claimOnce(t, time.Now())
+	if requeued == nil {
+		t.Fatal("edited notification was not re-queued")
+	}
+
+	// Only MarkSent means delivered — and it is final.
+	if err := s.MarkSent(ctx, requeued.ID, 42); err != nil {
+		t.Fatalf("MarkSent failed: %v", err)
+	}
+	sent, err := s.GetByID(ctx, requeued.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if sent.SentAt == nil || sent.RecipientCount != 42 || sent.ClaimedAt != nil {
+		t.Errorf("MarkSent state wrong: sent_at=%v recipients=%d claimed_at=%v",
+			sent.SentAt, sent.RecipientCount, sent.ClaimedAt)
+	}
+	if claimOnce(t, time.Now().Add(time.Hour)) != nil {
+		t.Error("a delivered notification was claimed again")
 	}
 }
