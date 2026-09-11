@@ -90,7 +90,7 @@ export interface Application {
   user_id: string;
   status: ApplicationStatus;
   responses: Record<string, unknown>;
-  /** Embedded on GET /applications/me; absent on mutation responses. */
+  /** Embedded on application GET/PATCH and resume DELETE responses. */
   application_schema?: ApplicationSchemaField[];
   /** Total scan points; populated on read endpoints. */
   points?: number;

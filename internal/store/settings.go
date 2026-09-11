@@ -149,6 +149,7 @@ func (s *SettingsStore) GetMany(ctx context.Context, keys ...string) (map[string
 const SettingsKeyApplicationSchema = "application_schema"
 const SettingsKeyRSVPSchema = "rsvp_schema"
 const SettingsKeyRSVPEnabled = "rsvp_enabled"
+const SettingsKeyCheckInRequiresRSVP = "check_in_requires_rsvp"
 const SettingsKeyTravelRSVPSchema = "travel_rsvp_schema"
 const SettingsKeyTravelRSVPEnabled = "travel_rsvp_enabled"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
@@ -1201,6 +1202,56 @@ func (s *SettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error 
 	}
 
 	s.invalidate(SettingsKeyRSVPEnabled)
+	return nil
+}
+
+// GetCheckInRequiresRSVP returns whether the scanner refuses to check in a
+// hacker who has not confirmed their RSVP. Defaults to true so capacity and
+// catering counts hold by default; a hackathon that never runs the RSVP form
+// turns it off, since every application would otherwise sit at 'pending'.
+//
+// This is deliberately separate from SettingsKeyRSVPEnabled, which is a
+// deadline window super admins close before the event — reusing it would switch
+// the door gate off exactly when the event starts.
+func (s *SettingsStore) GetCheckInRequiresRSVP(ctx context.Context) (bool, error) {
+	value, found, err := s.getCachedRaw(ctx, SettingsKeyCheckInRequiresRSVP)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
+	}
+
+	var required bool
+	if err := json.Unmarshal(value, &required); err != nil {
+		return false, err
+	}
+
+	return required, nil
+}
+
+// SetCheckInRequiresRSVP updates whether check-in requires a confirmed RSVP.
+func (s *SettingsStore) SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyCheckInRequiresRSVP, string(jsonValue))
+	if err != nil {
+		return err
+	}
+
+	s.invalidate(SettingsKeyCheckInRequiresRSVP)
 	return nil
 }
 

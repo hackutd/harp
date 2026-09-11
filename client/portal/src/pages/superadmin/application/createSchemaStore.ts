@@ -68,6 +68,12 @@ function buildSections(fields: ApplicationSchemaField[]): SectionDef[] {
 /**
  * Stamp every field with the correct section_label and section_order
  * based on the current sections array. Also recalculates display_order.
+ *
+ * Fields are sorted into the order the editor displays them — sections as they
+ * appear in the sections array, fields by the display_order the move arrows
+ * rewrite — before being renumbered. Renumbering in raw array order instead
+ * would hand a moved field its original position straight back, since moveField
+ * swaps display_order without touching where the fields sit in the array.
  */
 function stampFields(
   fields: ApplicationSchemaField[],
@@ -78,7 +84,14 @@ function stampFields(
   );
   const sectionCounters: Record<string, number> = {};
 
-  return fields.map((f) => {
+  const ordered = [...fields].sort((a, b) => {
+    const aSection = sectionMeta.get(a.section)?.order ?? 999;
+    const bSection = sectionMeta.get(b.section)?.order ?? 999;
+    if (aSection !== bSection) return aSection - bSection;
+    return a.display_order - b.display_order;
+  });
+
+  return ordered.map((f) => {
     const meta = sectionMeta.get(f.section);
     sectionCounters[f.section] = (sectionCounters[f.section] ?? 0) + 1;
     return {

@@ -7,7 +7,8 @@ import type { ApplicationSchemaField } from "@/types";
  * are judged against the answers on screen.
  */
 export function buildApplicationResolver(fields: ApplicationSchemaField[]) {
-  return buildSchemaResolver(fields);
+  // Required questions still gate Continue; outdated choices only gate Submit.
+  return buildSchemaResolver(fields, { enforceOptions: false });
 }
 
 // Select options — provide human-readable labels for field values

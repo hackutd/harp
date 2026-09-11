@@ -49,7 +49,7 @@ type Storage struct {
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
 		GetByID(ctx context.Context, id string) (*Application, error)
-		GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error)
+		GetCheckInEligibility(ctx context.Context, userID string) (*CheckInEligibility, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application, travelOptInFieldID string) error
@@ -79,6 +79,8 @@ type Storage struct {
 		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetRSVPEnabled(ctx context.Context) (bool, error)
 		SetRSVPEnabled(ctx context.Context, enabled bool) error
+		GetCheckInRequiresRSVP(ctx context.Context) (bool, error)
+		SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error
 		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
 		UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		// RestoreDefaultFormSchema overwrites one of the editable form

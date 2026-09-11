@@ -52,7 +52,7 @@ export default function FormsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-5">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-1">
         <Skeleton className="h-8 w-72" />
         <div className="grid gap-4 xl:grid-cols-3">
           {[...Array(3)].map((_, index) => (
@@ -79,8 +79,12 @@ export default function FormsPage() {
     return <FormDetail form={form} data={data} onRefresh={() => load(true)} />;
   }
 
+  // min-h-0/flex-1/overflow-y-auto: AdminLayout pins the admin shell to h-svh
+  // and hides its overflow, so anything taller than the viewport is clipped
+  // with no way to reach it. The detail view already scrolls per tab; this is
+  // the overview's equivalent.
   return (
-    <div className="space-y-5">
+    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-1">
       <FormsOverview
         data={data}
         refreshing={refreshing}

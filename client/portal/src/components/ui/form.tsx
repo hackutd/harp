@@ -81,7 +81,11 @@ function FormItem({ className, ...props }: React.ComponentProps<"div">) {
     <FormItemContext.Provider value={{ id }}>
       <div
         data-slot="form-item"
-        className={cn("grid gap-2", className)}
+        // minmax(0,1fr) pins the column to the container instead of letting an
+        // implicit auto track grow to the widest label. A long question would
+        // otherwise size the track past the viewport and scroll the page
+        // sideways on a phone.
+        className={cn("grid grid-cols-[minmax(0,1fr)] gap-2", className)}
         {...props}
       />
     </FormItemContext.Provider>
@@ -98,7 +102,10 @@ function FormLabel({
     <Label
       data-slot="form-label"
       data-error={!!error}
-      className={cn("data-[error=true]:text-destructive", className)}
+      className={cn(
+        "min-w-0 break-words data-[error=true]:text-destructive",
+        className,
+      )}
       htmlFor={formItemId}
       {...props}
     />

@@ -64,7 +64,8 @@ func TestCreateScan(t *testing.T) {
 		hackerApp := &store.Application{ID: "app-1", UserID: "user-1", MealGroup: nil}
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
-		mockApps.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApps.On("GetCheckInEligibility", "user-1").Return(&store.CheckInEligibility{Status: store.StatusAccepted, RSVPStatus: store.RSVPConfirmed}, nil).Once()
 		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
 		mockApps.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).
@@ -143,7 +144,8 @@ func TestCreateScan(t *testing.T) {
 		hackerApp := &store.Application{ID: "app-1", UserID: "user-1", MealGroup: &existing}
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
-		mockApps.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApps.On("GetCheckInEligibility", "user-1").Return(&store.CheckInEligibility{Status: store.StatusAccepted, RSVPStatus: store.RSVPConfirmed}, nil).Once()
 		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
 		mockApps.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
@@ -179,7 +181,8 @@ func TestCreateScan(t *testing.T) {
 		mockApps := app.store.Application.(*store.MockApplicationStore)
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
-		mockApps.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApps.On("GetCheckInEligibility", "user-1").Return(&store.CheckInEligibility{Status: store.StatusAccepted, RSVPStatus: store.RSVPConfirmed}, nil).Once()
 		mockSettings.On("GetMealGroups").Return(nil, errors.New("db error")).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
 
@@ -259,7 +262,8 @@ func TestCreateScan(t *testing.T) {
 		mockApp := app.store.Application.(*store.MockApplicationStore)
 
 		mockSettings.On("GetScanTypes").Return(scanTypes, nil).Once()
-		mockApp.On("GetStatusByUserID", "user-1").Return(store.StatusAccepted, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApp.On("GetCheckInEligibility", "user-1").Return(&store.CheckInEligibility{Status: store.StatusAccepted, RSVPStatus: store.RSVPConfirmed}, nil).Once()
 		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(store.ErrConflict).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
@@ -517,13 +521,16 @@ func TestCreateScan(t *testing.T) {
 		checkResponseCode(t, http.StatusCreated, rr.Code)
 	})
 
-	t.Run("check-in scan of waitlisted user returns 403", func(t *testing.T) {
+	t.Run("check-in scan of waitlisted user returns 403 naming the status", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
 		mockApp := app.store.Application.(*store.MockApplicationStore)
 
 		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
-		mockApp.On("GetStatusByUserID", "user-1").Return(store.StatusWaitlisted, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApp.On("GetCheckInEligibility", "user-1").
+			Return(&store.CheckInEligibility{Status: store.StatusWaitlisted, RSVPStatus: store.RSVPPending}, nil).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -533,18 +540,197 @@ func TestCreateScan(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
 		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		// The volunteer needs the real reason, not a flat "forbidden".
+		assert.Contains(t, rr.Body.String(), "waitlisted")
+
+		mockScans.AssertNotCalled(t, "Create", mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
+	})
+
+	// The RSVP gate: capacity and catering are planned off the RSVP-confirmed
+	// count, so an accepted hacker who never claimed their spot is not let in.
+	rsvpRejection := func(t *testing.T, rsvp store.RSVPStatus, wantMessage string) {
+		t.Helper()
+
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApp.On("GetCheckInEligibility", "user-1").
+			Return(&store.CheckInEligibility{Status: store.StatusAccepted, RSVPStatus: rsvp}, nil).Once()
+		mockSettings.On("GetCheckInRequiresRSVP").Return(true, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		assert.Contains(t, rr.Body.String(), wantMessage)
+
+		// Nothing may be written: a rejected hacker must not consume a seat,
+		// a meal group, or unlock downstream scans.
+		mockScans.AssertNotCalled(t, "Create", mock.Anything)
+		mockApp.AssertNotCalled(t, "SetMealGroup", mock.Anything, mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
+	}
+
+	t.Run("check-in of accepted user with pending rsvp returns 403", func(t *testing.T) {
+		rsvpRejection(t, store.RSVPPending, "rsvp not confirmed")
+	})
+
+	t.Run("check-in of accepted user who declined rsvp returns 403", func(t *testing.T) {
+		rsvpRejection(t, store.RSVPDeclined, "rsvp declined")
+	})
+
+	t.Run("check-in of promoted walk-in with pending rsvp succeeds", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		groups := []string{"A", "B"}
+		hackerApp := &store.Application{ID: "app-1", UserID: "user-1", MealGroup: nil}
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		// Promotion at the door is the walk-in's claim on a spot; they never
+		// answer the RSVP form, so the gate must not consult it.
+		mockApp.On("GetCheckInEligibility", "user-1").Return(&store.CheckInEligibility{
+			Status:         store.StatusAccepted,
+			RSVPStatus:     store.RSVPPending,
+			PromotedWalkIn: true,
+		}, nil).Once()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockSettings.On("GetMealGroups").Return(groups, nil).Once()
+		mockApp.On("GetByUserID", "user-1").Return(hackerApp, nil).Once()
+		mockApp.On("SetMealGroup", "app-1", mock.AnythingOfType("string")).Return(&groups[0], nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		var resp struct {
+			Data CreateScanResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
+		require.NotNil(t, resp.Data.MealGroup)
+
+		mockSettings.AssertNotCalled(t, "GetCheckInRequiresRSVP")
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
+	})
+
+	t.Run("check-in with pending rsvp succeeds when the requirement is off", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApp.On("GetCheckInEligibility", "user-1").
+			Return(&store.CheckInEligibility{Status: store.StatusAccepted, RSVPStatus: store.RSVPPending}, nil).Once()
+		// A hackathon that never runs the RSVP form leaves every application
+		// pending, so the gate has to be switchable.
+		mockSettings.On("GetCheckInRequiresRSVP").Return(false, nil).Once()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockSettings.On("GetMealGroups").Return([]string{}, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
 
 		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+		mockApp.AssertExpectations(t)
+	})
+
+	t.Run("re-scan of a checked-in user is a 409 before the rsvp gate", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(true, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"check_in"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusConflict, rr.Code)
+		assert.Contains(t, rr.Body.String(), "already checked in")
+
+		// Someone already inside the building must not be turned away by a gate
+		// that did not exist when they checked in.
+		mockApp.AssertNotCalled(t, "GetCheckInEligibility", mock.Anything)
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
+	})
+
+	t.Run("meal scan is unaffected by rsvp status", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		mockApp := app.store.Application.(*store.MockApplicationStore)
+
+		mealGroup := "A"
+
+		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(true, nil).Once()
+		mockScans.On("Create", mock.AnythingOfType("*store.Scan")).Return(nil).Once()
+		mockApp.On("GetMealGroupByUserID", "user-1").Return(&mealGroup, nil).Once()
+
+		body := `{"user_id":"user-1","scan_type":"lunch"}`
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
+		checkResponseCode(t, http.StatusCreated, rr.Code)
+
+		// The gate lives in the check-in branch only; item scans still key off
+		// the check-in scan row.
+		mockApp.AssertNotCalled(t, "GetCheckInEligibility", mock.Anything)
+		mockSettings.AssertNotCalled(t, "GetCheckInRequiresRSVP")
+		mockSettings.AssertExpectations(t)
+		mockScans.AssertExpectations(t)
 		mockApp.AssertExpectations(t)
 	})
 
 	t.Run("check-in scan of user with no application returns 403", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
 		mockApp := app.store.Application.(*store.MockApplicationStore)
 
 		mockSettings.On("GetScanTypes").Return(walkInScanTypes, nil).Once()
-		mockApp.On("GetStatusByUserID", "user-1").Return(store.ApplicationStatus(""), store.ErrNotFound).Once()
+		mockScans.On("HasCheckIn", "user-1", []string{"check_in"}).Return(false, nil).Once()
+		mockApp.On("GetCheckInEligibility", "user-1").Return(nil, store.ErrNotFound).Once()
 
 		body := `{"user_id":"user-1","scan_type":"check_in"}`
 		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -554,7 +740,9 @@ func TestCreateScan(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.createScanHandler))
 		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		assert.Contains(t, rr.Body.String(), "no application on file")
 
+		mockScans.AssertNotCalled(t, "Create", mock.Anything)
 		mockSettings.AssertExpectations(t)
 		mockApp.AssertExpectations(t)
 	})
