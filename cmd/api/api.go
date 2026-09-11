@@ -70,6 +70,7 @@ type config struct {
 	supertokens      supertokensConfig
 	publicCORSOrigin string
 	vapid            vapidConfig
+	dispatcher       dispatcherConfig
 	appleWallet      appleWalletConfig
 	observability    observabilityConfig
 }
@@ -89,6 +90,14 @@ type vapidConfig struct {
 	// allowedEndpointHosts is the push-service host allowlist (exact or
 	// subdomain match) that subscription endpoints must fall under.
 	allowedEndpointHosts []string
+}
+
+// dispatcherConfig tunes the scheduled-notification dispatcher.
+type dispatcherConfig struct {
+	// maxLateness is how far past its scheduled time a notification may still be
+	// delivered. Past it the notification is failed rather than sent, because a
+	// "starting in 15 minutes" reminder arriving an hour late misinforms hackers.
+	maxLateness time.Duration
 }
 
 type supertokensConfig struct {

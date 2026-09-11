@@ -111,6 +111,9 @@ func main() {
 			googleClientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
 			googleClientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
 		},
+		dispatcher: dispatcherConfig{
+			maxLateness: time.Duration(env.GetInt("DISPATCHER_MAX_LATENESS_MINUTES", 30)) * time.Minute,
+		},
 		vapid: vapidConfig{
 			publicKey:            env.GetString("VAPID_PUBLIC_KEY", ""),
 			privateKey:           env.GetString("VAPID_PRIVATE_KEY", ""),

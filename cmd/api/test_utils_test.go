@@ -83,6 +83,10 @@ func newTestApplication(t *testing.T) *application {
 			vapid: vapidConfig{
 				allowedEndpointHosts: defaultPushEndpointHosts,
 			},
+			// Without this a zero maxLateness would expire every notification.
+			dispatcher: dispatcherConfig{
+				maxLateness: 30 * time.Minute,
+			},
 		},
 		store:         mockStore,
 		logger:        logger,

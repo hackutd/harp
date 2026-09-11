@@ -201,8 +201,11 @@ type Storage struct {
 		ListSentForRole(ctx context.Context, role UserRole, limit int) ([]ScheduledNotification, error)
 		Update(ctx context.Context, n *ScheduledNotification) error
 		Delete(ctx context.Context, id string) error
-		ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error)
+		ClaimDue(ctx context.Context, now time.Time, lease time.Duration, maxAttempts, limit int) ([]ScheduledNotification, error)
 		MarkSent(ctx context.Context, id string, recipientCount int) error
+		ReleaseClaim(ctx context.Context, id, cause string) error
+		MarkFailed(ctx context.Context, id, cause string) error
+		ReleaseUnattempted(ctx context.Context, ids []string) error
 		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
 	}
 	WalkIns interface {

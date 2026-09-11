@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -487,6 +488,269 @@ func TestIntegrationDeleteHacker(t *testing.T) {
 	want := map[string]int{"check_in": 1}
 	if len(got) != len(want) || got["check_in"] != want["check_in"] {
 		t.Errorf("scan_stats = %v, want %v", got, want)
+	}
+}
+
+// TestIntegrationNotificationLease pins the delivery-lease contract that keeps a
+// scheduled notification from being lost. ClaimDue used to set sent_at inside its
+// own transaction, so any interruption before the pushes went out marked the
+// notification delivered forever; these assertions are what stops that returning.
+func TestIntegrationNotificationLease(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `TRUNCATE scheduled_notifications CASCADE`); err != nil {
+		t.Fatalf("truncate failed: %v", err)
+	}
+
+	s := &ScheduledNotificationsStore{db: db}
+	lease := 2 * time.Minute
+	const maxAttempts = 5
+
+	due := ScheduledNotification{
+		Title:       "Opening Ceremony",
+		Body:        "Starting in 15 minutes",
+		ScheduledAt: time.Now().Add(-time.Minute),
+	}
+	if err := s.Create(ctx, &due); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	claimOnce := func(t *testing.T, at time.Time) *ScheduledNotification {
+		t.Helper()
+		rows, err := s.ClaimDue(ctx, at, lease, maxAttempts, 10)
+		if err != nil {
+			t.Fatalf("ClaimDue failed: %v", err)
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		return &rows[0]
+	}
+
+	// A claim is a lease, not a delivery record.
+	first := claimOnce(t, time.Now())
+	if first == nil {
+		t.Fatal("due notification was not claimed")
+	}
+	if first.SentAt != nil {
+		t.Error("sent_at was set at claim time; delivery had not been attempted")
+	}
+	if first.ClaimedAt == nil {
+		t.Error("claimed_at was not set")
+	}
+	if first.Attempts != 1 {
+		t.Errorf("attempts = %d, want 1", first.Attempts)
+	}
+
+	// A live lease keeps a second dispatcher off the same row.
+	if again := claimOnce(t, time.Now()); again != nil {
+		t.Error("notification was claimed twice while its lease was live")
+	}
+
+	// Nor can an operator edit it mid-delivery. Before the lease a claimed row had
+	// sent_at set and Update refused it; clearing the lease here instead would let
+	// MarkSent stamp the edited content as sent once the original push landed.
+	edited := *first
+	edited.Title = "Opening Ceremony (edited mid-flight)"
+	edited.ScheduledAt = time.Now().Add(time.Hour)
+	if err := s.Update(ctx, &edited); !errors.Is(err, ErrNotificationInFlight) {
+		t.Errorf("Update on a leased row: got %v, want ErrNotificationInFlight", err)
+	} else if !errors.Is(err, ErrConflict) {
+		t.Error("ErrNotificationInFlight must still read as a conflict for existing callers")
+	}
+	untouched, err := s.GetByID(ctx, first.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if untouched.Title != first.Title || untouched.ClaimedAt == nil || untouched.Attempts != 1 {
+		t.Errorf("refused Update still changed the row: title=%q claimed_at=%v attempts=%d",
+			untouched.Title, untouched.ClaimedAt, untouched.Attempts)
+	}
+
+	// A claim the batch never reached is handed back with its attempt refunded, and
+	// is claimable again straight away rather than after the lease lapses.
+	if err := s.ReleaseUnattempted(ctx, []string{first.ID}); err != nil {
+		t.Fatalf("ReleaseUnattempted failed: %v", err)
+	}
+	// Refunding a row that is not leased is a no-op, not a way to drive attempts negative.
+	if err := s.ReleaseUnattempted(ctx, []string{first.ID}); err != nil {
+		t.Fatalf("second ReleaseUnattempted failed: %v", err)
+	}
+	if err := s.ReleaseUnattempted(ctx, nil); err != nil {
+		t.Fatalf("ReleaseUnattempted(nil) failed: %v", err)
+	}
+	refunded, err := s.GetByID(ctx, first.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if refunded.ClaimedAt != nil || refunded.Attempts != 0 {
+		t.Errorf("ReleaseUnattempted left claimed_at=%v attempts=%d, want NULL/0", refunded.ClaimedAt, refunded.Attempts)
+	}
+	reclaimed := claimOnce(t, time.Now())
+	if reclaimed == nil {
+		t.Fatal("unattempted notification was not claimable again")
+	}
+	if reclaimed.Attempts != 1 {
+		t.Errorf("attempts = %d after reclaim, want 1", reclaimed.Attempts)
+	}
+
+	// The crash-recovery path: a process that dies mid-delivery leaves a lease that
+	// expires, and the notification becomes claimable again instead of being lost.
+	recovered := claimOnce(t, time.Now().Add(lease+time.Minute))
+	if recovered == nil {
+		t.Fatal("expired lease was never reclaimed; the notification would be lost")
+	}
+	if recovered.Attempts != 2 {
+		t.Errorf("attempts = %d after reclaim, want 2", recovered.Attempts)
+	}
+
+	// A retryable failure hands the row straight back.
+	if err := s.ReleaseClaim(ctx, recovered.ID, "list subscriptions: db down"); err != nil {
+		t.Fatalf("ReleaseClaim failed: %v", err)
+	}
+	released, err := s.GetByID(ctx, recovered.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if released.ClaimedAt != nil || released.SentAt != nil {
+		t.Error("ReleaseClaim left the row leased or marked sent")
+	}
+	if released.LastError == nil {
+		t.Error("ReleaseClaim did not record a cause")
+	}
+	if claimOnce(t, time.Now()) == nil {
+		t.Error("released notification was not picked up again")
+	}
+
+	// Exhausting attempts takes the row out of the claim pool for good.
+	if _, err := db.ExecContext(ctx,
+		`UPDATE scheduled_notifications SET attempts = $1, claimed_at = NULL WHERE id = $2`,
+		maxAttempts, recovered.ID); err != nil {
+		t.Fatalf("attempt bump failed: %v", err)
+	}
+	if claimOnce(t, time.Now()) != nil {
+		t.Error("notification was claimed past its attempt limit")
+	}
+	if err := s.MarkFailed(ctx, recovered.ID, "gave up"); err != nil {
+		t.Fatalf("MarkFailed failed: %v", err)
+	}
+	failed, err := s.GetByID(ctx, recovered.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if failed.FailedAt == nil || failed.SentAt != nil {
+		t.Error("MarkFailed did not record a terminal, unsent failure")
+	}
+
+	// Editing clears the failure, which is the operator's retry path.
+	failed.Title = "Opening Ceremony (moved)"
+	failed.ScheduledAt = time.Now().Add(-time.Minute)
+	if err := s.Update(ctx, failed); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+	if failed.FailedAt != nil || failed.Attempts != 0 || failed.LastError != nil {
+		t.Errorf("Update did not reset failure state: failed_at=%v attempts=%d last_error=%v",
+			failed.FailedAt, failed.Attempts, failed.LastError)
+	}
+	requeued := claimOnce(t, time.Now())
+	if requeued == nil {
+		t.Fatal("edited notification was not re-queued")
+	}
+
+	// Only MarkSent means delivered — and it is final.
+	if err := s.MarkSent(ctx, requeued.ID, 42); err != nil {
+		t.Fatalf("MarkSent failed: %v", err)
+	}
+	sent, err := s.GetByID(ctx, requeued.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if sent.SentAt == nil || sent.RecipientCount != 42 || sent.ClaimedAt != nil {
+		t.Errorf("MarkSent state wrong: sent_at=%v recipients=%d claimed_at=%v",
+			sent.SentAt, sent.RecipientCount, sent.ClaimedAt)
+	}
+	if claimOnce(t, time.Now().Add(time.Hour)) != nil {
+		t.Error("a delivered notification was claimed again")
+	}
+}
+
+// TestIntegrationGenerateFromSchedulePreservesLeaseState pins what regeneration is
+// allowed to clear. Its DELETE used to rely on sent_at IS NULL alone, which was
+// safe only while ClaimDue set sent_at at claim time: with the lease, a claimed
+// row has sent_at NULL while its pushes are in flight and would have been deleted
+// mid-delivery, and every failed row — the Failed tab's whole content for
+// schedule-sourced reminders — would have been wiped by an unrelated action.
+func TestIntegrationGenerateFromSchedulePreservesLeaseState(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	ctx := context.Background()
+	const adminID = "44444444-4444-4444-4444-444444444444"
+	const eventID = "eeeeeeee-0000-0000-0000-000000000001"
+
+	stmts := []string{
+		`TRUNCATE scheduled_notifications, schedule CASCADE`,
+		`INSERT INTO schedule (id, event_name, location, start_time, end_time) VALUES
+		  ('` + eventID + `', 'Opening Ceremony', 'Main Hall', NOW() + interval '2 hour', NOW() + interval '3 hour')`,
+		// One schedule-sourced row in each state, plus a manual one for contrast.
+		`INSERT INTO scheduled_notifications (id, title, body, scheduled_at, schedule_id, created_by, sent_at, claimed_at, attempts, failed_at, last_error) VALUES
+		  ('dddddddd-0000-0000-0000-00000000000a', 'failed',    'x', NOW() - interval '40 minute', '` + eventID + `', '` + adminID + `', NULL,  NULL,  5, NOW(), 'gave up'),
+		  ('dddddddd-0000-0000-0000-00000000000b', 'in-flight', 'x', NOW() - interval '1 minute',  '` + eventID + `', '` + adminID + `', NULL,  NOW(), 1, NULL,  NULL),
+		  ('dddddddd-0000-0000-0000-00000000000c', 'sent',      'x', NOW() - interval '2 hour',    '` + eventID + `', '` + adminID + `', NOW(), NULL,  1, NULL,  NULL),
+		  ('dddddddd-0000-0000-0000-00000000000d', 'pending',   'x', NOW() + interval '30 minute', '` + eventID + `', '` + adminID + `', NULL,  NULL,  0, NULL,  NULL),
+		  ('dddddddd-0000-0000-0000-00000000000e', 'manual',    'x', NOW() + interval '30 minute', NULL,             '` + adminID + `', NULL,  NULL,  0, NULL,  NULL)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("seed failed: %v\n%s", err, stmt)
+		}
+	}
+
+	s := &ScheduledNotificationsStore{db: db}
+	result, err := s.GenerateFromSchedule(ctx, 15*time.Minute, nil, adminID, time.Now())
+	if err != nil {
+		t.Fatalf("GenerateFromSchedule failed: %v", err)
+	}
+	if result.Created != 1 || result.Skipped != 0 {
+		t.Errorf("result = %+v, want 1 created / 0 skipped", result)
+	}
+
+	all, err := s.List(ctx)
+	if err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
+	byTitle := map[string]ScheduledNotification{}
+	for _, n := range all {
+		byTitle[n.Title] = n
+	}
+
+	for _, title := range []string{"failed", "in-flight", "sent", "manual"} {
+		if _, ok := byTitle[title]; !ok {
+			t.Errorf("regeneration deleted the %q row", title)
+		}
+	}
+	if n, ok := byTitle["in-flight"]; ok && n.ClaimedAt == nil {
+		t.Error("regeneration cleared the in-flight row's lease")
+	}
+	if _, ok := byTitle["pending"]; ok {
+		t.Error("regeneration left the stale pending reminder in place")
+	}
+
+	// The one replacement carries the new lead time: 2h out minus 15m.
+	fresh, ok := byTitle["Opening Ceremony"]
+	if !ok {
+		t.Fatal("regeneration did not create the new reminder")
+	}
+	if fresh.ScheduleID == nil || *fresh.ScheduleID != eventID {
+		t.Errorf("new reminder schedule_id = %v, want %s", fresh.ScheduleID, eventID)
+	}
+	if lead := time.Until(fresh.ScheduledAt); lead < 100*time.Minute || lead > 106*time.Minute {
+		t.Errorf("new reminder fires in %s, want ~1h45m", lead.Round(time.Minute))
+	}
+	if len(all) != 5 {
+		t.Errorf("got %d rows, want 5 (failed, in-flight, sent, manual, new reminder)", len(all))
 	}
 }
 
