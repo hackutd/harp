@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.0](https://github.com/hackutd/harp/compare/v0.14.0...v0.15.0) (2026-09-11)
+
+
+### Features
+
+* structured Cloud Logging access logs, trace correlation and Error Reporting events ([#164](https://github.com/hackutd/harp/issues/164)) ([69b1c73](https://github.com/hackutd/harp/commit/69b1c73278bf0a1092ef4fbdb7fb002da2d1a3e3))
+
+
+### Bug Fixes
+
+* drop stale pending reviews and scope assignment toggle to super admins ([#161](https://github.com/hackutd/harp/issues/161)) ([5575463](https://github.com/hackutd/harp/commit/55754636d2bd208d4cbc929bad751292402bef98))
+* **notifications:** lease deliveries instead of marking sent on claim ([#167](https://github.com/hackutd/harp/issues/167)) ([8e995db](https://github.com/hackutd/harp/commit/8e995db8926a8cca79f36f0426948bcd5d8b4c55))
+* port bug fixes from hackutd-harp (check-in RSVP gate, decision emails, phone/draft/validation, mobile UI) ([#165](https://github.com/hackutd/harp/issues/165)) ([88245d8](https://github.com/hackutd/harp/commit/88245d818498cc28a9ab120cfee5bfd54b0dca87))
+
 ## [0.14.0](https://github.com/hackutd/harp/compare/v0.13.0...v0.14.0) (2026-09-08)
 
 
