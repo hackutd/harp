@@ -104,7 +104,7 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 
 	for _, sub := range subs {
 		if err := validatePushEndpoint(sub.Endpoint, app.config.vapid.allowedEndpointHosts); err != nil {
-			app.logger.Warnw("pruning subscription with disallowed endpoint", "endpoint", sub.Endpoint)
+			app.logger.Warnw("pruning subscription with disallowed endpoint", "endpoint_host", pushEndpointHost(sub.Endpoint))
 			toPrune = append(toPrune, sub.Endpoint)
 			continue
 		}
@@ -119,7 +119,7 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 
 		resp, err := webpush.SendNotificationWithContext(ctx, body, webpushSub, options)
 		if err != nil {
-			app.logger.Warnw("push send failed", "endpoint", sub.Endpoint, "error", err)
+			app.logger.Warnw("push send failed", "endpoint_host", pushEndpointHost(sub.Endpoint), "error", pushSendError(err))
 			continue
 		}
 
@@ -133,10 +133,10 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 			toPrune = append(toPrune, sub.Endpoint)
 		case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 			authFailures++
-			app.logger.Warnw("push auth rejected (stale VAPID key?)", "endpoint", sub.Endpoint, "status", resp.StatusCode)
+			app.logger.Warnw("push auth rejected (stale VAPID key?)", "endpoint_host", pushEndpointHost(sub.Endpoint), "status", resp.StatusCode)
 			toPrune = append(toPrune, sub.Endpoint)
 		default:
-			app.logger.Warnw("push send returned unexpected status", "endpoint", sub.Endpoint, "status", resp.StatusCode)
+			app.logger.Warnw("push send returned unexpected status", "endpoint_host", pushEndpointHost(sub.Endpoint), "status", resp.StatusCode)
 		}
 	}
 
@@ -150,7 +150,7 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 
 	for _, endpoint := range toPrune {
 		if err := app.store.PushSubscriptions.DeleteByEndpointAdmin(ctx, endpoint); err != nil {
-			app.logger.Warnw("failed to delete dead subscription", "endpoint", endpoint, "error", err)
+			app.logger.Warnw("failed to delete dead subscription", "endpoint_host", pushEndpointHost(endpoint), "error", err)
 		}
 	}
 

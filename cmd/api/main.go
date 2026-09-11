@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"expvar"
-	"log"
+	"os"
 	"runtime"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/hackutd/harp/internal/ratelimiter"
 	"github.com/hackutd/harp/internal/store"
 	"github.com/joho/godotenv"
-	"go.uber.org/zap"
 )
 
 var version = "dev"
@@ -35,10 +35,11 @@ var version = "dev"
 // @name						sAccessToken
 func main() {
 
-	// Load env
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println(err)
+	// Load env. A missing .env is normal in production, where configuration
+	// arrives through the environment; anything else is worth surfacing.
+	dotenvErr := godotenv.Load(".env")
+	if dotenvErr != nil && errors.Is(dotenvErr, os.ErrNotExist) {
+		dotenvErr = nil
 	}
 
 	// Init configs
@@ -127,11 +128,29 @@ func main() {
 			wwdrCertificateBase64: env.GetString("APPLE_WALLET_WWDR_CERTIFICATE_BASE64", ""),
 			iconPath:              env.GetString("APPLE_WALLET_ICON_PATH", "client/portal/public/pwa-192x192.png"),
 		},
+		observability: observabilityConfig{
+			projectID: env.GetString("GOOGLE_CLOUD_PROJECT", ""),
+			service:   resolveServiceName(env.GetString("SERVICE_NAME", "harp")),
+			version:   version,
+		},
 	}
 
 	// Init Logger
 	logger := logger.New(cfg.env)
 	defer logger.Sync()
+
+	if dotenvErr != nil {
+		logger.Warnw("failed to load .env", "error", dotenvErr)
+	}
+
+	cfg.observability.projectID = resolveGCPProjectID(context.Background(), cfg.observability.projectID)
+	logger.Infow("starting",
+		"version", version,
+		"env", cfg.env,
+		"service", cfg.observability.service,
+		"gcp_project", cfg.observability.projectID,
+		"go_version", runtime.Version(),
+	)
 
 	// Init Database
 	db, err := db.New(
@@ -141,7 +160,7 @@ func main() {
 		cfg.db.maxIdleTime,
 	)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalw("failed to connect to database", "error", err)
 	}
 
 	defer db.Close()
@@ -162,14 +181,14 @@ func main() {
 		GoogleClientSecret: cfg.supertokens.googleClientSecret,
 	}
 	if err := auth.InitSuperTokens(authCfg, store); err != nil {
-		logger.Fatal("failed to initialize supertokens", zap.Error(err))
+		logger.Fatalw("failed to initialize supertokens", "error", err)
 	}
 	logger.Info("supertokens initialized")
 
 	// Init mailer — picks provider from .env SMTP or SendGrid, at least one is required
 	mailClient, err := mailer.New(cfg.mail)
 	if err != nil {
-		logger.Fatal("failed to initialize mailer", zap.Error(err))
+		logger.Fatalw("failed to initialize mailer", "error", err)
 	}
 
 	// Settings configured through the SuperAdmin onboarding form win over the
@@ -199,7 +218,7 @@ func main() {
 	if cfg.gcs.bucketName != "" {
 		gc, err := gcs.New(context.Background(), cfg.gcs.bucketName)
 		if err != nil {
-			logger.Fatal("failed to initialize gcs client", zap.Error(err))
+			logger.Fatalw("failed to initialize gcs client", "error", err)
 		}
 		defer gc.Close()
 
@@ -221,7 +240,7 @@ func main() {
 	// incomplete signing material is a deployment error.
 	appleWalletPasses, err := newAppleWalletPassGenerator(cfg.appleWallet)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalw("failed to initialize apple wallet pass generator", "error", err)
 	}
 	if appleWalletPasses != nil {
 		logger.Info("Apple Wallet pass generation enabled")
@@ -238,6 +257,7 @@ func main() {
 		rateLimiter:       rateLimiter,
 		ipRateLimiter:     ipRateLimiter,
 		sessionUserID:     supertokensSessionUserID,
+		dbPinger:          db,
 	}
 
 	// Metrics collected
@@ -256,5 +276,7 @@ func main() {
 	app.pushClient = newPushHTTPClient()
 	go app.runNotificationDispatcher(dispatcherCtx)
 
-	log.Fatal(app.run(mux))
+	if err := app.run(mux); err != nil {
+		logger.Fatalw("server exited with error", "error", err)
+	}
 }

@@ -30,7 +30,7 @@ type ApplicationWithSchema struct {
 func (app *application) userPoints(r *http.Request, userID string) int {
 	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), userID)
 	if err != nil {
-		app.logger.Warnw("failed to fetch scan points", "user_id", userID, "error", err)
+		app.requestLogger(r).Warnw("failed to fetch scan points", "user_id", userID, "error", err)
 		return 0
 	}
 
