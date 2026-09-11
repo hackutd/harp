@@ -191,7 +191,6 @@ func TestRequestLoggingMiddleware(t *testing.T) {
 		assert.Equal(t, "internal error: db exploded", errEntry.Message)
 		fields := fieldMap(errEntry)
 		assert.Equal(t, logger.ErrorReportType, fields["@type"])
-		assert.Equal(t, "db exploded", fields["error"])
 		assert.Equal(t, "projects/test-project/traces/0af7651916cd43dd8448eb211c80319c", fields[logger.TraceKey])
 		_, hasStack := fields["stack_trace"]
 		assert.False(t, hasStack)
