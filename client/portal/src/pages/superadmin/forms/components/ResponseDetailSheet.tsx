@@ -317,7 +317,7 @@ export function ResponseDetailSheet({
               <div className="min-w-0">
                 <SheetTitle className="truncate text-lg">
                   {item
-                    ? formatName(item.first_name, item.last_name)
+                    ? formatName(item.first_name, item.last_name, item.email)
                     : "Response"}
                 </SheetTitle>
                 <SheetDescription className="truncate">

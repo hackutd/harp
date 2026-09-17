@@ -11,6 +11,7 @@ interface IncompleteFormAlertProps {
    */
   onJumpToSection?: (sectionId: string) => void;
   className?: string;
+  description?: string;
 }
 
 /**
@@ -22,6 +23,7 @@ export function IncompleteFormAlert({
   sections,
   onJumpToSection,
   className,
+  description = "Answer the questions below, then submit again.",
 }: IncompleteFormAlertProps) {
   if (sections.length === 0) return null;
 
@@ -50,9 +52,7 @@ export function IncompleteFormAlert({
       <div className="min-w-0 flex-1 space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-normal text-destructive">{title}</p>
-          <p className="text-xs font-light text-[#8A8A8A]">
-            Answer the questions below, then submit again.
-          </p>
+          <p className="text-xs font-light text-[#8A8A8A]">{description}</p>
         </div>
 
         <ul className="space-y-3">

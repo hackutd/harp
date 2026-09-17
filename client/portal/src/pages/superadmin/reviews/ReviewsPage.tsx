@@ -52,6 +52,7 @@ import {
 } from "@/shared/lib/api";
 import { useUserStore } from "@/shared/stores/user";
 
+import type { BatchAssignmentResult } from "./api";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { ReviewStatusTabs } from "./components/ReviewStatusTabs";
 import { SendEmailsDialog } from "./components/SendEmailsDialog";
@@ -60,9 +61,20 @@ import { useReviewApplicationsStore } from "./store";
 export default function ReviewsPage() {
   const navigate = useNavigate();
   const currentUser = useUserStore((s) => s.user);
-  const [reviewsPerApp, setReviewsPerApp] = useState(1);
+  const [reviewsPerApp, setReviewsPerApp] = useState<number | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [lastBatch, setLastBatch] = useState<BatchAssignmentResult | null>(
+    null,
+  );
+  const operationInFlight = useRef(false);
+  const settingsRequest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [savingCount, setSavingCount] = useState(false);
+  const [pendingReviewsPerApp, setPendingReviewsPerApp] = useState<
+    number | null
+  >(null);
+  const [countConfirmOpen, setCountConfirmOpen] = useState(false);
 
   const [assigning, setAssigning] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -76,6 +88,8 @@ export default function ReviewsPage() {
   // Applications table state
   const applications = useReviewApplicationsStore((s) => s.applications);
   const tableLoading = useReviewApplicationsStore((s) => s.loading);
+  const tableError = useReviewApplicationsStore((s) => s.error);
+  const statsError = useReviewApplicationsStore((s) => s.statsError);
   const nextCursor = useReviewApplicationsStore((s) => s.nextCursor);
   const prevCursor = useReviewApplicationsStore((s) => s.prevCursor);
   const currentStatus = useReviewApplicationsStore((s) => s.currentStatus);
@@ -96,39 +110,54 @@ export default function ReviewsPage() {
     detail: applicationDetail,
     loading: detailLoading,
     clear: clearDetail,
+    refresh: refreshDetail,
+    error: detailError,
   } = useApplicationDetail(selectedApplicationId);
 
-  useEffect(() => {
-    async function fetchData() {
-      const [reviewsRes, usersRes] = await Promise.all([
-        getRequest<{ reviews_per_application: number }>(
-          "/superadmin/settings/reviews-per-app",
-          "reviews per application",
-        ),
-        getRequest<{
-          users: {
-            id: string;
-            review_assignment_enabled: boolean | null;
-          }[];
-        }>(
-          "/superadmin/users?role=super_admin",
-          "fetch review assignment enabled",
-        ),
-      ]);
-
-      if (reviewsRes.status === 200 && reviewsRes.data) {
-        setReviewsPerApp(reviewsRes.data.reviews_per_application);
-      }
-      if (usersRes.status === 200 && usersRes.data) {
-        const me = (usersRes.data.users ?? []).find(
-          (u) => u.id === currentUser?.id,
-        );
-        setReviewAssignmentEnabled(me?.review_assignment_enabled ?? true);
-      }
-      setLoading(false);
+  const fetchReviewTarget = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++settingsRequest.current;
+    setSettingsLoading(true);
+    setSettingsError(null);
+    const res = await getRequest<{ reviews_per_application: number }>(
+      "/superadmin/settings/reviews-per-app",
+      "reviews per application",
+      signal,
+    );
+    if (signal?.aborted || requestId !== settingsRequest.current) return;
+    if (res.status === 200 && res.data) {
+      setReviewsPerApp(res.data.reviews_per_application);
+    } else {
+      setSettingsError(
+        res.error || "Unable to load the review assignment target.",
+      );
     }
-    fetchData();
-  }, [currentUser?.id]);
+    setSettingsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([
+      fetchReviewTarget(controller.signal),
+      getRequest<{
+        users: { id: string; review_assignment_enabled: boolean | null }[];
+      }>(
+        "/superadmin/users?role=super_admin",
+        "fetch review assignment enabled",
+        controller.signal,
+      ).then((res) => {
+        if (controller.signal.aborted) return;
+        if (res.status === 200 && res.data) {
+          const me = (res.data.users ?? []).find(
+            (u) => u.id === currentUser?.id,
+          );
+          setReviewAssignmentEnabled(me?.review_assignment_enabled ?? true);
+        }
+      }),
+    ]).then(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [currentUser?.id, fetchReviewTarget]);
 
   // Fetch applications and stats on mount
   useEffect(() => {
@@ -200,44 +229,110 @@ export default function ReviewsPage() {
     }
   }, [prevCursor, fetchApplications]);
 
-  async function updateReviewsPerApp(newValue: number) {
+  const targetUnavailable =
+    settingsLoading || !!settingsError || reviewsPerApp === null;
+  const assignmentBlocked =
+    targetUnavailable || savingCount || assigning || togglingAssignment;
+
+  async function refreshReviewData() {
+    refreshDetail();
+    // No cursor means the first page, with the store's active filters and sort.
+    await Promise.all([fetchApplications(), fetchStats()]);
+  }
+
+  function requestReviewsPerAppChange(newValue: number) {
+    if (
+      operationInFlight.current ||
+      assignmentBlocked ||
+      confirmOpen ||
+      countConfirmOpen
+    )
+      return;
     const clamped = Math.max(1, Math.min(10, newValue));
-    setReviewsPerApp(clamped);
-    setSavingCount(true);
-    const res = await postRequest<{ reviews_per_application: number }>(
-      "/superadmin/settings/reviews-per-app",
-      { reviews_per_application: clamped },
-      "reviews per application",
-    );
-    if (res.status === 200 && res.data) {
-      setReviewsPerApp(res.data.reviews_per_application);
-    } else {
-      errorAlert(res);
+    if (clamped !== reviewsPerApp) {
+      setPendingReviewsPerApp(clamped);
+      setCountConfirmOpen(true);
     }
-    setSavingCount(false);
+  }
+
+  async function confirmReviewsPerAppChange() {
+    if (
+      pendingReviewsPerApp === null ||
+      !countConfirmOpen ||
+      operationInFlight.current ||
+      assignmentBlocked ||
+      confirmOpen
+    )
+      return;
+    const newValue = pendingReviewsPerApp;
+    operationInFlight.current = true;
+    setCountConfirmOpen(false);
+    setSavingCount(true);
+    try {
+      const res = await postRequest<{ reviews_per_application: number }>(
+        "/superadmin/settings/reviews-per-app",
+        { reviews_per_application: Math.max(1, Math.min(10, newValue)) },
+        "reviews per application",
+      );
+      if (res.status === 200 && res.data) {
+        setReviewsPerApp(res.data.reviews_per_application);
+      } else {
+        errorAlert(res);
+        // A failed response may follow a committed write. Confirm the saved
+        // target before permitting assignment again.
+        await fetchReviewTarget();
+      }
+    } finally {
+      operationInFlight.current = false;
+      setSavingCount(false);
+    }
   }
 
   async function handleBatchAssign() {
+    if (operationInFlight.current || assignmentBlocked || countConfirmOpen)
+      return;
+    operationInFlight.current = true;
     setConfirmOpen(false);
     setAssigning(true);
-    const res = await postRequest<{ reviews_created: number }>(
-      "/superadmin/applications/assign",
-      {},
-      "batch assign reviews",
-    );
-    if (res.status === 200 && res.data) {
-      toast.success(
-        `Successfully created ${res.data.reviews_created} review assignments`,
+    try {
+      const res = await postRequest<BatchAssignmentResult>(
+        "/superadmin/applications/assign",
+        {},
+        "batch assign reviews",
       );
-    } else {
-      errorAlert(res);
+      if (res.status === 200 && res.data) {
+        setLastBatch(res.data);
+        setReviewsPerApp(res.data.reviews_per_application);
+        const message = `Created ${res.data.reviews_created} review assignment${res.data.reviews_created === 1 ? "" : "s"}`;
+        if (res.data.applications_below_target > 0) {
+          toast.warning(
+            `${message}; ${res.data.applications_below_target} application${res.data.applications_below_target === 1 ? "" : "s"} still ${res.data.applications_below_target === 1 ? "needs" : "need"} assignments.`,
+          );
+        } else {
+          toast.success(message);
+        }
+        triggerAssignedPageRefresh();
+        await refreshReviewData();
+      } else {
+        errorAlert(res);
+      }
+    } finally {
+      operationInFlight.current = false;
+      setAssigning(false);
     }
-    triggerAssignedPageRefresh();
-    setAssigning(false);
   }
 
   async function handleToggleAssignmentEnabled(enabled: boolean) {
-    if (!currentUser) return;
+    if (
+      !currentUser ||
+      operationInFlight.current ||
+      assigning ||
+      confirmOpen ||
+      countConfirmOpen ||
+      savingCount
+    )
+      return;
+    operationInFlight.current = true;
     setTogglingAssignment(true);
     const res = await putRequest<{ user_id: string; enabled: boolean }>(
       "/superadmin/settings/review-assignment-toggle",
@@ -253,6 +348,7 @@ export default function ReviewsPage() {
     } else {
       errorAlert(res);
     }
+    operationInFlight.current = false;
     setTogglingAssignment(false);
   }
 
@@ -285,20 +381,40 @@ export default function ReviewsPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => updateReviewsPerApp(reviewsPerApp - 1)}
-                disabled={reviewsPerApp <= 1 || savingCount}
+                aria-label="Decrease review target"
+                onClick={() =>
+                  reviewsPerApp !== null &&
+                  requestReviewsPerAppChange(reviewsPerApp - 1)
+                }
+                disabled={
+                  reviewsPerApp === null ||
+                  reviewsPerApp <= 1 ||
+                  assignmentBlocked ||
+                  confirmOpen ||
+                  countConfirmOpen
+                }
                 className="size-7 cursor-pointer"
               >
                 <Minus className="size-3" />
               </Button>
               <CardTitle className="w-8 text-center text-xl font-semibold tabular-nums">
-                {reviewsPerApp}
+                {reviewsPerApp ?? "—"}
               </CardTitle>
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => updateReviewsPerApp(reviewsPerApp + 1)}
-                disabled={reviewsPerApp >= 10 || savingCount}
+                aria-label="Increase review target"
+                onClick={() =>
+                  reviewsPerApp !== null &&
+                  requestReviewsPerAppChange(reviewsPerApp + 1)
+                }
+                disabled={
+                  reviewsPerApp === null ||
+                  reviewsPerApp >= 10 ||
+                  assignmentBlocked ||
+                  confirmOpen ||
+                  countConfirmOpen
+                }
                 className="size-7 cursor-pointer"
               >
                 <Plus className="size-3" />
@@ -306,7 +422,8 @@ export default function ReviewsPage() {
               {savingCount && <Skeleton className="ml-1 size-4 rounded-full" />}
             </div>
             <p className="text-sm text-muted-foreground">
-              Reviews needed before a decision
+              Assignment target per application. Run Assign Reviews after
+              changing it.
             </p>
           </CardHeader>
         </Card>
@@ -325,7 +442,13 @@ export default function ReviewsPage() {
               <Switch
                 checked={reviewAssignmentEnabled}
                 onCheckedChange={handleToggleAssignmentEnabled}
-                disabled={togglingAssignment}
+                disabled={
+                  togglingAssignment ||
+                  savingCount ||
+                  assigning ||
+                  confirmOpen ||
+                  countConfirmOpen
+                }
                 className="cursor-pointer"
               />
             </div>
@@ -346,7 +469,15 @@ export default function ReviewsPage() {
             </div>
             <CardTitle className="text-xl font-semibold">Assign</CardTitle>
             <Button
-              onClick={() => setConfirmOpen(true)}
+              onClick={() => {
+                if (
+                  !operationInFlight.current &&
+                  !assignmentBlocked &&
+                  !countConfirmOpen
+                )
+                  setConfirmOpen(true);
+              }}
+              disabled={assignmentBlocked || countConfirmOpen}
               loading={assigning}
               className="w-full cursor-pointer"
               size="sm"
@@ -363,6 +494,58 @@ export default function ReviewsPage() {
           </CardHeader>
         </Card>
       </div>
+
+      {settingsError && (
+        <div
+          className="shrink-0 flex items-center gap-3 rounded-md border p-3"
+          role="alert"
+        >
+          <p className="text-sm">{settingsError}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={settingsLoading}
+            onClick={() => void fetchReviewTarget()}
+          >
+            Retry settings
+          </Button>
+        </div>
+      )}
+      {lastBatch && (
+        <div className="shrink-0 rounded-md border p-3 text-sm" role="status">
+          <p>
+            Last assignment run (target {lastBatch.reviews_per_application}):{" "}
+            {lastBatch.reviews_created} created; {lastBatch.reviews_removed}{" "}
+            assignments released from unavailable reviewers.
+          </p>
+          {lastBatch.applications_below_target > 0 && (
+            <p className="mt-1 text-amber-800">
+              {lastBatch.applications_below_target} submitted application
+              {lastBatch.applications_below_target === 1 ? "" : "s"} still{" "}
+              {lastBatch.applications_below_target === 1 ? "needs" : "need"}{" "}
+              {lastBatch.reviews_unfilled} assignment
+              {lastBatch.reviews_unfilled === 1 ? "" : "s"} because no
+              additional distinct eligible reviewers are available.
+            </p>
+          )}
+        </div>
+      )}
+      {(tableError || statsError) && (
+        <div
+          className="shrink-0 flex items-center gap-3 rounded-md border p-3"
+          role="alert"
+        >
+          <p className="text-sm">{tableError || statsError}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={tableLoading}
+            onClick={() => void refreshReviewData()}
+          >
+            Retry refresh
+          </Button>
+        </div>
+      )}
 
       {/* Applications Table Section */}
       <div className="shrink-0 flex flex-wrap items-center gap-3">
@@ -441,14 +624,17 @@ export default function ReviewsPage() {
           </CardHeader>
           <hr className="border-border -mb-2" />
           <CardContent className="p-0 flex-1 overflow-auto">
-            <ReviewsTable
-              applications={applications}
-              loading={tableLoading}
-              selectedId={selectedApplicationId}
-              onSelectApplication={setSelectedApplicationId}
-              sortBy={currentSortBy ?? "accept_votes"}
-              onSortChange={handleSortChange}
-            />
+            {!tableError && (
+              <ReviewsTable
+                reviewsPerApp={reviewsPerApp}
+                applications={applications}
+                loading={tableLoading}
+                selectedId={selectedApplicationId}
+                onSelectApplication={setSelectedApplicationId}
+                sortBy={currentSortBy ?? "accept_votes"}
+                onSortChange={handleSortChange}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -456,6 +642,8 @@ export default function ReviewsPage() {
       <ApplicationDetailPanel
         application={applicationDetail}
         loading={detailLoading}
+        error={detailError}
+        onRetry={refreshDetail}
         open={!!selectedApplicationId}
         onClose={handleClosePanel}
         canPrevious={selectedIndex > 0}
@@ -481,13 +669,39 @@ export default function ReviewsPage() {
         stats={stats}
       />
 
+      <AlertDialog open={countConfirmOpen} onOpenChange={setCountConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Reviews Per Application?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change reviews per application from{" "}
+              {reviewsPerApp} to {pendingReviewsPerApp}? Run Assign Reviews
+              after saving to apply the new target.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReviewsPerAppChange}
+              disabled={assignmentBlocked}
+              className="cursor-pointer"
+            >
+              Yes, Change Count
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Batch Assignment</AlertDialogTitle>
             <AlertDialogDescription>
-              This will assign admin reviewers to all submitted applications
-              that still need reviews. Are you sure you want to proceed?
+              This will fill submitted applications toward {reviewsPerApp}{" "}
+              distinct reviewer assignments each and reroute pending work from
+              unavailable reviewers. Existing completed reviews are preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -496,6 +710,7 @@ export default function ReviewsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchAssign}
+              disabled={assignmentBlocked}
               className="cursor-pointer"
             >
               Yes, Assign Reviews

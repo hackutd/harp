@@ -353,6 +353,87 @@ func TestRateLimiterMiddleware(t *testing.T) {
 			assert.NotEqual(t, http.StatusTooManyRequests, get(path).Code, "expected %s to bypass the rate limiter", path)
 		}
 	})
+
+	t.Run("should ignore forwarded headers the client can forge", func(t *testing.T) {
+		app := newTestApplication(t)
+		app.ipRateLimiter = ratelimiter.NewFixedWindowLimiter(1, 5*time.Second)
+		mux := app.mount()
+
+		get := func(headers map[string]string) *httptest.ResponseRecorder {
+			req, err := http.NewRequest(http.MethodGet, "/v1/health", nil)
+			require.NoError(t, err)
+			req.RemoteAddr = "10.0.0.10:1234"
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
+			return executeRequest(req, mux)
+		}
+
+		checkResponseCode(t, http.StatusUnauthorized, get(nil).Code)
+
+		// a fresh spoofed address per request must not mint a fresh bucket
+		for _, h := range []map[string]string{
+			{"X-Real-IP": "203.0.113.1"},
+			{"X-Forwarded-For": "203.0.113.2"},
+			{"True-Client-IP": "203.0.113.3"},
+			{"CF-Connecting-IP": "203.0.113.4"},
+		} {
+			checkResponseCode(t, http.StatusTooManyRequests, get(h).Code)
+		}
+	})
+
+	t.Run("should key by the configured edge header when present", func(t *testing.T) {
+		app := newTestApplication(t)
+		app.config.clientIP.header = "CF-Connecting-IP"
+		app.ipRateLimiter = ratelimiter.NewFixedWindowLimiter(1, 5*time.Second)
+		mux := app.mount()
+
+		get := func(clientIP string) *httptest.ResponseRecorder {
+			req, err := http.NewRequest(http.MethodGet, "/v1/health", nil)
+			require.NoError(t, err)
+			req.RemoteAddr = "10.0.0.11:1234" // the proxy; identical for every client
+			req.Header.Set("CF-Connecting-IP", clientIP)
+			req.Header.Set("X-Forwarded-For", "203.0.113.99") // must be ignored
+			return executeRequest(req, mux)
+		}
+
+		checkResponseCode(t, http.StatusUnauthorized, get("198.51.100.1").Code)
+		checkResponseCode(t, http.StatusTooManyRequests, get("198.51.100.1").Code)
+		checkResponseCode(t, http.StatusUnauthorized, get("198.51.100.2").Code)
+	})
+
+	t.Run("should key by X-Forwarded-For only past the trusted proxy count", func(t *testing.T) {
+		app := newTestApplication(t)
+		app.config.clientIP.trustedProxies = 1
+		app.ipRateLimiter = ratelimiter.NewFixedWindowLimiter(1, 5*time.Second)
+		mux := app.mount()
+
+		get := func(xff string) *httptest.ResponseRecorder {
+			req, err := http.NewRequest(http.MethodGet, "/v1/health", nil)
+			require.NoError(t, err)
+			req.RemoteAddr = "10.0.0.12:1234"
+			req.Header.Set("X-Forwarded-For", xff)
+			return executeRequest(req, mux)
+		}
+
+		// one proxy appends the real client as the rightmost entry; anything
+		// the client prepended on the left is ignored
+		checkResponseCode(t, http.StatusUnauthorized, get("198.51.100.1").Code)
+		checkResponseCode(t, http.StatusTooManyRequests, get("203.0.113.5, 198.51.100.1").Code)
+		checkResponseCode(t, http.StatusTooManyRequests, get("203.0.113.6, 198.51.100.1").Code)
+		checkResponseCode(t, http.StatusUnauthorized, get("198.51.100.2").Code)
+	})
+
+	t.Run("should send Retry-After in whole seconds", func(t *testing.T) {
+		app := newTestApplication(t)
+		app.ipRateLimiter = ratelimiter.NewFixedWindowLimiter(1, 5*time.Second)
+		handler := app.RateLimiterMiddleware(ok)
+
+		executeRequest(newRequest(t, "10.0.0.13:1234", ""), handler)
+		rr := executeRequest(newRequest(t, "10.0.0.13:1234", ""), handler)
+		checkResponseCode(t, http.StatusTooManyRequests, rr.Code)
+		assert.Regexp(t, `^[1-5]$`, rr.Header().Get("Retry-After"))
+	})
 }
 
 func TestApplicationsEnabledMiddleware(t *testing.T) {

@@ -11,6 +11,7 @@ import {
   ScanLine,
   Settings,
   Star,
+  Trophy,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -65,6 +66,11 @@ const eventNav = [
     name: "FAQ",
     url: "/admin/faq",
     icon: MessageSquare,
+  },
+  {
+    name: "Tracks",
+    url: "/admin/tracks",
+    icon: Trophy,
   },
 ];
 

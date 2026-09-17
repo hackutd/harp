@@ -116,6 +116,11 @@ func (app *application) subscribePushHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if err := validatePushEndpoint(payload.Endpoint, app.config.vapid.allowedEndpointHosts); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
 	sub := &store.PushSubscription{
 		UserID:    user.ID,
 		Endpoint:  payload.Endpoint,

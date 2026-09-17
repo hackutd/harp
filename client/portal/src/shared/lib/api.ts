@@ -36,6 +36,8 @@ export async function getRequest<T>(
       error: !response.ok
         ? json?.error || `Failed to fetch ${errorContext || endpoint}`
         : undefined,
+      fields:
+        !response.ok && Array.isArray(json?.fields) ? json.fields : undefined,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -76,6 +78,8 @@ export async function postRequest<T>(
       error: !response.ok
         ? json?.error || `Failed to post ${errorContext || endpoint}`
         : undefined,
+      fields:
+        !response.ok && Array.isArray(json?.fields) ? json.fields : undefined,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -116,6 +120,8 @@ export async function putRequest<T>(
       error: !response.ok
         ? json?.error || `Failed to update ${errorContext || endpoint}`
         : undefined,
+      fields:
+        !response.ok && Array.isArray(json?.fields) ? json.fields : undefined,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -156,6 +162,8 @@ export async function patchRequest<T>(
       error: !response.ok
         ? json?.error || `Failed to update ${errorContext || endpoint}`
         : undefined,
+      fields:
+        !response.ok && Array.isArray(json?.fields) ? json.fields : undefined,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -194,6 +202,8 @@ export async function deleteRequest<T>(
       error: !response.ok
         ? json?.error || `Failed to delete ${errorContext || endpoint}`
         : undefined,
+      fields:
+        !response.ok && Array.isArray(json?.fields) ? json.fields : undefined,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {

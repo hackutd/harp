@@ -1038,20 +1038,42 @@ type UserEmailInfo struct {
 	LastName  *string `json:"last_name"`
 }
 
-func (s *ApplicationsStore) GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error) {
+// CheckInEligibility is everything the scanner needs to decide whether a hacker
+// may be checked in, read in one round trip.
+type CheckInEligibility struct {
+	Status     ApplicationStatus
+	RSVPStatus RSVPStatus
+	// PromotedWalkIn reports whether the hacker was let in through the walk-in
+	// queue. Promotion never touches rsvp_status — the hacker is standing at the
+	// door, and consuming their one-shot RSVP would close the form before they
+	// can give us an emergency contact — so a promoted row is a door credential
+	// in its own right.
+	PromotedWalkIn bool
+}
+
+func (s *ApplicationsStore) GetCheckInEligibility(ctx context.Context, userID string) (*CheckInEligibility, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	var status ApplicationStatus
-	err := s.db.QueryRowContext(ctx,
-		`SELECT status FROM applications WHERE user_id = $1`, userID).Scan(&status)
+	query := `
+		SELECT a.status, a.rsvp_status,
+		       EXISTS (SELECT 1 FROM walk_ins w
+		               WHERE w.user_id = a.user_id AND w.promoted_at IS NOT NULL)
+		FROM applications a
+		WHERE a.user_id = $1
+	`
+
+	var eligibility CheckInEligibility
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(
+		&eligibility.Status, &eligibility.RSVPStatus, &eligibility.PromotedWalkIn,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", ErrNotFound
+			return nil, ErrNotFound
 		}
-		return "", err
+		return nil, err
 	}
-	return status, nil
+	return &eligibility, nil
 }
 
 func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {

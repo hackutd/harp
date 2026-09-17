@@ -149,6 +149,7 @@ func (s *SettingsStore) GetMany(ctx context.Context, keys ...string) (map[string
 const SettingsKeyApplicationSchema = "application_schema"
 const SettingsKeyRSVPSchema = "rsvp_schema"
 const SettingsKeyRSVPEnabled = "rsvp_enabled"
+const SettingsKeyCheckInRequiresRSVP = "check_in_requires_rsvp"
 const SettingsKeyTravelRSVPSchema = "travel_rsvp_schema"
 const SettingsKeyTravelRSVPEnabled = "travel_rsvp_enabled"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
@@ -158,6 +159,7 @@ const SettingsKeyScanStats = "scan_stats"
 const SettingsKeyAdminScheduleEditEnabled = "admin_schedule_edit_enabled"
 const SettingsKeyAdminSponsorEditEnabled = "admin_sponsor_edit_enabled"
 const SettingsKeyAdminFAQEditEnabled = "admin_faq_edit_enabled"
+const SettingsKeyAdminTrackEditEnabled = "admin_track_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
 const SettingsKeyMealGroups = "meal_groups"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
@@ -356,7 +358,7 @@ func (s *SettingsStore) GetReviewsPerApplication(ctx context.Context) (int, erro
 	return count, nil
 }
 
-// SetReviewsPerApplication updates the number of reviews required per application
+// SetReviewsPerApplication updates the reviewer assignment target per application
 func (s *SettingsStore) SetReviewsPerApplication(ctx context.Context, value int) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -1203,6 +1205,56 @@ func (s *SettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error 
 	return nil
 }
 
+// GetCheckInRequiresRSVP returns whether the scanner refuses to check in a
+// hacker who has not confirmed their RSVP. Defaults to true so capacity and
+// catering counts hold by default; a hackathon that never runs the RSVP form
+// turns it off, since every application would otherwise sit at 'pending'.
+//
+// This is deliberately separate from SettingsKeyRSVPEnabled, which is a
+// deadline window super admins close before the event — reusing it would switch
+// the door gate off exactly when the event starts.
+func (s *SettingsStore) GetCheckInRequiresRSVP(ctx context.Context) (bool, error) {
+	value, found, err := s.getCachedRaw(ctx, SettingsKeyCheckInRequiresRSVP)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
+	}
+
+	var required bool
+	if err := json.Unmarshal(value, &required); err != nil {
+		return false, err
+	}
+
+	return required, nil
+}
+
+// SetCheckInRequiresRSVP updates whether check-in requires a confirmed RSVP.
+func (s *SettingsStore) SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyCheckInRequiresRSVP, string(jsonValue))
+	if err != nil {
+		return err
+	}
+
+	s.invalidate(SettingsKeyCheckInRequiresRSVP)
+	return nil
+}
+
 // GetTravelRSVPEnabled returns whether travel-approved hackers can currently
 // submit their travel RSVP. Defaults to true so the form opens as soon as
 // travel approvals go out; super admins flip it off once the deadline passes.
@@ -1337,6 +1389,52 @@ func (s *SettingsStore) SetAdminFAQEditEnabled(ctx context.Context, enabled bool
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminFAQEditEnabled, string(jsonValue))
+	return err
+}
+
+func (s *SettingsStore) GetAdminTrackEditEnabled(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT value
+		FROM settings
+		WHERE key = $1
+	`
+
+	var value []byte
+	err := s.db.QueryRowContext(ctx, query, SettingsKeyAdminTrackEditEnabled).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	var enabled bool
+	if err := json.Unmarshal(value, &enabled); err != nil {
+		return false, err
+	}
+
+	return enabled, nil
+}
+
+func (s *SettingsStore) SetAdminTrackEditEnabled(ctx context.Context, enabled bool) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	jsonValue, err := json.Marshal(enabled)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`
+
+	_, err = s.db.ExecContext(ctx, query, SettingsKeyAdminTrackEditEnabled, string(jsonValue))
 	return err
 }
 

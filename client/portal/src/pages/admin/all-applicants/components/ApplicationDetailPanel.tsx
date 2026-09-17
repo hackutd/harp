@@ -35,6 +35,8 @@ import { TimelineSection } from "./detail-sections/TimelineSection";
 interface ApplicationDetailPanelProps {
   application: Application | null;
   loading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   open: boolean;
   onClose: () => void;
   onGrade?: () => void;
@@ -47,6 +49,8 @@ interface ApplicationDetailPanelProps {
 export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
   application,
   loading,
+  error,
+  onRetry,
   open,
   onClose,
   onGrade,
@@ -158,6 +162,15 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
                     <Skeleton className="h-5 w-3/4" />
                   </div>
                 ))}
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center gap-3" role="alert">
+                <p className="text-muted-foreground">{error}</p>
+                {onRetry && (
+                  <Button variant="outline" onClick={onRetry}>
+                    Retry
+                  </Button>
+                )}
               </div>
             ) : application ? (
               <div className="space-y-6 pb-2">

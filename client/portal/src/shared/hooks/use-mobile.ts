@@ -2,6 +2,14 @@ import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
+/**
+ * One-shot viewport check for code that runs outside of render (effects,
+ * event handlers), where `useIsMobile` would still hold its initial value.
+ */
+export function isMobileViewport() {
+  return window.innerWidth < MOBILE_BREAKPOINT;
+}
+
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
     undefined,

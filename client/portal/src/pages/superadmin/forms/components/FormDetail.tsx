@@ -243,7 +243,13 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
                 <ArrowLeft className="size-4" />
               </Link>
             </Button>
-            <TabsList className="h-auto min-w-0 flex-1 justify-start overflow-x-auto rounded-none border-0 bg-transparent p-0">
+            {/* pb-2/-mb-2: overflow-x-auto makes this a scroll container on
+                both axes (CSS computes the visible axis to auto), and the
+                active tab's underline sits 8px below the trigger. The padding
+                keeps that underline inside the scroll box — otherwise it is
+                clipped out of sight and the strip scrolls vertically — while
+                the negative margin keeps the row's height unchanged. */}
+            <TabsList className="-mb-2 h-auto min-w-0 flex-1 justify-start overflow-x-auto rounded-none border-0 bg-transparent p-0 pb-2">
               <TabsTrigger value="overview" className={detailTabClassName}>
                 <BarChart3 /> Overview
               </TabsTrigger>

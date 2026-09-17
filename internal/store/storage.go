@@ -49,7 +49,7 @@ type Storage struct {
 	Application interface {
 		GetByUserID(ctx context.Context, userID string) (*Application, error)
 		GetByID(ctx context.Context, id string) (*Application, error)
-		GetStatusByUserID(ctx context.Context, userID string) (ApplicationStatus, error)
+		GetCheckInEligibility(ctx context.Context, userID string) (*CheckInEligibility, error)
 		Create(ctx context.Context, app *Application) error
 		Update(ctx context.Context, app *Application) error
 		Submit(ctx context.Context, app *Application, travelOptInFieldID string) error
@@ -79,8 +79,13 @@ type Storage struct {
 		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetRSVPEnabled(ctx context.Context) (bool, error)
 		SetRSVPEnabled(ctx context.Context, enabled bool) error
+		GetCheckInRequiresRSVP(ctx context.Context) (bool, error)
+		SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error
 		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)
 		UpdateTravelRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
+		// RestoreDefaultFormSchema overwrites one of the editable form
+		// schemas with the default HARP ships with.
+		RestoreDefaultFormSchema(ctx context.Context, key string) error
 		GetTravelRSVPEnabled(ctx context.Context) (bool, error)
 		SetTravelRSVPEnabled(ctx context.Context, enabled bool) error
 		GetReviewsPerApplication(ctx context.Context) (int, error)
@@ -124,6 +129,8 @@ type Storage struct {
 		SetAdminSponsorEditEnabled(ctx context.Context, enabled bool) error
 		GetAdminFAQEditEnabled(ctx context.Context) (bool, error)
 		SetAdminFAQEditEnabled(ctx context.Context, enabled bool) error
+		GetAdminTrackEditEnabled(ctx context.Context) (bool, error)
+		SetAdminTrackEditEnabled(ctx context.Context, enabled bool) error
 	}
 	Hackathon interface {
 		Reset(ctx context.Context, opts ResetOptions) (*ResetPaths, error)
@@ -167,6 +174,14 @@ type Storage struct {
 		Update(ctx context.Context, faq *FAQ) error
 		Delete(ctx context.Context, id string) error
 	}
+	Tracks interface {
+		List(ctx context.Context) ([]Track, error)
+		GetByID(ctx context.Context, id string) (*Track, error)
+		Create(ctx context.Context, track *Track) error
+		Update(ctx context.Context, track *Track) error
+		Delete(ctx context.Context, id string) error
+		UpdateLogo(ctx context.Context, id string, logoData string, logoContentType string) error
+	}
 	HackerLinks interface {
 		List(ctx context.Context) ([]HackerLink, error)
 		Create(ctx context.Context, link *HackerLink) error
@@ -186,8 +201,11 @@ type Storage struct {
 		ListSentForRole(ctx context.Context, role UserRole, limit int) ([]ScheduledNotification, error)
 		Update(ctx context.Context, n *ScheduledNotification) error
 		Delete(ctx context.Context, id string) error
-		ClaimDue(ctx context.Context, now time.Time, limit int) ([]ScheduledNotification, error)
+		ClaimDue(ctx context.Context, now time.Time, lease time.Duration, maxAttempts, limit int) ([]ScheduledNotification, error)
 		MarkSent(ctx context.Context, id string, recipientCount int) error
+		ReleaseClaim(ctx context.Context, id, cause string) error
+		MarkFailed(ctx context.Context, id, cause string) error
+		ReleaseUnattempted(ctx context.Context, ids []string) error
 		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
 	}
 	WalkIns interface {
@@ -211,6 +229,7 @@ func NewStorage(db *sql.DB) Storage {
 		Schedule:               &ScheduleStore{db: db},
 		Sponsors:               &SponsorsStore{db: db},
 		FAQs:                   &FAQsStore{db: db},
+		Tracks:                 &TracksStore{db: db},
 		HackerLinks:            &HackerLinksStore{db: db},
 		PushSubscriptions:      &PushSubscriptionsStore{db: db},
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},

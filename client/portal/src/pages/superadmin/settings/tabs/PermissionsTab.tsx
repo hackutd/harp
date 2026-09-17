@@ -68,18 +68,22 @@ export default function PermissionsTab() {
   );
   const [rsvpEnabled, setRSVPEnabled] = useState(true);
   const [travelRSVPEnabled, setTravelRSVPEnabled] = useState(true);
+  const [checkInRequiresRSVP, setCheckInRequiresRSVP] = useState(true);
   const [adminScheduleEditEnabled, setAdminScheduleEditEnabled] =
     useState(true);
   const [adminSponsorEditEnabled, setAdminSponsorEditEnabled] = useState(true);
   const [adminFAQEditEnabled, setAdminFAQEditEnabled] = useState(true);
+  const [adminTrackEditEnabled, setAdminTrackEditEnabled] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [applicationsSaving, setApplicationsSaving] = useState(false);
   const [rsvpSaving, setRSVPSaving] = useState(false);
   const [travelRSVPSaving, setTravelRSVPSaving] = useState(false);
+  const [checkInRSVPSaving, setCheckInRSVPSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [sponsorSaving, setSponsorSaving] = useState(false);
   const [faqSaving, setFaqSaving] = useState(false);
+  const [trackSaving, setTrackSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -88,9 +92,11 @@ export default function PermissionsTab() {
         applicationsRes,
         rsvpRes,
         travelRSVPRes,
+        checkInRSVPRes,
         scheduleRes,
         sponsorRes,
         faqRes,
+        trackRes,
       ] = await Promise.all([
         getRequest<{ enabled: boolean }>(
           "/applications/enabled",
@@ -105,6 +111,10 @@ export default function PermissionsTab() {
           "travel RSVP enabled",
         ),
         getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/check-in-requires-rsvp",
+          "check-in RSVP requirement",
+        ),
+        getRequest<{ enabled: boolean }>(
           "/superadmin/settings/admin-schedule-edit-toggle",
           "admin schedule edit toggle",
         ),
@@ -115,6 +125,10 @@ export default function PermissionsTab() {
         getRequest<{ enabled: boolean }>(
           "/superadmin/settings/admin-faq-edit-toggle",
           "admin FAQ edit toggle",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/admin-track-edit-toggle",
+          "admin track edit toggle",
         ),
       ]);
 
@@ -136,6 +150,12 @@ export default function PermissionsTab() {
         errorAlert(travelRSVPRes);
       }
 
+      if (checkInRSVPRes.status === 200 && checkInRSVPRes.data) {
+        setCheckInRequiresRSVP(checkInRSVPRes.data.enabled);
+      } else {
+        errorAlert(checkInRSVPRes);
+      }
+
       if (scheduleRes.status === 200 && scheduleRes.data) {
         setAdminScheduleEditEnabled(scheduleRes.data.enabled);
       } else {
@@ -152,6 +172,12 @@ export default function PermissionsTab() {
         setAdminFAQEditEnabled(faqRes.data.enabled);
       } else {
         errorAlert(faqRes);
+      }
+
+      if (trackRes.status === 200 && trackRes.data) {
+        setAdminTrackEditEnabled(trackRes.data.enabled);
+      } else {
+        errorAlert(trackRes);
       }
 
       setLoading(false);
@@ -232,6 +258,28 @@ export default function PermissionsTab() {
     setTravelRSVPSaving(false);
   }
 
+  async function handleCheckInRSVPToggle(nextValue: boolean) {
+    setCheckInRSVPSaving(true);
+    const res = await putRequest<{ enabled: boolean }>(
+      "/superadmin/settings/check-in-requires-rsvp",
+      { enabled: nextValue },
+      "check-in RSVP requirement",
+    );
+
+    if (res.status === 200 && res.data) {
+      setCheckInRequiresRSVP(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Check-in now requires a confirmed RSVP."
+          : "Check-in no longer requires an RSVP.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setCheckInRSVPSaving(false);
+  }
+
   async function handleScheduleToggle(nextValue: boolean) {
     setScheduleSaving(true);
     const res = await postRequest<{ enabled: boolean }>(
@@ -298,6 +346,28 @@ export default function PermissionsTab() {
     setFaqSaving(false);
   }
 
+  async function handleTrackToggle(nextValue: boolean) {
+    setTrackSaving(true);
+    const res = await postRequest<{ enabled: boolean }>(
+      "/superadmin/settings/admin-track-edit-toggle",
+      { enabled: nextValue },
+      "admin track edit toggle",
+    );
+
+    if (res.status === 200 && res.data) {
+      setAdminTrackEditEnabled(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Admins can now edit challenge tracks."
+          : "Admins are now blocked from editing challenge tracks.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setTrackSaving(false);
+  }
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg text-zinc-100">Permissions</h3>
@@ -333,6 +403,15 @@ export default function PermissionsTab() {
       />
 
       <PermissionToggle
+        id="check-in-requires-rsvp-toggle"
+        label="Require RSVP to Check In"
+        description="When enabled, the scanner turns away accepted hackers who declined or never answered their RSVP, so capacity and catering counts hold. Hackers promoted from the walk-in queue are always let in. Turn this off only if you are not running the RSVP form at all."
+        checked={checkInRequiresRSVP}
+        disabled={loading || checkInRSVPSaving}
+        onCheckedChange={handleCheckInRSVPToggle}
+      />
+
+      <PermissionToggle
         id="admin-schedule-edit-toggle"
         label="Admin Schedule Editing"
         description="When disabled, only super admins can create, update, or delete schedule entries."
@@ -357,6 +436,15 @@ export default function PermissionsTab() {
         checked={adminFAQEditEnabled}
         disabled={loading || faqSaving}
         onCheckedChange={handleFAQToggle}
+      />
+
+      <PermissionToggle
+        id="admin-track-edit-toggle"
+        label="Admin Track Editing"
+        description="When disabled, only super admins can create, update, or delete challenge tracks."
+        checked={adminTrackEditEnabled}
+        disabled={loading || trackSaving}
+        onCheckedChange={handleTrackToggle}
       />
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>

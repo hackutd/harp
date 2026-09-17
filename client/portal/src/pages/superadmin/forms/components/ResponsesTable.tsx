@@ -120,7 +120,7 @@ function ResponseRow({
       <TableCell className="relative pl-6">
         <div className="max-w-56">
           <p className="truncate font-medium">
-            {formatName(item.first_name, item.last_name)}
+            {formatName(item.first_name, item.last_name, item.email)}
           </p>
           <p className="truncate text-xs text-muted-foreground">{item.email}</p>
         </div>

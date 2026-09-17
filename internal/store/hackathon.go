@@ -23,13 +23,14 @@ type ResetOptions struct {
 	Settings      bool
 	Sponsors      bool
 	FAQs          bool
+	Tracks        bool
 	Config        bool
 }
 
 // Any reports whether at least one domain is selected.
 func (o ResetOptions) Any() bool {
 	return o.Applications || o.Scans || o.ScanTypes || o.Schedule ||
-		o.Notifications || o.Settings || o.Sponsors || o.FAQs || o.Config
+		o.Notifications || o.Settings || o.Sponsors || o.FAQs || o.Tracks || o.Config
 }
 
 // ResetPaths holds the storage objects a reset orphaned, by kind, so the caller
@@ -120,6 +121,13 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 
 	if opts.FAQs {
 		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE faqs"); err != nil {
+			return nil, err
+		}
+	}
+
+	if opts.Tracks {
+		// Logos live in the logo_data column as base64, so they go with the row.
+		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE tracks"); err != nil {
 			return nil, err
 		}
 	}

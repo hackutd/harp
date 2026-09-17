@@ -14,6 +14,7 @@ import type { Review, ReviewNote, ReviewVote } from "../types";
 interface GradingState {
   reviews: Review[];
   loading: boolean;
+  error: string | null;
   currentIndex: number;
   detail: Application | null;
   detailLoading: boolean;
@@ -22,7 +23,10 @@ interface GradingState {
   submitting: boolean;
   localNotes: string;
   localTravelVote: boolean | null;
-  fetchReviews: () => Promise<void>;
+  fetchReviews: (
+    targetReviewId?: string,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
   navigatePrev: () => void;
@@ -35,6 +39,7 @@ interface GradingState {
 const initialState = {
   reviews: [] as Review[],
   loading: false,
+  error: null as string | null,
   currentIndex: 0,
   detail: null as Application | null,
   detailLoading: false,
@@ -46,18 +51,35 @@ const initialState = {
 };
 
 let loadDetailSeq = 0;
+let fetchSequence = 0;
 
 export const useAdminGradingStore = create<GradingState>((set, get) => ({
   ...initialState,
 
-  fetchReviews: async () => {
-    set({ loading: true });
-    const res = await fetchPendingReviews();
+  fetchReviews: async (targetReviewId, signal) => {
+    const requestId = ++fetchSequence;
+    ++loadDetailSeq;
+    set({ ...initialState, loading: true });
+    const res = await fetchPendingReviews(signal);
 
+    if (requestId !== fetchSequence) return;
+    if (signal?.aborted) {
+      set({ loading: false });
+      return;
+    }
     if (res.status === 200 && res.data) {
-      set({ reviews: res.data.reviews, loading: false });
+      const reviews = res.data.reviews;
+      const targetIndex = reviews.findIndex((r) => r.id === targetReviewId);
+      const currentIndex = Math.max(0, targetIndex);
+      set({ reviews, currentIndex, loading: false, error: null });
+      if (reviews.length > 0) {
+        await get().loadDetail(reviews[currentIndex].application_id);
+      }
     } else {
-      set({ reviews: [], loading: false });
+      set({
+        loading: false,
+        error: res.error || "Unable to load reviews. Please try again.",
+      });
     }
   },
 
@@ -94,7 +116,8 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   navigateNext: () => {
-    const { reviews, currentIndex } = get();
+    const { reviews, currentIndex, loading, error, submitting } = get();
+    if (loading || error || submitting) return;
     if (currentIndex < reviews.length - 1) {
       const newIndex = currentIndex + 1;
       set({ currentIndex: newIndex });
@@ -103,7 +126,8 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   navigatePrev: () => {
-    const { reviews, currentIndex } = get();
+    const { reviews, currentIndex, loading, error, submitting } = get();
+    if (loading || error || submitting) return;
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       set({ currentIndex: newIndex });
@@ -112,6 +136,8 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   submitVote: async (reviewId: string, vote: ReviewVote) => {
+    if (get().loading || get().error || get().submitting) return;
+    const queueVersion = fetchSequence;
     set({ submitting: true });
 
     const { localNotes, localTravelVote, reviews: allReviews } = get();
@@ -127,6 +153,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
       notes: localNotes || undefined,
     });
 
+    if (queueVersion !== fetchSequence) return;
     if (result.success) {
       const { reviews, currentIndex } = get();
       const filtered = reviews.filter((r) => r.id !== reviewId);
@@ -145,7 +172,13 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
       if (filtered.length > 0) {
         get().loadDetail(filtered[Math.max(0, newIndex)].application_id);
       } else {
-        set({ detail: null, notes: [] });
+        ++loadDetailSeq;
+        set({
+          detail: null,
+          notes: [],
+          detailLoading: false,
+          notesLoading: false,
+        });
       }
     } else {
       set({ submitting: false });
@@ -162,7 +195,8 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   reset: () => {
-    loadDetailSeq = 0;
+    ++loadDetailSeq;
+    ++fetchSequence;
     set(initialState);
   },
 }));

@@ -98,7 +98,10 @@ export default function HackerLayout() {
 
       {/* Page content */}
       <SidebarInset
-        className={cn("bg-white", hideMobileNav ? "pb-0" : "pb-24 md:pb-0")}
+        className={cn(
+          "overflow-x-clip bg-white",
+          hideMobileNav ? "pb-0" : "pb-24 md:pb-0",
+        )}
       >
         <div key={location.pathname} className="animate-page-enter">
           <Outlet />

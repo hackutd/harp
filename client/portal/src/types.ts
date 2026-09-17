@@ -90,7 +90,7 @@ export interface Application {
   user_id: string;
   status: ApplicationStatus;
   responses: Record<string, unknown>;
-  /** Embedded on GET /applications/me; absent on mutation responses. */
+  /** Embedded on application GET/PATCH and resume DELETE responses. */
   application_schema?: ApplicationSchemaField[];
   /** Total scan points; populated on read endpoints. */
   points?: number;
@@ -145,6 +145,12 @@ export interface NotificationFeedItem {
   sent_at: string | null;
   recipient_count: number;
   schedule_id: string | null;
+  /** A revocable delivery lease held by the dispatcher, not a delivery record. */
+  claimed_at: string | null;
+  attempts: number;
+  /** Terminal: the dispatcher gave up. `last_error` says why. */
+  failed_at: string | null;
+  last_error: string | null;
   /** Null once the author's account is deleted. */
   created_by: string | null;
   created_at: string;
@@ -169,6 +175,12 @@ export interface ApiResponse<T = unknown> {
   status: number;
   data?: T;
   error?: string;
+  /**
+   * Field ids an endpoint blamed for a failed request, when it reports them.
+   * Lets a form map a server-side rejection back onto its own inputs instead of
+   * showing the raw message.
+   */
+  fields?: string[];
 }
 
 export interface Scan {

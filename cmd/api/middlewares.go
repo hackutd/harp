@@ -6,10 +6,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hackutd/harp/internal/auth"
 	"github.com/hackutd/harp/internal/ratelimiter"
 	"github.com/hackutd/harp/internal/store"
@@ -80,7 +83,11 @@ func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		limiter, key := app.rateLimiterFor(w, r)
 		if allow, retryAfter := limiter.Allow(key); !allow {
-			app.rateLimiterExceededResponse(w, r, key, retryAfter.String())
+			seconds := int(math.Ceil(retryAfter.Seconds()))
+			if seconds < 1 {
+				seconds = 1
+			}
+			app.rateLimiterExceededResponse(w, r, key, strconv.Itoa(seconds))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -98,10 +105,29 @@ func (app *application) rateLimiterFor(w http.ResponseWriter, r *http.Request) (
 	return app.ipRateLimiter, "ip:" + clientIP(r)
 }
 
-// middleware.RealIP rewrites RemoteAddr to the bare forwarded IP behind a
-// proxy, but without one RemoteAddr keeps its port, which would make every
-// connection its own bucket.
+// clientIPMiddleware picks how the client address is derived, per config:
+// a single-IP header the edge proxy overwrites on every request (Cloudflare's
+// CF-Connecting-IP), the X-Forwarded-For entry a known number of proxies deep,
+// or the TCP peer when nothing sits in front of the server. Forwarded headers
+// are never trusted implicitly, since a client can set them freely.
+func (app *application) clientIPMiddleware() func(http.Handler) http.Handler {
+	switch {
+	case app.config.clientIP.header != "":
+		return middleware.ClientIPFromHeader(app.config.clientIP.header)
+	case app.config.clientIP.trustedProxies > 0:
+		return middleware.ClientIPFromXFFTrustedProxies(app.config.clientIP.trustedProxies)
+	default:
+		return middleware.ClientIPFromRemoteAddr
+	}
+}
+
+// clientIP prefers the address resolved by the configured ClientIPFrom*
+// middleware (see clientIPMiddleware); when that yields nothing the TCP peer
+// is used, minus its ephemeral port so one host is one bucket.
 func clientIP(r *http.Request) string {
+	if ip := middleware.GetClientIP(r.Context()); ip != "" {
+		return ip
+	}
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		return host
 	}
@@ -140,7 +166,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 					app.internalServerError(w, r, err)
 					return
 				}
-				app.logger.Infow("created new user", "user_id", user.ID, "email", user.Email)
+				app.requestLogger(r).Infow("created new user", "user_id", user.ID, "auth_method", user.AuthMethod)
 			} else {
 				app.internalServerError(w, r, err)
 				return
@@ -154,7 +180,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				}
 				if *profilePictureURL != currentPicture {
 					if err := app.store.Users.UpdateProfilePicture(r.Context(), user.SuperTokensUserID, profilePictureURL); err != nil {
-						app.logger.Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
+						app.requestLogger(r).Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
 					} else {
 						user.ProfilePictureURL = profilePictureURL
 					}
@@ -169,7 +195,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				"role":         string(user.Role),
 				"portalUserId": user.ID,
 			}); err != nil {
-				app.logger.Warnw("failed to sync role to session", "error", err, "user_id", user.ID)
+				app.requestLogger(r).Warnw("failed to sync role to session", "error", err, "user_id", user.ID)
 			}
 		}
 
@@ -388,6 +414,34 @@ func (app *application) AdminFAQEditPermissionMiddleware(next http.Handler) http
 
 		if user.Role == store.RoleAdmin && !enabled {
 			app.forbiddenResponse(w, r, fmt.Errorf("admin FAQ editing is disabled"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) AdminTrackEditPermissionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetAdminTrackEditEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if user.Role == store.RoleAdmin && !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("admin track editing is disabled"))
 			return
 		}
 

@@ -55,8 +55,8 @@ Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CL
 - **Entry point:** `cmd/api/main.go` — loads config, `cmd/api/api.go` — Chi router setup in `mount()`
 - **Database:** PostgreSQL 16.3, raw SQL (no ORM), repository pattern in `internal/store/`
 - **Auth:** SuperTokens (Passwordless magic link + Google OAuth), initialized in `internal/auth/`
-- **Middleware chain:** RequestID → RealIP → Logger → Recoverer → CORS → SuperTokens → RateLimiter (`/v1` only) → AuthRequired → RequireRole
-- **Rate limiting:** keyed by SuperTokens user ID when the request carries a verified session (`RATELIMITER_REQUESTS_COUNT`), falling back to client IP otherwise (`RATELIMITER_IP_REQUESTS_COUNT`, larger because a whole venue shares one NAT). Static assets and `/auth/*` are never limited.
+- **Middleware chain:** RequestID → ClientIP → Logger → Recoverer → CORS → SuperTokens → RateLimiter (`/v1` only) → AuthRequired → RequireRole
+- **Rate limiting:** keyed by SuperTokens user ID when the request carries a verified session (`RATELIMITER_REQUESTS_COUNT`), falling back to client IP otherwise (`RATELIMITER_IP_REQUESTS_COUNT`, larger because a whole venue shares one NAT). The client IP comes from `CLIENT_IP_HEADER` (default `CF-Connecting-IP`) or `CLIENT_IP_TRUSTED_PROXIES` hops into `X-Forwarded-For`; other forwarded headers are ignored. Static assets and `/auth/*` are never limited.
 - **Roles (hierarchical):** `hacker` (1) < `admin` (2) < `super_admin` (3)
 - **JSON envelope:** Success: `{"data": ...}`, Error: `{"error": "..."}`
 - **Pagination:** Cursor-based with base64-encoded JSON cursors

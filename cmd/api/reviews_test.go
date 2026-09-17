@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -341,6 +341,22 @@ func TestGetNextReview(t *testing.T) {
 		mockReviews.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
 	})
+
+	t.Run("should return 403 for a super admin with assignment disabled", func(t *testing.T) {
+		superAdmin := newSuperAdminUser()
+
+		mockSettings.On("GetReviewAssignmentToggle", superAdmin.ID).Return(false, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, superAdmin)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getNextReview))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+
+		mockReviews.AssertNotCalled(t, "AssignNextForAdmin", superAdmin.ID, 3)
+		mockSettings.AssertExpectations(t)
+	})
 }
 
 func TestBatchAssignReviews(t *testing.T) {
@@ -349,7 +365,7 @@ func TestBatchAssignReviews(t *testing.T) {
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
 	t.Run("should batch assign reviews", func(t *testing.T) {
-		result := &store.BatchAssignmentResult{ReviewsCreated: 15}
+		result := &store.BatchAssignmentResult{ReviewsCreated: 15, ReviewsRemoved: 2, ReviewsPerApplication: 3, ApplicationsBelowTarget: 1, ReviewsUnfilled: 2}
 
 		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
 		mockReviews.On("BatchAssign", 3).Return(result, nil).Once()
@@ -366,7 +382,7 @@ func TestBatchAssignReviews(t *testing.T) {
 		}
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Equal(t, 15, body.Data.ReviewsCreated)
+		assert.Equal(t, *result, body.Data)
 
 		mockReviews.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)

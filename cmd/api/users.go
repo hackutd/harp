@@ -32,10 +32,7 @@ func (app *application) deleteUserAndIdentity(r *http.Request, user *store.User)
 	}
 
 	if err := supertokens.DeleteUser(user.SuperTokensUserID); err != nil {
-		app.logger.Errorw("failed to delete supertokens user",
-			"method", r.Method, "path", r.URL.Path,
-			"user_id", user.ID, "error", err,
-		)
+		app.requestLogger(r).Errorw("failed to delete supertokens user", "user_id", user.ID, "error", err)
 	}
 
 	return nil

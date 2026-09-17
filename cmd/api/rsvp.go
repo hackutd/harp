@@ -3,11 +3,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
 )
 
@@ -158,8 +157,8 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		if validationErrors := validateResponses(schema, responses, true); len(validationErrors) > 0 {
-			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+		if validationErrors := validateResponses(schema, responses, finalValidation); len(validationErrors) > 0 {
+			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}
 
@@ -247,7 +246,7 @@ func (app *application) logRSVPReset(r *http.Request, kind string, application *
 		actorID = actor.ID
 	}
 
-	app.logger.Infow("rsvp reset by super admin",
+	app.requestLogger(r).Infow("rsvp reset by super admin",
 		"kind", kind,
 		"actor_id", actorID,
 		"application_id", application.ID,
