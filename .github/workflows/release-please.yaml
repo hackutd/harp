@@ -12,9 +12,16 @@ name: release-please
 
 jobs:
   release-please:
+    # Upstream only. This workflow ships to every fork, and a fork that ran it
+    # would mint its own v0.11.0 tag alongside the one it merged from upstream,
+    # leaving "which version am I on" unanswerable. Guarding here rather than
+    # asking adopters to delete the file keeps forks free of a delete/modify
+    # conflict every time this workflow changes.
+    if: github.repository == 'hackutd/harp'
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           # this assumes that you have created a personal access token
           # (PAT) and configured it as a GitHub action secret named
@@ -23,3 +30,33 @@ jobs:
           # this is a built-in strategy in release-please, see "Action Inputs"
           # for more options
           release-type: simple
+          # Stay pre-1.0 on purpose. Without this a single `BREAKING CHANGE:`
+          # footer bumps 0.x straight to 1.0.0; with it, breaking changes bump
+          # the minor version until we deliberately cut 1.0.
+          #
+          # The version line is anchored by the v0.9.0 tag. release-please
+          # finds the previous release from GitHub Releases, falling back to
+          # scanning tags — it does NOT read version.txt. If every tag and
+          # release is ever deleted again it will propose its hardcoded 1.0.0
+          # initial version, which is exactly what happened in PR #85.
+          bump-minor-pre-major: true
+
+      - name: Check out the released commit
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.sha }}
+          token: ${{ secrets.MY_RELEASE_PLEASE_TOKEN }}
+
+      - name: Create version snapshot branch
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_VERSION}" > /dev/null; then
+            echo "::error::Version branch ${RELEASE_VERSION} already exists; refusing to overwrite it."
+            exit 1
+          fi
+
+          git push origin "${RELEASE_SHA}:refs/heads/${RELEASE_VERSION}"

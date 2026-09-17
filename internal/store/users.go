@@ -361,30 +361,86 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 	return nil
 }
 
-func (s *UsersStore) Delete(ctx context.Context, userID string) error {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+// DeletedUserPaths holds the storage objects a user deletion orphaned, by kind,
+// so the caller can delete them once the rows pointing at them are gone.
+type DeletedUserPaths struct {
+	Resumes        []string
+	TravelReceipts []string
+}
+
+// Delete permanently removes a user and everything belonging to them, returning
+// the uploaded files the caller should delete from object storage.
+//
+// Most of the work is done by foreign keys: applications, application_reviews,
+// scans performed on the user, push_subscriptions, and walk_ins all cascade, and
+// the trg_update_vote_counts trigger fires on the cascaded review rows so each
+// application's denormalized vote counters correct themselves. Do not adjust
+// those counters here or they will be double-counted. Scans the user performed
+// and notifications they scheduled survive with a NULL attribution column.
+//
+// What foreign keys do not cover, and this method does: uploaded objects, the
+// review_assignment_toggle settings entry, and the scan_stats counter cache.
+func (s *UsersStore) Delete(ctx context.Context, userID string) (*DeletedUserPaths, error) {
+	// Multi-table with cascades and a counter rebuild; bulk-operation timeout.
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
 	defer cancel()
 
-	query := `
-		DELETE FROM users
-		WHERE id = $1
-	`
-
-	result, err := s.db.ExecContext(ctx, query, userID)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Collect the object keys before the cascade takes the rows pointing at
+	// them. Stored paths are used verbatim so both the current
+	// hackathons/{slug}/resumes/... layout and the legacy resumes/... one work.
+	paths := &DeletedUserPaths{}
+	var resumePath *string
+	var receiptPaths StringArray
+	err = tx.QueryRowContext(ctx,
+		`SELECT resume_path, travel_receipt_paths FROM applications WHERE user_id = $1`,
+		userID,
+	).Scan(&resumePath, &receiptPaths)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if resumePath != nil && *resumePath != "" {
+		paths.Resumes = append(paths.Resumes, *resumePath)
+	}
+	for _, path := range receiptPaths {
+		if path != "" {
+			paths.TravelReceipts = append(paths.TravelReceipts, path)
+		}
+	}
+
+	if err := removeReviewAssignmentEntry(ctx, tx, userID); err != nil {
+		return nil, err
+	}
+
+	result, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	if rows == 0 {
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
 
-	return nil
+	// The user's own scans were just cascaded away and incrementScanStat only
+	// ever counts up, so the cache has to be rebuilt from the table.
+	if _, err := rebalanceScanStats(ctx, tx); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return paths, nil
 }
 
 func (s *UsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, error) {

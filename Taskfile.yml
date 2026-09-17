@@ -12,6 +12,11 @@ tasks:
     cmds:
       - migrate create -seq -ext sql -dir "{{.MIGRATIONS_PATH}}" "{{.CLI_ARGS}}"
 
+  migrate-check:
+    desc: Validate migration numbering and up/down pairs
+    cmds:
+      - ./scripts/check-migrations.sh
+
   migrate-up:
     desc: Apply all migrations
     cmds:
@@ -26,6 +31,11 @@ tasks:
     desc: Run seed script
     cmds:
       - go run cmd/migrate/seed/main.go
+
+  reset-schema:
+    desc: Restore form schemas to the shipped defaults (task reset-schema -- -all -dry-run)
+    cmds:
+      - go run ./cmd/resetschema {{.CLI_ARGS}}
 
   gen-docs:
     desc: Generate Swagger docs
@@ -48,3 +58,72 @@ tasks:
     desc: Run all Go tests
     cmds:
       - go test -v ./...
+
+  load:smoke:
+    desc: Load-test: 1-VU sanity pass against the deployed portal (set BASE_URL.
+    cmds:
+      - docker compose -f docker-compose.load.yml run --rm k6 run -e BASE_URL={{.BASE_URL.}} scenarios/smoke.js
+    vars:
+      BASE_URL: https://your-portal.example.com
+
+  load:checkout-scan:
+    desc: Load-test: day-of QR-scan churn (set BASE_URL,SESSIONS_FILE..
+    cmds:
+      - docker compose -f docker-compose.load.yml run --rm k6 run -e BASE_URL={{.BASE_URL.}} -e SESSIONS_FILE={{.SESSIONS_FILE.}} scenarios/checkin-scan.js
+    vars:
+      BASE_URL: https://your-portal.example.com
+      SESSIONS_FILE: ""
+
+  load:load:
+    desc: Load-test: expected day-of concurrent load(s)set BASE_URL..
+    cmds:
+      - docker compose -f docker-compose.load.yml run --rm k6 run -e BASE_URL={{.BASE_URL.}} -e SESSIONS_FILE={{.SESSIONS_FILE.}} scenarios/load.js
+    vars:
+      BASE_URL: https://your-portal.example.com
+      SESSIONS_FILE: ""
+
+  load:run:
+    desc: Load-test: run the scenario named in load/config.json (override with BASE_URL=/SCENARIO=/SESSIONS_FILE=)
+    cmds:
+      - bash load/run.sh
+
+  load:preview:
+    desc: Load-test: print the resolved k6 command for the configured scenario without running it
+    cmds:
+      - DRY_RUN=1 bash load/run.sh
+
+  load:test:
+    desc: Load-test: unit-test the config/session resolution helpers (plain node, no k6 required)
+    cmds:
+      - cd load && node lib/resolve.test.js
+
+  load:spike:
+    desc: Load-test: application-deadline write burst (requires SESSIONS_FILE..
+    cmds:
+      - docker compose -f docker-compose.load.yml run --rm k6 run -e BASE_URL={{.BASE_URL.}} -e SESSIONS_FILE={{.SESSIONS_FILE.}} scenarios/spike-deadline.js
+    vars:
+      BASE_URL: https://your-portal.example.com
+      SESSIONS_FILE: ""
+
+  load:soak:
+    desc: Load-test: sustained soak for leaks / pool exhaustion.
+
+
+    cmds:
+      - docker compose -f docker-compose.load.yml run --rm k6 run -e BASE_URL={{.BASE_URL.}} -e SESSIONS_FILE={{.SESSIONS_FILE.}} scenarios/soak.js
+    vars:
+      BASE_URL: https://your-portal.example.com
+      SESSIONS_FILE: ""
+
+  load:stress:
+    desc: Load-test: ramp to ceiling until errors appear (set BASE_URL..
+    cmds:
+      - docker compose -f docker-compose.load.yml run --rm k6 run -e BASE_URL={{.BASE_URL.}} -e SESSIONS_FILE={{.SESSIONS_FILE.}} scenarios/stress.js
+    vars:
+      BASE_URL: https://your-portal.example.com
+      SESSIONS_FILE: ""
+
+  load:help:
+    desc: List load-test scenarios and flags (see load/README.md.
+    cmds:
+      - "grep -ho '^| `\\|[A-Z_]*`' load/README.md | head -40; true"

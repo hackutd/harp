@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type VapidPublicKeyResponse struct {
@@ -112,6 +112,11 @@ func (app *application) subscribePushHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := validatePushEndpoint(payload.Endpoint, app.config.vapid.allowedEndpointHosts); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}

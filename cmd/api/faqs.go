@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/go-chi/chi/v5"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type FAQPayload struct {

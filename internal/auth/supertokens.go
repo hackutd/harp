@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/recipe/passwordless"
 	"github.com/supertokens/supertokens-golang/recipe/passwordless/plessmodels"
 	"github.com/supertokens/supertokens-golang/recipe/session"

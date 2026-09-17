@@ -6,17 +6,44 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
-	"github.com/hackutd/portal/internal/auth"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/hackutd/harp/internal/auth"
+	"github.com/hackutd/harp/internal/ratelimiter"
+	"github.com/hackutd/harp/internal/store"
 	"github.com/supertokens/supertokens-golang/recipe/session"
+	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
 )
 
 type contextKey string
 
 const userContextKey contextKey = "user"
+
+// sessionUserIDResolver reports the SuperTokens user ID behind a request, or
+// false when the request carries no verifiable session.
+type sessionUserIDResolver func(w http.ResponseWriter, r *http.Request) (string, bool)
+
+// supertokensSessionUserID reads the session without requiring one. Only a
+// signature-verified access token yields a user ID, so a forged token cannot
+// mint its own rate-limit bucket. Missing, expired, or invalid tokens report
+// false and the caller falls back to the client IP. Verification is local
+// (cached JWKS); no call to the SuperTokens core is made.
+func supertokensSessionUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	optional := false
+	sess, err := session.GetSession(r, w, &sessmodels.VerifySessionOptions{
+		SessionRequired: &optional,
+		AntiCsrfCheck:   &optional,
+	})
+	if err != nil || sess == nil {
+		return "", false
+	}
+	return sess.GetUserID(), true
+}
 
 // Validates HTTP Basic authentication credentials
 func (app *application) BasicAuthMiddleware(next http.Handler) http.Handler {
@@ -49,15 +76,62 @@ func (app *application) BasicAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Rate limits per IP
+// Rate limits per signed-in user, falling back to the client IP for requests
+// without a verified session. Per-user buckets keep one venue NAT full of
+// hackers from exhausting a single shared budget.
 func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
-			app.rateLimiterExceededResponse(w, r, retryAfter.String())
+		limiter, key := app.rateLimiterFor(w, r)
+		if allow, retryAfter := limiter.Allow(key); !allow {
+			seconds := int(math.Ceil(retryAfter.Seconds()))
+			if seconds < 1 {
+				seconds = 1
+			}
+			app.rateLimiterExceededResponse(w, r, key, strconv.Itoa(seconds))
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// Picks the limiter and bucket key for a request: the per-user limiter keyed
+// by SuperTokens user ID when a session verifies, else the per-IP limiter.
+func (app *application) rateLimiterFor(w http.ResponseWriter, r *http.Request) (ratelimiter.Limiter, string) {
+	if app.sessionUserID != nil {
+		if userID, ok := app.sessionUserID(w, r); ok {
+			return app.rateLimiter, "user:" + userID
+		}
+	}
+	return app.ipRateLimiter, "ip:" + clientIP(r)
+}
+
+// clientIPMiddleware picks how the client address is derived, per config:
+// a single-IP header the edge proxy overwrites on every request (Cloudflare's
+// CF-Connecting-IP), the X-Forwarded-For entry a known number of proxies deep,
+// or the TCP peer when nothing sits in front of the server. Forwarded headers
+// are never trusted implicitly, since a client can set them freely.
+func (app *application) clientIPMiddleware() func(http.Handler) http.Handler {
+	switch {
+	case app.config.clientIP.header != "":
+		return middleware.ClientIPFromHeader(app.config.clientIP.header)
+	case app.config.clientIP.trustedProxies > 0:
+		return middleware.ClientIPFromXFFTrustedProxies(app.config.clientIP.trustedProxies)
+	default:
+		return middleware.ClientIPFromRemoteAddr
+	}
+}
+
+// clientIP prefers the address resolved by the configured ClientIPFrom*
+// middleware (see clientIPMiddleware); when that yields nothing the TCP peer
+// is used, minus its ephemeral port so one host is one bucket.
+func clientIP(r *http.Request) string {
+	if ip := middleware.GetClientIP(r.Context()); ip != "" {
+		return ip
+	}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 // Verifies the SuperTokens session and loads the user into context
@@ -92,7 +166,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 					app.internalServerError(w, r, err)
 					return
 				}
-				app.logger.Infow("created new user", "user_id", user.ID, "email", user.Email)
+				app.requestLogger(r).Infow("created new user", "user_id", user.ID, "auth_method", user.AuthMethod)
 			} else {
 				app.internalServerError(w, r, err)
 				return
@@ -106,7 +180,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				}
 				if *profilePictureURL != currentPicture {
 					if err := app.store.Users.UpdateProfilePicture(r.Context(), user.SuperTokensUserID, profilePictureURL); err != nil {
-						app.logger.Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
+						app.requestLogger(r).Warnw("failed to update profile picture", "error", err, "user_id", user.ID)
 					} else {
 						user.ProfilePictureURL = profilePictureURL
 					}
@@ -121,7 +195,7 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 				"role":         string(user.Role),
 				"portalUserId": user.ID,
 			}); err != nil {
-				app.logger.Warnw("failed to sync role to session", "error", err, "user_id", user.ID)
+				app.requestLogger(r).Warnw("failed to sync role to session", "error", err, "user_id", user.ID)
 			}
 		}
 
@@ -233,6 +307,64 @@ func (app *application) ApplicationsEnabledMiddleware(next http.Handler) http.Ha
 	})
 }
 
+// Checks whether RSVPs are enabled. If not, blocks RSVP submission for non-super-admins.
+func (app *application) RSVPEnabledMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetRSVPEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("rsvps are currently closed"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Checks whether travel RSVPs are enabled. If not, blocks travel RSVP submission for non-super-admins.
+func (app *application) TravelRSVPEnabledMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetTravelRSVPEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("travel rsvps are currently closed"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (app *application) AdminSponsorEditPermissionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := getUserFromContext(r.Context())
@@ -282,6 +414,34 @@ func (app *application) AdminFAQEditPermissionMiddleware(next http.Handler) http
 
 		if user.Role == store.RoleAdmin && !enabled {
 			app.forbiddenResponse(w, r, fmt.Errorf("admin FAQ editing is disabled"))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) AdminTrackEditPermissionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r.Context())
+		if user == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("user not in context"))
+			return
+		}
+
+		if user.Role == store.RoleSuperAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		enabled, err := app.store.Settings.GetAdminTrackEditEnabled(r.Context())
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		if user.Role == store.RoleAdmin && !enabled {
+			app.forbiddenResponse(w, r, fmt.Errorf("admin track editing is disabled"))
 			return
 		}
 

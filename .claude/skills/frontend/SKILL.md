@@ -1,11 +1,11 @@
 ---
 name: frontend
-description: "HARP React frontend development guide (React 19 + TypeScript + Vite + Tailwind v4). Generates pages, components, Zustand stores, API modules, form validations, and route definitions following established conventions. Use this skill whenever building new frontend pages, adding UI components, creating Zustand stores, writing API client code, adding form validation, modifying routes, or working in client/web/. Also use when the user asks to add a new admin page, hacker-facing feature, or super admin view to the React frontend."
+description: "HARP React frontend development guide (React 19 + TypeScript + Vite + Tailwind v4). Generates pages, components, Zustand stores, API modules, form validations, and route definitions following established conventions. Use this skill whenever building new frontend pages, adding UI components, creating Zustand stores, writing API client code, adding form validation, modifying routes, or working in client/portal/. Also use when the user asks to add a new admin page, hacker-facing feature, or super admin view to the React frontend."
 ---
 
 # HARP Frontend Development Guide
 
-All frontend code lives under `client/web/`. For adding a new page end-to-end, read `references/new-page.md`.
+All frontend code lives under `client/portal/`. For adding a new page end-to-end, read `references/new-page.md`.
 
 ## File Locations
 

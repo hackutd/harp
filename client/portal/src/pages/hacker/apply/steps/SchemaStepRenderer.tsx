@@ -1,0 +1,919 @@
+import { ArrowLeft, Check, ChevronDown, X } from "lucide-react";
+import { useCallback, useState } from "react";
+import {
+  type ControllerRenderProps,
+  type FieldValues,
+  useFormContext,
+} from "react-hook-form";
+
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Dialog, DialogContent, DialogOverlay } from "@/components/ui/dialog";
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  useFormField,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import { useIsMobile } from "@/shared/hooks";
+import { getFieldPresets } from "@/shared/lib/field-presets";
+import {
+  formatPhoneNational,
+  joinPhoneNumber,
+  type PhoneParts,
+  splitPhoneNumber,
+} from "@/shared/lib/phone-input";
+import {
+  conditionSatisfied,
+  getFieldCondition,
+  getObsoleteOptions,
+  getWholeNumberRule,
+  renderLabel,
+} from "@/shared/lib/schema-utils";
+import { cn } from "@/shared/lib/utils";
+import type { ApplicationSchemaField } from "@/types";
+
+type ApplicationFormValues = FieldValues & Record<string, unknown>;
+type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
+
+const underlineField =
+  "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 pt-3.5 pb-1 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
+
+const fieldLabel = "text-xs font-light text-[#8A8A8A]";
+
+// Dark floating dropdown panel (see design screenshot). Slides down out of the
+// trigger: the zoom/scale is neutralized (`zoom-*-100`) so the motion reads as
+// a slide rather than a fade-into-position, anchored to the top edge.
+const selectContent =
+  "origin-top overflow-hidden rounded-lg border-0 bg-[#3A3A3A] p-0 text-white shadow-2xl ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:duration-[400ms] data-[state=closed]:duration-200 data-[state=open]:!zoom-in-100 data-[state=closed]:!zoom-out-100 data-[side=bottom]:!slide-in-from-top-3 data-[side=top]:!slide-in-from-bottom-3";
+
+const selectItem =
+  "flex w-full cursor-pointer items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-3.5 text-left text-sm font-light text-white/90 transition-colors last:border-b-0 hover:bg-white/[0.07] hover:text-white focus-visible:bg-white/[0.07] focus-visible:text-white focus-visible:outline-none";
+
+interface SchemaStepRendererProps {
+  sectionLabel: string;
+  fields: ApplicationSchemaField[];
+  /** Optional visual override for the section heading. */
+  headingClassName?: string;
+  /** Extra content rendered before the fields (e.g., read-only email). */
+  header?: React.ReactNode;
+}
+
+export function SchemaStepRenderer({
+  sectionLabel,
+  fields,
+  headingClassName,
+  header,
+}: SchemaStepRendererProps) {
+  const form = useFormContext<ApplicationFormValues>();
+
+  // Conditional fields (validation.show_if / required_if) are controlled by
+  // another field — a checkbox ("field") or a select value ("field=Value"):
+  // hidden until the condition holds, and required while visible.
+  const conditions = fields.map((f) => ({
+    showIf: getFieldCondition(f, "show_if"),
+    requiredIf: getFieldCondition(f, "required_if"),
+  }));
+  const controllerIds = [
+    ...new Set(
+      conditions.flatMap((c) =>
+        [c.showIf?.field, c.requiredIf?.field].filter(
+          (id): id is string => !!id,
+        ),
+      ),
+    ),
+  ];
+  const controllerValues = form.watch(controllerIds);
+  const watchedValues: Record<string, unknown> = {};
+  controllerIds.forEach((id, i) => {
+    watchedValues[id] = controllerValues[i];
+  });
+
+  const visibleFields: ApplicationSchemaField[] = [];
+  fields.forEach((f, i) => {
+    const { showIf, requiredIf } = conditions[i];
+    if (showIf && !conditionSatisfied(showIf, watchedValues)) return;
+    if (
+      !f.required &&
+      requiredIf &&
+      conditionSatisfied(requiredIf, watchedValues)
+    ) {
+      visibleFields.push({ ...f, required: true });
+    } else {
+      visibleFields.push(f);
+    }
+  });
+
+  // Index where the trailing run of all-optional fields begins — the point
+  // below which everything is optional. Anchoring the "OPTIONAL" divider here
+  // (rather than at the first optional field) keeps it from landing above a
+  // field that still has required fields after it, e.g. phone, which precedes
+  // the required age field.
+  let optionalStart = visibleFields.length;
+  for (let i = visibleFields.length - 1; i >= 0; i--) {
+    if (visibleFields[i].required) break;
+    optionalStart = i;
+  }
+  // Only show the divider when required fields precede the optional run.
+  const firstOptionalIndex =
+    fields[0]?.section !== "personal" &&
+    optionalStart > 0 &&
+    optionalStart < visibleFields.length
+      ? optionalStart
+      : -1;
+
+  return (
+    <div className="space-y-7">
+      <h1
+        className={cn(
+          "text-3xl font-light tracking-tight text-black",
+          headingClassName,
+        )}
+      >
+        {sectionLabel}
+      </h1>
+
+      {header}
+
+      {visibleFields.length === 0 && (
+        <p className="text-sm font-light text-[#8A8A8A]">
+          No fields configured.
+        </p>
+      )}
+
+      {visibleFields.map((field, index) => (
+        <div key={field.id} className="space-y-7">
+          {index === firstOptionalIndex && (
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-[11px] font-light tracking-[0.2em] text-[#B8B8B8]">
+                OPTIONAL
+              </span>
+              <span className="h-px flex-1 bg-[#EDEDED]" />
+            </div>
+          )}
+          <SchemaFormField field={field} form={form} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Error message that stays silent for empty-required errors — the red label,
+ * asterisk, and underline already signal those — while still surfacing
+ * format errors (e.g. an invalid phone number).
+ */
+function FieldMessage() {
+  const { error } = useFormField();
+  const message = error ? String(error.message ?? "") : "";
+  if (!message || message.endsWith("is required")) return null;
+  return <FormMessage />;
+}
+
+function SchemaFormField({
+  field,
+  form,
+}: {
+  field: ApplicationSchemaField;
+  form: FormContext;
+}) {
+  const requiredMark = field.required ? " *" : "";
+  const validation = field.validation ?? {};
+
+  switch (field.type) {
+    case "text": {
+      // Well-known fields (university, major, country_of_residence) render a
+      // searchable combobox with an "Other" free-text escape hatch instead of a
+      // plain input. The stored value stays a plain string either way.
+      const presets = getFieldPresets(field.id);
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: formField }) => (
+            <FormItem>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
+              {presets ? (
+                <SchemaCombobox
+                  field={field}
+                  formField={formField}
+                  options={presets}
+                />
+              ) : (
+                <FormControl>
+                  <Input
+                    className={underlineField}
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                    {...formField}
+                    value={formField.value ?? ""}
+                  />
+                </FormControl>
+              )}
+              <FieldMessage />
+            </FormItem>
+          )}
+        />
+      );
+    }
+
+    case "phone":
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: formField }) => (
+            <FormItem>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
+              <PhoneInput formField={formField} />
+              <FieldMessage />
+            </FormItem>
+          )}
+        />
+      );
+
+    case "number": {
+      // Well-known count fields (age) take whole numbers only, so the decimal
+      // point never makes it into the value.
+      const whole = getWholeNumberRule(field.id);
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: formField }) => (
+            <FormItem>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  className={underlineField}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  {...formField}
+                  value={formField.value ?? ""}
+                  // Select the whole value on focus so the first keystroke
+                  // replaces it instead of appending to it.
+                  onFocus={(e) => e.target.select()}
+                  onMouseUp={(e) => e.preventDefault()}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(
+                      whole ? /[^\d-]/g : /[^\d.-]/g,
+                      "",
+                    );
+                    // Empty stays undefined rather than collapsing to 0, so a
+                    // required number the hacker never answered still fails.
+                    if (cleaned === "" || cleaned === "-") {
+                      formField.onChange(undefined);
+                      return;
+                    }
+                    const num = Number(cleaned);
+                    formField.onChange(Number.isNaN(num) ? undefined : num);
+                  }}
+                />
+              </FormControl>
+              <FieldMessage />
+            </FormItem>
+          )}
+        />
+      );
+    }
+
+    case "textarea":
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: formField }) => (
+            <FormItem>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  className="min-h-[120px] rounded-md border-[#D9D9D9] bg-transparent text-base font-light shadow-none focus-visible:border-black focus-visible:ring-0"
+                  placeholder="Type your answer here..."
+                  {...formField}
+                  value={formField.value ?? ""}
+                />
+              </FormControl>
+              {typeof validation.maxLength === "number" && (
+                <FormDescription className="text-xs font-light">
+                  Max {validation.maxLength} characters
+                </FormDescription>
+              )}
+              <FieldMessage />
+            </FormItem>
+          )}
+        />
+      );
+
+    case "select":
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: formField }) => (
+            <FormItem>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
+              <SchemaSelect field={field} formField={formField} />
+              <FieldMessage />
+            </FormItem>
+          )}
+        />
+      );
+
+    case "multi_select":
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: selectedField }) => (
+            <FormItem>
+              <FormLabel className={fieldLabel}>
+                {field.label}
+                {requiredMark}
+              </FormLabel>
+              <FormDescription className="text-xs font-light">
+                Select all that apply
+              </FormDescription>
+              {getObsoleteOptions(field, selectedField.value).map((option) => (
+                <div
+                  key={option}
+                  className="flex items-baseline justify-between gap-3 text-xs font-light text-[#8A8A8A]"
+                >
+                  <span className="min-w-0 break-words">
+                    {option} — No longer available
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Remove unavailable choice ${option}`}
+                    className="shrink-0 underline underline-offset-2 hover:text-black"
+                    onClick={() =>
+                      selectedField.onChange(
+                        (selectedField.value as string[]).filter(
+                          (value) => value !== option,
+                        ),
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {(field.options ?? []).map((opt) => (
+                  <FormField
+                    key={opt}
+                    control={form.control}
+                    name={field.id}
+                    render={({ field: formField }) => {
+                      const value = (formField.value as string[]) || [];
+                      return (
+                        <FormItem className="flex flex-row items-start gap-2 space-y-0">
+                          {/* h-5 matches the label's leading-5 line box, so the
+                              box stays on the first line of an option that
+                              wraps to two. */}
+                          <div className="flex h-5 shrink-0 items-center">
+                            <FormControl>
+                              <Checkbox
+                                checked={value.includes(opt)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    formField.onChange([...value, opt]);
+                                  } else {
+                                    formField.onChange(
+                                      value.filter((v) => v !== opt),
+                                    );
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                          </div>
+                          <FormLabel className="min-w-0 cursor-pointer text-sm leading-5 font-light break-words">
+                            {opt}
+                          </FormLabel>
+                        </FormItem>
+                      );
+                    }}
+                  />
+                ))}
+              </div>
+              <FieldMessage />
+            </FormItem>
+          )}
+        />
+      );
+
+    case "checkbox":
+      return (
+        <FormField
+          control={form.control}
+          name={field.id}
+          render={({ field: formField }) => (
+            <FormItem className="flex flex-row items-start gap-2.5 space-y-0">
+              {/* h-6 matches the label's leading-6 line box, so the box centers
+                  on the first line of text however many lines it wraps to. */}
+              <div className="flex h-6 shrink-0 items-center">
+                <FormControl>
+                  <Checkbox
+                    checked={formField.value ?? false}
+                    onCheckedChange={formField.onChange}
+                  />
+                </FormControl>
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <FormLabel className="block text-sm leading-6 font-extralight">
+                  {renderLabel(field.label)}
+                  {requiredMark}
+                </FormLabel>
+                <FieldMessage />
+              </div>
+            </FormItem>
+          )}
+        />
+      );
+
+    default:
+      return null;
+  }
+}
+
+/** Editable numeric country code with a fixed + and a formatted national number. */
+function PhoneInput({
+  formField,
+}: {
+  formField: ControllerRenderProps<ApplicationFormValues>;
+}) {
+  const value = (formField.value as string) ?? "";
+  const [entry, setEntry] = useState(() => ({
+    value,
+    ...splitPhoneNumber(value),
+  }));
+  // Only external value changes reset the split. Our own edits keep incomplete
+  // country codes (including blank) independent of the national digits.
+  if (value !== entry.value) setEntry({ value, ...splitPhoneNumber(value) });
+  const formatted = formatPhoneNational(entry);
+  const update = (parts: PhoneParts) => {
+    const next = joinPhoneNumber(parts);
+    setEntry({
+      value: next,
+      countryCode: parts.countryCode,
+      national: parts.national,
+    });
+    formField.onChange(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-4">
+        <div className="flex w-16 shrink-0 items-baseline border-b border-[#D9D9D9] focus-within:border-black">
+          <span aria-hidden className="text-base font-light">
+            +
+          </span>
+          <Input
+            aria-label="Country code"
+            className={cn(underlineField, "min-w-0 border-b-0 pl-1")}
+            type="text"
+            inputMode="numeric"
+            autoComplete="tel-country-code"
+            placeholder="1"
+            value={entry.countryCode}
+            onBlur={formField.onBlur}
+            onChange={(e) =>
+              update({
+                countryCode: e.target.value.replace(/\D/g, "").slice(0, 3),
+                national: entry.national,
+              })
+            }
+          />
+        </div>
+        <FormControl>
+          <Input
+            className={cn(underlineField, "min-w-0 flex-1")}
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            placeholder={
+              entry.countryCode === "1" ? "(202) 555-1234" : "Phone number"
+            }
+            {...formField}
+            value={formatted}
+            onChange={(e) => {
+              const input = e.target;
+              const raw = input.value;
+              const pastedInternational = raw.trim().startsWith("+");
+              let parts = pastedInternational
+                ? splitPhoneNumber(raw)
+                : {
+                    countryCode: entry.countryCode,
+                    national: raw.replace(/\D/g, ""),
+                  };
+              let digitsBeforeCaret = raw
+                .slice(0, input.selectionStart ?? raw.length)
+                .replace(/\D/g, "").length;
+              if (pastedInternational)
+                digitsBeforeCaret = Math.max(
+                  0,
+                  digitsBeforeCaret - parts.countryCode.length,
+                );
+              // Backspacing a mask character should remove the preceding digit.
+              if (
+                (e.nativeEvent as InputEvent).inputType ===
+                  "deleteContentBackward" &&
+                parts.national === entry.national &&
+                raw.length < formatted.length &&
+                digitsBeforeCaret > 0
+              ) {
+                parts = {
+                  ...parts,
+                  national:
+                    parts.national.slice(0, digitsBeforeCaret - 1) +
+                    parts.national.slice(digitsBeforeCaret),
+                };
+                digitsBeforeCaret--;
+              }
+              update(parts);
+              const display = formatPhoneNational(parts);
+              let position = 0;
+              let remaining = digitsBeforeCaret;
+              while (position < display.length && remaining > 0) {
+                if (/\d/.test(display[position])) remaining--;
+                position++;
+              }
+              requestAnimationFrame(() => {
+                if (document.activeElement === input)
+                  input.setSelectionRange(position, position);
+              });
+            }}
+          />
+        </FormControl>
+      </div>
+      <FormDescription className="text-xs font-light">
+        Country code and phone number
+      </FormDescription>
+    </div>
+  );
+}
+
+/**
+ * Select field built on Popover rather than Radix Select. Radix Select teleports
+ * its content into a detached DocumentFragment when closed (ignoring
+ * `forceMount`), so a closing animation is impossible and unmounting the content
+ * drops the selected value. Popover supports proper enter/exit animations, and
+ * we render the selected label ourselves so it always persists.
+ */
+function SchemaSelect({
+  field,
+  formField,
+}: {
+  field: ApplicationSchemaField;
+  formField: ControllerRenderProps<ApplicationFormValues>;
+}) {
+  const [open, setOpen] = useState(false);
+  const value = (formField.value as string) ?? "";
+  const options = field.options ?? [];
+  const obsolete = getObsoleteOptions(field, value).length > 0;
+
+  return (
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <FormControl>
+          <PopoverTrigger
+            onBlur={formField.onBlur}
+            className={cn(
+              underlineField,
+              "flex w-full items-center justify-between gap-2 outline-none",
+              !value && "text-[#8A8A8A]",
+            )}
+          >
+            <span className={cn("min-w-0 truncate", !value && "text-sm")}>
+              {value || `Select ${field.label.toLowerCase()}`}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                open && "rotate-180",
+              )}
+            />
+          </PopoverTrigger>
+        </FormControl>
+        <PopoverContent
+          align="start"
+          sideOffset={-6}
+          className={cn(
+            selectContent,
+            "w-[var(--radix-popover-trigger-width)]",
+          )}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              className={selectItem}
+              onClick={() => {
+                formField.onChange(opt);
+                setOpen(false);
+              }}
+            >
+              <span className="min-w-0 truncate">{opt}</span>
+              {opt === value && <Check className="size-4 shrink-0" />}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+      {obsolete && (
+        <FormDescription className="text-xs font-light">
+          No longer available. Choose a current option before submitting.
+        </FormDescription>
+      )}
+      {value && (obsolete || !field.required) && (
+        <button
+          type="button"
+          className="text-xs font-light text-[#8A8A8A] underline underline-offset-2 hover:text-black"
+          onClick={() => formField.onChange("")}
+        >
+          Clear answer
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Searchable combobox for well-known fields (university, major, country) that
+ * have a large curated preset list. Type-to-filter over the presets with an
+ * "Other" escape hatch that reveals a free-text input for values not in the
+ * list. The stored value is always a plain string — a picked preset or the
+ * free-typed entry — so it stays identical to what a plain text field produced.
+ *
+ * On mobile (< 768px) it renders a full-screen Dialog so the entire option list
+ * is always scrollable with no clipping at the top of the viewport. On desktop
+ * it uses the searchable Popover.
+ */
+function SchemaCombobox({
+  field,
+  formField,
+  options,
+}: {
+  field: ApplicationSchemaField;
+  formField: ControllerRenderProps<ApplicationFormValues>;
+  options: readonly string[];
+}) {
+  const value = (formField.value as string) ?? "";
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const isMobile = useIsMobile();
+  // Free-text mode: on first render, infer it from a saved value that isn't a
+  // known preset (e.g. a resumed draft or an existing submission).
+  const [otherMode, setOtherMode] = useState(
+    () => value !== "" && !options.includes(value),
+  );
+
+  if (otherMode) {
+    return (
+      <div className="space-y-2">
+        <FormControl>
+          <Input
+            autoFocus
+            className={underlineField}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            {...formField}
+            value={value}
+          />
+        </FormControl>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs font-light text-[#8A8A8A] transition-colors hover:text-black"
+          onClick={() => {
+            setOtherMode(false);
+            setQuery("");
+            formField.onChange("");
+          }}
+        >
+          <ArrowLeft className="size-3.5" />
+          Choose from list
+        </button>
+      </div>
+    );
+  }
+
+  // Mobile: full-screen Dialog so the entire list is always visible and
+  // scrollable with no clipping at the top of the viewport.
+  if (isMobile) {
+    return (
+      <>
+        <FormControl>
+          <button
+            type="button"
+            onBlur={formField.onBlur}
+            onClick={() => setOpen(true)}
+            className={cn(
+              underlineField,
+              "flex w-full items-center justify-between gap-2 outline-none",
+              !value && "text-[#8A8A8A]",
+            )}
+          >
+            <span className={cn("min-w-0 truncate", !value && "text-sm")}>
+              {value || `Select ${field.label.toLowerCase()}`}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                open && "rotate-180",
+              )}
+            />
+          </button>
+        </FormControl>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogOverlay className="bg-black/60" />
+          <DialogContent
+            showCloseButton={false}
+            className="fixed inset-0 z-50 flex max-h-dvh w-full max-w-full translate-x-0 translate-y-0 flex-col rounded-none border-0 bg-[#3A3A3A] p-0 text-white"
+          >
+            {/* Close button */}
+            <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
+              <span className="text-sm font-light text-white/70">
+                {field.label}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex size-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ComboboxContent
+                field={field}
+                formField={formField}
+                options={options}
+                value={value}
+                query={query}
+                setQuery={setQuery}
+                setOtherMode={setOtherMode}
+                setOpen={setOpen}
+                fullHeight
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  // Desktop: searchable Popover anchored to the trigger.
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <FormControl>
+        <PopoverTrigger
+          onBlur={formField.onBlur}
+          className={cn(
+            underlineField,
+            "flex w-full items-center justify-between gap-2 outline-none",
+            !value && "text-[#8A8A8A]",
+          )}
+        >
+          <span className={cn("min-w-0 truncate", !value && "text-sm")}>
+            {value || `Select ${field.label.toLowerCase()}`}
+          </span>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+              open && "rotate-180",
+            )}
+          />
+        </PopoverTrigger>
+      </FormControl>
+      <PopoverContent
+        align="start"
+        sideOffset={-6}
+        className={cn(selectContent, "w-[var(--radix-popover-trigger-width)]")}
+      >
+        <ComboboxContent
+          field={field}
+          formField={formField}
+          options={options}
+          value={value}
+          query={query}
+          setQuery={setQuery}
+          setOtherMode={setOtherMode}
+          setOpen={setOpen}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * The inner content shared between the desktop Popover and the mobile Dialog.
+ * Renders the Command search bar, the filtered options list, and the "Other"
+ * escape hatch.
+ */
+function ComboboxContent({
+  field,
+  formField,
+  options,
+  value,
+  query,
+  setQuery,
+  setOtherMode,
+  setOpen,
+  fullHeight,
+}: {
+  field: ApplicationSchemaField;
+  formField: ControllerRenderProps<ApplicationFormValues>;
+  options: readonly string[];
+  value: string;
+  query: string;
+  setQuery: (q: string) => void;
+  setOtherMode: (v: boolean) => void;
+  setOpen: (v: boolean) => void;
+  /** When true, the option list fills available space (for the mobile Dialog). */
+  fullHeight?: boolean;
+}) {
+  const handleSelect = useCallback(
+    (opt: string) => {
+      formField.onChange(opt);
+      setOpen(false);
+    },
+    [formField, setOpen],
+  );
+
+  const handleOther = useCallback(() => {
+    setOtherMode(true);
+    formField.onChange(query);
+    setOpen(false);
+  }, [setOtherMode, formField, query, setOpen]);
+
+  return (
+    <Command className="bg-transparent text-white">
+      <CommandInput
+        value={query}
+        onValueChange={setQuery}
+        placeholder={`Search ${field.label.toLowerCase()}...`}
+        className="text-white placeholder:text-white/40"
+      />
+      <CommandList
+        className={cn(
+          "overflow-y-auto",
+          fullHeight ? "max-h-none flex-1" : "max-h-[300px]",
+        )}
+      >
+        <CommandEmpty className="px-5 py-3 text-left text-sm font-light text-white/60">
+          No matches — choose "Other" below to enter it manually.
+        </CommandEmpty>
+        <CommandGroup className="p-0">
+          {options.map((opt) => (
+            <CommandItem
+              key={opt}
+              value={opt}
+              onSelect={() => handleSelect(opt)}
+              className="cursor-pointer justify-between rounded-none border-b border-white/[0.08] px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/[0.07] data-[selected=true]:text-white"
+            >
+              <span className="min-w-0 truncate">{opt}</span>
+              {opt === value && <Check className="size-4 shrink-0" />}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+      {/* Outside CommandList so it's never hidden by the search filter. */}
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 border-t border-white/[0.08] px-5 py-3.5 text-left text-sm font-light text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white"
+        onClick={handleOther}
+      >
+        Other (enter manually)
+      </button>
+    </Command>
+  );
+}

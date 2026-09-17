@@ -31,10 +31,12 @@ type ScanType struct {
 }
 
 type Scan struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	ScanType  string    `json:"scan_type"`
-	ScannedBy string    `json:"scanned_by"`
+	ID       string `json:"id"`
+	UserID   string `json:"user_id"`
+	ScanType string `json:"scan_type"`
+	// Nil once the staff account that performed the scan is deleted; the scan
+	// itself belongs to the hacker and outlives them.
+	ScannedBy *string   `json:"scanned_by"`
 	Points    int       `json:"points"`
 	ScannedAt time.Time `json:"scanned_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -250,8 +252,7 @@ func (s *ScansStore) GetTotalPointsByUserID(ctx context.Context, userID string) 
 
 // RebalanceStats recomputes the scan_stats counter cache from the authoritative
 // scans table and returns the recomputed stats (sorted by scan_type, matching
-// GetStats). The settings row is locked FOR UPDATE to serialize against
-// concurrent incrementScanStat calls.
+// GetStats).
 //
 // Concurrency caveat: a scan insert that commits between the COUNT(*) query and
 // the FOR UPDATE lock acquisition could be missed. This is acceptable for a
@@ -266,35 +267,8 @@ func (s *ScansStore) RebalanceStats(ctx context.Context) ([]ScanStat, error) {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `SELECT value FROM settings WHERE key = $1 FOR UPDATE`, SettingsKeyScanStats); err != nil {
-		return nil, err
-	}
-
-	rows, err := tx.QueryContext(ctx, `SELECT scan_type, COUNT(*) FROM scans GROUP BY scan_type`)
+	statsMap, err := rebalanceScanStats(ctx, tx)
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	statsMap := make(map[string]int)
-	for rows.Next() {
-		var scanType string
-		var count int
-		if err := rows.Scan(&scanType, &count); err != nil {
-			return nil, err
-		}
-		statsMap[scanType] = count
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	value, err := json.Marshal(statsMap)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := tx.ExecContext(ctx, `UPDATE settings SET value = $1, updated_at = NOW() WHERE key = $2`, value, SettingsKeyScanStats); err != nil {
 		return nil, err
 	}
 

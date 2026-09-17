@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hackutd/portal/internal/store"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type UserResponse struct {

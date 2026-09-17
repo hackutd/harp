@@ -49,21 +49,21 @@ fails, the check is red and the PR can't merge cleanly.
 
 ### `backend-audit` job (Go)
 
-Go version **1.24.x**. Steps, in order — each is a gate:
+Go version **1.27.x**. Steps, in order — each is a gate:
 
 1. **Check gofmt** — `gofmt -l .`; fails if any file is unformatted. Fix with
    `gofmt -w .`.
 2. **Verify Dependencies** — `go mod verify`.
 3. **Build** — `go build -v ./...`.
 4. **go vet** — `go vet ./...`.
-5. **staticcheck** — installs `honnef.co/go/tools/cmd/staticcheck@v0.6.1`, then
+5. **staticcheck** — installs `honnef.co/go/tools/cmd/staticcheck@v0.8.1`, then
    `staticcheck ./...`.
 6. **Tests** — `go test -race ./...` (race detector on).
 
-### `frontend-audit` job (React, in `client/web`)
+### `frontend-audit` job (React, in `client/portal`)
 
-Node **22**, npm cache keyed on `client/web/package-lock.json`. Runs with working
-directory `client/web`. Steps, in order:
+Node **22**, npm cache keyed on `client/portal/package-lock.json`. Runs with working
+directory `client/portal`. Steps, in order:
 
 1. **Install** — `npm ci` (clean install from lockfile).
 2. **Format Check** — `npm run format:check` (Prettier `--check`).
@@ -82,7 +82,7 @@ The fastest way to predict a green/red CI run is to run the same commands before
 pushing. The CLAUDE.md command tables list them; the key mirrors are
 `gofmt -l .`, `go vet ./...`, `staticcheck ./...`, `go test -race ./...` for the
 backend and `npm run format:check && npm run lint && npm run build` in
-`client/web` for the frontend.
+`client/portal` for the frontend.
 
 ## Release — `release-please.yaml` + `update-api-version.yaml`
 
@@ -133,8 +133,8 @@ itself — the contract is the `Dockerfile`.
 Multi-stage, producing a tiny `scratch` image:
 
 1. **Stage `frontend`** (`node:22-alpine`): `npm ci` then `npm run build` in
-   `client/web`. Takes a build arg `VITE_GOOGLE_AUTH_ENABLED` (default `true`).
-2. **Stage `builder`** (`golang:1.24`): `go mod download`, then a static build
+   `client/portal`. Takes a build arg `VITE_GOOGLE_AUTH_ENABLED` (default `true`).
+2. **Stage `builder`** (`golang:1.27`): `go mod download`, then a static build
    `CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/api ./cmd/api`.
 3. **Stage final** (`scratch`): copies CA certs, the `api` binary, and the built
    frontend into `./static`. `EXPOSE 8080`, `CMD ["./api"]`.

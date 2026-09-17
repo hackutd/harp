@@ -34,11 +34,11 @@ tmp/
 .DS_Store
 
 # Node.js (client/)
-client/web/node_modules/
-client/web/dist/
-client/web/dist-ssr/
-client/web/dev-dist/
-client/web/.vite/
+client/portal/node_modules/
+client/portal/dist/
+client/portal/dist-ssr/
+client/portal/dev-dist/
+client/portal/.vite/
 logs/
 *.log
 npm-debug.log*
@@ -53,4 +53,7 @@ lerna-debug.log*
 # Generated docs
 docs/swagger.json
 docs/swagger.yaml
+
+# k6 load-testing: real session cookies (never commit; keep your pool local)
+/load/sessions.json
 

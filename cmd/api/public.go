@@ -22,7 +22,7 @@ func (app *application) getPublicScheduleHandler(w http.ResponseWriter, r *http.
 // getPublicSponsorsHandler returns all sponsors (public, API key auth)
 //
 //	@Summary		Get sponsors (Public)
-//	@Description	Returns all sponsors, ordered by display order, with public logo URLs
+//	@Description	Returns all sponsors, ordered by display order. Logos are returned inline as base64 in logo_data, with the MIME type in logo_content_type — not as URLs.
 //	@Tags			public
 //	@Produce		json
 //	@Param			X-API-Key	header		string	true	"API Key"
@@ -47,4 +47,19 @@ func (app *application) getPublicSponsorsHandler(w http.ResponseWriter, r *http.
 //	@Router			/public/faq [get]
 func (app *application) getPublicFAQHandler(w http.ResponseWriter, r *http.Request) {
 	app.listFAQsHandler(w, r)
+}
+
+// getPublicTracksHandler returns all challenge tracks (public, API key auth)
+//
+//	@Summary		Get tracks (Public)
+//	@Description	Returns all challenge tracks, ordered by display order. Logos are returned inline as base64 in logo_data, with the MIME type in logo_content_type — not as URLs.
+//	@Tags			public
+//	@Produce		json
+//	@Param			X-API-Key	header		string	true	"API Key"
+//	@Success		200			{object}	TrackListResponse
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
+//	@Router			/public/tracks [get]
+func (app *application) getPublicTracksHandler(w http.ResponseWriter, r *http.Request) {
+	app.listTracksHandler(w, r)
 }

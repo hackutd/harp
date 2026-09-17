@@ -50,14 +50,14 @@ services:
     depends_on:
       - go-dev
     build:
-      context: "./client/web"
+      context: "./client/portal"
       dockerfile: dev.Dockerfile
     environment:
       - API_PROXY_TARGET=http://go-dev:8080
     ports:
       - "3000:3000"
     volumes:
-      - ./client/web:/app
+      - ./client/portal:/app
       - /app/node_modules
 
 volumes:

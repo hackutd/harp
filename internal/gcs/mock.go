@@ -25,6 +25,14 @@ func (m *MockClient) GenerateDownloadURL(ctx context.Context, objectPath string)
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockClient) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+	args := m.Called(ctx, prefix)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
 func (m *MockClient) DeleteObject(ctx context.Context, objectPath string) error {
 	args := m.Called(ctx, objectPath)
 	return args.Error(0)

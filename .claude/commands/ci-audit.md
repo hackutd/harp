@@ -12,7 +12,7 @@ First, figure out which sections have changes so you can skip irrelevant checks:
 1. Run `git status --porcelain` and `git diff --name-only HEAD` to list modified, staged, and untracked files (include both committed-but-unpushed and working-tree changes).
 2. Classify the changed paths:
    - **Backend changes** — any changed file ending in `.go`, plus `go.mod`/`go.sum`.
-   - **Frontend changes** — any changed file under `client/web/`.
+   - **Frontend changes** — any changed file under `client/portal/`.
 3. Decide which sections to run:
    - Backend changes present → run the **Backend checks**.
    - Frontend changes present → run the **Frontend checks**.
@@ -31,7 +31,7 @@ Run only if backend changes were detected.
 4. **go vet** — Run `go vet ./...`.
 5. **go test** — Run `go test -race ./...`.
 
-## Frontend checks (from `client/web/`)
+## Frontend checks (from `client/portal/`)
 
 Run only if frontend changes were detected.
 

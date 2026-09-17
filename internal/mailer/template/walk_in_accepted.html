@@ -1,12 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h2>You're In — {{.HackathonName}} Walk-In Acceptance</h2>
-  <p>Hi {{.Email}},</p>
-  <p>Great news — you've been accepted as a walk-in to {{.HackathonName}}!</p>
-  <p>Your QR code is attached. Please be in line within <strong>10 minutes</strong> of receiving this email or your spot may be given to the next person in the queue.</p>
-  <p>Show your QR code at the check-in desk to get in.</p>
-  <p>— The {{.HackathonName}} Team</p>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>You're in for {{.HackathonName}}</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      font-family: Arial, Helvetica, sans-serif;
+    "
+  >
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f4f4; padding: 40px 0"
+    >
+      <tr>
+        <td align="center">
+          <table
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <tr>
+              <td
+                style="
+                  background-color: #1a1a2e;
+                  padding: 30px;
+                  text-align: center;
+                "
+              >
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px">
+                  {{.HackathonName}}
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 40px 30px">
+                <h2 style="color: #333333; margin: 0 0 20px">You're in</h2>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  Hi {{.Email}}, you have a walk-in spot at
+                  {{.HackathonName}}.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  Your QR code is attached. Please get in line within
+                  <strong>10 minutes</strong>, or your spot may go to the
+                  next person.
+                </p>
+                <p style="color: #555555; font-size: 14px; line-height: 1.6">
+                  Show your QR code at the check-in desk to get in.
+                </p>
+                <p style="color: #555555; font-size: 16px; line-height: 1.6">
+                  {{.From}}
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  background-color: #f8f8f8;
+                  padding: 20px 30px;
+                  text-align: center;
+                "
+              >
+                <p style="color: #999999; font-size: 12px; margin: 0">
+                  &copy; {{.HackathonName}}. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
 </html>

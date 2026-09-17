@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -86,6 +87,22 @@ func (c *GCSClient) GenerateDownloadURL(_ context.Context, objectPath string) (s
 	}
 
 	return url, nil
+}
+
+func (c *GCSClient) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+	objects := c.bucket.Objects(ctx, &storage.Query{Prefix: prefix})
+	var paths []string
+
+	for {
+		attrs, err := objects.Next()
+		if err == iterator.Done {
+			return paths, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, attrs.Name)
+	}
 }
 
 func (c *GCSClient) DeleteObject(ctx context.Context, objectPath string) error {

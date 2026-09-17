@@ -4,13 +4,14 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-chi/chi"
-	"github.com/hackutd/portal/internal/store"
+	"github.com/go-chi/chi/v5"
+	"github.com/hackutd/harp/internal/store"
 )
 
 type SubmitVotePayload struct {
-	Vote  store.ReviewVote `json:"vote" validate:"required,oneof=accept reject waitlist"`
-	Notes *string          `json:"notes" validate:"omitempty,max=1000"`
+	Vote       store.ReviewVote `json:"vote" validate:"required,oneof=accept reject waitlist"`
+	TravelVote *bool            `json:"travel_vote"`
+	Notes      *string          `json:"notes" validate:"omitempty,max=1000"`
 }
 
 type ReviewResponse struct {
@@ -166,18 +167,30 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 // getNextReview assigns and returns the next application needing review
 //
 //	@Summary		Get next review assignment (Admin)
-//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it
+//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it. Super admins who have disabled their review assignment toggle are refused.
 //	@Tags			admin/reviews
 //	@Produce		json
 //	@Success		200	{object}	ReviewResponse
 //	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}	"Review assignment disabled for this super admin"
 //	@Failure		404	{object}	object{error=string}	"No applications need review"
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/reviews/next [get]
 func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
+
+	if user.Role == store.RoleSuperAdmin {
+		enabled, err := app.store.Settings.GetReviewAssignmentToggle(r.Context(), user.ID)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		if !enabled {
+			app.forbiddenResponse(w, r, errors.New("review assignment is disabled for this account"))
+			return
+		}
+	}
 
 	reviewsPerApp, err := app.store.Settings.GetReviewsPerApplication(r.Context())
 	if err != nil {
@@ -208,17 +221,18 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 // submitVote records the admin's vote on an assigned application review
 //
 //	@Summary		Submit vote on a review (Admin)
-//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review
+//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise.
 //	@Tags			admin/reviews
 //	@Accept			json
 //	@Produce		json
 //	@Param			reviewID	path		string				true	"Review ID"
-//	@Param			vote		body		SubmitVotePayload	true	"Vote and optional notes"
+//	@Param			vote		body		SubmitVotePayload	true	"Vote, optional travel vote, and optional notes"
 //	@Success		200			{object}	ReviewResponse
 //	@Failure		400			{object}	object{error=string}
 //	@Failure		401			{object}	object{error=string}
 //	@Failure		403			{object}	object{error=string}
 //	@Failure		404			{object}	object{error=string}
+//	@Failure		409			{object}	object{error=string}
 //	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/reviews/{reviewID} [put]
@@ -242,9 +256,14 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := app.store.ApplicationReviews.SubmitVote(r.Context(), reviewID, user.ID, req.Vote, req.Notes)
+	// SubmitVote checks the travel agreement in the UPDATE itself, so a valid
+	// vote costs one query. Only a rejected one pays a second to work out
+	// whether the review was missing or the travel vote was wrong.
+	review, err := app.store.ApplicationReviews.SubmitVote(r.Context(), reviewID, user.ID, req.Vote, req.TravelVote, req.Notes)
 	if err != nil {
 		switch {
+		case errors.Is(err, store.ErrVoteNotApplied):
+			app.explainRejectedVote(w, r, reviewID, user.ID, req.TravelVote)
 		case errors.Is(err, store.ErrNotFound):
 			app.notFoundResponse(w, r, err)
 		default:
@@ -260,6 +279,36 @@ func (app *application) submitVote(w http.ResponseWriter, r *http.Request) {
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// explainRejectedVote turns a vote that matched no row into the right response.
+// The UPDATE cannot say which of the two reasons applied, so this re-reads the
+// travel status -- scoped to the admin, so it doubles as the ownership check
+// that decides 404 versus 400.
+func (app *application) explainRejectedVote(w http.ResponseWriter, r *http.Request, reviewID, adminID string, travelVote *bool) {
+	travelStatus, err := app.store.ApplicationReviews.GetTravelStatusByReviewID(r.Context(), reviewID, adminID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if travelStatus == store.TravelNotRequested && travelVote != nil {
+		app.badRequestResponse(w, r, errors.New("travel_vote is not allowed: applicant did not request travel reimbursement"))
+		return
+	}
+	if travelStatus != store.TravelNotRequested && travelVote == nil {
+		app.badRequestResponse(w, r, errors.New("travel_vote is required: applicant requested travel reimbursement"))
+		return
+	}
+
+	// The review exists and the travel vote agrees with it, so the row must
+	// have changed underneath us between the update and this read.
+	app.conflictResponse(w, r, errors.New("vote could not be recorded, please retry"))
 }
 
 // setAIPercent records the AI-generated content percent for an assigned application review
