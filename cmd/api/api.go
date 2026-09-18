@@ -210,8 +210,8 @@ func (app *application) mount() http.Handler {
 		r.With(app.BasicAuthMiddleware).Get("/health", app.healthCheckHandler)
 		r.With(app.BasicAuthMiddleware).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
-		// Swagger docs
-		r.With(app.BasicAuthMiddleware).Get("/swagger/*", httpSwagger.Handler(
+		// Swagger docs (unauthenticated: local dev convenience, spec contains no PII)
+		r.Get("/swagger/*", httpSwagger.Handler(
 			httpSwagger.URL("doc.json"),
 			httpSwagger.UIConfig(map[string]string{
 				"tagsSorter": swaggerTagsSorter,
