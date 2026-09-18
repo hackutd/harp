@@ -468,8 +468,8 @@ function SendEmailsDialogBody({
               <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                 <p className="text-xs">
-                  Duplicate protection is off — everyone selected will be emailed,
-                  including those who already received this email.
+                  Duplicate protection is off — everyone selected will be
+                  emailed, including those who already received this email.
                 </p>
               </div>
             )}
