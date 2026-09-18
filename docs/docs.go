@@ -4898,7 +4898,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)",
+                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)",
                 "produces": [
                     "application/json"
                 ],
@@ -4909,7 +4909,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Application status (accepted, rejected, or waitlisted)",
+                        "description": "Application status (draft, submitted, accepted, waitlisted, or rejected)",
                         "name": "status",
                         "in": "query",
                         "required": true
