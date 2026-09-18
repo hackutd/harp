@@ -617,7 +617,7 @@ export default function ReviewsPage() {
                   onClick={() => setSendEmailsOpen(true)}
                 >
                   <Mail className="size-3.5" />
-                  Send Emails
+                  Emails
                 </Button>
               </div>
             </div>

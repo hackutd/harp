@@ -8,6 +8,7 @@ import type {
 } from "@/pages/admin/all-applicants/types";
 
 const STATUSES: { value: ApplicationStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
   { value: "submitted", label: "Submitted" },
   { value: "accepted", label: "Accepted" },
   { value: "waitlisted", label: "Waitlisted" },
