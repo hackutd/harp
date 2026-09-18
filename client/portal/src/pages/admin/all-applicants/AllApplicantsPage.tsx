@@ -117,8 +117,8 @@ export default function AllApplicantsPage() {
         <SectionCards stats={stats} loading={statsLoading} />
       </div>
 
-      <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
-        <div className="col-span-2">
+      <div className="shrink-0 flex flex-wrap items-center gap-3">
+        <div className="w-full lg:w-auto">
           {isInitialLoad ? (
             <div className="flex gap-2">
               {[...Array(4)].map((_, i) => (
@@ -142,7 +142,7 @@ export default function AllApplicantsPage() {
             </>
           )}
         </div>
-        <div className="flex justify-end">
+        <div className="ml-auto flex">
           <PaginationControls
             prevCursor={prevCursor}
             nextCursor={nextCursor}
