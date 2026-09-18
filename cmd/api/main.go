@@ -221,7 +221,7 @@ func main() {
 	if cfg.gcs.bucketName != "" {
 		gc, err := gcs.New(context.Background(), cfg.gcs.bucketName)
 		if err != nil {
-			logger.Warnw("failed to initialize gcs client, continuing without it", zap.Error(err))
+			logger.Warnw("failed to initialize gcs client, continuing without it", "error", err)
 		} else {
 			defer gc.Close()
 			gcsClient = gc

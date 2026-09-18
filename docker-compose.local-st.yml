@@ -27,12 +27,14 @@ services:
     environment:
       PGHOST: db
       PGPASSWORD: adminpassword
-      POSTGRES_DB: portal
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpassword
+      # psql reads libpq PGUSER/PGDATABASE (POSTGRES_* are initdb-only vars and
+      # are ignored by psql, which would otherwise default to the "root" OS user
+      # and try to authenticate as a nonexistent DB user "root").
+      PGUSER: admin
+      PGDATABASE: portal
     volumes:
-      - ./scripts/init-db.sh:/init-db.sh:ro
-    entrypoint: ["bash", "-c", "cp /init-db.sh /tmp/init-db.sh && sed -i 's/\\r$//' /tmp/init-db.sh && bash /tmp/init-db.sh"]
+      - ./scripts/init-db.sql:/init-db.sql:ro
+    entrypoint: ["psql", "-f", "/init-db.sql"]
     restart: "no"
 
   supertokens:
