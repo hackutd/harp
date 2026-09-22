@@ -1093,6 +1093,7 @@ func TestSetApplicationTravelStatus(t *testing.T) {
 		})
 	}
 }
+
 func TestGetApplicantEmailsByStatus(t *testing.T) {
 	validStatuses := []store.ApplicationStatus{
 		store.StatusDraft,
@@ -1103,7 +1104,6 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 	}
 
 	for _, status := range validStatuses {
-		status := status
 		t.Run("accepts "+string(status)+" and returns matching emails", func(t *testing.T) {
 			app := newTestApplication(t)
 			mockApps := app.store.Application.(*store.MockApplicationStore)
