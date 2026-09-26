@@ -1,0 +1,34 @@
+{
+  "name": "@hackutd/create-harp",
+  "version": "0.1.0",
+  "description": "Provision a HARP deployment on Google Cloud: Cloud Run, Cloud Build, Cloud Storage, Secret Manager",
+  "type": "module",
+  "bin": {
+    "create-harp": "bin/create-harp.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hackutd/harp.git",
+    "directory": "tools/create-harp"
+  },
+  "keywords": [
+    "harp",
+    "hackathon",
+    "cloud-run",
+    "gcloud"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

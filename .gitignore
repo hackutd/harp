@@ -54,3 +54,6 @@ lerna-debug.log*
 docs/swagger.json
 docs/swagger.yaml
 
+
+# create-harp answers (names the billing account; no secrets)
+harp.deploy.json

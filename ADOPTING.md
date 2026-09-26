@@ -169,6 +169,19 @@ that serves everything on port 8080, so anything that runs a container will host
 Harp. HackUTD runs it on Google Cloud Run with Neon for PostgreSQL, Google Cloud
 Storage for resumes, and SendGrid for email; none of those are required choices.
 
+To reproduce that setup, run the provisioner from the root of your fork. It
+creates the Google Cloud project, bucket, secret, Cloud Run service, and
+deploy-on-push trigger, and applies migrations. It stops and walks you through
+the browser-only steps: the Google OAuth client, installing the Cloud Build
+GitHub App on your fork, and syncing the fork if it is behind upstream.
+
+```bash
+node tools/create-harp/bin/create-harp.js --dry-run   # see every change first
+node tools/create-harp/bin/create-harp.js
+```
+
+See [`tools/create-harp/README.md`](tools/create-harp/README.md).
+
 What you do need: a PostgreSQL database, a SuperTokens instance (managed or
 self-hosted), and an email provider — either SendGrid or plain SMTP.
 
