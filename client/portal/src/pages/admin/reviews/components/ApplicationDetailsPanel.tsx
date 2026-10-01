@@ -3,9 +3,11 @@ import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ResumePreviewDialog } from "@/pages/admin/_shared/ResumePreviewDialog";
+import { useRedactApplicants } from "@/shared/hooks";
 import type { Application } from "@/types";
 
 import { SchemaDetailRenderer } from "../../all-applicants/components/detail-sections/SchemaDetailRenderer";
+import { TimelineSection } from "../../all-applicants/components/detail-sections/TimelineSection";
 import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
@@ -19,6 +21,7 @@ export function ApplicationDetailsPanel({
   selectedReview,
   isExpanded,
 }: ApplicationDetailsPanelProps) {
+  const redact = useRedactApplicants();
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
 
   return (
@@ -27,7 +30,7 @@ export function ApplicationDetailsPanel({
       <SchemaDetailRenderer application={application} />
 
       {/* Resume link */}
-      {application.resume_path && (
+      {!redact && application.resume_path && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Resume</h4>
           <div className="text-sm">
@@ -46,30 +49,7 @@ export function ApplicationDetailsPanel({
         </div>
       )}
 
-      {/* Timeline */}
-      <div>
-        <h4 className="text-sm font-semibold mb-2">Timeline</h4>
-        <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div>
-            <Label className="text-muted-foreground text-xs">Submitted</Label>
-            <p>
-              {application.submitted_at
-                ? new Date(application.submitted_at).toLocaleString()
-                : "N/A"}
-            </p>
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-xs">Created</Label>
-            <p>{new Date(application.created_at).toLocaleString()}</p>
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-xs">
-              Last Updated
-            </Label>
-            <p>{new Date(application.updated_at).toLocaleString()}</p>
-          </div>
-        </div>
-      </div>
+      <TimelineSection application={application} />
 
       {/* Review Info */}
       <div>

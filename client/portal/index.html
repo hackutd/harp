@@ -4,10 +4,28 @@
     <meta charset="UTF-8" />
     <!-- Brand values below come from branding/index.ts, substituted at
          build time by the harp-branding-html plugin in vite.config.ts. -->
-    <link rel="icon" type="image/webp" href="/branding/assets/logo.webp" />
+    <link rel="icon" type="image/png" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="%HARP_THEME_COLOR%" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="application-name" content="%HARP_SHORT_NAME%" />
+    <meta name="description" content="%HARP_DESCRIPTION%" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="%HARP_SHORT_NAME%" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="%HARP_SHORT_NAME%" />
+    <meta property="og:title" content="%HARP_TITLE%" />
+    <meta property="og:description" content="%HARP_DESCRIPTION%" />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="%HARP_TITLE%" />
+    <meta name="twitter:description" content="%HARP_DESCRIPTION%" />
+    <meta name="twitter:image" content="/pwa-512x512.png" />
     <title>%HARP_TITLE%</title>
   </head>
   <body>

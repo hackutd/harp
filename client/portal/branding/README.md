@@ -17,7 +17,7 @@ redesign completely.
 | ------------------ | --------------------------------------------------------------------------- |
 | `index.ts`         | Product name, PWA manifest text, SuperTokens app name, browser theme colour |
 | `theme.css`        | The colour palette                                                          |
-| `assets/logo.webp` | Sign-in page logo and browser favicon                                       |
+| `assets/logo.webp` | Sign-in page logo                                                           |
 
 Change all three and you have rebranded the app's identity in about five
 minutes. If that is as far as you get this year, it is a reasonable place to
@@ -32,8 +32,8 @@ the three do less than their names suggest.
 tab, PWA install prompt, home-screen label, Android status bar, the fallback
 title on a push notification, and the sender name on magic-link sign-in emails.
 
-**`assets/logo.webp` — fully wired.** Favicon and sign-in page logo, from one
-file.
+**`assets/logo.webp` — the sign-in page logo.** The browser favicon comes from
+the PWA icons in `public/`, so the two can be changed independently.
 
 **`theme.css` — only partly.** It drives the admin and super-admin portal
 completely; those pages are built from shadcn components that read the tokens.
@@ -98,8 +98,9 @@ upstream, since every school will want it.
 
 `public/pwa-192x192.png` and `public/pwa-512x512.png` are **replace-in-place**:
 swap the files, keep the names. They are referenced by absolute URL from the PWA
-manifest and the service worker, and the Dockerfile copies the 192px one into
-the runtime image for Apple Wallet passes. Renaming them breaks all three.
+manifest, browser favicon, and service worker, and the Dockerfile copies the
+192px one into the runtime image for Apple Wallet passes. Renaming them breaks
+all four.
 
 512×512 and 192×192 PNGs. The 512 also serves as the maskable icon, so keep
 roughly 20% padding around the artwork or Android will crop into it.

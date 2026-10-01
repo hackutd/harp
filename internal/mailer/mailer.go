@@ -5,6 +5,10 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"os"
+	"time"
+
+	qrcode "github.com/skip2/go-qrcode"
 
 	"github.com/hackutd/harp/internal/slug"
 )
@@ -17,7 +21,39 @@ const (
 	// defaultQRAttachmentFilename is used when the configured event name has no
 	// ASCII characters to build a filename from.
 	defaultQRAttachmentFilename = "qr-code.png"
+
+	// brandImageContentID is the Content-ID every template references as
+	// cid:zero-day-title.webp. The image is embedded inline on every send so
+	// the header renders without the client having to fetch a remote asset.
+	brandImageContentID   = "zero-day-title.webp"
+	brandImageContentType = "image/webp"
 )
+
+// brandImagePaths are tried in order: the production container ships the
+// asset under static/, while local dev and tests read it from the portal
+// source tree (from the repo root or from within this package).
+var brandImagePaths = []string{
+	"static/email-assets/zero-day-title.webp",
+	"client/portal/src/assets/title-login.webp",
+	"../../client/portal/src/assets/title-login.webp",
+}
+
+// attachment is a provider-agnostic file to attach to an outgoing email.
+type attachment struct {
+	Filename    string
+	ContentType string
+	Content     []byte
+}
+
+// qrAttachment renders the hacker's check-in QR code as a PNG attachment
+// named after the configured event.
+func qrAttachment(hackathonName, userID string) (attachment, error) {
+	png, err := qrcode.Encode(userID, qrcode.Medium, 256)
+	if err != nil {
+		return attachment{}, fmt.Errorf("generating QR code: %w", err)
+	}
+	return attachment{Filename: qrAttachmentFilename(hackathonName), ContentType: "image/png", Content: png}, nil
+}
 
 // qrAttachmentFilename names the attached QR image after the configured event,
 // so a hacker saves smu-hacks-2027-qr-code.png rather than a file named after
@@ -47,6 +83,7 @@ const (
 )
 
 type Client interface {
+	SendMagicLinkEmail(toEmail, magicLink string, codeLifetime time.Duration) error
 	SendQREmail(toEmail, toName, userID string) error
 	SendWalkInQueuedEmail(toEmail string, position int) error
 	SendWalkInAcceptedEmail(toEmail, userID string) error
@@ -56,6 +93,44 @@ type Client interface {
 	// hackathon name and sender identity can come from runtime settings
 	// instead of the env vars used at boot.
 	SetIdentityResolver(fn IdentityFunc)
+}
+
+type magicLinkEmailData struct {
+	Email         string
+	MagicLink     string
+	Expires       string
+	HackathonName string
+	From          string
+}
+
+func loadBrandImage() ([]byte, error) {
+	var lastErr error
+	for _, path := range brandImagePaths {
+		image, err := os.ReadFile(path)
+		if err == nil {
+			return image, nil
+		}
+		lastErr = err
+	}
+	return nil, fmt.Errorf("reading Zero Day email title image: %w", lastErr)
+}
+
+func magicLinkLifetime(duration time.Duration) string {
+	minutes := int(duration.Round(time.Minute) / time.Minute)
+	if minutes <= 0 {
+		return "a short time"
+	}
+	if minutes == 1 {
+		return "1 minute"
+	}
+	if minutes%60 == 0 {
+		hours := minutes / 60
+		if hours == 1 {
+			return "1 hour"
+		}
+		return fmt.Sprintf("%d hours", hours)
+	}
+	return fmt.Sprintf("%d minutes", minutes)
 }
 
 // Identity is the sender identity and event name used in outgoing email.

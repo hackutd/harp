@@ -192,11 +192,18 @@ func (app *application) mount() http.Handler {
 
 		// Public API (key auth)
 		r.Route("/public", func(r chi.Router) {
-			r.Use(app.APIKeyMiddleware)
-			r.Get("/schedule", app.getPublicScheduleHandler)
-			r.Get("/sponsors", app.getPublicSponsorsHandler)
-			r.Get("/faq", app.getPublicFAQHandler)
-			r.Get("/tracks", app.getPublicTracksHandler)
+			// Logo bytes are keyless: the URLs go straight into <img> tags and
+			// image optimizers, which cannot send X-API-Key.
+			r.Get("/sponsors/{sponsorID}/logo", app.getPublicSponsorLogoHandler)
+			r.Get("/tracks/{trackID}/logo", app.getPublicTrackLogoHandler)
+
+			r.Group(func(r chi.Router) {
+				r.Use(app.APIKeyMiddleware)
+				r.Get("/schedule", app.getPublicScheduleHandler)
+				r.Get("/sponsors", app.getPublicSponsorsHandler)
+				r.Get("/faq", app.getPublicFAQHandler)
+				r.Get("/tracks", app.getPublicTracksHandler)
+			})
 		})
 
 		// Legal document links. Unauthenticated on purpose: the login page
@@ -295,9 +302,10 @@ func (app *application) mount() http.Handler {
 					// Reviews
 					r.Route("/reviews", func(r chi.Router) {
 						r.Get("/pending", app.getPendingReviews)
-						r.Get("/next", app.getNextReview)
+						r.Post("/claim", app.claimReviews)
 						r.Put("/{reviewID}", app.submitVote)
 						r.Get("/completed", app.getCompletedReviews)
+						r.Get("/leaderboard", app.getReviewLeaderboard)
 					})
 
 					// Scans

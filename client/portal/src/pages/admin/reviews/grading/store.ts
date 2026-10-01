@@ -5,6 +5,7 @@ import { fetchApplicationById } from "@/pages/admin/all-applicants/api";
 import type { Application } from "@/types";
 
 import {
+  claimMoreReviews,
   fetchPendingReviews,
   fetchReviewNotes,
   submitReviewVote,
@@ -23,6 +24,7 @@ interface GradingState {
   submitting: boolean;
   localNotes: string;
   localTravelVote: boolean | null;
+  claiming: boolean;
   fetchReviews: (
     targetReviewId?: string,
     signal?: AbortSignal,
@@ -31,6 +33,7 @@ interface GradingState {
   navigateNext: () => void;
   navigatePrev: () => void;
   submitVote: (reviewId: string, vote: ReviewVote) => Promise<void>;
+  claimMore: () => Promise<void>;
   setLocalNotes: (notes: string) => void;
   setLocalTravelVote: (vote: boolean) => void;
   reset: () => void;
@@ -48,6 +51,7 @@ const initialState = {
   submitting: false,
   localNotes: "",
   localTravelVote: null as boolean | null,
+  claiming: false,
 };
 
 let loadDetailSeq = 0;
@@ -154,7 +158,10 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
     });
 
     if (queueVersion !== fetchSequence) return;
-    if (result.success) {
+    // A 404 means the review is no longer this admin's: another reviewer
+    // picked it up. Drop it from the queue the same way and move on.
+    const reassigned = !result.success && result.status === 404;
+    if (result.success || reassigned) {
       const { reviews, currentIndex } = get();
       const filtered = reviews.filter((r) => r.id !== reviewId);
       const newIndex = Math.min(currentIndex, filtered.length - 1);
@@ -167,7 +174,11 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
         localTravelVote: null,
       });
 
-      toast.success(`Vote submitted: ${vote}`);
+      if (reassigned) {
+        toast.info("This review is no longer assigned to you. Moving on.");
+      } else {
+        toast.success(`Vote submitted: ${vote}`);
+      }
 
       if (filtered.length > 0) {
         get().loadDetail(filtered[Math.max(0, newIndex)].application_id);
@@ -183,6 +194,37 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
     } else {
       set({ submitting: false });
       toast.error(result.error ?? "Failed to submit vote");
+    }
+  },
+
+  claimMore: async () => {
+    const { loading, submitting, claiming } = get();
+    if (loading || submitting || claiming) return;
+    const requestId = ++fetchSequence;
+    ++loadDetailSeq;
+    set({ claiming: true });
+
+    const result = await claimMoreReviews();
+
+    // The page was reset or refetched while this was in flight.
+    if (requestId !== fetchSequence) return;
+    set({ claiming: false });
+    if (!result.success) {
+      toast.error(result.error ?? "Failed to get more reviews");
+      return;
+    }
+
+    const reviews = result.reviews;
+    set({ reviews, currentIndex: 0, localNotes: "", localTravelVote: null });
+    if (result.claimed === 0) {
+      toast.info("No reviews are available to pick up right now");
+    } else {
+      toast.success(
+        `Picked up ${result.claimed} review${result.claimed === 1 ? "" : "s"}`,
+      );
+    }
+    if (reviews.length > 0) {
+      await get().loadDetail(reviews[0].application_id);
     }
   },
 

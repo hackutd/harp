@@ -1,4 +1,11 @@
-import { AlertCircle, CheckCircle2, ScanLine, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  MinusCircle,
+  PlusCircle,
+  ScanLine,
+  XCircle,
+} from "lucide-react";
 import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +21,7 @@ import { useQrScanner } from "@/shared/hooks";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import { useScansStore } from "../store";
+import { spendsPoints } from "../utils";
 
 export function ScannerDialog() {
   const {
@@ -25,6 +33,7 @@ export function ScannerDialog() {
     clearLastResult,
   } = useScansStore();
   const pointsName = usePointsConfigStore((s) => s.pointsName);
+  const spends = !!activeScanType && spendsPoints(activeScanType.category);
 
   const handleScan = useCallback(
     (decodedText: string) => {
@@ -61,6 +70,32 @@ export function ScannerDialog() {
             Point camera at a hacker&apos;s QR code to scan
           </DialogDescription>
         </DialogHeader>
+
+        {activeScanType && activeScanType.points > 0 && (
+          <div
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+              spends
+                ? "bg-rose-50 text-rose-800"
+                : "bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            {spends ? (
+              <MinusCircle className="size-5 shrink-0" />
+            ) : (
+              <PlusCircle className="size-5 shrink-0" />
+            )}
+            <p>
+              Each scan{" "}
+              <span className="font-semibold">
+                {spends ? "deducts" : "adds"} {activeScanType.points}{" "}
+                {pointsName}
+              </span>{" "}
+              {spends
+                ? "from the hacker's balance. Scans fail if they can't afford it."
+                : "to the hacker's balance."}
+            </p>
+          </div>
+        )}
 
         <div className="relative">
           {error ? (
@@ -117,7 +152,8 @@ export function ScannerDialog() {
               {lastScanResult.success &&
                 lastScanResult.scan?.balance !== undefined && (
                   <p className="text-sm font-light">
-                    Balance: {lastScanResult.scan.balance} {pointsName}
+                    Remaining balance: {lastScanResult.scan.balance}{" "}
+                    {pointsName}
                   </p>
                 )}
               {lastScanResult.success && lastScanResult.scan?.meal_group && (

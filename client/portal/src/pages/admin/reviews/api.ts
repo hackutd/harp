@@ -1,10 +1,15 @@
 // Application Review feature API layer
 
-import { getRequest, putRequest } from "@/shared/lib/api";
+import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
 import type { ApiResponse } from "@/types";
 
 import type {
+  ClaimReviewsResponse,
   NotesListResponse,
+  Review,
+  ReviewLeaderboardResponse,
+  ReviewRecord,
+  ReviewResponse,
   ReviewsListResponse,
   SubmitVotePayload,
 } from "./types";
@@ -36,19 +41,87 @@ export async function fetchCompletedReviews(
 }
 
 /**
- * Submit a vote for a review
+ * Fetch every admin ranked by completed reviews
+ */
+export async function fetchReviewLeaderboard(
+  signal?: AbortSignal,
+): Promise<ApiResponse<ReviewLeaderboardResponse>> {
+  return getRequest<ReviewLeaderboardResponse>(
+    "/admin/reviews/leaderboard",
+    "review leaderboard",
+    signal,
+  );
+}
+
+/**
+ * Submit a vote for a review. Calling this on an already-voted review
+ * replaces the vote, travel vote, and notes. A 404 means the review is no
+ * longer assigned to this admin (another reviewer picked it up).
  */
 export async function submitReviewVote(
   reviewId: string,
   payload: SubmitVotePayload,
-): Promise<{ success: boolean; error?: string }> {
-  const res = await putRequest(`/admin/reviews/${reviewId}`, payload, "vote");
+): Promise<{
+  success: boolean;
+  status: number;
+  review?: ReviewRecord;
+  error?: string;
+}> {
+  const res = await putRequest<ReviewResponse>(
+    `/admin/reviews/${reviewId}`,
+    payload,
+    "vote",
+  );
 
   if (res.status === 200) {
-    return { success: true };
+    return { success: true, status: res.status, review: res.data?.review };
   } else {
-    return { success: false, error: res.error || "Failed to submit vote" };
+    return {
+      success: false,
+      status: res.status,
+      error: res.error || "Failed to submit vote",
+    };
   }
+}
+
+/**
+ * Claim up to five more reviews once the admin's own queue is empty. On
+ * success, `reviews` is the admin's new pending queue.
+ */
+export async function claimMoreReviews(): Promise<{
+  success: boolean;
+  claimed: number;
+  reviews: Review[];
+  error?: string;
+}> {
+  const res = await postRequest<ClaimReviewsResponse>(
+    "/admin/reviews/claim",
+    {},
+    "more reviews",
+  );
+
+  if (res.status === 200 && res.data) {
+    return {
+      success: true,
+      claimed: res.data.claimed,
+      reviews: res.data.reviews,
+    };
+  }
+
+  const failure = { success: false, claimed: 0, reviews: [] };
+  if (res.status === 409) {
+    return {
+      ...failure,
+      error: "Finish your assigned reviews before picking up more",
+    };
+  }
+  if (res.status === 403) {
+    return {
+      ...failure,
+      error: "Review assignment is turned off for your account",
+    };
+  }
+  return { ...failure, error: res.error ?? "Failed to get more reviews" };
 }
 
 /**

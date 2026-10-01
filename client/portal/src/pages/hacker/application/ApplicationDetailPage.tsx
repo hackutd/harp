@@ -2,7 +2,6 @@ import { ChevronLeft, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { resolveResumeSectionId } from "@/shared/lib/schema-utils";
 import type { Application, ApplicationStatus } from "@/types";
@@ -14,6 +13,7 @@ import {
   STATUS_MESSAGES,
   STATUS_PILL_COLORS,
 } from "../components/applicationStatus";
+import { StatusDetailSkeleton } from "../components/StatusDetailSkeleton";
 
 // Friendly headline for the result card, mirroring the RSVP pages'
 // "You're in!" / "All set!" pattern.
@@ -56,13 +56,7 @@ export default function ApplicationDetailPage() {
   }, [navigate]);
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-2xl space-y-4 px-5 pt-10 md:max-w-5xl md:px-8">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <Skeleton className="h-56 w-full rounded-xl" />
-      </div>
-    );
+    return <StatusDetailSkeleton label="Application" />;
   }
 
   if (!application) return null;

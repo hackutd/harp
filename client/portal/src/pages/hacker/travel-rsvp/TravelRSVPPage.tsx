@@ -17,7 +17,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { errorAlert } from "@/shared/lib/api";
 import {
   collectIncompleteSections,
@@ -35,6 +34,7 @@ import type { RSVPStatus } from "@/types";
 
 import { ApplicationSummary } from "../apply/components/ApplicationSummary";
 import { SchemaStepRenderer } from "../apply/steps/SchemaStepRenderer";
+import { StatusDetailSkeleton } from "../components/StatusDetailSkeleton";
 import { fetchMyTravelRSVP, submitMyTravelRSVP } from "./api";
 import { ReceiptPreviewDialog } from "./components/ReceiptPreviewDialog";
 import { ReceiptUploader } from "./components/ReceiptUploader";
@@ -212,13 +212,7 @@ export default function TravelRSVPPage() {
   );
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-2xl space-y-4 px-5 pt-10 md:max-w-5xl md:px-8">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <Skeleton className="h-56 w-full rounded-xl" />
-      </div>
-    );
+    return <StatusDetailSkeleton label="Travel RSVP" />;
   }
 
   if (!travelRSVP) return null;

@@ -1,5 +1,8 @@
 /// <reference lib="webworker" />
+import { ExpirationPlugin } from "workbox-expiration";
 import { precacheAndRoute } from "workbox-precaching";
+import { registerRoute } from "workbox-routing";
+import { CacheFirst } from "workbox-strategies";
 
 import { branding } from "@/branding";
 
@@ -13,7 +16,27 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+// Only stable files (icons, fonts) are precached. The HTML shell is never
+// cached here so every open of the app fetches the current build's index.html,
+// and the fingerprinted bundles are cached lazily below rather than precached:
+// a precache is rewritten on every deploy and drops the previous build's
+// chunks, which breaks tabs that are still running that build when they next
+// lazy-load a route. The runtime cache keeps old chunks until they expire.
 precacheAndRoute(self.__WB_MANIFEST);
+
+registerRoute(
+  ({ sameOrigin, url }) => sameOrigin && url.pathname.startsWith("/assets/"),
+  new CacheFirst({
+    cacheName: "harp-assets",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 600,
+        maxAgeSeconds: 30 * 24 * 60 * 60,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
 
 interface PushPayload {
   id?: string;

@@ -3,6 +3,7 @@ import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ResumePreviewDialog } from "@/pages/admin/_shared/ResumePreviewDialog";
+import { useRedactApplicants } from "@/shared/hooks";
 import type { Application } from "@/types";
 
 interface LinksSectionProps {
@@ -10,7 +11,9 @@ interface LinksSectionProps {
 }
 
 export function LinksSection({ application }: LinksSectionProps) {
-  if (!application.resume_path) {
+  const redact = useRedactApplicants();
+
+  if (redact || !application.resume_path) {
     return null;
   }
 

@@ -619,6 +619,14 @@ func (m *MockApplicationReviewsStore) GetNotesByApplicationID(ctx context.Contex
 	return args.Get(0).([]ReviewNote), args.Error(1)
 }
 
+func (m *MockApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]ReviewerStats, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ReviewerStats), args.Error(1)
+}
+
 func (m *MockApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error) {
 	args := m.Called(reviewsPerApp)
 	if args.Get(0) == nil {
@@ -627,12 +635,9 @@ func (m *MockApplicationReviewsStore) BatchAssign(ctx context.Context, reviewsPe
 	return args.Get(0).(*BatchAssignmentResult), args.Error(1)
 }
 
-func (m *MockApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error) {
-	args := m.Called(adminID, reviewsPerApp)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*ApplicationReview), args.Error(1)
+func (m *MockApplicationReviewsStore) ClaimForAdmin(ctx context.Context, adminID string, reviewsPerApp, limit int) (int, error) {
+	args := m.Called(adminID, reviewsPerApp, limit)
+	return args.Int(0), args.Error(1)
 }
 
 func (m *MockApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {

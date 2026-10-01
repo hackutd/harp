@@ -11,6 +11,7 @@ interface HackerQRProps {
 export function HackerQR({ value, size = 200, className }: HackerQRProps) {
   return (
     <div
+      data-hacker-keep-light
       className={cn(
         "inline-flex items-center justify-center rounded-lg bg-white p-4",
         className,

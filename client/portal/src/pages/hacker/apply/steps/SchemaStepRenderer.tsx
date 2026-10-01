@@ -56,16 +56,16 @@ type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
 const underlineField =
   "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 pt-3.5 pb-1 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
 
-const fieldLabel = "text-xs font-light text-[#8A8A8A]";
+const fieldLabel = "text-sm font-light text-white/90";
 
-// Dark floating dropdown panel (see design screenshot). Slides down out of the
-// trigger: the zoom/scale is neutralized (`zoom-*-100`) so the motion reads as
-// a slide rather than a fade-into-position, anchored to the top edge.
+// Soft charcoal dropdown panel. It is lighter than the portal surface for
+// visibility while remaining part of the dark theme. It slides down out of the
+// trigger with zoom/scale neutralized so the motion stays directional.
 const selectContent =
-  "origin-top overflow-hidden rounded-lg border-0 bg-[#3A3A3A] p-0 text-white shadow-2xl ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:duration-[400ms] data-[state=closed]:duration-200 data-[state=open]:!zoom-in-100 data-[state=closed]:!zoom-out-100 data-[side=bottom]:!slide-in-from-top-3 data-[side=top]:!slide-in-from-bottom-3";
+  "origin-top overflow-hidden rounded-lg border border-white/15 !bg-[#292B35] p-0 !text-white shadow-[0_18px_45px_rgba(0,0,0,0.48)] ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:duration-[400ms] data-[state=closed]:duration-200 data-[state=open]:!zoom-in-100 data-[state=closed]:!zoom-out-100 data-[side=bottom]:!slide-in-from-top-3 data-[side=top]:!slide-in-from-bottom-3";
 
 const selectItem =
-  "flex w-full cursor-pointer items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-3.5 text-left text-sm font-light text-white/90 transition-colors last:border-b-0 hover:bg-white/[0.07] hover:text-white focus-visible:bg-white/[0.07] focus-visible:text-white focus-visible:outline-none";
+  "flex w-full cursor-pointer items-center justify-between gap-2 border-b border-white/10 px-5 py-3.5 text-left text-sm font-light text-white/90 transition-colors last:border-b-0 hover:bg-white/10 hover:text-white focus-visible:bg-white/10 focus-visible:text-white focus-visible:outline-none";
 
 interface SchemaStepRendererProps {
   sectionLabel: string;
@@ -451,7 +451,7 @@ function SchemaFormField({
                 </FormControl>
               </div>
               <div className="min-w-0 flex-1 space-y-1">
-                <FormLabel className="block text-sm leading-6 font-extralight">
+                <FormLabel className="block text-sm leading-6 font-extralight text-white/90">
                   {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>
@@ -629,6 +629,7 @@ function SchemaSelect({
         <PopoverContent
           align="start"
           sideOffset={-6}
+          data-hacker-form-dropdown
           className={cn(
             selectContent,
             "w-[var(--radix-popover-trigger-width)]",
@@ -757,17 +758,18 @@ function SchemaCombobox({
           <DialogOverlay className="bg-black/60" />
           <DialogContent
             showCloseButton={false}
-            className="fixed inset-0 z-50 flex max-h-dvh w-full max-w-full translate-x-0 translate-y-0 flex-col rounded-none border-0 bg-[#3A3A3A] p-0 text-white"
+            data-hacker-form-dropdown
+            className="fixed inset-0 z-50 flex max-h-dvh w-full max-w-full translate-x-0 translate-y-0 flex-col rounded-none border-0 !bg-[#292B35] p-0 !text-white"
           >
             {/* Close button */}
-            <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <span className="text-sm font-light text-white/70">
                 {field.label}
               </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex size-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white"
+                className="flex size-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <X className="size-5" />
               </button>
@@ -817,6 +819,7 @@ function SchemaCombobox({
       <PopoverContent
         align="start"
         sideOffset={-6}
+        data-hacker-form-dropdown
         className={cn(selectContent, "w-[var(--radix-popover-trigger-width)]")}
       >
         <ComboboxContent
@@ -876,7 +879,7 @@ function ComboboxContent({
   }, [setOtherMode, formField, query, setOpen]);
 
   return (
-    <Command className="bg-transparent text-white">
+    <Command className="bg-transparent text-white [&_[data-slot=command-input-wrapper]]:border-white/10">
       <CommandInput
         value={query}
         onValueChange={setQuery}
@@ -898,10 +901,12 @@ function ComboboxContent({
               key={opt}
               value={opt}
               onSelect={() => handleSelect(opt)}
-              className="cursor-pointer justify-between rounded-none border-b border-white/[0.08] px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/[0.07] data-[selected=true]:text-white"
+              className="cursor-pointer justify-between rounded-none border-b border-white/10 px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
             >
               <span className="min-w-0 truncate">{opt}</span>
-              {opt === value && <Check className="size-4 shrink-0" />}
+              {opt === value && (
+                <Check className="size-4 shrink-0 text-[#21FFF0]" />
+              )}
             </CommandItem>
           ))}
         </CommandGroup>
@@ -909,7 +914,7 @@ function ComboboxContent({
       {/* Outside CommandList so it's never hidden by the search filter. */}
       <button
         type="button"
-        className="flex w-full items-center gap-2 border-t border-white/[0.08] px-5 py-3.5 text-left text-sm font-light text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white"
+        className="flex w-full items-center gap-2 border-t border-white/10 px-5 py-3.5 text-left text-sm font-light text-white/70 transition-colors hover:bg-white/10 hover:text-white"
         onClick={handleOther}
       >
         Other (enter manually)

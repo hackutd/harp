@@ -59,6 +59,24 @@ func batchTestCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 	return n
 }
 
+// batchTestAssign gives adminID a pending review on each application, assigned
+// one second apart in argument order so the last one is the end of the queue.
+func batchTestAssign(t *testing.T, db *sql.DB, adminID string, appIDs ...string) {
+	t.Helper()
+	for i, appID := range appIDs {
+		batchTestExec(t, db, "INSERT INTO application_reviews (application_id, admin_id, assigned_at) VALUES ($1, $2, '2026-01-03'::timestamptz + $3 * interval '1 second')", appID, adminID, i)
+	}
+}
+
+func batchTestClaim(t *testing.T, s *ApplicationReviewsStore, adminID string, target int) int {
+	t.Helper()
+	n, err := s.ClaimForAdmin(context.Background(), adminID, target, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 func batchTestCheckCounters(t *testing.T, db *sql.DB) {
 	t.Helper()
 	n := batchTestCount(t, db, `SELECT count(*) FROM applications a WHERE
@@ -205,6 +223,32 @@ func TestIntegrationBatchAssign(t *testing.T) {
 		t.Logf("initial workload 10:0; after four new assignments %d:%d", a, b)
 		if a != 10 || b != 4 {
 			t.Errorf("expected new assignments to go to reviewer with lower workload")
+		}
+	})
+	t.Run("equal_workload_reviewers_do_not_share_queues", func(t *testing.T) {
+		// 30 reviewers at target 3 divide evenly, which is where deterministic
+		// tie-breaking locks reviewers into fixed triples with identical queues.
+		db, s, _, _ := batchTestSeed(t, 30, 300)
+		if n := batchTestBatch(t, s, 3); n != 900 {
+			t.Fatalf("created=%d, want 900", n)
+		}
+		if n := batchTestCount(t, db, `SELECT max(c) - min(c) FROM (
+			SELECT count(*) c FROM application_reviews GROUP BY admin_id) x`); n > 1 {
+			t.Errorf("workload spread=%d, want at most 1", n)
+		}
+		var a, b string
+		var shared int
+		err := db.QueryRow(`
+			SELECT x.admin_id, y.admin_id, count(*) FROM application_reviews x
+			JOIN application_reviews y ON y.application_id = x.application_id AND y.admin_id > x.admin_id
+			GROUP BY x.admin_id, y.admin_id ORDER BY count(*) DESC LIMIT 1`).Scan(&a, &b, &shared)
+		if err != nil {
+			t.Fatal(err)
+		}
+		perAdmin := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", a)
+		t.Logf("most overlapping pair %s/%s shares %d of %d applications", a, b, shared, perAdmin)
+		if shared*2 > perAdmin {
+			t.Errorf("reviewers share %d of %d applications; want under half", shared, perAdmin)
 		}
 	})
 	t.Run("self_review_and_insufficient_capacity", func(t *testing.T) {
@@ -465,8 +509,9 @@ func TestIntegrationBatchAssign(t *testing.T) {
 		go func() { <-start; _, err := s.BatchAssign(ctx, 2); errs <- err }()
 		go func() {
 			<-start
-			_, err := s.AssignNextForAdmin(ctx, admins[0], 2)
-			if errors.Is(err, ErrNotFound) {
+			// If the batch lands first the admin already has a queue.
+			_, err := s.ClaimForAdmin(ctx, admins[0], 2, 5)
+			if errors.Is(err, ErrConflict) {
 				err = nil
 			}
 			errs <- err
@@ -481,4 +526,202 @@ func TestIntegrationBatchAssign(t *testing.T) {
 			t.Errorf("%d applications have wrong totals", n)
 		}
 	})
+	t.Run("claim_fills_unfilled_first", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 3, 6)
+		batchTestAssign(t, db, admins[1], apps[:4]...)
+		// Two unfilled slots, then one takeover: after it the holder has 3
+		// and the claimer 3, so a second would break the balance rule.
+		if n := batchTestClaim(t, s, admins[0], 1); n != 3 {
+			t.Errorf("claimed=%d, want 3", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1 AND application_id = ANY($2::uuid[])", admins[0], []string{apps[4], apps[5]}); n != 2 {
+			t.Errorf("unfilled applications claimed=%d, want 2", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM applications WHERE reviews_assigned <> 1"); n != 0 {
+			t.Errorf("%d applications moved off the target", n)
+		}
+	})
+	t.Run("claim_takes_from_largest_backlog_tail", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 3, 9)
+		batchTestAssign(t, db, admins[1], apps[:6]...)
+		batchTestAssign(t, db, admins[2], apps[6:]...)
+		if n := batchTestClaim(t, s, admins[0], 1); n != 3 {
+			t.Errorf("claimed=%d, want 3", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1 AND application_id = ANY($2::uuid[])", admins[0], apps[3:6]); n != 3 {
+			t.Errorf("claimed %d of the busiest holder's last three reviews, want 3", n)
+		}
+		for _, admin := range admins {
+			if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1 AND vote IS NULL", admin); n != 3 {
+				t.Errorf("admin %s pending=%d, want 3", admin, n)
+			}
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM applications WHERE reviews_assigned <> 1"); n != 0 {
+			t.Errorf("%d applications moved off the target", n)
+		}
+	})
+	t.Run("claim_refused_while_queue_nonempty", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 2, 2)
+		batchTestAssign(t, db, admins[0], apps[0])
+		if _, err := s.ClaimForAdmin(ctx, admins[0], 1, 5); !errors.Is(err, ErrConflict) {
+			t.Fatalf("err=%v, want ErrConflict", err)
+		}
+		// A pending review on a decided application is hidden from the queue,
+		// so it no longer blocks.
+		batchTestExec(t, db, "UPDATE applications SET status='accepted' WHERE id=$1", apps[0])
+		if n := batchTestClaim(t, s, admins[0], 1); n != 1 {
+			t.Errorf("claimed=%d, want 1", n)
+		}
+	})
+	t.Run("claim_balance_rule", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 3, 2)
+		batchTestAssign(t, db, admins[1], apps[0])
+		batchTestAssign(t, db, admins[2], apps[1])
+		if n := batchTestClaim(t, s, admins[0], 1); n != 0 {
+			t.Errorf("claimed=%d, want 0; each holder is down to one review", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[0]); n != 0 {
+			t.Errorf("claimer holds %d reviews, want 0", n)
+		}
+	})
+	t.Run("claim_orphaned_first", func(t *testing.T) {
+		for _, demoted := range []bool{false, true} {
+			t.Run(fmt.Sprint(demoted), func(t *testing.T) {
+				db, s, admins, apps := batchTestSeed(t, 3, 3)
+				batchTestAssign(t, db, admins[1], apps[0])
+				batchTestAssign(t, db, admins[2], apps[1], apps[2])
+				if demoted {
+					batchTestExec(t, db, "UPDATE users SET role='hacker' WHERE id=$1", admins[1])
+				} else {
+					batchTestExec(t, db, "UPDATE users SET role='super_admin' WHERE id=$1", admins[1])
+					if err := (&SettingsStore{db: db}).SetReviewAssignmentToggle(ctx, admins[1], false); err != nil {
+						t.Fatal(err)
+					}
+				}
+				// The orphaned review goes first even though it is its holder's
+				// last; after that the other holder's 2 is not more than 1 + 1.
+				if n := batchTestClaim(t, s, admins[0], 1); n != 1 {
+					t.Errorf("claimed=%d, want 1", n)
+				}
+				if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1 AND application_id=$2", admins[0], apps[0]); n != 1 {
+					t.Errorf("orphaned review not claimed")
+				}
+				if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[2]); n != 2 {
+					t.Errorf("eligible holder kept %d reviews, want 2", n)
+				}
+			})
+		}
+	})
+	t.Run("claim_skips_own_and_already_reviewed", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 2, 3)
+		batchTestExec(t, db, "UPDATE applications SET user_id=$1 WHERE id=$2", admins[0], apps[0])
+		batchTestExec(t, db, "INSERT INTO application_reviews (application_id, admin_id, vote, reviewed_at) VALUES ($1, $2, 'accept', NOW())", apps[1], admins[0])
+		// The claimer's own application and the one they already voted on sit
+		// at the end of the holder's queue, where a takeover looks first.
+		batchTestAssign(t, db, admins[1], apps[2], apps[0], apps[1])
+		if n := batchTestClaim(t, s, admins[0], 1); n != 1 {
+			t.Errorf("claimed=%d, want 1", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1 AND vote IS NULL AND application_id=$2", admins[0], apps[2]); n != 1 {
+			t.Errorf("expected the only eligible review to be claimed")
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews r JOIN applications a ON a.id=r.application_id WHERE r.admin_id=a.user_id"); n != 0 {
+			t.Errorf("self reviews=%d", n)
+		}
+	})
+	t.Run("concurrent_claims", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 3, 8)
+		batchTestAssign(t, db, admins[2], apps...)
+		start := make(chan struct{})
+		type outcome struct {
+			claimed int
+			err     error
+		}
+		results := make(chan outcome, 2)
+		for _, admin := range admins[:2] {
+			go func() {
+				<-start
+				n, err := s.ClaimForAdmin(ctx, admin, 1, 5)
+				results <- outcome{n, err}
+			}()
+		}
+		close(start)
+		// Claims run one at a time: the first takes 4 of 8, the second 2 of
+		// the remaining 4. Two claims interleaving would take more.
+		claimed := 0
+		for range 2 {
+			r := <-results
+			if r.err != nil {
+				t.Fatal(r.err)
+			}
+			claimed += r.claimed
+		}
+		if claimed != 6 {
+			t.Errorf("claimed=%d, want 6", claimed)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[2]); n != 2 {
+			t.Errorf("holder kept %d reviews, want 2", n)
+		}
+		if n := batchTestCount(t, db, "SELECT count(*) FROM applications WHERE reviews_assigned <> 1"); n != 0 {
+			t.Errorf("%d applications moved off the target", n)
+		}
+	})
+	t.Run("vote_after_takeover", func(t *testing.T) {
+		db, s, admins, apps := batchTestSeed(t, 2, 2)
+		batchTestAssign(t, db, admins[1], apps...)
+		var reviewID string
+		if err := db.QueryRow("SELECT id FROM application_reviews WHERE application_id=$1", apps[1]).Scan(&reviewID); err != nil {
+			t.Fatal(err)
+		}
+		if n := batchTestClaim(t, s, admins[0], 1); n != 1 {
+			t.Fatalf("claimed=%d, want 1", n)
+		}
+		if _, err := s.SubmitVote(ctx, reviewID, admins[1], ReviewVoteAccept, nil, nil); !errors.Is(err, ErrVoteNotApplied) {
+			t.Errorf("previous holder vote err=%v, want ErrVoteNotApplied", err)
+		}
+		if _, err := s.GetTravelStatusByReviewID(ctx, reviewID, admins[1]); !errors.Is(err, ErrNotFound) {
+			t.Errorf("previous holder lookup err=%v, want ErrNotFound", err)
+		}
+		if _, err := s.SubmitVote(ctx, reviewID, admins[0], ReviewVoteAccept, nil, nil); err != nil {
+			t.Errorf("claimer vote err=%v", err)
+		}
+	})
+}
+
+func TestIntegrationReviewLeaderboard(t *testing.T) {
+	db, s, admins, apps := batchTestSeed(t, 3, 4)
+	vote := func(adminID string, appIDs ...string) {
+		for _, appID := range appIDs {
+			batchTestExec(t, db, "INSERT INTO application_reviews (application_id, admin_id, vote, reviewed_at) VALUES ($1, $2, 'accept', NOW())", appID, adminID)
+		}
+	}
+	vote(admins[0], apps[0], apps[1])
+	vote(admins[1], apps[2], apps[3])
+	batchTestAssign(t, db, admins[2], apps[0], apps[3])
+	// A pending review on a decided application is hidden from the queue, so
+	// it does not count as pending either.
+	batchTestExec(t, db, "UPDATE applications SET status='accepted' WHERE id=$1", apps[3])
+
+	reviewers, err := s.GetLeaderboard(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reviewers) != 3 {
+		t.Fatalf("reviewers=%d, want 3 (hackers excluded)", len(reviewers))
+	}
+	want := []struct {
+		id                       string
+		rank, completed, pending int
+		reviewed                 bool
+	}{
+		{admins[0], 1, 2, 0, true},
+		{admins[1], 1, 2, 0, true},
+		{admins[2], 3, 0, 1, false},
+	}
+	for i, w := range want {
+		r := reviewers[i]
+		if r.AdminID != w.id || r.Rank != w.rank || r.Completed != w.completed || r.Pending != w.pending || (r.LastReviewedAt != nil) != w.reviewed {
+			t.Errorf("row %d=%+v, want %+v", i, r, w)
+		}
+	}
 }

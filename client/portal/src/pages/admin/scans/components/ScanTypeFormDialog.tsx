@@ -9,6 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -21,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import type { ScanType, ScanTypeCategory } from "../types";
-import { categoryOptions } from "../utils";
+import { categoryOptions, spendsPoints } from "../utils";
 
 export interface ScanTypeFormValues {
   display_name: string;
@@ -56,6 +61,7 @@ function ScanTypeForm({
   const [points, setPoints] = useState(String(scanType?.points ?? 0));
   const [isActive, setIsActive] = useState(scanType?.is_active ?? true);
   const pointsName = usePointsConfigStore((s) => s.pointsName);
+  const spends = spendsPoints(category);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,14 +107,29 @@ function ScanTypeForm({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="scan-type-points">{pointsName}</Label>
-        <Input
-          id="scan-type-points"
-          type="number"
-          min={0}
-          value={points}
-          onChange={(e) => setPoints(e.target.value)}
-        />
+        <Label htmlFor="scan-type-points">
+          {spends ? `Cost (${pointsName})` : `Award (${pointsName})`}
+        </Label>
+        <InputGroup>
+          <InputGroupAddon
+            className={spends ? "text-rose-700" : "text-emerald-700"}
+          >
+            {spends ? "−" : "+"}
+          </InputGroupAddon>
+          <InputGroupInput
+            id="scan-type-points"
+            type="number"
+            min={0}
+            value={points}
+            onChange={(e) => setPoints(e.target.value)}
+          />
+          <InputGroupAddon align="inline-end">{pointsName}</InputGroupAddon>
+        </InputGroup>
+        <p className="text-xs text-muted-foreground">
+          {spends
+            ? `Deducted from the hacker's balance on every scan. Can be scanned repeatedly; rejected if they can't afford it.`
+            : `Added to the hacker's balance. Each hacker can be scanned once.`}
+        </p>
       </div>
       <div className="flex items-center gap-2">
         <Switch

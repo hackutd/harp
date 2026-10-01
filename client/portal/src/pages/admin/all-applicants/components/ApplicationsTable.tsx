@@ -75,6 +75,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                 ? formatApplicantLabel(app.id)
                 : formatName(app.first_name, app.last_name, app.email);
               const email = redact ? maskEmail(app.email) : app.email;
+              const phone = redact ? "•••" : (app.phone ?? "-");
 
               const isSelected = selectedId === app.id;
 
@@ -94,14 +95,18 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(app.travel_rsvp_status)}>
-                      {app.travel_rsvp_status}
-                    </Badge>
+                    {app.travel_status === "not_requested" ? (
+                      <span className="text-muted-foreground">-</span>
+                    ) : (
+                      <Badge className={getStatusColor(app.travel_rsvp_status)}>
+                        {app.travel_rsvp_status}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell title={name}>{name}</TableCell>
                   <TableCell title={email}>{email}</TableCell>
-                  <TableCell title={app.phone ?? undefined}>
-                    {app.phone ?? "-"}
+                  <TableCell title={redact ? undefined : phone}>
+                    {phone}
                   </TableCell>
                   <TableCell>{app.age ?? "-"}</TableCell>
                   <TableCell title={app.country_of_residence ?? undefined}>

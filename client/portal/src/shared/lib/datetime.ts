@@ -56,6 +56,28 @@ export function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+/**
+ * Compact time between two instants, keeping the two largest units:
+ * "42s", "9m 2s", "3h 15m", "2d 4h". An end before the start reads as "0s".
+ */
+export function formatElapsed(start: Date, end: Date): string {
+  const total = Math.max(
+    0,
+    Math.floor((end.getTime() - start.getTime()) / 1000),
+  );
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+
+  if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  if (minutes > 0) {
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+  return `${seconds}s`;
+}
+
 /** "Sat, Mar 14, 2026" style label, or a placeholder when unset. */
 export function formatPickerDate(date: Date | null): string {
   if (!date) return "Select date";
