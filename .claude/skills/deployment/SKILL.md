@@ -32,11 +32,12 @@ state them as verified fact.
 
 ## Repos and remotes
 
-- This checkout's `origin` is `hackutd/hackutd-harp`, HackUTD's own copy.
-  `upstream` is `hackutd/harp`, the open-source project other schools adopt.
-- release-please runs **only on upstream**, guarded by
-  `if: github.repository == 'hackutd/harp'` in `.github/workflows/release-please.yaml`.
-  `version.txt` changes here only when upstream is merged in.
+- `hackutd/harp` is both the open-source project and HackUTD's live
+  deployment. Other schools copy it and restyle it; they don't track it.
+  The old `hackutd/hackutd-harp` fork is archived.
+- release-please runs here, guarded by
+  `if: github.repository == 'hackutd/harp'` in `.github/workflows/release-please.yaml`
+  so adopters' copies don't cut their own tags.
 - The marketing site (`hackutd/harp-marketing`, Next.js on Vercel) is a
   separate deployment. It reads `/v1/public/*` with `PUBLIC_API_KEY`. Changing
   the shape of those responses breaks it (see CLAUDE.md).

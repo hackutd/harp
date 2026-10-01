@@ -34,24 +34,22 @@ Four pipelines, triggered by different events:
 | ------------------- | ----------------------------------- | ------------------------- | -------------------------------------------------------------- |
 | **CI**              | `audit.yaml`                        | push **or** PR to `main`  | Validate migrations, lint, build, test Go and the portal       |
 | **Commits**         | `conventional-commits.yaml`         | PR opened/edited/synced   | PR **title** must be a Conventional Commit                     |
-| **release-please**  | `release-please.yaml`               | push to `main`, **upstream repo only** | Maintain release PR → on merge: tag, GitHub Release, `version.txt`, `CHANGELOG.md`, snapshot branch |
+| **release-please**  | `release-please.yaml`               | push to `main`, **`hackutd/harp` only** | Maintain release PR → on merge: tag, GitHub Release, `version.txt`, `CHANGELOG.md`, snapshot branch |
 | **Deploy (CD)**     | Google Cloud Build (not in repo)    | merge to `main`           | Build `Dockerfile` → Cloud Run                                 |
 
 And two **local** git hooks (they run on your machine, not in CI) keep commits
 clean before they ever reach GitHub.
 
 A normal change flows: branch → commit (hooks run locally) → open PR (CI +
-Commits run) → squash-merge to `main` (CI runs again, deploy fires, and on
-upstream release-please updates the release PR).
+Commits run) → squash-merge to `main` (CI runs again, deploy fires, and
+release-please updates the release PR).
 
-### Two repositories
+### One repository
 
-This checkout's `origin` is `hackutd/hackutd-harp` (HackUTD's deployment);
-`upstream` is `hackutd/harp` (the open-source project). The workflows are the
-same files in both, but `release-please.yaml` is guarded by
-`if: github.repository == 'hackutd/harp'`, so **releases are only cut upstream**.
-In `hackutd-harp`, a new version arrives when upstream is merged in, bringing
-its `version.txt` and `CHANGELOG.md` with it.
+`hackutd/harp` is both the open-source project and HackUTD's deployment (the
+`hackutd/hackutd-harp` fork is archived). `release-please.yaml` is guarded by
+`if: github.repository == 'hackutd/harp'` so that other schools' copies of the
+repo never cut their own releases.
 
 ## CI — `.github/workflows/audit.yaml`
 
@@ -212,11 +210,10 @@ Valid: `feat(auth): add Google OAuth login`, `fix: resolve pagination bug`,
 - **"What runs when I open a PR?"** → **CI** (backend-audit + frontend-audit)
   and **Commits** (PR title check). Release and deploy are `main`-only.
 - **"What happens when something merges to `main`?"** → CI runs again and Cloud
-  Build deploys to Cloud Run. On upstream (`hackutd/harp`) release-please also
-  updates or creates the release PR.
+  Build deploys to Cloud Run, and release-please updates or creates the
+  release PR.
 - **"How do I cut a release?"** → merge the open release-please PR in
-  `hackutd/harp`. You don't tag manually. `hackutd-harp` picks it up by merging
-  upstream.
+  `hackutd/harp`. You don't tag manually.
 - **"Why did CI fail on a migration I didn't touch?"** → the migration check
   looks at the whole directory; a bad name or missing up/down pair anywhere
   fails it. Run `task migrate-check`.
