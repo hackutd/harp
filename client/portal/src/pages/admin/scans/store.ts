@@ -11,6 +11,7 @@ import {
   saveScanTypes as apiSaveScanTypes,
 } from "./api";
 import type { Scan, ScanStat, ScanType } from "./types";
+import { spendsPoints } from "./utils";
 
 export interface ScanResult {
   success: boolean;
@@ -92,7 +93,9 @@ export const useScansStore = create<ScansState>((set, get) => ({
         scanning: false,
         lastScanResult: {
           success: true,
-          message: "Scanned successfully",
+          message: spendsPoints(activeScanType.category)
+            ? "Purchase complete"
+            : "Scanned successfully",
           scan: res.data,
         },
       });

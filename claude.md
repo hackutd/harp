@@ -14,6 +14,12 @@ The public marketing site lives in a **separate repository** (`hackutd/harp-mark
 
 Local dev ports: backend `8080`, portal `3000`. Port 3000 is pinned for the portal by `FRONTEND_URL` and the SuperTokens `WebsiteDomain`, so the marketing site takes 3001 when run alongside.
 
+## Working Style
+
+- **Fix the code, don't build a test rig.** Diagnose from the source, make the change, and hand it back. The maintainer runs the app and verifies visually themselves.
+- Do not scaffold throwaway harness pages, mock-API entry points, or browser-automation scripts inside this repo to prove a UI change works.
+- Existing checks are enough: `task test` for Go, `npm run build` / `npm run lint` for the portal.
+
 ## Commands
 
 ### Backend (Go)
@@ -182,6 +188,6 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 
 **Auth:** `GET /v1/auth/check-email`, `GET /v1/auth/me`
 **Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`, `GET /v1/points-config`
-**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
+**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/leaderboard`, `POST /v1/admin/reviews/claim`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
 **Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/settings/points-name`, `GET|POST /v1/superadmin/settings/points-enabled`, `POST /v1/superadmin/scans/rebalance-stats`, `POST /v1/superadmin/emails/decisions`, `GET /v1/superadmin/emails/decisions/stats`, `GET /v1/superadmin/walk-ins`, `POST /v1/superadmin/walk-ins/promote`
 **Infra (Basic Auth):** `GET /v1/health`, `GET /v1/debug/vars`, `GET /v1/swagger/*`

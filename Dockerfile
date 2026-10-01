@@ -45,6 +45,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/api ./api
 COPY --from=frontend /app/client/portal/dist ./static
 COPY --from=frontend /app/client/portal/public/pwa-192x192.png ./client/portal/public/pwa-192x192.png
+COPY --from=frontend /app/client/portal/src/assets/title-login.webp ./static/email-assets/zero-day-title.webp
 
 EXPOSE 8080
 CMD ["./api"]

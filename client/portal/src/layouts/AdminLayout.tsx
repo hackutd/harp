@@ -1,4 +1,5 @@
 import { ChevronLeft } from "lucide-react";
+import { useLayoutEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -6,6 +7,13 @@ import { AppSidebar, OnboardingGate } from "@/pages/admin/_shared";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+
+  // On <body> rather than the wrapper so Radix portals are covered too. The
+  // hacker-side custom cursors in index.css are switched off under this class.
+  useLayoutEffect(() => {
+    document.body.classList.add("admin-portal");
+    return () => document.body.classList.remove("admin-portal");
+  }, []);
 
   return (
     <SidebarProvider className="h-svh min-h-0!">

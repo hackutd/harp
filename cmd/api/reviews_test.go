@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -98,6 +101,47 @@ func TestGetCompletedReviews(t *testing.T) {
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
 		assert.Len(t, body.Data.Reviews, 1)
+
+		mockReviews.AssertExpectations(t)
+	})
+}
+
+func TestGetReviewLeaderboard(t *testing.T) {
+	app := newTestApplication(t)
+	mockReviews := app.store.ApplicationReviews.(*store.MockApplicationReviewsStore)
+
+	t.Run("should return reviewers ranked by completed reviews", func(t *testing.T) {
+		reviewers := []store.ReviewerStats{
+			{AdminID: "admin-1", Email: "a@test.com", Role: store.RoleAdmin, Rank: 1, Completed: 12, Pending: 0},
+			{AdminID: "admin-2", Email: "b@test.com", Role: store.RoleSuperAdmin, Rank: 2, Completed: 7, Pending: 3},
+		}
+		mockReviews.On("GetLeaderboard").Return(reviewers, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getReviewLeaderboard))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ReviewLeaderboardResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, reviewers, body.Data.Reviewers)
+
+		mockReviews.AssertExpectations(t)
+	})
+
+	t.Run("should return 500 when the store fails", func(t *testing.T) {
+		mockReviews.On("GetLeaderboard").Return(nil, errors.New("db down")).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getReviewLeaderboard))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 
 		mockReviews.AssertExpectations(t)
 	})
@@ -217,6 +261,52 @@ func TestSubmitVote(t *testing.T) {
 		mockReviews.AssertExpectations(t)
 	})
 
+	t.Run("should replace an existing vote", func(t *testing.T) {
+		admin := newAdminUser()
+		travelNo := false
+		notes := "Changed my mind after re-reading"
+		reviewedAt := time.Now()
+		vote := store.ReviewVoteWaitlist
+		review := &store.ApplicationReview{
+			ID:            "rev-1",
+			ApplicationID: "app-1",
+			AdminID:       admin.ID,
+			Vote:          &vote,
+			TravelVote:    &travelNo,
+			Notes:         &notes,
+			ReviewedAt:    &reviewedAt,
+		}
+
+		mockReviews.On("SubmitVote", "rev-1", admin.ID, store.ReviewVoteWaitlist, &travelNo, &notes).Return(review, nil).Once()
+
+		body := `{"vote":"waitlist","travel_vote":false,"notes":"Changed my mind after re-reading"}`
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, admin)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("reviewID", "rev-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitVote))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var resp struct {
+			Data ReviewResponse `json:"data"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&resp)
+		require.NoError(t, err)
+		require.NotNil(t, resp.Data.Review.Vote)
+		assert.Equal(t, store.ReviewVoteWaitlist, *resp.Data.Review.Vote)
+		require.NotNil(t, resp.Data.Review.TravelVote)
+		assert.False(t, *resp.Data.Review.TravelVote)
+		require.NotNil(t, resp.Data.Review.Notes)
+		assert.Equal(t, notes, *resp.Data.Review.Notes)
+		assert.NotNil(t, resp.Data.Review.ReviewedAt)
+
+		mockReviews.AssertExpectations(t)
+	})
+
 	t.Run("should return 400 when travel vote missing but applicant requested travel", func(t *testing.T) {
 		admin := newAdminUser()
 
@@ -298,63 +388,148 @@ func TestSubmitVote(t *testing.T) {
 	})
 }
 
-func TestGetNextReview(t *testing.T) {
-	app := newTestApplication(t)
-	mockReviews := app.store.ApplicationReviews.(*store.MockApplicationReviewsStore)
-	mockSettings := app.store.Settings.(*store.MockSettingsStore)
-
-	t.Run("should return next review assignment", func(t *testing.T) {
-		admin := newAdminUser()
-		review := &store.ApplicationReview{
-			ID:            "rev-1",
-			ApplicationID: "app-1",
-			AdminID:       admin.ID,
+func TestClaimReviews(t *testing.T) {
+	newClaimTest := func(t *testing.T) (*application, *store.MockApplicationReviewsStore, *store.MockSettingsStore) {
+		app := newTestApplication(t)
+		return app,
+			app.store.ApplicationReviews.(*store.MockApplicationReviewsStore),
+			app.store.Settings.(*store.MockSettingsStore)
+	}
+	claim := func(t *testing.T, app *application, user *store.User) *httptest.ResponseRecorder {
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+		return executeRequest(req, http.HandlerFunc(app.claimReviews))
+	}
+	queue := func(adminID string, n int) []store.ApplicationReviewWithDetails {
+		reviews := []store.ApplicationReviewWithDetails{}
+		for i := range n {
+			reviews = append(reviews, store.ApplicationReviewWithDetails{
+				ApplicationReview: store.ApplicationReview{
+					ID:            fmt.Sprintf("rev-%d", i),
+					ApplicationID: fmt.Sprintf("app-%d", i),
+					AdminID:       adminID,
+				},
+				Email: "applicant@test.com",
+			})
 		}
+		return reviews
+	}
+
+	t.Run("should claim reviews and return the new queue", func(t *testing.T) {
+		app, mockReviews, mockSettings := newClaimTest(t)
+		admin := newAdminUser()
 
 		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
-		mockReviews.On("AssignNextForAdmin", admin.ID, 3).Return(review, nil).Once()
+		mockReviews.On("ClaimForAdmin", admin.ID, 3, reviewClaimBatchSize).Return(2, nil).Once()
+		mockReviews.On("GetPendingByAdminID", admin.ID).Return(queue(admin.ID, 2), nil).Once()
 
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
-		require.NoError(t, err)
-		req = setUserContext(req, admin)
+		rr := claim(t, app, admin)
+		checkResponseCode(t, http.StatusOK, rr.Code)
 
-		rr := executeRequest(req, http.HandlerFunc(app.getNextReview))
+		var body struct {
+			Data ClaimReviewsResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, 2, body.Data.Claimed)
+		assert.Len(t, body.Data.Reviews, 2)
+
+		mockReviews.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return an empty queue when nothing can be claimed", func(t *testing.T) {
+		app, mockReviews, mockSettings := newClaimTest(t)
+		admin := newAdminUser()
+
+		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
+		mockReviews.On("ClaimForAdmin", admin.ID, 3, reviewClaimBatchSize).Return(0, nil).Once()
+		mockReviews.On("GetPendingByAdminID", admin.ID).Return(queue(admin.ID, 0), nil).Once()
+
+		rr := claim(t, app, admin)
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ClaimReviewsResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, 0, body.Data.Claimed)
+		assert.NotNil(t, body.Data.Reviews)
+		assert.Empty(t, body.Data.Reviews)
+
+		mockReviews.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 409 while the admin still has pending reviews", func(t *testing.T) {
+		app, mockReviews, mockSettings := newClaimTest(t)
+		admin := newAdminUser()
+
+		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
+		mockReviews.On("ClaimForAdmin", admin.ID, 3, reviewClaimBatchSize).Return(0, store.ErrConflict).Once()
+
+		rr := claim(t, app, admin)
+		checkResponseCode(t, http.StatusConflict, rr.Code)
+
+		var body struct {
+			Error string `json:"error"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Contains(t, body.Error, "finish your assigned reviews")
+
+		mockReviews.AssertNotCalled(t, "GetPendingByAdminID", admin.ID)
+		mockReviews.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 403 for a super admin with assignment disabled", func(t *testing.T) {
+		app, mockReviews, mockSettings := newClaimTest(t)
+		superAdmin := newSuperAdminUser()
+
+		mockSettings.On("GetReviewAssignmentToggle", superAdmin.ID).Return(false, nil).Once()
+
+		rr := claim(t, app, superAdmin)
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+
+		var body struct {
+			Error string `json:"error"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Contains(t, body.Error, "review assignment is turned off")
+
+		mockSettings.AssertNotCalled(t, "GetReviewsPerApplication")
+		mockReviews.AssertNotCalled(t, "ClaimForAdmin", superAdmin.ID, 3, reviewClaimBatchSize)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should let a super admin with assignment enabled claim", func(t *testing.T) {
+		app, mockReviews, mockSettings := newClaimTest(t)
+		superAdmin := newSuperAdminUser()
+
+		mockSettings.On("GetReviewAssignmentToggle", superAdmin.ID).Return(true, nil).Once()
+		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
+		mockReviews.On("ClaimForAdmin", superAdmin.ID, 3, reviewClaimBatchSize).Return(5, nil).Once()
+		mockReviews.On("GetPendingByAdminID", superAdmin.ID).Return(queue(superAdmin.ID, 5), nil).Once()
+
+		rr := claim(t, app, superAdmin)
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		mockReviews.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
 	})
 
-	t.Run("should return 404 when no applications need review", func(t *testing.T) {
+	t.Run("should return 500 when the claim fails", func(t *testing.T) {
+		app, mockReviews, mockSettings := newClaimTest(t)
 		admin := newAdminUser()
 
 		mockSettings.On("GetReviewsPerApplication").Return(3, nil).Once()
-		mockReviews.On("AssignNextForAdmin", admin.ID, 3).Return(nil, store.ErrNotFound).Once()
+		mockReviews.On("ClaimForAdmin", admin.ID, 3, reviewClaimBatchSize).Return(0, errors.New("db down")).Once()
 
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
-		require.NoError(t, err)
-		req = setUserContext(req, admin)
+		rr := claim(t, app, admin)
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 
-		rr := executeRequest(req, http.HandlerFunc(app.getNextReview))
-		checkResponseCode(t, http.StatusNotFound, rr.Code)
-
+		mockReviews.AssertNotCalled(t, "GetPendingByAdminID", admin.ID)
 		mockReviews.AssertExpectations(t)
-		mockSettings.AssertExpectations(t)
-	})
-
-	t.Run("should return 403 for a super admin with assignment disabled", func(t *testing.T) {
-		superAdmin := newSuperAdminUser()
-
-		mockSettings.On("GetReviewAssignmentToggle", superAdmin.ID).Return(false, nil).Once()
-
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
-		require.NoError(t, err)
-		req = setUserContext(req, superAdmin)
-
-		rr := executeRequest(req, http.HandlerFunc(app.getNextReview))
-		checkResponseCode(t, http.StatusForbidden, rr.Code)
-
-		mockReviews.AssertNotCalled(t, "AssignNextForAdmin", superAdmin.ID, 3)
 		mockSettings.AssertExpectations(t)
 	})
 }

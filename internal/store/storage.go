@@ -150,8 +150,9 @@ type Storage struct {
 		GetPendingByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error)
 		GetCompletedByAdminID(ctx context.Context, adminID string) ([]ApplicationReviewWithDetails, error)
 		GetNotesByApplicationID(ctx context.Context, applicationID string) ([]ReviewNote, error)
+		GetLeaderboard(ctx context.Context) ([]ReviewerStats, error)
 		BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error)
-		AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error)
+		ClaimForAdmin(ctx context.Context, adminID string, reviewsPerApp, limit int) (int, error)
 		SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error
 	}
 	Schedule interface {

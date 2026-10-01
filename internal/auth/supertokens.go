@@ -2,9 +2,11 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/hackutd/harp/internal/store"
+	"github.com/supertokens/supertokens-golang/ingredients/emaildelivery"
 	"github.com/supertokens/supertokens-golang/recipe/passwordless"
 	"github.com/supertokens/supertokens-golang/recipe/passwordless/plessmodels"
 	"github.com/supertokens/supertokens-golang/recipe/session"
@@ -15,6 +17,10 @@ import (
 )
 
 const DefaultSessionRole = store.RoleHacker
+
+type MagicLinkEmailSender interface {
+	SendMagicLinkEmail(toEmail, magicLink string, codeLifetime time.Duration) error
+}
 
 // Config holds the configuration needed for SuperTokens initialization.
 type Config struct {
@@ -29,11 +35,11 @@ type Config struct {
 }
 
 // InitSuperTokens initializes the SuperTokens SDK with the given configuration.
-func InitSuperTokens(cfg Config, appStore store.Storage) error {
+func InitSuperTokens(cfg Config, appStore store.Storage, emailSender MagicLinkEmailSender) error {
 	apiBasePath := cfg.APIBasePath
 
 	recipes := []supertokens.Recipe{
-		passwordlessRecipe(appStore),
+		passwordlessRecipe(appStore, emailSender),
 		sessionRecipe(),
 	}
 
@@ -65,12 +71,31 @@ func googleEnabled(cfg Config) bool {
 	return cfg.GoogleClientID != "" && cfg.GoogleClientSecret != ""
 }
 
-func passwordlessRecipe(appStore store.Storage) supertokens.Recipe {
+func passwordlessRecipe(appStore store.Storage, emailSender MagicLinkEmailSender) supertokens.Recipe {
 	return passwordless.Init(plessmodels.TypeInput{
 		ContactMethodEmail: plessmodels.ContactMethodEmailConfig{Enabled: true},
 		FlowType:           "MAGIC_LINK",
 		Override:           passwordlessOverrides(appStore),
+		EmailDelivery:      magicLinkEmailDelivery(emailSender),
 	})
+}
+
+func magicLinkEmailDelivery(emailSender MagicLinkEmailSender) *emaildelivery.TypeInput {
+	sendEmail := func(input emaildelivery.EmailType, _ supertokens.UserContext) error {
+		login := input.PasswordlessLogin
+		if login == nil || login.UrlWithLinkCode == nil {
+			return errors.New("passwordless email is missing its magic link")
+		}
+		return emailSender.SendMagicLinkEmail(
+			login.Email,
+			*login.UrlWithLinkCode,
+			time.Duration(login.CodeLifetime)*time.Millisecond,
+		)
+	}
+
+	return &emaildelivery.TypeInput{
+		Service: &emaildelivery.EmailDeliveryInterface{SendEmail: &sendEmail},
+	}
 }
 
 func sessionRecipe() supertokens.Recipe {
@@ -196,6 +221,33 @@ func googleOverrides(appStore store.Storage) *tpmodels.OverrideStruct {
 				}
 
 				return origSignInUp(thirdPartyID, thirdPartyUserID, email, oAuthTokens, rawUserInfoFromProvider, tenantId, userContext)
+			}
+
+			return impl
+		},
+		APIs: func(impl tpmodels.APIInterface) tpmodels.APIInterface {
+			origSignInUpPOST := *impl.SignInUpPOST
+
+			// A mismatch is a user mistake, not a server fault. Left as an error it
+			// reaches SuperTokens' default handler and goes out as a plain-text 500;
+			// as a GENERAL_ERROR the client throws it with this message instead.
+			*impl.SignInUpPOST = func(
+				provider *tpmodels.TypeProvider,
+				input tpmodels.TypeSignInUpInput,
+				tenantId string,
+				options tpmodels.APIOptions,
+				userContext supertokens.UserContext,
+			) (tpmodels.SignInUpPOSTResponse, error) {
+				resp, err := origSignInUpPOST(provider, input, tenantId, options, userContext)
+
+				var mismatchErr *AuthMethodMismatchError
+				if errors.As(err, &mismatchErr) {
+					return tpmodels.SignInUpPOSTResponse{
+						GeneralError: &supertokens.GeneralErrorResponse{Message: mismatchErr.UserMessage()},
+					}, nil
+				}
+
+				return resp, err
 			}
 
 			return impl

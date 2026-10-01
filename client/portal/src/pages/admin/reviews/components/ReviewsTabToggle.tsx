@@ -35,6 +35,13 @@ export const ReviewsTabToggle = memo(function ReviewsTabToggle({
         >
           Completed
         </TabsTrigger>
+        <TabsTrigger
+          value="leaderboard"
+          disabled={disabled}
+          className="font-light cursor-pointer rounded-sm disabled:pointer-events-none disabled:opacity-50"
+        >
+          Leaderboard
+        </TabsTrigger>
       </TabsList>
     </Tabs>
   );

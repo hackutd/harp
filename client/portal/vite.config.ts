@@ -1,3 +1,5 @@
+import { createReadStream, readFileSync } from "node:fs";
+
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
@@ -16,6 +18,8 @@ const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:8080";
 function brandingHtml(): Plugin {
   const tokens: Record<string, string> = {
     "%HARP_TITLE%": branding.appName,
+    "%HARP_SHORT_NAME%": branding.shortName,
+    "%HARP_DESCRIPTION%": branding.description,
     "%HARP_THEME_COLOR%": branding.themeColor,
   };
 
@@ -30,18 +34,51 @@ function brandingHtml(): Plugin {
   };
 }
 
+// Email clients cannot use Vite's hashed asset URLs because the API renders
+// the message independently of the frontend bundle. Emit the optimized title
+// artwork at a stable public path in production and serve the same path in dev.
+function zeroDayEmailAsset(): Plugin {
+  const publicPath = "/email-assets/zero-day-title.webp";
+  const sourcePath = path.resolve(__dirname, "./src/assets/title-login.webp");
+
+  return {
+    name: "zero-day-email-asset",
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        if (request.url?.split("?", 1)[0] !== publicPath) {
+          next();
+          return;
+        }
+        response.setHeader("Content-Type", "image/webp");
+        response.setHeader("Cache-Control", "public, max-age=3600");
+        createReadStream(sourcePath).pipe(response);
+      });
+    },
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: publicPath.slice(1),
+        source: readFileSync(sourcePath),
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     brandingHtml(),
+    zeroDayEmailAsset(),
     VitePWA({
       registerType: "autoUpdate",
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,webp,woff,woff2}"],
+        // No html/js/css: the shell must always come from the network and
+        // the fingerprinted bundles are runtime-cached by src/sw.ts.
+        globPatterns: ["**/*.{png,svg,ico,webp,woff,woff2}"],
       },
       // Serve the service worker during `vite dev` so push notifications can be
       // tested without a production build. Has no effect on prod builds.
@@ -56,7 +93,10 @@ export default defineConfig({
         theme_color: branding.themeColor,
         background_color: branding.backgroundColor,
         display: "standalone",
+        lang: "en-US",
+        categories: ["education", "productivity", "social"],
         id: "/",
+        scope: "/",
         start_url: "/",
         icons: [
           {

@@ -40,6 +40,7 @@ import { usePointsConfigStore } from "@/shared/stores";
 
 import type { ScanStat, ScanType } from "../types";
 import { categoryColors, categoryIcons, toSnakeCase, validate } from "../utils";
+import { PointsDelta } from "./PointsDelta";
 import type { ScanTypeFormValues } from "./ScanTypeFormDialog";
 import { ScanTypeFormDialog } from "./ScanTypeFormDialog";
 
@@ -170,7 +171,9 @@ export function ScanTypesTable({
       <CardHeader className="shrink-0 flex flex-row items-center justify-between gap-2">
         <CardDescription className="font-light">
           {displayTypes.length} scan type(s){" "}
-          {isSuperAdmin ? "configured" : "available"}
+          {isSuperAdmin ? "configured" : "available"} ·{" "}
+          <span className="text-emerald-700">+ adds {pointsName}</span>,{" "}
+          <span className="text-rose-700">− shop spends them</span>
         </CardDescription>
         <div className="flex items-center gap-2">
           {saving && <Skeleton className="size-4 rounded-full" />}
@@ -250,8 +253,11 @@ export function ScanTypesTable({
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {scanType.points ?? 0}
+                    <TableCell>
+                      <PointsDelta
+                        scanType={scanType}
+                        pointsName={pointsName}
+                      />
                     </TableCell>
                     <TableCell className="tabular-nums">{count}</TableCell>
                     {isSuperAdmin && (

@@ -49,7 +49,8 @@ const MIN_EVENT_PX = 24;
 // the first line lands one hour down instead of at y=0 — the sticky header's
 // bottom border already provides the top boundary, and drawing over it would
 // make the very top line read as double-thick.
-const HOUR_LINES = `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, #F0F0F0 ${HOUR_PX - 1}px, #F0F0F0 ${HOUR_PX}px)`;
+const GRID_LINE_COLOR = "rgba(33, 255, 240, 0.1)";
+const HOUR_LINES = `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, ${GRID_LINE_COLOR} ${HOUR_PX - 1}px, ${GRID_LINE_COLOR} ${HOUR_PX}px)`;
 
 const FILTER_OPTIONS = [
   ...Object.entries(TAG_COLORS).map(([key, color]) => ({ key, ...color })),
@@ -342,7 +343,7 @@ export default function SchedulePage() {
                 type="button"
                 aria-label="Filter events"
                 className={cn(
-                  "pointer-events-auto flex size-10 items-center justify-center rounded-full bg-[#F5F5F5] text-black shadow-sm transition-all duration-200 hover:bg-[#EDEDED]",
+                  "pointer-events-auto flex size-10 items-center justify-center rounded-full bg-[#101321] text-[#21FFF0] shadow-[0_0_0_1px_rgba(33,255,240,0.18),0_8px_24px_rgba(0,0,0,0.35)] transition-all duration-200 hover:bg-[#171A2C] hover:shadow-[0_0_0_1px_rgba(33,255,240,0.45),0_0_20px_rgba(33,255,240,0.12)]",
                   scrolled && !filterOpen
                     ? "opacity-55 hover:opacity-100"
                     : "opacity-100",
@@ -357,7 +358,7 @@ export default function SchedulePage() {
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="pointer-events-auto w-56 rounded-2xl border-none bg-[#1E1E1E] p-1.5 text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+              className="pointer-events-auto w-56 rounded-2xl border border-white/15 !bg-[#292B35] p-1.5 text-white shadow-[0_18px_45px_rgba(0,0,0,0.48)]"
             >
               {FILTER_OPTIONS.map(({ key, label, color }) => (
                 <label
@@ -398,7 +399,7 @@ export default function SchedulePage() {
           {/* Calendar grid */}
           <div className="relative mt-3">
             {/* Sticky header — day strip + column labels stay pinned on scroll */}
-            <div className="sticky top-0 z-30 bg-white pt-2">
+            <div className="sticky top-0 z-30 bg-[#070811]/95 pt-2 backdrop-blur-md">
               {/* Day strip — one cell per hackathon day, today circled. Offset by
                   the hour-gutter width so it lines up with the columns below. */}
               <div className="flex">
@@ -418,7 +419,7 @@ export default function SchedulePage() {
                     </span>
                   ))}
                   <div
-                    className="col-span-full grid rounded-full bg-[#414141] p-1"
+                    className="col-span-full grid rounded-full border border-[#21FFF0]/15 bg-[#101321] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_28px_rgba(0,0,0,0.20)]"
                     style={{
                       gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
                     }}
@@ -434,7 +435,7 @@ export default function SchedulePage() {
                             className={cn(
                               "flex size-8 items-center justify-center rounded-full text-sm transition-colors",
                               isToday
-                                ? "bg-[#747474] font-medium text-white"
+                                ? "bg-[#5900FF] font-medium text-white ring-1 ring-[#21FFF0]/60 shadow-[0_0_18px_rgba(33,255,240,0.28)]"
                                 : "font-light text-white/55",
                             )}
                           >
@@ -449,7 +450,7 @@ export default function SchedulePage() {
 
               {/* Column headers — timezone label sits in the hour gutter, on
                   the same row as the date headers. */}
-              <div className="mt-3 flex border-b border-[#EDEDED]">
+              <div className="mt-3 flex border-b border-[#21FFF0]/15">
                 <div className="flex w-14 shrink-0 items-end justify-end pr-2 pb-2">
                   <span className="text-[11px] font-semibold text-[#8A8A8A]">
                     {localTimeZone.abbrev || localTimeZone.iana}
@@ -460,7 +461,7 @@ export default function SchedulePage() {
                   return (
                     <div
                       key={day.dateKey}
-                      className="min-w-0 flex-1 border-l border-[#F0F0F0] px-2 pt-1 pb-2 text-center"
+                      className="min-w-0 flex-1 border-l border-[#21FFF0]/10 px-2 pt-1 pb-2 text-center"
                     >
                       <span
                         className={cn(
@@ -518,7 +519,7 @@ export default function SchedulePage() {
                 return (
                   <div
                     key={day.dateKey}
-                    className="relative min-w-0 flex-1 border-l border-[#F0F0F0]"
+                    className="relative min-w-0 flex-1 border-l border-[#21FFF0]/10"
                     style={{ backgroundImage: HOUR_LINES }}
                   >
                     {dayEvents.map((positioned) => {
@@ -656,7 +657,7 @@ export default function SchedulePage() {
                     <>
                       <div
                         data-event-card
-                        className="absolute z-40 hidden w-64 rounded-lg border border-black/5 bg-white p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.16)] md:block"
+                        className="absolute z-40 hidden w-64 rounded-lg border border-white/15 bg-[#292B35] p-3.5 shadow-[0_18px_45px_rgba(0,0,0,0.48)] md:block"
                         style={{ top: cardTop, ...horizontal }}
                       >
                         <EventDetailsCard
@@ -668,7 +669,7 @@ export default function SchedulePage() {
                           (fixed bottom-4 + ~4.5rem tall). */}
                       <div
                         data-event-card
-                        className="fixed inset-x-4 bottom-[5.5rem] z-50 rounded-lg border border-black/5 bg-white p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.25)] md:hidden"
+                        className="fixed inset-x-4 bottom-[5.5rem] z-50 rounded-lg border border-white/15 bg-[#292B35] p-3.5 shadow-[0_18px_45px_rgba(0,0,0,0.48)] md:hidden"
                       >
                         <EventDetailsCard
                           positioned={positioned}

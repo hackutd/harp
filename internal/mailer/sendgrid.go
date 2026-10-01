@@ -1,14 +1,12 @@
 package mailer
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
-	"html/template"
+	"time"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
-	qrcode "github.com/skip2/go-qrcode"
 )
 
 type walkInQueuedData struct {
@@ -44,8 +42,15 @@ func NewSendGrid(apiKey, fromEmail, fromName, hackathonName, portalURL string) *
 	}
 }
 
-// send delivers a rendered HTML email to a single recipient.
-func (m *SendGridMailer) send(id Identity, toEmail, toName, subject, htmlBody string) error {
+// send delivers a rendered HTML email to a single recipient. The Zero Day
+// title image every template references by Content-ID is embedded inline;
+// any further attachments are delivered as regular downloads.
+func (m *SendGridMailer) send(id Identity, toEmail, toName, subject, htmlBody string, attachments ...attachment) error {
+	brandImage, err := loadBrandImage()
+	if err != nil {
+		return err
+	}
+
 	message := mail.NewV3Mail()
 	message.SetFrom(mail.NewEmail(id.FromName, id.FromEmail))
 	message.Subject = subject
@@ -54,6 +59,23 @@ func (m *SendGridMailer) send(id Identity, toEmail, toName, subject, htmlBody st
 	p.AddTos(mail.NewEmail(toName, toEmail))
 	message.AddPersonalizations(p)
 	message.AddContent(mail.NewContent("text/html", htmlBody))
+
+	brand := mail.NewAttachment()
+	brand.SetContent(base64.StdEncoding.EncodeToString(brandImage))
+	brand.SetType(brandImageContentType)
+	brand.SetFilename(brandImageContentID)
+	brand.SetDisposition("inline")
+	brand.SetContentID(brandImageContentID)
+	message.AddAttachment(brand)
+
+	for _, a := range attachments {
+		file := mail.NewAttachment()
+		file.SetContent(base64.StdEncoding.EncodeToString(a.Content))
+		file.SetType(a.ContentType)
+		file.SetFilename(a.Filename)
+		file.SetDisposition("attachment")
+		message.AddAttachment(file)
+	}
 
 	response, err := m.client.Send(message)
 	if err != nil {
@@ -64,6 +86,22 @@ func (m *SendGridMailer) send(id Identity, toEmail, toName, subject, htmlBody st
 	}
 
 	return nil
+}
+
+func (m *SendGridMailer) SendMagicLinkEmail(toEmail, magicLink string, codeLifetime time.Duration) error {
+	id := m.resolve()
+	htmlBody, err := renderTemplate("magic_link", magicLinkEmailData{
+		Email:         toEmail,
+		MagicLink:     magicLink,
+		Expires:       magicLinkLifetime(codeLifetime),
+		HackathonName: id.HackathonName,
+		From:          id.FromName,
+	})
+	if err != nil {
+		return err
+	}
+
+	return m.send(id, toEmail, toEmail, "Your Zero Day access link", htmlBody)
 }
 
 func (m *SendGridMailer) SendDecisionEmail(toEmail, toName string, decision Decision) error {
@@ -102,151 +140,48 @@ func (m *SendGridMailer) SendDecisionsReleasedEmail(toEmail, toName string) erro
 }
 
 func (m *SendGridMailer) SendQREmail(toEmail, toName, userID string) error {
-	qrPNG, err := qrcode.Encode(userID, qrcode.Medium, 256)
-	if err != nil {
-		return fmt.Errorf("generating QR code: %w", err)
-	}
-
-	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
 	id := m.resolve()
-
-	tmplData, err := FS.ReadFile("template/qr_email.html")
+	qr, err := qrAttachment(id.HackathonName, userID)
 	if err != nil {
-		return fmt.Errorf("reading email template: %w", err)
+		return err
 	}
 
-	tmpl, err := template.New("qr_email").Parse(string(tmplData))
+	htmlBody, err := renderTemplate("qr_email", qrEmailData{Name: toName, HackathonName: id.HackathonName, From: id.FromName})
 	if err != nil {
-		return fmt.Errorf("parsing email template: %w", err)
+		return err
 	}
 
-	var htmlBody bytes.Buffer
-	err = tmpl.Execute(&htmlBody, qrEmailData{Name: toName, HackathonName: id.HackathonName, From: id.FromName})
-	if err != nil {
-		return fmt.Errorf("executing email template: %w", err)
-	}
-
-	from := mail.NewEmail(id.FromName, id.FromEmail)
-	to := mail.NewEmail(toName, toEmail)
-
-	message := mail.NewV3Mail()
-	message.SetFrom(from)
-	message.Subject = fmt.Sprintf("Your %s QR code", id.HackathonName)
-
-	p := mail.NewPersonalization()
-	p.AddTos(to)
-	message.AddPersonalizations(p)
-
-	message.AddContent(mail.NewContent("text/html", htmlBody.String()))
-
-	attachment := mail.NewAttachment()
-	attachment.SetContent(qrBase64)
-	attachment.SetType("image/png")
-	attachment.SetFilename(qrAttachmentFilename(id.HackathonName))
-	attachment.SetDisposition("attachment")
-	message.AddAttachment(attachment)
-
-	response, err := m.client.Send(message)
-	if err != nil {
-		return fmt.Errorf("sending email: %w", err)
-	}
-	if response.StatusCode >= 400 {
-		return fmt.Errorf("sendgrid returned status %d: %s", response.StatusCode, response.Body)
-	}
-
-	return nil
+	return m.send(id, toEmail, toName, fmt.Sprintf("Your %s QR code", id.HackathonName), htmlBody, qr)
 }
 
 func (m *SendGridMailer) SendWalkInQueuedEmail(toEmail string, position int) error {
 	id := m.resolve()
-
-	tmplData, err := FS.ReadFile("template/walk_in_queued.html")
+	htmlBody, err := renderTemplate("walk_in_queued", walkInQueuedData{Email: toEmail, Position: position, HackathonName: id.HackathonName, From: id.FromName})
 	if err != nil {
-		return fmt.Errorf("reading walk_in_queued template: %w", err)
+		return err
 	}
 
-	tmpl, err := template.New("walk_in_queued").Parse(string(tmplData))
-	if err != nil {
-		return fmt.Errorf("parsing walk_in_queued template: %w", err)
-	}
-
-	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, walkInQueuedData{Email: toEmail, Position: position, HackathonName: id.HackathonName, From: id.FromName}); err != nil {
-		return fmt.Errorf("executing walk_in_queued template: %w", err)
-	}
-
-	from := mail.NewEmail(id.FromName, id.FromEmail)
-	to := mail.NewEmail(toEmail, toEmail)
-
-	message := mail.NewV3Mail()
-	message.SetFrom(from)
-	message.Subject = fmt.Sprintf("You're #%d in the %s walk-in queue", position, id.HackathonName)
-
-	p := mail.NewPersonalization()
-	p.AddTos(to)
-	message.AddPersonalizations(p)
-	message.AddContent(mail.NewContent("text/html", htmlBody.String()))
-
-	response, err := m.client.Send(message)
-	if err != nil {
+	subject := fmt.Sprintf("You're #%d in the %s walk-in queue", position, id.HackathonName)
+	if err := m.send(id, toEmail, toEmail, subject, htmlBody); err != nil {
 		return fmt.Errorf("sending walk-in queued email: %w", err)
 	}
-	if response.StatusCode >= 400 {
-		return fmt.Errorf("sendgrid returned status %d: %s", response.StatusCode, response.Body)
-	}
-
 	return nil
 }
 
 func (m *SendGridMailer) SendWalkInAcceptedEmail(toEmail, userID string) error {
-	qrPNG, err := qrcode.Encode(userID, qrcode.Medium, 256)
-	if err != nil {
-		return fmt.Errorf("generating QR code: %w", err)
-	}
-	qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
 	id := m.resolve()
-
-	tmplData, err := FS.ReadFile("template/walk_in_accepted.html")
+	qr, err := qrAttachment(id.HackathonName, userID)
 	if err != nil {
-		return fmt.Errorf("reading walk_in_accepted template: %w", err)
+		return err
 	}
 
-	tmpl, err := template.New("walk_in_accepted").Parse(string(tmplData))
+	htmlBody, err := renderTemplate("walk_in_accepted", walkInAcceptedData{Email: toEmail, HackathonName: id.HackathonName, From: id.FromName})
 	if err != nil {
-		return fmt.Errorf("parsing walk_in_accepted template: %w", err)
+		return err
 	}
 
-	var htmlBody bytes.Buffer
-	if err := tmpl.Execute(&htmlBody, walkInAcceptedData{Email: toEmail, HackathonName: id.HackathonName, From: id.FromName}); err != nil {
-		return fmt.Errorf("executing walk_in_accepted template: %w", err)
-	}
-
-	from := mail.NewEmail(id.FromName, id.FromEmail)
-	to := mail.NewEmail(toEmail, toEmail)
-
-	message := mail.NewV3Mail()
-	message.SetFrom(from)
-	message.Subject = fmt.Sprintf("You're in for %s", id.HackathonName)
-
-	p := mail.NewPersonalization()
-	p.AddTos(to)
-	message.AddPersonalizations(p)
-	message.AddContent(mail.NewContent("text/html", htmlBody.String()))
-
-	attachment := mail.NewAttachment()
-	attachment.SetContent(qrBase64)
-	attachment.SetType("image/png")
-	attachment.SetFilename(qrAttachmentFilename(id.HackathonName))
-	attachment.SetDisposition("attachment")
-	message.AddAttachment(attachment)
-
-	response, err := m.client.Send(message)
-	if err != nil {
+	if err := m.send(id, toEmail, toEmail, fmt.Sprintf("You're in for %s", id.HackathonName), htmlBody, qr); err != nil {
 		return fmt.Errorf("sending walk-in accepted email: %w", err)
 	}
-	if response.StatusCode >= 400 {
-		return fmt.Errorf("sendgrid returned status %d: %s", response.StatusCode, response.Body)
-	}
-
 	return nil
 }

@@ -1,4 +1,9 @@
-import { ChevronLeft, ChevronRight, ClipboardPen } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardPen,
+  ListPlus,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -32,9 +37,12 @@ import { formatName } from "@/pages/admin/all-applicants/utils";
 import { useRedactApplicants } from "@/shared/hooks";
 import { errorAlert } from "@/shared/lib/api";
 import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
+import { useUserStore } from "@/shared/stores";
 
 import { fetchReviewNotes as apiFetchReviewNotes } from "./api";
 import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
+import { CompletedReviewEditor } from "./components/CompletedReviewEditor";
+import { ReviewLeaderboard } from "./components/ReviewLeaderboard";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { ReviewsTabToggle } from "./components/ReviewsTabToggle";
 import { VoteBadge } from "./components/VoteBadge";
@@ -45,12 +53,27 @@ import type { ReviewNote } from "./types";
 
 export default function ReviewsPage() {
   const navigate = useNavigate();
-  const { tab, reviews, loading, error, setTab, fetchReviews } =
-    useReviewsStore();
+  const {
+    tab,
+    reviews,
+    leaderboard,
+    loading,
+    error,
+    submitting,
+    claiming,
+    setTab,
+    fetchReviews,
+    updateVote,
+    claimMore,
+  } = useReviewsStore();
   const refreshKey = refreshAssignedPage((state) => state.refreshKey);
+  const currentUserId = useUserStore((s) => s.user?.id);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  // True while the completed-tab editor has unsaved changes open; blocks
+  // moving to another applicant so a stray arrow key can't discard them.
+  const [editingVote, setEditingVote] = useState(false);
   const redact = useRedactApplicants();
 
   const filteredReviews = (() => {
@@ -70,26 +93,38 @@ export default function ReviewsPage() {
     });
   })();
 
+  const filteredLeaderboard = (() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return leaderboard;
+    return leaderboard.filter((r) =>
+      `${r.first_name ?? ""} ${r.last_name ?? ""} ${r.email}`
+        .toLowerCase()
+        .includes(q),
+    );
+  })();
+
   // Single derived selected review (fixes redundant .find() calls)
   const selectedReview = reviews.find((r) => r.id === selectedId) ?? null;
   const selectedApplicationId = selectedReview?.application_id ?? null;
 
   const selectedIndex = filteredReviews.findIndex((r) => r.id === selectedId);
-  const canPrevious = selectedIndex > 0;
+  const canPrevious = selectedIndex > 0 && !editingVote;
   const canNext =
-    selectedIndex !== -1 && selectedIndex < filteredReviews.length - 1;
+    selectedIndex !== -1 &&
+    selectedIndex < filteredReviews.length - 1 &&
+    !editingVote;
 
   const handlePreviousReview = useCallback(() => {
-    if (selectedIndex > 0) {
+    if (canPrevious) {
       setSelectedId(filteredReviews[selectedIndex - 1].id);
     }
-  }, [filteredReviews, selectedIndex]);
+  }, [canPrevious, filteredReviews, selectedIndex]);
 
   const handleNextReview = useCallback(() => {
-    if (selectedIndex !== -1 && selectedIndex < filteredReviews.length - 1) {
+    if (canNext) {
       setSelectedId(filteredReviews[selectedIndex + 1].id);
     }
-  }, [filteredReviews, selectedIndex]);
+  }, [canNext, filteredReviews, selectedIndex]);
 
   // --- Assigned tab detail (via existing hook) ---
   const assignedApplicationId =
@@ -123,6 +158,7 @@ export default function ReviewsPage() {
   // Clear selection on tab switch
   const clearSelection = useCallback(() => {
     setSelectedId(null);
+    setEditingVote(false);
     clearAssignedDetail();
     setCompletedAppDetail(null);
     setCompletedDetailLoading(false);
@@ -178,7 +214,7 @@ export default function ReviewsPage() {
   }, [reviews]);
 
   useEffect(() => {
-    if (tab !== "completed") return;
+    if (tab !== "completed" || editingVote) return;
 
     function handleKeyDown(e: KeyboardEvent) {
       if (
@@ -212,11 +248,40 @@ export default function ReviewsPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tab, selectedId]);
+  }, [tab, selectedId, editingVote]);
 
   // --- Descriptions ---
+  const leaders = leaderboard.filter((r) => r.rank === 1 && r.completed > 0);
+  const totalCompleted = leaderboard.reduce((sum, r) => sum + r.completed, 0);
   const description = error ? (
-    <>Unable to load reviews</>
+    <>
+      {tab === "leaderboard"
+        ? "Unable to load the leaderboard"
+        : "Unable to load reviews"}
+    </>
+  ) : tab === "leaderboard" ? (
+    <>
+      {filteredLeaderboard.length} reviewer(s) &middot; {totalCompleted} reviews
+      completed
+      {leaders.length === 1 && (
+        <>
+          {" "}
+          &middot; Most:{" "}
+          {formatName(
+            leaders[0].first_name,
+            leaders[0].last_name,
+            leaders[0].email,
+          )}{" "}
+          ({leaders[0].completed})
+        </>
+      )}
+      {leaders.length > 1 && (
+        <>
+          {" "}
+          &middot; {leaders.length} tied for most ({leaders[0].completed})
+        </>
+      )}
+    </>
   ) : tab === "assigned" ? (
     <>{filteredReviews.length} review(s) assigned to you</>
   ) : (
@@ -249,6 +314,17 @@ export default function ReviewsPage() {
               )}
         </TooltipContent>
       </Tooltip>
+    ) : tab === "assigned" && !loading && !error ? (
+      <Button
+        variant="outline"
+        size="sm"
+        className="cursor-pointer font-light"
+        loading={claiming}
+        onClick={() => void claimMore()}
+      >
+        <ListPlus className="h-4 w-4 mr-1.5" />
+        Get more reviews
+      </Button>
     ) : undefined;
 
   // --- Table ---
@@ -259,6 +335,12 @@ export default function ReviewsPage() {
         Retry
       </Button>
     </div>
+  ) : tab === "leaderboard" ? (
+    <ReviewLeaderboard
+      reviewers={filteredLeaderboard}
+      loading={loading}
+      currentUserId={currentUserId}
+    />
   ) : (
     <ReviewsTable
       reviews={filteredReviews}
@@ -358,6 +440,19 @@ export default function ReviewsPage() {
                 completedAppDetail &&
                 selectedReview && (
                   <>
+                    <div className="mb-6">
+                      <CompletedReviewEditor
+                        key={selectedReview.id}
+                        review={selectedReview}
+                        applicationStatus={completedAppDetail.status}
+                        submitting={submitting}
+                        onSave={(payload) =>
+                          updateVote(selectedReview.id, payload)
+                        }
+                        onEditingChange={setEditingVote}
+                      />
+                    </div>
+
                     <ApplicationDetailsPanel
                       application={completedAppDetail}
                       selectedReview={selectedReview}
@@ -396,7 +491,8 @@ export default function ReviewsPage() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
-            {!redact && (
+            {/* Redaction hides applicants; leaderboard rows are admins. */}
+            {(!redact || tab === "leaderboard") && (
               <SearchBar value={searchInput} onChange={setSearchInput} />
             )}
             {headerActions}
@@ -404,7 +500,8 @@ export default function ReviewsPage() {
         </CardHeader>
         <hr className="border-border -mb-2" />
         <CardContent className="p-0 flex-1 overflow-hidden">
-          {loading && reviews.length === 0 ? (
+          {loading &&
+          (tab === "leaderboard" ? leaderboard : reviews).length === 0 ? (
             <div className="space-y-3 p-6 pt-4">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />

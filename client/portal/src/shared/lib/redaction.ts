@@ -2,10 +2,11 @@
  * Applicant identity redaction for admin-facing views.
  *
  * Reviewers with the `admin` role grade applications without seeing who wrote
- * them: name, race, and ethnicity are stripped from every admin surface, and
- * emails are masked (school addresses usually spell out the applicant's name).
- * Super admins keep full visibility — they send decision emails and manage
- * users, both of which need the real identity.
+ * them: name, race, ethnicity, phone, profile links (GitHub, LinkedIn, personal
+ * site), and the resume are stripped from every admin surface, and emails are
+ * masked (school addresses usually spell out the applicant's name). Super
+ * admins keep full visibility — they send decision emails and manage users,
+ * both of which need the real identity.
  *
  * This is a display-layer measure. The API still returns the full record, so it
  * removes bias from the review screen; it is not an access control boundary.
@@ -21,13 +22,28 @@
 const REDACTED_FIELD_IDS: ReadonlySet<string> = new Set([
   "first_name",
   "last_name",
+  "phone",
   "race",
   "ethnicity",
+  "github",
+  "linkedin",
+  "website",
 ]);
 
+/**
+ * Label fallback for fields created in the schema editor, which get opaque
+ * ids (`field_<timestamp>`) that can't be listed above. Deliberately narrow
+ * — "Preferred Name", "Nickname" — so "Team Name" or "Name of your
+ * university" stay visible.
+ */
+const REDACTED_LABEL_PATTERN =
+  /\b(?:preferred|first|last|full|legal|chosen|display)\s+name\b|\bnickname\b/i;
+
 /** Whether a schema field is hidden from admins. */
-export function isRedactedField(fieldId: string): boolean {
-  return REDACTED_FIELD_IDS.has(fieldId);
+export function isRedactedField(field: { id: string; label: string }): boolean {
+  return (
+    REDACTED_FIELD_IDS.has(field.id) || REDACTED_LABEL_PATTERN.test(field.label)
+  );
 }
 
 /**

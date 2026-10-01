@@ -20,26 +20,27 @@ export const branding = {
    * prompts, and as the fallback title on a push notification that arrives
    * without one.
    */
-  appName: "Harp",
+  appName: "Zero Day Harp",
 
   /** Full name in the PWA manifest — shown on the install prompt. */
-  fullName: "Harp Portal",
+  fullName: "Zero Day Harp",
 
   /**
    * Home-screen label once installed. Kept short deliberately: most launchers
    * truncate past roughly 12 characters.
    */
-  shortName: "Harp",
+  shortName: "Zero Day Harp",
 
   /** PWA manifest description, shown in some install UIs and app listings. */
-  description: "Hacker applications, reviews, and event operations.",
+  description:
+    "The official hacker portal for HackUTD 2026 Zero Day—applications, event access, schedules, and updates.",
 
   /**
    * Application name registered with SuperTokens. Appears in the subject and
    * body of magic-link sign-in emails, so it should read as something a
    * hacker recognises.
    */
-  authAppName: "Harp",
+  authAppName: "Zero Day Harp",
 
   /**
    * Browser UI colour — Android's status bar and the PWA splash screen.
@@ -50,8 +51,8 @@ export const branding = {
    * the browser chrome rather than CSS, and support for modern colour
    * functions here is inconsistent.
    */
-  themeColor: "#ffffff",
+  themeColor: "#020307",
 
   /** Splash-screen background while the installed app starts up. */
-  backgroundColor: "#ffffff",
+  backgroundColor: "#020307",
 } as const;

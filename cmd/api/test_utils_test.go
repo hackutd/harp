@@ -66,7 +66,8 @@ func newTestApplication(t *testing.T) *application {
 
 	return &application{
 		config: config{
-			env: "test",
+			env:    "test",
+			appURL: "http://localhost:8080",
 			auth: authConfig{
 				basic: basicConfig{
 					user: "testuser",

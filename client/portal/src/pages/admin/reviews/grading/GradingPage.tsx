@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ListPlus } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -30,12 +30,14 @@ export default function GradingPage() {
   const otherNotes = useAdminGradingStore((s) => s.notes);
   const notesLoading = useAdminGradingStore((s) => s.notesLoading);
   const submitting = useAdminGradingStore((s) => s.submitting);
+  const claiming = useAdminGradingStore((s) => s.claiming);
   const localNotes = useAdminGradingStore((s) => s.localNotes);
   const localTravelVote = useAdminGradingStore((s) => s.localTravelVote);
   const fetchReviews = useAdminGradingStore((s) => s.fetchReviews);
   const navigateNext = useAdminGradingStore((s) => s.navigateNext);
   const navigatePrev = useAdminGradingStore((s) => s.navigatePrev);
   const submitVote = useAdminGradingStore((s) => s.submitVote);
+  const claimMore = useAdminGradingStore((s) => s.claimMore);
   const setLocalNotes = useAdminGradingStore((s) => s.setLocalNotes);
   const setLocalTravelVote = useAdminGradingStore((s) => s.setLocalTravelVote);
   const reset = useAdminGradingStore((s) => s.reset);
@@ -171,9 +173,18 @@ export default function GradingPage() {
           >
             {error || "No pending reviews to grade."}
           </p>
-          {error && (
+          {error ? (
             <Button onClick={() => void fetchReviews(targetReviewId)}>
               Retry
+            </Button>
+          ) : (
+            <Button
+              className="cursor-pointer"
+              loading={claiming}
+              onClick={() => void claimMore()}
+            >
+              <ListPlus className="h-4 w-4 mr-1.5" />
+              Get more reviews
             </Button>
           )}
           <Button

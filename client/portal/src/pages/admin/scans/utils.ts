@@ -43,6 +43,19 @@ export function validate(types: ScanType[]): string | null {
   return null;
 }
 
+/** Shop scans spend a hacker's points; every other category awards them. */
+export function spendsPoints(category: ScanTypeCategory): boolean {
+  return category === "shop";
+}
+
+/** The signed change a scan of this type applies to a hacker's balance. */
+export function formatPointsDelta(scanType: ScanType): string {
+  if (!scanType.points) return "0";
+  return spendsPoints(scanType.category)
+    ? `−${scanType.points}`
+    : `+${scanType.points}`;
+}
+
 export const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
   check_in: UserCheck,
   meal: Utensils,
@@ -58,7 +71,7 @@ export const categoryColors: Record<ScanTypeCategory, string> = {
   swag: "bg-purple-100 text-purple-800",
   other: "bg-gray-100 text-gray-800",
   walk_in: "bg-violet-100 text-violet-700",
-  shop: "bg-emerald-100 text-emerald-800",
+  shop: "bg-rose-100 text-rose-800",
 };
 
 export const categoryOptions = [
