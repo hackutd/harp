@@ -139,7 +139,7 @@ export function ApplicationStatusCards({
   const canViewSubmission = application.status !== "draft";
 
   const statusCardShell =
-    "rounded-xl border border-white/10 bg-[#46453F]/90 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(255,255,255,0.14),rgba(255,255,255,0)_55%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_28px_rgba(0,0,0,0.10)] backdrop-blur-xl";
+    "rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)] backdrop-blur-xl";
 
   return (
     <>
@@ -192,14 +192,14 @@ export function ApplicationStatusCards({
       {/* RSVP: accepted hackers claim (or decline) their spot */}
       {application.status === "accepted" &&
         application.rsvp_status === "pending" && (
-          <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
-            <p className="text-sm font-normal text-black">Claim your spot</p>
-            <p className="mt-1 text-xs font-light text-[#8A8A8A]">
+          <div className="mt-5 rounded-xl border border-white/10 bg-[#0B0C15]/80 p-5">
+            <p className="text-sm font-normal text-white">Claim your spot</p>
+            <p className="mt-1 text-xs font-light text-white/45">
               Confirm you&apos;re coming so we can save you a seat.
             </p>
             <Button
               onClick={() => navigate("/app/rsvp")}
-              className="mt-4 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+              className="mt-4 h-12 w-full rounded-full bg-[#5900FF] text-sm font-normal text-white shadow-[0_0_20px_rgba(89,0,255,0.25)] hover:bg-[#6D1CFF]"
             >
               RSVP to claim your spot
             </Button>
@@ -210,30 +210,30 @@ export function ApplicationStatusCards({
           <button
             type="button"
             onClick={() => navigate("/app/rsvp")}
-            className="group mt-5 flex w-full items-center justify-between gap-4 rounded-xl border border-[#E5E5E5] p-5 text-left transition-colors hover:bg-[#FAFAFA]"
+            className="group mt-5 flex w-full items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#0B0C15]/80 p-5 text-left transition-colors hover:border-[#21FFF0]/30 hover:bg-[#10121D]"
           >
             <span className="block">
               <span className="inline-block rounded-full bg-emerald-700 px-3 py-1 text-[11px] font-medium tracking-wide text-white">
                 Spot claimed
               </span>
-              <span className="mt-3 block text-sm font-light text-[#8A8A8A]">
+              <span className="mt-3 block text-sm font-light text-white/50">
                 Your RSVP is confirmed. We can&apos;t wait to see you at the
                 event!
               </span>
             </span>
             <ChevronRight
-              className="size-5 shrink-0 text-[#8A8A8A] transition-transform group-hover:translate-x-1"
+              className="size-5 shrink-0 text-[#21FFF0]/65 transition-transform group-hover:translate-x-1"
               strokeWidth={1.75}
             />
           </button>
         )}
       {application.status === "accepted" &&
         application.rsvp_status === "declined" && (
-          <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
+          <div className="mt-5 rounded-xl border border-white/10 bg-[#0B0C15]/80 p-5">
             <span className="inline-block rounded-full bg-[#7A7973] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
               Spot declined
             </span>
-            <p className="mt-3 text-sm font-light text-[#8A8A8A]">
+            <p className="mt-3 text-sm font-light text-white/50">
               You&apos;ve declined your spot. Sorry you can&apos;t make it — we
               hope to see you next time!
             </p>
@@ -246,7 +246,7 @@ export function ApplicationStatusCards({
           <button
             type="button"
             onClick={() => navigate(travelLink)}
-            className="group mt-5 flex w-full items-center justify-between gap-4 rounded-xl border border-[#E5E5E5] p-5 text-left transition-colors hover:bg-[#FAFAFA]"
+            className="group mt-5 flex w-full items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#0B0C15]/80 p-5 text-left transition-colors hover:border-[#F62BE8]/30 hover:bg-[#10121D]"
           >
             <span className="block flex-1">
               <span
@@ -254,44 +254,44 @@ export function ApplicationStatusCards({
               >
                 {travelCard.pill}
               </span>
-              <span className="mt-3 block text-sm font-light text-[#8A8A8A]">
+              <span className="mt-3 block text-sm font-light text-white/50">
                 {travelCard.message}
               </span>
               {travelCard.amountCents != null && (
-                <span className="mt-4 block rounded-lg bg-[#F5F5F5] p-4">
-                  <span className="block text-[11px] font-medium tracking-wide text-[#8A8A8A] uppercase">
+                <span className="mt-4 block rounded-lg border border-white/8 bg-white/5 p-4">
+                  <span className="block text-[11px] font-medium tracking-wide text-white/45 uppercase">
                     Approved amount
                   </span>
-                  <span className="mt-1 block text-2xl font-light tracking-tight text-black">
+                  <span className="mt-1 block text-2xl font-light tracking-tight text-white">
                     {formatUSD(travelCard.amountCents)}
                   </span>
                 </span>
               )}
             </span>
             <ChevronRight
-              className="size-5 shrink-0 text-[#8A8A8A] transition-transform group-hover:translate-x-1"
+              className="size-5 shrink-0 text-[#F62BE8]/65 transition-transform group-hover:translate-x-1"
               strokeWidth={1.75}
             />
           </button>
         ) : (
-          <div className="mt-5 rounded-xl border border-[#E5E5E5] p-5">
+          <div className="mt-5 rounded-xl border border-white/10 bg-[#0B0C15]/80 p-5">
             <span
               className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${travelCard.pillColor}`}
             >
               {travelCard.pill}
             </span>
-            <h2 className="mt-3 text-sm font-normal text-black">
+            <h2 className="mt-3 text-sm font-normal text-white">
               Travel reimbursement
             </h2>
-            <p className="mt-1 text-sm font-light text-[#8A8A8A]">
+            <p className="mt-1 text-sm font-light text-white/50">
               {travelCard.message}
             </p>
             {travelCard.amountCents != null && (
-              <div className="mt-4 rounded-lg bg-[#F5F5F5] p-4">
-                <p className="text-[11px] font-medium tracking-wide text-[#8A8A8A] uppercase">
+              <div className="mt-4 rounded-lg border border-white/8 bg-white/5 p-4">
+                <p className="text-[11px] font-medium tracking-wide text-white/45 uppercase">
                   Approved amount
                 </p>
-                <p className="mt-1 text-2xl font-light tracking-tight text-black">
+                <p className="mt-1 text-2xl font-light tracking-tight text-white">
                   {formatUSD(travelCard.amountCents)}
                 </p>
               </div>
@@ -299,7 +299,7 @@ export function ApplicationStatusCards({
             {travelCard.showTravelForm && (
               <Button
                 onClick={() => navigate("/app/travel-rsvp")}
-                className="mt-4 h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+                className="mt-4 h-12 w-full rounded-full bg-[#5900FF] text-sm font-normal text-white shadow-[0_0_20px_rgba(89,0,255,0.25)] hover:bg-[#6D1CFF]"
               >
                 Complete your travel form
               </Button>

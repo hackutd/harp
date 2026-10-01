@@ -1093,3 +1093,80 @@ func TestSetApplicationTravelStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestGetApplicantEmailsByStatus(t *testing.T) {
+	validStatuses := []store.ApplicationStatus{
+		store.StatusDraft,
+		store.StatusSubmitted,
+		store.StatusAccepted,
+		store.StatusWaitlisted,
+		store.StatusRejected,
+	}
+
+	for _, status := range validStatuses {
+		t.Run("accepts "+string(status)+" and returns matching emails", func(t *testing.T) {
+			app := newTestApplication(t)
+			mockApps := app.store.Application.(*store.MockApplicationStore)
+
+			firstName := "Ada"
+			lastName := "Lovelace"
+			users := []store.UserEmailInfo{
+				{Email: "ada@test.com", FirstName: &firstName, LastName: &lastName},
+			}
+			mockApps.On("GetEmailsByStatus", status).Return(users, nil).Once()
+
+			req, err := http.NewRequest(
+				http.MethodGet,
+				"/superadmin/applications/emails?status="+string(status),
+				nil,
+			)
+			require.NoError(t, err)
+			req = setUserContext(req, newSuperAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+			checkResponseCode(t, http.StatusOK, rr.Code)
+
+			var body struct {
+				Data EmailListResponse `json:"data"`
+			}
+			require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+			require.Len(t, body.Data.Applicants, 1)
+			assert.Equal(t, "ada@test.com", body.Data.Applicants[0].Email)
+			assert.Equal(t, &firstName, body.Data.Applicants[0].FirstName)
+
+			mockApps.AssertExpectations(t)
+		})
+	}
+
+	t.Run("returns 400 when status is missing", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		req, err := http.NewRequest(http.MethodGet, "/superadmin/applications/emails", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+	})
+
+	t.Run("returns 400 for an unknown status", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		req, err := http.NewRequest(
+			http.MethodGet,
+			"/superadmin/applications/emails?status=not_a_status",
+			nil,
+		)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+	})
+}

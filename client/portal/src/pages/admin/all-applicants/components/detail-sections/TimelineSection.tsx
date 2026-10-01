@@ -1,4 +1,5 @@
 import { Label } from "@/components/ui/label";
+import { formatElapsed } from "@/shared/lib/datetime";
 import type { Application } from "@/types";
 
 interface TimelineSectionProps {
@@ -25,6 +26,21 @@ export function TimelineSection({ application }: TimelineSectionProps) {
         <div>
           <Label className="text-muted-foreground text-xs">Last Updated</Label>
           <p>{new Date(application.updated_at).toLocaleString()}</p>
+        </div>
+        <div>
+          <Label className="text-muted-foreground text-xs">
+            Time to Submit
+          </Label>
+          {/* The draft is created on the hacker's first portal visit (the
+              dashboard fetches it too), so this runs from then to submission. */}
+          <p title="From the draft being created on their first portal visit to submission">
+            {application.submitted_at
+              ? formatElapsed(
+                  new Date(application.created_at),
+                  new Date(application.submitted_at),
+                )
+              : "N/A"}
+          </p>
         </div>
       </div>
     </div>

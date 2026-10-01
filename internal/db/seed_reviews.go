@@ -19,7 +19,7 @@ const insertReviewQuery = `
 // have actually voted. The split across the submitted bucket is what keeps the
 // three admin review queues non-empty at once:
 //
-//	20..34  no reviewers        -> GET /admin/reviews/next has work to hand out
+//	20..34  no reviewers        -> POST /admin/reviews/claim has work to hand out
 //	35..54  assigned, no votes  -> GET /admin/reviews/pending is non-empty
 //	55..79  partially voted     -> reviews_completed is between 0 and the threshold
 //	80..199 fully voted         -> the decided list has real vote tallies

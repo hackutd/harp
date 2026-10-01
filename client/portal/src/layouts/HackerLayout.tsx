@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Bell, CalendarDays, House, ScanLine, User } from "lucide-react";
+import { useLayoutEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
 import { InstallPromptHost } from "@/components/InstallPromptHost";
@@ -62,7 +63,10 @@ function HackerSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="hidden md:flex">
+    <Sidebar
+      collapsible="icon"
+      className="hacker-zero-sidebar hidden border-white/10 md:flex"
+    >
       <SidebarHeader>
         <NavUser user={userData} />
       </SidebarHeader>
@@ -88,8 +92,16 @@ export default function HackerLayout() {
   // bar is hidden there to avoid overlap.
   const hideMobileNav = location.pathname.startsWith("/app/apply");
 
+  // Radix dialogs and menus render into document.body rather than inside the
+  // layout wrapper. Scope the same hacker theme to those portals while this
+  // layout is mounted, then remove it before entering an admin/public route.
+  useLayoutEffect(() => {
+    document.body.classList.add("hacker-zero-portals");
+    return () => document.body.classList.remove("hacker-zero-portals");
+  }, []);
+
   return (
-    <SidebarProvider className="min-h-svh bg-white">
+    <SidebarProvider className="hacker-zero-theme min-h-svh bg-[#030409] text-white">
       {/* Onboarding prompts live here, not in providers.tsx, so they never
           appear on the admin portal or the public auth pages. */}
       <InstallPromptHost />
@@ -99,7 +111,7 @@ export default function HackerLayout() {
       {/* Page content */}
       <SidebarInset
         className={cn(
-          "overflow-x-clip bg-white",
+          "zero-hacker-surface bg-[#030409]",
           hideMobileNav ? "pb-0" : "pb-24 md:pb-0",
         )}
       >

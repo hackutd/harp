@@ -3,7 +3,149 @@ package mailer
 import (
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestMagicLinkTemplateRenders(t *testing.T) {
+	data := magicLinkEmailData{
+		Email:         "hacker@example.com",
+		MagicLink:     "https://portal.test/auth/verify?token=abc123",
+		Expires:       "15 minutes",
+		HackathonName: "HackUTD 2026",
+		From:          "HackUTD",
+	}
+	out, err := renderTemplate("magic_link", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Zero Day",
+		"hacker@example.com",
+		"https://portal.test/auth/verify?token=abc123",
+		"cid:zero-day-title.webp",
+		`bgcolor="#0B0C15"`,
+		"15 minutes",
+		"HackUTD 2026",
+		"Powered by Harp",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("magic_link: missing %q", want)
+		}
+	}
+	if strings.Contains(out, "<no value>") || strings.Contains(out, "{{") {
+		t.Error("magic_link: unresolved placeholder")
+	}
+}
+
+func TestBrandImageLoads(t *testing.T) {
+	image, err := loadBrandImage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(image) == 0 {
+		t.Fatal("Zero Day email title image is empty")
+	}
+}
+
+// Every template shares the Zero Day frame from magic_link: an unpainted
+// canvas the client colours, the dark card, the inline title image, and the
+// Harp footer. The image is attached by Content-ID on every send, so a
+// template that forgets it renders a dangling attachment instead of the
+// header. The color-scheme declaration is what keeps inversion-aware clients
+// from repainting the card, so it is asserted alongside the frame.
+func TestAllTemplatesShareZeroDayTheme(t *testing.T) {
+	decision := decisionEmailData{Name: "Ada", HackathonName: "HackUTD 2026", PortalURL: "https://portal.test", From: "HackUTD"}
+	templates := map[string]any{
+		"magic_link": magicLinkEmailData{
+			Email: "hacker@example.com", MagicLink: "https://portal.test/auth/verify?token=abc123",
+			Expires: "15 minutes", HackathonName: "HackUTD 2026", From: "HackUTD",
+		},
+		"decision_accepted":   decision,
+		"decision_waitlisted": decision,
+		"decision_rejected":   decision,
+		"decisions_released":  decision,
+		"qr_email":            qrEmailData{Name: "Ada", HackathonName: "HackUTD 2026", From: "HackUTD"},
+		"walk_in_queued":      walkInQueuedData{Email: "hacker@example.com", Position: 7, HackathonName: "HackUTD 2026", From: "HackUTD"},
+		"walk_in_accepted":    walkInAcceptedData{Email: "hacker@example.com", HackathonName: "HackUTD 2026", From: "HackUTD"},
+	}
+
+	for name, data := range templates {
+		t.Run(name, func(t *testing.T) {
+			out, err := renderTemplate(name, data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{
+				"cid:" + brandImageContentID,
+				`bgcolor="#0B0C15"`,
+				`<meta name="color-scheme" content="light dark" />`,
+				`<meta name="supported-color-schemes" content="light dark" />`,
+				"HackUTD 2026",
+				"Powered by Harp",
+			} {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s: missing %q", name, want)
+				}
+			}
+			if strings.Contains(out, "<no value>") || strings.Contains(out, "{{") {
+				t.Errorf("%s: unresolved placeholder", name)
+			}
+		})
+	}
+}
+
+func TestEventTemplatesRender(t *testing.T) {
+	t.Run("qr_email", func(t *testing.T) {
+		out, err := renderTemplate("qr_email", qrEmailData{Name: "Ada", HackathonName: "HackUTD", From: "HackUTD"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"Ada", "attached"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("qr_email: missing %q", want)
+			}
+		}
+	})
+
+	t.Run("walk_in_queued", func(t *testing.T) {
+		out, err := renderTemplate("walk_in_queued", walkInQueuedData{Email: "hacker@example.com", Position: 7, HackathonName: "HackUTD", From: "HackUTD"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"hacker@example.com", ">7<", "10 minutes"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("walk_in_queued: missing %q", want)
+			}
+		}
+	})
+
+	t.Run("walk_in_accepted", func(t *testing.T) {
+		out, err := renderTemplate("walk_in_accepted", walkInAcceptedData{Email: "hacker@example.com", HackathonName: "HackUTD", From: "HackUTD"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"hacker@example.com", "10 minutes", "attached"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("walk_in_accepted: missing %q", want)
+			}
+		}
+	})
+}
+
+func TestMagicLinkLifetime(t *testing.T) {
+	tests := map[time.Duration]string{
+		0:                "a short time",
+		time.Minute:      "1 minute",
+		15 * time.Minute: "15 minutes",
+		time.Hour:        "1 hour",
+		2 * time.Hour:    "2 hours",
+	}
+	for duration, want := range tests {
+		if got := magicLinkLifetime(duration); got != want {
+			t.Errorf("magicLinkLifetime(%s) = %q, want %q", duration, got, want)
+		}
+	}
+}
 
 func TestDecisionTemplatesRender(t *testing.T) {
 	data := decisionEmailData{Name: "Ada", HackathonName: "HackUTD", PortalURL: "https://portal.test", From: "HackUTD"}

@@ -22,7 +22,7 @@ interface ReviewsTableProps {
   loading: boolean;
   selectedId: string | null;
   onSelectReview: (id: string) => void;
-  variant: ReviewTab;
+  variant: Exclude<ReviewTab, "leaderboard">;
 }
 
 const CONFIG = {

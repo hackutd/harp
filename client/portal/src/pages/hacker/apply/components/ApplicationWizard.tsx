@@ -671,10 +671,10 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   if (!applicationsEnabled) {
     return (
       <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
-        <h1 className="text-3xl font-light tracking-tight text-black">
+        <h1 className="text-3xl font-light tracking-tight text-white">
           Applications closed
         </h1>
-        <p className="text-sm font-light text-[#8A8A8A]">
+        <p className="text-sm font-light text-white/60">
           The application portal is not currently accepting submissions. Please
           check back later.
           {application &&
@@ -689,10 +689,10 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   if (application && application.status !== "draft") {
     return (
       <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
-        <h1 className="text-3xl font-light tracking-tight text-black">
+        <h1 className="text-3xl font-light tracking-tight text-white">
           Application submitted
         </h1>
-        <p className="text-sm font-light text-[#8A8A8A]">
+        <p className="text-sm font-light text-white/60">
           {application.status === "submitted" &&
             "Your application is being reviewed."}
           {application.status === "accepted" &&
@@ -705,7 +705,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         <button
           type="button"
           onClick={() => navigate("/app")}
-          className="text-sm font-light text-black underline underline-offset-2"
+          className="text-sm font-light text-white underline underline-offset-2"
         >
           View status
         </button>

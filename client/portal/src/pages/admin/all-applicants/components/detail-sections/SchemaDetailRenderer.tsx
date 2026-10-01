@@ -22,9 +22,10 @@ export function SchemaDetailRenderer({
 }: SchemaDetailRendererProps) {
   const redact = useRedactApplicants();
   const allFields = application.application_schema ?? [];
-  // Admins grade blind: name, race, and ethnicity never reach the panel.
+  // Admins grade blind: name, contact info, profile links, race, and
+  // ethnicity never reach the panel.
   const schema = redact
-    ? allFields.filter((f) => !isRedactedField(f.id))
+    ? allFields.filter((f) => !isRedactedField(f))
     : allFields;
   const responses = application.responses ?? {};
   const sections = deriveSections(schema);

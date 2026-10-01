@@ -41,7 +41,7 @@ func (app *application) forbiddenResponse(w http.ResponseWriter, r *http.Request
 // where a volunteer needs to know whether to send someone to the RSVP desk or
 // the walk-in line. Use it only where the caller is already trusted staff.
 func (app *application) forbiddenMessageResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.requestLogger(r).Warnw("forbidden", "error", err.Error())
+	app.logger.Warnw("forbidden", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 
 	writeJSONError(w, http.StatusForbidden, err.Error())
 }

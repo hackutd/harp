@@ -1,6 +1,8 @@
+import { toast } from "sonner";
 import { create } from "zustand";
 
 import { errorAlert } from "@/shared/lib/api";
+import { prepareLogoForUpload } from "@/shared/lib/logo-image";
 
 import {
   createTrack as apiCreateTrack,
@@ -10,6 +12,7 @@ import {
   updateTrack as apiUpdateTrack,
   uploadTrackLogo,
 } from "./api";
+import { MAX_LOGO_BYTES } from "./constants";
 import type { Track, TrackPayload } from "./types";
 
 function sortByOrder(tracks: Track[]): Track[] {
@@ -108,17 +111,19 @@ export const useTracksStore = create<TracksState>((set) => ({
   },
 
   uploadLogo: async (trackId: string, file: File) => {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(",")[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    let logo;
+    try {
+      logo = await prepareLogoForUpload(file);
+    } catch {
+      toast.error("Couldn't read that image. Try a different file.");
+      return null;
+    }
+    if (logo.byteLength > MAX_LOGO_BYTES) {
+      toast.error("Logo is still too large after compression.");
+      return null;
+    }
 
-    const res = await uploadTrackLogo(trackId, base64, file.type);
+    const res = await uploadTrackLogo(trackId, logo.base64, logo.contentType);
     if (res.status === 200 && res.data) {
       const updated = res.data;
       set((state) => ({

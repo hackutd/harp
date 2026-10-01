@@ -16,10 +16,12 @@ import {
 import { useCallback, useEffect } from "react";
 
 import { useQrScanner } from "@/shared/hooks";
+import { cn } from "@/shared/lib/utils";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import { useScannerStore } from "../store";
 import type { ScanType, ScanTypeCategory } from "../types";
+import { formatPointsDelta, spendsPoints } from "../utils";
 
 const CATEGORY_ICONS: Record<ScanTypeCategory, LucideIcon> = {
   check_in: UserCheck,
@@ -38,6 +40,30 @@ const CATEGORY_LABELS: Record<ScanTypeCategory, string> = {
   walk_in: "Walk-in",
   shop: "Shop",
 };
+
+/** Signed points badge: green adds to a hacker's balance, red spends it. */
+function PointsPill({
+  scanType,
+  pointsName,
+}: {
+  scanType: ScanType;
+  pointsName?: string;
+}) {
+  const spends = spendsPoints(scanType.category);
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums",
+        spends
+          ? "bg-red-400/10 text-red-400"
+          : "bg-emerald-400/10 text-emerald-400",
+      )}
+    >
+      {formatPointsDelta(scanType)}
+      {pointsName && ` ${pointsName}`}
+    </span>
+  );
+}
 
 export function ScannerView() {
   const {
@@ -87,6 +113,9 @@ export function ScannerView() {
 
   if (activeScanType) {
     const count = statsMap.get(activeScanType.name) ?? 0;
+    const spends = spendsPoints(activeScanType.category);
+    const showPoints = pointsEnabled && activeScanType.points > 0;
+    const resultPoints = lastScanResult?.scan?.points ?? 0;
     return (
       <div className="w-full">
         <button
@@ -98,14 +127,22 @@ export function ScannerView() {
           Scan types
         </button>
 
-        <h1 className="mt-3 text-2xl font-light tracking-tight text-black">
-          {activeScanType.display_name}
-        </h1>
+        <div className="mt-3 flex items-center gap-3">
+          <h1 className="min-w-0 truncate text-2xl font-light tracking-tight text-black">
+            {activeScanType.display_name}
+          </h1>
+          {showPoints && (
+            <PointsPill scanType={activeScanType} pointsName={pointsName} />
+          )}
+        </div>
         <p className="mt-1 text-sm font-light text-[#8A8A8A]">
           Point the camera at a hacker&apos;s QR code
         </p>
 
-        <div className="relative mt-6 aspect-square w-full overflow-hidden rounded-xl bg-black">
+        <div
+          data-hacker-keep-black
+          className="relative mt-6 aspect-square w-full overflow-hidden rounded-xl bg-black"
+        >
           {error ? (
             <div className="flex h-full items-center justify-center p-8 text-center">
               <div className="space-y-3 text-white/80">
@@ -123,7 +160,14 @@ export function ScannerView() {
               />
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div
-                  className="size-56 rounded-xl border-2 border-white/80"
+                  className={cn(
+                    "size-56 rounded-xl border-2",
+                    !showPoints
+                      ? "border-white/80"
+                      : spends
+                        ? "border-red-400"
+                        : "border-emerald-400",
+                  )}
                   style={{ boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }}
                 />
               </div>
@@ -143,19 +187,24 @@ export function ScannerView() {
               <p className="text-lg font-normal text-black">
                 {lastScanResult.message}
               </p>
-              {lastScanResult.success &&
-                (lastScanResult.scan?.points ?? 0) !== 0 && (
-                  <p className="text-sm font-medium text-black">
-                    {(lastScanResult.scan?.points ?? 0) > 0
-                      ? `+${lastScanResult.scan?.points}`
-                      : `−${Math.abs(lastScanResult.scan?.points ?? 0)}`}{" "}
-                    {pointsName}
-                  </p>
-                )}
+              {lastScanResult.success && resultPoints !== 0 && (
+                <p
+                  className={cn(
+                    "text-2xl font-medium tabular-nums",
+                    resultPoints > 0 ? "text-emerald-400" : "text-red-400",
+                  )}
+                >
+                  {resultPoints > 0
+                    ? `+${resultPoints}`
+                    : `−${Math.abs(resultPoints)}`}{" "}
+                  {pointsName}
+                </p>
+              )}
               {lastScanResult.success &&
                 lastScanResult.scan?.balance !== undefined && (
                   <p className="text-sm font-light text-[#8A8A8A]">
-                    Balance: {lastScanResult.scan.balance} {pointsName}
+                    Remaining balance: {lastScanResult.scan.balance}{" "}
+                    {pointsName}
                   </p>
                 )}
               {lastScanResult.success && lastScanResult.scan?.meal_group && (
@@ -177,9 +226,6 @@ export function ScannerView() {
 
         <p className="mt-4 text-center text-xs font-light text-[#8A8A8A]">
           {count} scanned
-          {pointsEnabled && activeScanType.points > 0
-            ? ` · ${activeScanType.points} ${pointsName}`
-            : ""}
         </p>
       </div>
     );
@@ -228,11 +274,11 @@ export function ScannerView() {
                   <span className="block text-xs font-light text-[#8A8A8A]">
                     {CATEGORY_LABELS[scanType.category] ?? scanType.category} ·{" "}
                     {count} scanned
-                    {pointsEnabled && scanType.points > 0
-                      ? ` · ${scanType.points} ${pointsName}`
-                      : ""}
                   </span>
                 </span>
+                {pointsEnabled && scanType.points > 0 && (
+                  <PointsPill scanType={scanType} />
+                )}
                 <ChevronRight
                   className="size-4 shrink-0 text-[#C4C4C4]"
                   strokeWidth={1.5}

@@ -7,12 +7,7 @@ import type {
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 
-const STATUSES: { value: ApplicationStatus; label: string }[] = [
-  { value: "submitted", label: "Submitted" },
-  { value: "accepted", label: "Accepted" },
-  { value: "waitlisted", label: "Waitlisted" },
-  { value: "rejected", label: "Rejected" },
-];
+import { APPLICATION_STATUS_LABELS, APPLICATION_STATUSES } from "../types";
 
 interface ReviewStatusTabsProps {
   stats: ApplicationStats | null;
@@ -34,7 +29,7 @@ export const ReviewStatusTabs = memo(function ReviewStatusTabs({
       className="min-w-0"
     >
       <TabsList className="h-auto w-auto inline-flex rounded-md border justify-start gap-1 p-1 lg:h-9 lg:gap-0 lg:p-0.5">
-        {STATUSES.map(({ value, label }) => {
+        {APPLICATION_STATUSES.map((value) => {
           const count = stats?.[value] ?? 0;
           return (
             <TabsTrigger
@@ -43,7 +38,7 @@ export const ReviewStatusTabs = memo(function ReviewStatusTabs({
               disabled={loading}
               className="font-light text-sm cursor-pointer rounded-sm"
             >
-              {label}
+              {APPLICATION_STATUS_LABELS[value]}
               {stats && count > 0 && (
                 <Badge
                   variant="secondary"

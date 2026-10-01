@@ -841,10 +841,10 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 // getApplicantEmailsByStatusHandler returns applicant emails filtered by status
 //
 //	@Summary		Get applicant emails by status (Super Admin)
-//	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
+//	@Description	Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)
 //	@Tags			superadmin/applications
 //	@Produce		json
-//	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
+//	@Param			status	query		string	true	"Application status (draft, submitted, accepted, waitlisted, or rejected)"
 //	@Success		200		{object}	EmailListResponse
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
@@ -861,9 +861,9 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 
 	status := store.ApplicationStatus(statusStr)
 	switch status {
-	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
+	case store.StatusDraft, store.StatusSubmitted, store.StatusAccepted, store.StatusWaitlisted, store.StatusRejected:
 	default:
-		app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
+		app.badRequestResponse(w, r, errors.New("status must be one of draft, submitted, accepted, waitlisted, or rejected"))
 		return
 	}
 

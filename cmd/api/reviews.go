@@ -8,6 +8,10 @@ import (
 	"github.com/hackutd/harp/internal/store"
 )
 
+// reviewClaimBatchSize caps how many reviews one claim hands out, so a single
+// admin cannot take over a large share of someone else's queue at once.
+const reviewClaimBatchSize = 5
+
 type SubmitVotePayload struct {
 	Vote       store.ReviewVote `json:"vote" validate:"required,oneof=accept reject waitlist"`
 	TravelVote *bool            `json:"travel_vote"`
@@ -24,6 +28,15 @@ type PendingReviewsListResponse struct {
 
 type CompletedReviewsListResponse struct {
 	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
+}
+
+type ClaimReviewsResponse struct {
+	Claimed int                                  `json:"claimed"`
+	Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
+}
+
+type ReviewLeaderboardResponse struct {
+	Reviewers []store.ReviewerStats `json:"reviewers"`
 }
 
 type NotesListResponse struct {
@@ -98,6 +111,34 @@ func (app *application) getCompletedReviews(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// getReviewLeaderboard returns every admin ranked by completed reviews
+//
+//	@Summary		Get review leaderboard (Admin)
+//	@Description	Returns every admin and super admin with their completed and pending review counts, most completed first. Admins with the same completed count share a rank.
+//	@Tags			admin/reviews
+//	@Produce		json
+//	@Success		200	{object}	ReviewLeaderboardResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/reviews/leaderboard [get]
+func (app *application) getReviewLeaderboard(w http.ResponseWriter, r *http.Request) {
+	reviewers, err := app.store.ApplicationReviews.GetLeaderboard(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ReviewLeaderboardResponse{
+		Reviewers: reviewers,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // getApplicationNotes returns all reviewer notes for a specific application
 //
 //	@Summary		Get notes for an application (Admin)
@@ -164,20 +205,20 @@ func (app *application) batchAssignReviews(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// getNextReview assigns and returns the next application needing review
+// claimReviews gives an admin who has finished their queue more reviews
 //
-//	@Summary		Get next review assignment (Admin)
-//	@Description	Automatically assigns the next submitted application needing review to the current admin and returns it. Super admins who have disabled their review assignment toggle are refused.
+//	@Summary		Claim more reviews (Admin)
+//	@Description	Once the current admin has no pending reviews, assigns them up to 5 more and returns their new pending queue. Submitted applications below the reviews-per-application target are filled first; after that, unstarted reviews move over from reviewers who can no longer review and then from the longest queues, never leaving a holder with fewer pending reviews than the claimer. Every application keeps the same number of assigned reviews. Returns an empty list when nothing can be claimed. Super admins who have disabled their review assignment toggle are refused.
 //	@Tags			admin/reviews
 //	@Produce		json
-//	@Success		200	{object}	ReviewResponse
+//	@Success		200	{object}	ClaimReviewsResponse
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		403	{object}	object{error=string}	"Review assignment disabled for this super admin"
-//	@Failure		404	{object}	object{error=string}	"No applications need review"
+//	@Failure		409	{object}	object{error=string}	"Admin still has pending reviews"
 //	@Failure		500	{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/reviews/next [get]
-func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
+//	@Router			/admin/reviews/claim [post]
+func (app *application) claimReviews(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 
 	if user.Role == store.RoleSuperAdmin {
@@ -187,7 +228,7 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !enabled {
-			app.forbiddenResponse(w, r, errors.New("review assignment is disabled for this account"))
+			app.forbiddenMessageResponse(w, r, errors.New("review assignment is turned off for your account"))
 			return
 		}
 	}
@@ -198,19 +239,26 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := app.store.ApplicationReviews.AssignNextForAdmin(r.Context(), user.ID, reviewsPerApp)
+	claimed, err := app.store.ApplicationReviews.ClaimForAdmin(r.Context(), user.ID, reviewsPerApp, reviewClaimBatchSize)
 	if err != nil {
 		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, errors.New("no applications need review"))
+		case errors.Is(err, store.ErrConflict):
+			app.conflictResponse(w, r, errors.New("finish your assigned reviews before claiming more"))
 		default:
 			app.internalServerError(w, r, err)
 		}
 		return
 	}
 
-	response := ReviewResponse{
-		Review: *review,
+	reviews, err := app.store.ApplicationReviews.GetPendingByAdminID(r.Context(), user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := ClaimReviewsResponse{
+		Claimed: claimed,
+		Reviews: reviews,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
@@ -221,7 +269,7 @@ func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
 // submitVote records the admin's vote on an assigned application review
 //
 //	@Summary		Submit vote on a review (Admin)
-//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise.
+//	@Description	Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise. Calling this again on a review that already has a vote replaces the vote, travel_vote, and notes, and resets reviewed_at.
 //	@Tags			admin/reviews
 //	@Accept			json
 //	@Produce		json

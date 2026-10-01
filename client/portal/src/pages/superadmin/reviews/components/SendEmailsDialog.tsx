@@ -1,4 +1,10 @@
-import { Download, Mail, Megaphone, TriangleAlert } from "lucide-react";
+import {
+  Download,
+  FileDown,
+  Mail,
+  Megaphone,
+  TriangleAlert,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -27,7 +33,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ApplicationStats } from "@/pages/admin/all-applicants/types";
+import type {
+  ApplicationStats,
+  ApplicationStatus,
+} from "@/pages/admin/all-applicants/types";
 import { errorAlert } from "@/shared/lib/api";
 
 import {
@@ -40,13 +49,13 @@ import type {
   DecisionEmailMode,
   DecisionEmailStats,
 } from "../types";
-import { DECIDED_STATUSES } from "../types";
+import {
+  APPLICATION_STATUS_LABELS,
+  APPLICATION_STATUSES,
+  DECIDED_STATUSES,
+} from "../types";
 
-const STATUS_LABELS: Record<DecidedStatus, string> = {
-  accepted: "Accepted",
-  waitlisted: "Waitlisted",
-  rejected: "Rejected",
-};
+type EmailsTab = DecisionEmailMode | "export";
 
 const STATUS_DESCRIPTIONS: Record<DecidedStatus, string> = {
   accepted: "Congratulations email with a link to the portal.",
@@ -89,8 +98,12 @@ function SendEmailsDialogBody({
   onOpenChange,
   stats,
 }: Omit<SendEmailsDialogProps, "open">) {
-  const [mode, setMode] = useState<DecisionEmailMode>("decision");
+  const [tab, setTab] = useState<EmailsTab>("decision");
+  // The send path only knows decision/announcement; the export tab never sends.
+  const mode: DecisionEmailMode =
+    tab === "announcement" ? "announcement" : "decision";
   const [selected, setSelected] = useState<DecidedStatus[]>([]);
+  const [exportSelected, setExportSelected] = useState<ApplicationStatus[]>([]);
   const [resendAll, setResendAll] = useState(false);
 
   const [emailStats, setEmailStats] = useState<DecisionEmailStats | null>(null);
@@ -184,12 +197,24 @@ function SendEmailsDialogBody({
     setSending(false);
   }
 
-  async function handleExportCsv() {
-    const statuses = mode === "announcement" ? DECIDED_STATUSES : selected;
-    if (statuses.length === 0) return;
+  function toggleExportStatus(status: ApplicationStatus, checked: boolean) {
+    setExportSelected((prev) =>
+      checked ? [...prev, status] : prev.filter((s) => s !== status),
+    );
+  }
+
+  // "All statuses" convenience: tick the master selector, then untick any row.
+  const allExportSelected =
+    exportSelected.length === APPLICATION_STATUSES.length;
+  function toggleAllExport(checked: boolean) {
+    setExportSelected(checked ? [...APPLICATION_STATUSES] : []);
+  }
+
+  async function handleExportCsv(exportStatuses: ApplicationStatus[]) {
+    if (exportStatuses.length === 0) return;
 
     setDownloadingCsv(true);
-    const results = await Promise.all(statuses.map(fetchApplicantEmails));
+    const results = await Promise.all(exportStatuses.map(fetchApplicantEmails));
 
     const failed = results.find((res) => res.status !== 200 || !res.data);
     if (failed) {
@@ -201,7 +226,7 @@ function SendEmailsDialogBody({
     const rows = results.flatMap((res, i) =>
       (res.data?.applicants ?? []).map(
         (a) =>
-          `${csvEscape(a.email)},${csvEscape(a.first_name)},${csvEscape(a.last_name)},${statuses[i]}`,
+          `${csvEscape(a.email)},${csvEscape(a.first_name)},${csvEscape(a.last_name)},${exportStatuses[i]}`,
       ),
     );
     const csv = ["email,first_name,last_name,status", ...rows].join("\n");
@@ -210,7 +235,10 @@ function SendEmailsDialogBody({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${statuses.join("_")}_applicants.csv`;
+    link.download =
+      exportStatuses.length === APPLICATION_STATUSES.length
+        ? "all_applicants.csv"
+        : `${exportStatuses.join("_")}_applicants.csv`;
     link.click();
     URL.revokeObjectURL(url);
     setDownloadingCsv(false);
@@ -221,19 +249,16 @@ function SendEmailsDialogBody({
       <DialogHeader className="shrink-0 border-b px-6 py-4">
         <DialogTitle className="flex items-center gap-2">
           <Mail className="size-4" />
-          Send Emails
+          Emails
         </DialogTitle>
         <DialogDescription>
-          Email applicants their decision, or announce that decisions are out
-          without revealing them.
+          Email applicants their decision, announce that decisions are out
+          without revealing them, or export applicant emails as a CSV.
         </DialogDescription>
       </DialogHeader>
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        <Tabs
-          value={mode}
-          onValueChange={(value) => setMode(value as DecisionEmailMode)}
-        >
+        <Tabs value={tab} onValueChange={(value) => setTab(value as EmailsTab)}>
           <TabsList className="w-full">
             <TabsTrigger value="decision" className="cursor-pointer">
               <Mail className="size-3.5" />
@@ -242,6 +267,10 @@ function SendEmailsDialogBody({
             <TabsTrigger value="announcement" className="cursor-pointer">
               <Megaphone className="size-3.5" />
               Decisions are out
+            </TabsTrigger>
+            <TabsTrigger value="export" className="cursor-pointer">
+              <FileDown className="size-3.5" />
+              Export
             </TabsTrigger>
           </TabsList>
 
@@ -286,7 +315,7 @@ function SendEmailsDialogBody({
                           htmlFor={`send-${status}`}
                           className="cursor-pointer text-sm font-medium"
                         >
-                          {STATUS_LABELS[status]}
+                          {APPLICATION_STATUS_LABELS[status]}
                         </Label>
                         <Badge
                           variant="secondary"
@@ -338,63 +367,115 @@ function SendEmailsDialogBody({
               )}
             </div>
           </TabsContent>
+
+          <TabsContent value="export" className="mt-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Export a CSV of applicant emails, filtered by application status.
+              Exports never send anyone an email.
+            </p>
+
+            <div className="flex items-center gap-3 rounded-md border p-3">
+              <Checkbox
+                id="export-all"
+                checked={allExportSelected}
+                onCheckedChange={(checked) => toggleAllExport(!!checked)}
+                className="mt-0.5 cursor-pointer"
+              />
+              <Label
+                htmlFor="export-all"
+                className="cursor-pointer text-sm font-medium"
+              >
+                All statuses
+              </Label>
+            </div>
+
+            {APPLICATION_STATUSES.map((status) => (
+              <div
+                key={status}
+                className="flex items-center gap-3 rounded-md border p-3"
+              >
+                <Checkbox
+                  id={`export-${status}`}
+                  checked={exportSelected.includes(status)}
+                  onCheckedChange={(checked) =>
+                    toggleExportStatus(status, !!checked)
+                  }
+                  className="mt-0.5 cursor-pointer"
+                />
+                <Label
+                  htmlFor={`export-${status}`}
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  {APPLICATION_STATUS_LABELS[status]}
+                </Label>
+              </div>
+            ))}
+
+            <div className="pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer font-light"
+                disabled={exportSelected.length === 0}
+                loading={downloadingCsv}
+                onClick={() => handleExportCsv(exportSelected)}
+              >
+                {!downloadingCsv && <Download className="size-3.5" />}
+                {downloadingCsv
+                  ? "Generating..."
+                  : `Export CSV${exportSelected.length > 0 ? ` — ${exportSelected.length} status${exportSelected.length === 1 ? "" : "s"}` : ""}`}
+              </Button>
+            </div>
+          </TabsContent>
         </Tabs>
 
-        <div className="mt-4 flex items-start justify-between gap-4 rounded-md border p-3">
-          <div className="grid gap-1">
-            <Label
-              htmlFor="resend-all"
-              className="cursor-pointer text-sm font-medium"
-            >
-              Resend to applicants already emailed
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Off by default. Turn this on only if a previous send failed or the
-              wording changed — it emails people a second time.
-            </p>
-          </div>
-          <Switch
-            id="resend-all"
-            checked={resendAll}
-            onCheckedChange={setResendAll}
-            className="mt-0.5 cursor-pointer"
-          />
-        </div>
+        {tab !== "export" && (
+          <>
+            <div className="mt-4 flex items-start justify-between gap-4 rounded-md border p-3">
+              <div className="grid gap-1">
+                <Label
+                  htmlFor="resend-all"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  Resend to applicants already emailed
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Off by default. Turn this on only if a previous send failed or
+                  the wording changed — it emails people a second time.
+                </p>
+              </div>
+              <Switch
+                id="resend-all"
+                checked={resendAll}
+                onCheckedChange={setResendAll}
+                className="mt-0.5 cursor-pointer"
+              />
+            </div>
 
-        {resendAll && (
-          <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
-            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-            <p className="text-xs">
-              Duplicate protection is off — everyone selected will be emailed,
-              including those who already received this email.
-            </p>
-          </div>
-        )}
+            {resendAll && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                <p className="text-xs">
+                  Duplicate protection is off — everyone selected will be
+                  emailed, including those who already received this email.
+                </p>
+              </div>
+            )}
 
-        {stats && stats.submitted > 0 && (
-          <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
-            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-            <p className="text-xs">
-              {stats.submitted} application(s) are still in submitted status and
-              will not receive anything.
-            </p>
-          </div>
+            {stats && stats.submitted > 0 && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                <p className="text-xs">
+                  {stats.submitted} application(s) are still in submitted status
+                  and will not receive anything.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          className="cursor-pointer font-light"
-          disabled={mode === "decision" && selected.length === 0}
-          loading={downloadingCsv}
-          onClick={handleExportCsv}
-        >
-          {!downloadingCsv && <Download className="size-3.5" />}
-          {downloadingCsv ? "Generating..." : "Export CSV"}
-        </Button>
-
+      <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-end">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -402,19 +483,21 @@ function SendEmailsDialogBody({
             className="cursor-pointer font-light"
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            {tab === "export" ? "Done" : "Cancel"}
           </Button>
-          <Button
-            size="sm"
-            className="cursor-pointer"
-            disabled={!canSend}
-            loading={sending}
-            onClick={() => setConfirmOpen(true)}
-          >
-            {sending
-              ? "Sending..."
-              : `Send to ${recipientCount} applicant${recipientCount === 1 ? "" : "s"}`}
-          </Button>
+          {tab !== "export" && (
+            <Button
+              size="sm"
+              className="cursor-pointer"
+              disabled={!canSend}
+              loading={sending}
+              onClick={() => setConfirmOpen(true)}
+            >
+              {sending
+                ? "Sending..."
+                : `Send to ${recipientCount} applicant${recipientCount === 1 ? "" : "s"}`}
+            </Button>
+          )}
         </div>
       </DialogFooter>
 
@@ -428,7 +511,7 @@ function SendEmailsDialogBody({
             <AlertDialogDescription>
               {mode === "announcement"
                 ? "This tells every decided applicant that decisions are out, without saying what their decision is."
-                : `This tells ${selected.map((s) => STATUS_LABELS[s].toLowerCase()).join(", ")} applicants their result.`}{" "}
+                : `This tells ${selected.map((s) => APPLICATION_STATUS_LABELS[s].toLowerCase()).join(", ")} applicants their result.`}{" "}
               Emails cannot be unsent.
             </AlertDialogDescription>
           </AlertDialogHeader>

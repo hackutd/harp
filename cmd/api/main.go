@@ -172,22 +172,6 @@ func main() {
 
 	store := store.NewStorage(db)
 
-	// Initialize SuperTokens
-	authCfg := auth.Config{
-		AppName:            cfg.supertokens.appName,
-		ConnectionURI:      cfg.supertokens.connectionURI,
-		APIKey:             cfg.supertokens.apiKey,
-		APIBasePath:        "/auth",
-		APIURL:             cfg.appURL,
-		FrontendURL:        cfg.frontendURL,
-		GoogleClientID:     cfg.supertokens.googleClientID,
-		GoogleClientSecret: cfg.supertokens.googleClientSecret,
-	}
-	if err := auth.InitSuperTokens(authCfg, store); err != nil {
-		logger.Fatalw("failed to initialize supertokens", "error", err)
-	}
-	logger.Info("supertokens initialized")
-
 	// Init mailer — picks provider from .env SMTP or SendGrid, at least one is required
 	mailClient, err := mailer.New(cfg.mail)
 	if err != nil {
@@ -215,6 +199,23 @@ func main() {
 
 		return mailer.Identity{HackathonName: name, FromEmail: fromEmail, FromName: fromName}
 	})
+
+	// Initialize SuperTokens after the mailer so passwordless sign-in uses the
+	// themed application email rather than SuperTokens' stock delivery service.
+	authCfg := auth.Config{
+		AppName:            cfg.supertokens.appName,
+		ConnectionURI:      cfg.supertokens.connectionURI,
+		APIKey:             cfg.supertokens.apiKey,
+		APIBasePath:        "/auth",
+		APIURL:             cfg.appURL,
+		FrontendURL:        cfg.frontendURL,
+		GoogleClientID:     cfg.supertokens.googleClientID,
+		GoogleClientSecret: cfg.supertokens.googleClientSecret,
+	}
+	if err := auth.InitSuperTokens(authCfg, store, mailClient); err != nil {
+		logger.Fatalw("failed to initialize supertokens", "error", err)
+	}
+	logger.Info("supertokens initialized")
 
 	// Init GCS (optional in local/dev)
 	var gcsClient gcs.Client

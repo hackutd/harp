@@ -12,6 +12,23 @@ export const DECIDED_STATUSES: DecidedStatus[] = [
   "rejected",
 ];
 
+/** Every application status, in pipeline order. CSV export accepts any of these. */
+export const APPLICATION_STATUSES: ApplicationStatus[] = [
+  "draft",
+  "submitted",
+  "accepted",
+  "waitlisted",
+  "rejected",
+];
+
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  accepted: "Accepted",
+  waitlisted: "Waitlisted",
+  rejected: "Rejected",
+};
+
 /**
  * "decision" tells each applicant their outcome; "announcement" tells every
  * decided applicant that decisions are out without revealing which one.

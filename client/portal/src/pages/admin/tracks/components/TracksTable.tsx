@@ -36,7 +36,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 
 import { fetchTracks } from "../api";
-import { ALLOWED_LOGO_TYPES, MAX_LOGO_BYTES } from "../constants";
+import { ALLOWED_LOGO_TYPES, MAX_LOGO_SOURCE_BYTES } from "../constants";
 import type { Track, TrackPayload } from "../types";
 import { TrackFormDialog } from "./TrackFormDialog";
 
@@ -171,8 +171,8 @@ export function TracksTable({
       return;
     }
 
-    if (file.size > MAX_LOGO_BYTES) {
-      toast.error("File too large. Maximum size is 750KB.");
+    if (file.size > MAX_LOGO_SOURCE_BYTES) {
+      toast.error("File too large. Maximum size is 10MB.");
       return;
     }
 

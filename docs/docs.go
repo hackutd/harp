@@ -1036,6 +1036,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/reviews/claim": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Once the current admin has no pending reviews, assigns them up to 5 more and returns their new pending queue. Submitted applications below the reviews-per-application target are filled first; after that, unstarted reviews move over from reviewers who can no longer review and then from the longest queues, never leaving a holder with fewer pending reviews than the claimer. Every application keeps the same number of assigned reviews. Returns an empty list when nothing can be claimed. Super admins who have disabled their review assignment toggle are refused.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/reviews"
+                ],
+                "summary": "Claim more reviews (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ClaimReviewsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Review assignment disabled for this super admin",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Admin still has pending reviews",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/reviews/completed": {
             "get": {
                 "security": [
@@ -1094,26 +1163,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/reviews/next": {
+        "/admin/reviews/leaderboard": {
             "get": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Automatically assigns the next submitted application needing review to the current admin and returns it. Super admins who have disabled their review assignment toggle are refused.",
+                "description": "Returns every admin and super admin with their completed and pending review counts, most completed first. Admins with the same completed count share a rank.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "admin/reviews"
                 ],
-                "summary": "Get next review assignment (Admin)",
+                "summary": "Get review leaderboard (Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewResponse"
+                            "$ref": "#/definitions/main.ReviewLeaderboardResponse"
                         }
                     },
                     "401": {
@@ -1128,18 +1197,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Review assignment disabled for this super admin",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No applications need review",
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -1228,7 +1286,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise.",
+                "description": "Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise. Calling this again on a review that already has a vote replaces the vote, travel_vote, and notes, and resets reviewed_at.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4639,7 +4697,7 @@ const docTemplate = `{
         },
         "/public/sponsors": {
             "get": {
-                "description": "Returns all sponsors, ordered by display order. Logos are returned inline as base64 in logo_data, with the MIME type in logo_content_type — not as URLs.",
+                "description": "Returns all sponsors, ordered by display order. Each sponsor's logo is referenced by logo_url (an absolute, versioned URL to /public/sponsors/{sponsorID}/logo), or \"\" when the sponsor has no logo. Logo bytes are not inlined.",
                 "produces": [
                     "application/json"
                 ],
@@ -4660,7 +4718,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.SponsorListResponse"
+                            "$ref": "#/definitions/main.PublicSponsorListResponse"
                         }
                     },
                     "401": {
@@ -4688,9 +4746,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/public/sponsors/{sponsorID}/logo": {
+            "get": {
+                "description": "Returns the sponsor's logo as raw image bytes with the stored content type. No API key is required so the URL can be used directly in an \u003cimg\u003e tag or by an image optimizer. Responses carry an ETag; when ?v matches the current version the response is immutable for a year, otherwise it is cacheable for five minutes.",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get sponsor logo (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sponsor ID",
+                        "name": "sponsorID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Logo version (updated_at as unix seconds), as embedded in logo_url",
+                        "name": "v",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/public/tracks": {
             "get": {
-                "description": "Returns all challenge tracks, ordered by display order. Logos are returned inline as base64 in logo_data, with the MIME type in logo_content_type — not as URLs.",
+                "description": "Returns all challenge tracks, ordered by display order. Each track's logo is referenced by logo_url (an absolute, versioned URL to /public/tracks/{trackID}/logo), or \"\" when the track has no logo. Logo bytes are not inlined.",
                 "produces": [
                     "application/json"
                 ],
@@ -4711,11 +4832,74 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.TrackListResponse"
+                            "$ref": "#/definitions/main.PublicTrackListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/public/tracks/{trackID}/logo": {
+            "get": {
+                "description": "Returns the track's logo as raw image bytes with the stored content type. No API key is required so the URL can be used directly in an \u003cimg\u003e tag or by an image optimizer. Responses carry an ETag; when ?v matches the current version the response is immutable for a year, otherwise it is cacheable for five minutes.",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get track logo (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track ID",
+                        "name": "trackID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Logo version (updated_at as unix seconds), as embedded in logo_url",
+                        "name": "v",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified"
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -4898,7 +5082,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)",
+                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)",
                 "produces": [
                     "application/json"
                 ],
@@ -4909,7 +5093,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Application status (accepted, rejected, or waitlisted)",
+                        "description": "Application status (draft, submitted, accepted, waitlisted, or rejected)",
                         "name": "status",
                         "in": "query",
                         "required": true
@@ -10652,6 +10836,20 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ClaimReviewsResponse": {
+            "type": "object",
+            "properties": {
+                "claimed": {
+                    "type": "integer"
+                },
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationReviewWithDetails"
+                    }
+                }
+            }
+        },
         "main.CompletedReviewsListResponse": {
             "type": "object",
             "properties": {
@@ -11137,6 +11335,95 @@ const docTemplate = `{
                 }
             }
         },
+        "main.PublicSponsor": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "website_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.PublicSponsorListResponse": {
+            "type": "object",
+            "properties": {
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.PublicSponsor"
+                    }
+                }
+            }
+        },
+        "main.PublicTrack": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
+                "prizes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.TrackPrize"
+                    }
+                },
+                "sponsor_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.PublicTrackListResponse": {
+            "type": "object",
+            "properties": {
+                "tracks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.PublicTrack"
+                    }
+                }
+            }
+        },
         "main.RSVPEnabledResponse": {
             "type": "object",
             "properties": {
@@ -11284,6 +11571,17 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "main.ReviewLeaderboardResponse": {
+            "type": "object",
+            "properties": {
+                "reviewers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ReviewerStats"
+                    }
                 }
             }
         },
@@ -12897,6 +13195,41 @@ const docTemplate = `{
                 "ReviewVoteReject",
                 "ReviewVoteWaitlist"
             ]
+        },
+        "store.ReviewerStats": {
+            "type": "object",
+            "properties": {
+                "admin_id": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "last_reviewed_at": {
+                    "type": "string"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "profile_picture_url": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "role": {
+                    "$ref": "#/definitions/store.UserRole"
+                }
+            }
         },
         "store.Scan": {
             "type": "object",
