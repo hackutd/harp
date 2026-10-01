@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="client/portal/public/pwa-512x512.png" alt="Harp logo" width="160" />
+  <img src=".github/assets/harp-logo.png" alt="Harp logo" width="160" />
   <h1>Harp</h1>
   <h3>Hacker Applications &amp; Review Platform</h3>
   <p><strong>A reusable foundation for running a hackathon</strong></p>
