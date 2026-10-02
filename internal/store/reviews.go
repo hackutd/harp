@@ -49,9 +49,7 @@ type ApplicationReviewWithDetails struct {
 
 // ReviewerStats is one admin's row on the review leaderboard. Names come from
 // the admin's own application, so they are nil for admins who never applied.
-// TravelYes/TravelVotes is the yes share of travel recommendations given;
-// Agreed/Decided is how many votes matched the application's final status,
-// out of votes on applications that have since been decided.
+// TravelYes/TravelVotes is the yes share of travel recommendations given.
 type ReviewerStats struct {
 	AdminID           string     `json:"admin_id"`
 	Email             string     `json:"email"`
@@ -67,8 +65,6 @@ type ReviewerStats struct {
 	Pending           int        `json:"pending"`
 	TravelVotes       int        `json:"travel_votes"`
 	TravelYes         int        `json:"travel_yes"`
-	Decided           int        `json:"decided"`
-	Agreed            int        `json:"agreed"`
 	LastReviewedAt    *time.Time `json:"last_reviewed_at"`
 }
 
@@ -314,7 +310,7 @@ func (s *ApplicationReviewsStore) GetNotesByApplicationID(ctx context.Context, a
 
 // GetLeaderboard returns every admin and super admin with how many reviews they
 // have completed, most first, split by vote, plus how often they recommended
-// travel and how often their vote matched the final decision. Ties share a rank. Pending counts use the same
+// travel. Ties share a rank. Pending counts use the same
 // visibility as GetPendingByAdminID, so reviews on decided applications drop out.
 func (s *ApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]ReviewerStats, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -332,10 +328,6 @@ func (s *ApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]Reviewe
 			COUNT(ar.id) FILTER (WHERE ar.vote IS NULL AND ra.status = 'submitted') AS pending,
 			COUNT(ar.id) FILTER (WHERE ar.travel_vote IS NOT NULL),
 			COUNT(ar.id) FILTER (WHERE ar.travel_vote),
-			COUNT(ar.id) FILTER (WHERE ar.vote IS NOT NULL AND ra.status IN ('accepted', 'rejected', 'waitlisted')),
-			COUNT(ar.id) FILTER (WHERE (ar.vote = 'accept' AND ra.status = 'accepted')
-			                        OR (ar.vote = 'reject' AND ra.status = 'rejected')
-			                        OR (ar.vote = 'waitlist' AND ra.status = 'waitlisted')),
 			MAX(ar.reviewed_at)
 		FROM users u
 		LEFT JOIN applications a ON a.user_id = u.id
@@ -359,7 +351,7 @@ func (s *ApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]Reviewe
 			&r.AdminID, &r.Email, &r.FirstName, &r.LastName,
 			&r.ProfilePictureURL, &r.Role,
 			&r.Rank, &r.Completed, &r.Accepted, &r.Rejected, &r.Waitlisted,
-			&r.Pending, &r.TravelVotes, &r.TravelYes, &r.Decided, &r.Agreed, &r.LastReviewedAt,
+			&r.Pending, &r.TravelVotes, &r.TravelYes, &r.LastReviewedAt,
 		); err != nil {
 			return nil, err
 		}

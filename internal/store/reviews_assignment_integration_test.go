@@ -703,9 +703,6 @@ func TestIntegrationReviewLeaderboard(t *testing.T) {
 	// A pending review on a decided application is hidden from the queue, so
 	// it does not count as pending either.
 	batchTestExec(t, db, "UPDATE applications SET status='accepted' WHERE id=$1", apps[3])
-	// Final decisions: admins[0]'s reject on apps[1] matched; admins[1]'s
-	// waitlist on apps[3] did not; apps[0] and apps[2] are still undecided.
-	batchTestExec(t, db, "UPDATE applications SET status='rejected' WHERE id=$1", apps[1])
 
 	reviewers, err := s.GetLeaderboard(context.Background())
 	if err != nil {
@@ -717,19 +714,19 @@ func TestIntegrationReviewLeaderboard(t *testing.T) {
 	want := []struct {
 		id                                                       string
 		rank, completed, accepted, rejected, waitlisted, pending int
-		travelVotes, travelYes, decided, agreed                  int
+		travelVotes, travelYes                                   int
 		reviewed                                                 bool
 	}{
-		{admins[0], 1, 2, 1, 1, 0, 0, 2, 1, 1, 1, true},
-		{admins[1], 1, 2, 0, 0, 2, 0, 0, 0, 1, 0, true},
-		{admins[2], 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, false},
+		{admins[0], 1, 2, 1, 1, 0, 0, 2, 1, true},
+		{admins[1], 1, 2, 0, 0, 2, 0, 0, 0, true},
+		{admins[2], 3, 0, 0, 0, 0, 1, 0, 0, false},
 	}
 	for i, w := range want {
 		r := reviewers[i]
 		if r.AdminID != w.id || r.Rank != w.rank || r.Completed != w.completed ||
 			r.Accepted != w.accepted || r.Rejected != w.rejected || r.Waitlisted != w.waitlisted ||
 			r.Pending != w.pending || r.TravelVotes != w.travelVotes || r.TravelYes != w.travelYes ||
-			r.Decided != w.decided || r.Agreed != w.agreed || (r.LastReviewedAt != nil) != w.reviewed {
+			(r.LastReviewedAt != nil) != w.reviewed {
 			t.Errorf("row %d=%+v, want %+v", i, r, w)
 		}
 	}

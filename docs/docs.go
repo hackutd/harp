@@ -13205,13 +13205,7 @@ const docTemplate = `{
                 "admin_id": {
                     "type": "string"
                 },
-                "agreed": {
-                    "type": "integer"
-                },
                 "completed": {
-                    "type": "integer"
-                },
-                "decided": {
                     "type": "integer"
                 },
                 "email": {

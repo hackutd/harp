@@ -114,12 +114,6 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
             >
               Travel Yes
             </TableHead>
-            <TableHead
-              className="text-right"
-              title="Votes matching the application's final decision"
-            >
-              Agreement
-            </TableHead>
             <TableHead>Last Review</TableHead>
           </TableRow>
         </TableHeader>
@@ -127,7 +121,7 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
           {reviewers.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={10}
+                colSpan={9}
                 className="text-center text-muted-foreground"
               >
                 No reviewers found
@@ -206,7 +200,6 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
                     count={reviewer.travel_yes}
                     total={reviewer.travel_votes}
                   />
-                  <RateCell count={reviewer.agreed} total={reviewer.decided} />
                   <TableCell className="whitespace-nowrap">
                     {reviewer.last_reviewed_at
                       ? new Date(reviewer.last_reviewed_at).toLocaleDateString()

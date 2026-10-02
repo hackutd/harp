@@ -76,9 +76,6 @@ export interface ReviewerStats {
   /** Travel recommendations given, and how many were yes. */
   travel_votes: number;
   travel_yes: number;
-  /** Votes on applications that have since been decided, and how many matched the decision. */
-  decided: number;
-  agreed: number;
   last_reviewed_at: string | null;
 }
 
