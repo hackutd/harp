@@ -48,6 +48,28 @@ function RankBadge({ rank, completed }: { rank: number; completed: number }) {
   );
 }
 
+// Share of this reviewer's completed reviews that got the given vote.
+function VoteCell({
+  count,
+  completed,
+  className,
+}: {
+  count: number;
+  completed: number;
+  className: string;
+}) {
+  return (
+    <TableCell className={cn("text-right tabular-nums", className)}>
+      {count}
+      {completed > 0 && (
+        <span className="ml-1.5 text-xs text-muted-foreground">
+          {Math.round((count / completed) * 100)}%
+        </span>
+      )}
+    </TableCell>
+  );
+}
+
 export const ReviewLeaderboard = memo(function ReviewLeaderboard({
   reviewers,
   loading,
@@ -132,15 +154,21 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
                   <TableCell className="text-right font-medium tabular-nums">
                     {reviewer.completed}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-green-600">
-                    {reviewer.accepted}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-red-600">
-                    {reviewer.rejected}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-amber-600">
-                    {reviewer.waitlisted}
-                  </TableCell>
+                  <VoteCell
+                    count={reviewer.accepted}
+                    completed={reviewer.completed}
+                    className="text-green-600"
+                  />
+                  <VoteCell
+                    count={reviewer.rejected}
+                    completed={reviewer.completed}
+                    className="text-red-600"
+                  />
+                  <VoteCell
+                    count={reviewer.waitlisted}
+                    completed={reviewer.completed}
+                    className="text-amber-600"
+                  />
                   <TableCell className="text-right text-muted-foreground tabular-nums">
                     {reviewer.pending}
                   </TableCell>
