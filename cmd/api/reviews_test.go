@@ -112,7 +112,7 @@ func TestGetReviewLeaderboard(t *testing.T) {
 
 	t.Run("should return reviewers ranked by completed reviews", func(t *testing.T) {
 		reviewers := []store.ReviewerStats{
-			{AdminID: "admin-1", Email: "a@test.com", Role: store.RoleAdmin, Rank: 1, Completed: 12, Accepted: 8, Rejected: 3, Waitlisted: 1, Pending: 0},
+			{AdminID: "admin-1", Email: "a@test.com", Role: store.RoleAdmin, Rank: 1, Completed: 12, Accepted: 8, Rejected: 3, Waitlisted: 1, Pending: 0, TravelVotes: 4, TravelYes: 3, Decided: 10, Agreed: 9},
 			{AdminID: "admin-2", Email: "b@test.com", Role: store.RoleSuperAdmin, Rank: 2, Completed: 7, Accepted: 4, Rejected: 2, Waitlisted: 1, Pending: 3},
 		}
 		mockReviews.On("GetLeaderboard").Return(reviewers, nil).Once()

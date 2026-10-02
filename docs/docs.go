@@ -13205,7 +13205,13 @@ const docTemplate = `{
                 "admin_id": {
                     "type": "string"
                 },
+                "agreed": {
+                    "type": "integer"
+                },
                 "completed": {
+                    "type": "integer"
+                },
+                "decided": {
                     "type": "integer"
                 },
                 "email": {
@@ -13234,6 +13240,12 @@ const docTemplate = `{
                 },
                 "role": {
                     "$ref": "#/definitions/store.UserRole"
+                },
+                "travel_votes": {
+                    "type": "integer"
+                },
+                "travel_yes": {
+                    "type": "integer"
                 },
                 "waitlisted": {
                     "type": "integer"

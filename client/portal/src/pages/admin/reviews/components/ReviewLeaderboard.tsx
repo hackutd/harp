@@ -70,6 +70,24 @@ function VoteCell({
   );
 }
 
+// "67% (4/6)", or a dash when there is nothing to measure yet.
+function RateCell({ count, total }: { count: number; total: number }) {
+  return (
+    <TableCell className="text-right tabular-nums whitespace-nowrap">
+      {total > 0 ? (
+        <>
+          {Math.round((count / total) * 100)}%
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            ({count}/{total})
+          </span>
+        </>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      )}
+    </TableCell>
+  );
+}
+
 export const ReviewLeaderboard = memo(function ReviewLeaderboard({
   reviewers,
   loading,
@@ -90,6 +108,18 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
             <TableHead className="text-right">Rejected</TableHead>
             <TableHead className="text-right">Waitlisted</TableHead>
             <TableHead className="text-right">Pending</TableHead>
+            <TableHead
+              className="text-right"
+              title="Yes share of travel recommendations"
+            >
+              Travel Yes
+            </TableHead>
+            <TableHead
+              className="text-right"
+              title="Votes matching the application's final decision"
+            >
+              Agreement
+            </TableHead>
             <TableHead>Last Review</TableHead>
           </TableRow>
         </TableHeader>
@@ -97,7 +127,7 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
           {reviewers.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={8}
+                colSpan={10}
                 className="text-center text-muted-foreground"
               >
                 No reviewers found
@@ -172,6 +202,11 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
                   <TableCell className="text-right text-muted-foreground tabular-nums">
                     {reviewer.pending}
                   </TableCell>
+                  <RateCell
+                    count={reviewer.travel_yes}
+                    total={reviewer.travel_votes}
+                  />
+                  <RateCell count={reviewer.agreed} total={reviewer.decided} />
                   <TableCell className="whitespace-nowrap">
                     {reviewer.last_reviewed_at
                       ? new Date(reviewer.last_reviewed_at).toLocaleDateString()
