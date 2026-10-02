@@ -48,7 +48,8 @@ function RankBadge({ rank, completed }: { rank: number; completed: number }) {
   );
 }
 
-// Share of this reviewer's completed reviews that got the given vote.
+// Share of this reviewer's completed reviews that got the given vote, led by
+// the percentage with the raw count beside it.
 function VoteCell({
   count,
   completed,
@@ -59,12 +60,18 @@ function VoteCell({
   className: string;
 }) {
   return (
-    <TableCell className={cn("text-right tabular-nums", className)}>
-      {count}
-      {completed > 0 && (
-        <span className="ml-1.5 text-xs text-muted-foreground">
+    <TableCell
+      className={cn("text-right tabular-nums whitespace-nowrap", className)}
+    >
+      {completed > 0 ? (
+        <>
           {Math.round((count / completed) * 100)}%
-        </span>
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            ({count})
+          </span>
+        </>
+      ) : (
+        count
       )}
     </TableCell>
   );
