@@ -690,13 +690,14 @@ func TestIntegrationBatchAssign(t *testing.T) {
 
 func TestIntegrationReviewLeaderboard(t *testing.T) {
 	db, s, admins, apps := batchTestSeed(t, 3, 4)
-	vote := func(adminID string, appIDs ...string) {
+	vote := func(adminID string, vote ReviewVote, appIDs ...string) {
 		for _, appID := range appIDs {
-			batchTestExec(t, db, "INSERT INTO application_reviews (application_id, admin_id, vote, reviewed_at) VALUES ($1, $2, 'accept', NOW())", appID, adminID)
+			batchTestExec(t, db, "INSERT INTO application_reviews (application_id, admin_id, vote, reviewed_at) VALUES ($1, $2, $3, NOW())", appID, adminID, string(vote))
 		}
 	}
-	vote(admins[0], apps[0], apps[1])
-	vote(admins[1], apps[2], apps[3])
+	vote(admins[0], ReviewVoteAccept, apps[0])
+	vote(admins[0], ReviewVoteReject, apps[1])
+	vote(admins[1], ReviewVoteWaitlist, apps[2], apps[3])
 	batchTestAssign(t, db, admins[2], apps[0], apps[3])
 	// A pending review on a decided application is hidden from the queue, so
 	// it does not count as pending either.
@@ -710,17 +711,19 @@ func TestIntegrationReviewLeaderboard(t *testing.T) {
 		t.Fatalf("reviewers=%d, want 3 (hackers excluded)", len(reviewers))
 	}
 	want := []struct {
-		id                       string
-		rank, completed, pending int
-		reviewed                 bool
+		id                                                       string
+		rank, completed, accepted, rejected, waitlisted, pending int
+		reviewed                                                 bool
 	}{
-		{admins[0], 1, 2, 0, true},
-		{admins[1], 1, 2, 0, true},
-		{admins[2], 3, 0, 1, false},
+		{admins[0], 1, 2, 1, 1, 0, 0, true},
+		{admins[1], 1, 2, 0, 0, 2, 0, true},
+		{admins[2], 3, 0, 0, 0, 0, 1, false},
 	}
 	for i, w := range want {
 		r := reviewers[i]
-		if r.AdminID != w.id || r.Rank != w.rank || r.Completed != w.completed || r.Pending != w.pending || (r.LastReviewedAt != nil) != w.reviewed {
+		if r.AdminID != w.id || r.Rank != w.rank || r.Completed != w.completed ||
+			r.Accepted != w.accepted || r.Rejected != w.rejected || r.Waitlisted != w.waitlisted ||
+			r.Pending != w.pending || (r.LastReviewedAt != nil) != w.reviewed {
 			t.Errorf("row %d=%+v, want %+v", i, r, w)
 		}
 	}

@@ -13199,6 +13199,9 @@ const docTemplate = `{
         "store.ReviewerStats": {
             "type": "object",
             "properties": {
+                "accepted": {
+                    "type": "integer"
+                },
                 "admin_id": {
                     "type": "string"
                 },
@@ -13226,8 +13229,14 @@ const docTemplate = `{
                 "rank": {
                     "type": "integer"
                 },
+                "rejected": {
+                    "type": "integer"
+                },
                 "role": {
                     "$ref": "#/definitions/store.UserRole"
+                },
+                "waitlisted": {
+                    "type": "integer"
                 }
             }
         },

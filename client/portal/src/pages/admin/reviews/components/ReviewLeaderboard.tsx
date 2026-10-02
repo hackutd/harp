@@ -64,6 +64,9 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
             <TableHead className="w-20">Rank</TableHead>
             <TableHead>Reviewer</TableHead>
             <TableHead className="text-right">Completed</TableHead>
+            <TableHead className="text-right">Accepted</TableHead>
+            <TableHead className="text-right">Rejected</TableHead>
+            <TableHead className="text-right">Waitlisted</TableHead>
             <TableHead className="text-right">Pending</TableHead>
             <TableHead>Last Review</TableHead>
           </TableRow>
@@ -72,7 +75,7 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
           {reviewers.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={5}
+                colSpan={8}
                 className="text-center text-muted-foreground"
               >
                 No reviewers found
@@ -128,6 +131,15 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {reviewer.completed}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-green-600">
+                    {reviewer.accepted}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-red-600">
+                    {reviewer.rejected}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-amber-600">
+                    {reviewer.waitlisted}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground tabular-nums">
                     {reviewer.pending}

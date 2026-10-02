@@ -58,6 +58,9 @@ type ReviewerStats struct {
 	Role              UserRole   `json:"role"`
 	Rank              int        `json:"rank"`
 	Completed         int        `json:"completed"`
+	Accepted          int        `json:"accepted"`
+	Rejected          int        `json:"rejected"`
+	Waitlisted        int        `json:"waitlisted"`
 	Pending           int        `json:"pending"`
 	LastReviewedAt    *time.Time `json:"last_reviewed_at"`
 }
@@ -303,7 +306,7 @@ func (s *ApplicationReviewsStore) GetNotesByApplicationID(ctx context.Context, a
 }
 
 // GetLeaderboard returns every admin and super admin with how many reviews they
-// have completed, most first. Ties share a rank. Pending counts use the same
+// have completed, most first, split by vote. Ties share a rank. Pending counts use the same
 // visibility as GetPendingByAdminID, so reviews on decided applications drop out.
 func (s *ApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]ReviewerStats, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -315,6 +318,9 @@ func (s *ApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]Reviewe
 			u.profile_picture_url, u.role,
 			RANK() OVER (ORDER BY COUNT(ar.id) FILTER (WHERE ar.vote IS NOT NULL) DESC),
 			COUNT(ar.id) FILTER (WHERE ar.vote IS NOT NULL) AS completed,
+			COUNT(ar.id) FILTER (WHERE ar.vote = 'accept'),
+			COUNT(ar.id) FILTER (WHERE ar.vote = 'reject'),
+			COUNT(ar.id) FILTER (WHERE ar.vote = 'waitlist'),
 			COUNT(ar.id) FILTER (WHERE ar.vote IS NULL AND ra.status = 'submitted') AS pending,
 			MAX(ar.reviewed_at)
 		FROM users u
@@ -338,7 +344,8 @@ func (s *ApplicationReviewsStore) GetLeaderboard(ctx context.Context) ([]Reviewe
 		if err := rows.Scan(
 			&r.AdminID, &r.Email, &r.FirstName, &r.LastName,
 			&r.ProfilePictureURL, &r.Role,
-			&r.Rank, &r.Completed, &r.Pending, &r.LastReviewedAt,
+			&r.Rank, &r.Completed, &r.Accepted, &r.Rejected, &r.Waitlisted,
+			&r.Pending, &r.LastReviewedAt,
 		); err != nil {
 			return nil, err
 		}
