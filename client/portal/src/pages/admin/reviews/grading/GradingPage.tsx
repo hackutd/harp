@@ -3,6 +3,7 @@ import { useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
+import { PriorityBadge } from "@/pages/admin/_shared";
 import {
   GradingDetailsPanel,
   GradingPageLayout,
@@ -116,6 +117,7 @@ export default function GradingPage() {
                   )}
             </p>
             <VoteBadge vote={currentReview.vote} />
+            <PriorityBadge submittedAt={detail?.submitted_at} />
           </>
         ) : null
       }

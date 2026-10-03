@@ -28,7 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { SearchBar } from "@/pages/admin/_shared";
+import { PriorityBadge, SearchBar } from "@/pages/admin/_shared";
 import { ReviewerNotesList } from "@/pages/admin/_shared/grading";
 import { fetchApplicationById } from "@/pages/admin/all-applicants/api";
 import { ApplicationDetailPanel } from "@/pages/admin/all-applicants/components/ApplicationDetailPanel";
@@ -396,8 +396,11 @@ export default function ReviewsPage() {
                 </SheetDescription>
               </div>
               {selectedReview && (
-                <div className="shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <VoteBadge vote={selectedReview.vote} />
+                  <PriorityBadge
+                    submittedAt={completedAppDetail?.submitted_at}
+                  />
                 </div>
               )}
             </div>

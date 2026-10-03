@@ -22,6 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { PriorityBadge } from "@/pages/admin/_shared";
 import { useRedactApplicants } from "@/shared/hooks";
 import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
@@ -99,6 +100,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
                 <Badge className={getStatusColor(application.status)}>
                   {application.status}
                 </Badge>
+                <PriorityBadge submittedAt={application.submitted_at} />
                 <Badge variant="secondary" className="tabular-nums">
                   {application.points ?? 0} {pointsName}
                 </Badge>
