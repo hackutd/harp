@@ -1,4 +1,5 @@
 import { Label } from "@/components/ui/label";
+import { PriorityBadge } from "@/pages/admin/_shared";
 import { formatElapsed } from "@/shared/lib/datetime";
 import type { Application } from "@/types";
 
@@ -13,10 +14,11 @@ export function TimelineSection({ application }: TimelineSectionProps) {
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
           <Label className="text-muted-foreground text-xs">Submitted</Label>
-          <p>
+          <p className="flex flex-wrap items-center gap-2">
             {application.submitted_at
               ? new Date(application.submitted_at).toLocaleString()
               : "N/A"}
+            <PriorityBadge submittedAt={application.submitted_at} />
           </p>
         </div>
         <div>

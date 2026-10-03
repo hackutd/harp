@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PriorityBadge } from "@/pages/admin/_shared";
 import {
   GradingDetailsPanel,
   GradingPageLayout,
@@ -169,6 +170,7 @@ export default function GradingPage() {
               <Badge className={getStatusColor(currentApp.status)}>
                 {currentApp.status}
               </Badge>
+              <PriorityBadge submittedAt={currentApp.submitted_at} />
             </>
           ) : null
         }
