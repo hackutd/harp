@@ -87,3 +87,19 @@ jobs:
           else
             echo "No test files found, skipping"
           fi
+
+  create-harp-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/create-harp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run Tests
+        run: npm test
