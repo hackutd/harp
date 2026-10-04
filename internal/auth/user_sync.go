@@ -11,7 +11,7 @@ import (
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 )
 
-func CreateUserFromSession(ctx context.Context, sessionContainer sessmodels.SessionContainer, appStore store.Storage, googleOAuthEnabled bool, profilePictureURL *string) (*store.User, error) {
+func CreateUserFromSession(ctx context.Context, sessionContainer sessmodels.SessionContainer, appStore store.Storage, googleOAuthEnabled bool, relinkByEmail bool, profilePictureURL *string) (*store.User, error) {
 	supertokensUserID := sessionContainer.GetUserID()
 
 	// Try to get user from passwordless recipe first
@@ -52,22 +52,36 @@ func CreateUserFromSession(ctx context.Context, sessionContainer sessmodels.Sess
 
 	if err := appStore.Users.Create(ctx, user); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			// Email exists - check if auth method matches
-			existingUser, err := appStore.Users.GetByEmail(ctx, email)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get existing user: %w", err)
-			}
-			if existingUser.AuthMethod != authMethod {
-				return nil, &AuthMethodMismatchError{
-					Expected: existingUser.AuthMethod,
-					Got:      authMethod,
-				}
-			}
-			// Same auth method but different SuperTokens ID - should never happen
-			return nil, fmt.Errorf("unexpected state: same email and auth method but different supertokens id")
+			return resolveEmailConflict(ctx, appStore, user, relinkByEmail)
 		}
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	return user, nil
+}
+
+// resolveEmailConflict handles a sign-in whose SuperTokens ID is new but whose
+// email already has a user row.
+func resolveEmailConflict(ctx context.Context, appStore store.Storage, attempted *store.User, relinkByEmail bool) (*store.User, error) {
+	existingUser, err := appStore.Users.GetByEmail(ctx, attempted.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing user: %w", err)
+	}
+	if existingUser.AuthMethod != attempted.AuthMethod {
+		return nil, &AuthMethodMismatchError{
+			Expected: existingUser.AuthMethod,
+			Got:      attempted.AuthMethod,
+		}
+	}
+	// Same email and auth method but a different SuperTokens ID. In prod this
+	// should never happen. On staging it is every returning user, because the
+	// database is a branch of prod and the SuperTokens core is not.
+	if !relinkByEmail {
+		return nil, fmt.Errorf("unexpected state: same email and auth method but different supertokens id")
+	}
+	relinked, err := appStore.Users.UpdateSuperTokensID(ctx, existingUser.ID, attempted.SuperTokensUserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to relink supertokens id: %w", err)
+	}
+	return relinked, nil
 }
