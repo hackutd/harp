@@ -47,8 +47,106 @@ jobs:
       - name: Run staticcheck
         run: staticcheck ./...
 
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+
+      # Fails only on vulnerabilities the code can actually reach, the Go
+      # counterpart of the npm audit in frontend-audit. A newly published
+      # advisory can turn this red without any code change; bump the module to
+      # the "Fixed in" version it names.
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+      # docs/ is committed, and air regenerates it locally, so a handler change
+      # pushed without its regenerated docs leaves the served Swagger stale.
+      # Same commands as `task gen-docs`; keep the swag version in step with
+      # github.com/swaggo/swag in go.mod.
+      - name: Check Swagger docs are up to date
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          swag init -d cmd/api,internal/store -g main.go -o docs --parseDependency
+          swag fmt
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Swagger docs are out of date. Run 'task gen-docs' and commit the result."
+            echo ""
+            git status --porcelain
+            git --no-pager diff --stat
+            exit 1
+          fi
+
       - name: Run Tests
         run: go test -race ./...
+
+  # The store's hand-written SQL only runs against a real database here; the
+  # handler suite in backend-audit uses MockStore. This job also proves every
+  # migration applies on a clean database and that every down migration
+  # unwinds cleanly, which is what a rollback depends on.
+  #
+  # The database is a throwaway service container that exists only for this
+  # job. Nothing here touches Neon or any shared database.
+  db-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.3
+        env:
+          POSTGRES_DB: harp_test
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: adminpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U admin -d harp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HARP_TEST_DSN: postgres://admin:adminpassword@localhost:5432/harp_test?sslmode=disable
+      MIGRATIONS_PATH: cmd/migrate/migrations
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.x"
+
+      - name: Install migrate CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/migrate"
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP/migrate" migrate
+          echo "$RUNNER_TEMP/migrate" >> "$GITHUB_PATH"
+
+      - name: Apply all migrations
+        run: migrate -path "$MIGRATIONS_PATH" -database "$HARP_TEST_DSN" up
+
+      - name: Roll back all migrations
+        run: migrate -path "$MIGRATIONS_PATH" -database "$HARP_TEST_DSN" down -all
+
+      - name: Re-apply all migrations
+        run: migrate -path "$MIGRATIONS_PATH" -database "$HARP_TEST_DSN" up
+
+      - name: Run store integration tests
+        run: go test -race -count=1 ./internal/store/
+
+  # The Cloud Build deploy builds this Dockerfile from scratch on every merge,
+  # and nothing else does. Building it here catches a broken COPY path or a
+  # base-image mismatch on the PR instead of at deploy time. Nothing is pushed.
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   frontend-audit:
     runs-on: ubuntu-latest
@@ -79,6 +177,11 @@ jobs:
 
       - name: Dependency Audit
         run: npm audit --audit-level=high --omit=dev
+
+      - name: Regression Tests
+        run: |
+          npm run test:reviews
+          npm run test:applications
 
       - name: Run Tests
         run: |

@@ -65,9 +65,12 @@ browser
 3. **Nothing runs migrations.** The container never touches the schema. See
    [Migrations](#migrations).
 
-CI and Cloud Build are independent. As far as this repo shows, a red CI run
-does **not** stop the deploy. Don't assume a failing check kept bad code out of
-prod.
+CI and Cloud Build are independent. Cloud Build never looks at CI, and it
+starts in parallel with the post-merge CI run on `main`. The only gate is the
+`protect-main` ruleset (GitHub settings), which requires `backend-audit` and
+`frontend-audit` before a PR can merge. The `director-lead` team can bypass it,
+and a bypass push deploys whatever it contains. Don't assume a failing check
+kept bad code out of prod.
 
 ## The image (`Dockerfile`)
 

@@ -162,12 +162,16 @@ Vite dev server proxies `/v1/*` and most `/auth/*` to Go backend (port 8080). Fr
 
 Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 
-- **Go:** gofmt check, `go mod verify`, build, `go vet`, `staticcheck`, `go test -race ./...`
-- **Portal:** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`
+- **Go (`backend-audit`):** migration naming check, gofmt check, `go mod verify`, build, `go vet`, `staticcheck`, `govulncheck`, Swagger docs drift check (`task gen-docs` must leave no diff), `go test -race ./...`
+- **DB (`db-integration`):** throwaway Postgres 16.3 service container; migrations `up` → `down -all` → `up`, then the store integration tests with `HARP_TEST_DSN` set
+- **Image (`docker-build`):** builds the production `Dockerfile` without pushing
+- **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`
+
+PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/workflows/migration-reminder.yaml`) to apply the migration to prod before merging.
 
 ## Deployment & Infrastructure
 
-- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — two jobs: `backend-audit`, `frontend-audit` (portal)
+- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — jobs: `backend-audit`, `db-integration`, `docker-build`, `frontend-audit` (portal)
 - **CD:** Merges to `main` trigger Google Cloud Build → Google Cloud Run (auto-deploy)
 - **Container:** Multi-stage `Dockerfile` — builds frontend (Node 22), builds Go binary, runs from `scratch` image on port 8080. Frontend is compiled at build time and served as static files
 - **Database:** Neon DB (managed PostgreSQL)

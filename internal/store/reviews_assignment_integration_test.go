@@ -646,8 +646,11 @@ func TestIntegrationBatchAssign(t *testing.T) {
 			}()
 		}
 		close(start)
-		// Claims run one at a time: the first takes 4 of 8, the second 2 of
-		// the remaining 4. Two claims interleaving would take more.
+		// Claims run one at a time. The first takes 4 of 8, leaving 4/0/4.
+		// The first claimer is now a holder too, and its reviews are the
+		// newest, so the second takes one from it and one from the original
+		// holder: 3/2/3. Two claims interleaving would each see the full queue
+		// of 8 and take 4.
 		claimed := 0
 		for range 2 {
 			r := <-results
@@ -659,8 +662,13 @@ func TestIntegrationBatchAssign(t *testing.T) {
 		if claimed != 6 {
 			t.Errorf("claimed=%d, want 6", claimed)
 		}
-		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[2]); n != 2 {
-			t.Errorf("holder kept %d reviews, want 2", n)
+		if n := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[2]); n != 3 {
+			t.Errorf("holder kept %d reviews, want 3", n)
+		}
+		a := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[0])
+		b := batchTestCount(t, db, "SELECT count(*) FROM application_reviews WHERE admin_id=$1", admins[1])
+		if min(a, b) != 2 || max(a, b) != 3 {
+			t.Errorf("claimers hold %d and %d reviews, want 3 and 2", a, b)
 		}
 		if n := batchTestCount(t, db, "SELECT count(*) FROM applications WHERE reviews_assigned <> 1"); n != 0 {
 			t.Errorf("%d applications moved off the target", n)
