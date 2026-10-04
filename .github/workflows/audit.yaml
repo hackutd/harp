@@ -301,10 +301,10 @@ jobs:
         run: |
           npm run test:reviews
           npm run test:applications
+          npm run test:auth
 
       - name: Run Tests
         run: |
-          npm run test:auth
           if [ -d "__tests__" ] || find src -name '*.test.*' -o -name '*.spec.*' 2>/dev/null | grep -q .; then
             npx vitest run
           else

@@ -19,7 +19,7 @@ func TestGoogleLoginUsesDefaultAccountSelection(t *testing.T) {
 		APIBasePath: "/auth", APIURL: "http://localhost:8080",
 		FrontendURL:    "http://localhost:3000",
 		GoogleClientID: "test-client", GoogleClientSecret: "test-secret",
-	}, store.Storage{}))
+	}, store.Storage{}, nil))
 
 	recipe, err := thirdparty.GetRecipeInstanceOrThrowError()
 	require.NoError(t, err)
