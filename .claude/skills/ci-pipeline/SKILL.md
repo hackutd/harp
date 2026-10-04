@@ -55,40 +55,66 @@ repo never cut their own releases.
 ## CI — `.github/workflows/audit.yaml`
 
 Workflow name: **CI**. Runs on `push` to `main` and on `pull_request` targeting
-`main`. Four independent jobs run in parallel on `ubuntu-latest`:
-`backend-audit`, `db-integration`, `docker-build`, `frontend-audit`.
+`main`. Jobs on `ubuntu-latest`: `changes`, then `backend-audit`,
+`backend-lint`, `db-integration` and `frontend-audit` in parallel after it, and
+`docker-build`, which doesn't wait for `changes`.
 
-The `protect-main` ruleset (GitHub settings, not in repo) requires
-`backend-audit` and `frontend-audit` to pass, with the branch up to date, before
-a PR can merge. Whether `db-integration` and `docker-build` are also required
-is a ruleset setting, so check it before saying a red one blocks the merge.
+The `protect-main` ruleset (GitHub settings, not in repo) lists the required
+checks, and the branch must be up to date. Check the ruleset before saying a
+particular red job blocks the merge.
 
-### `backend-audit` job (Go)
+### Speed: path filter, cancellation, caches
+
+- **`changes`** (`dorny/paths-filter`) decides what a PR needs. Go jobs run
+  when any `*.go`, `go.mod`/`go.sum`, `cmd/**`, `internal/**`, `docs/**`, the
+  migration check script, or `audit.yaml` changes. `frontend-audit` runs when
+  `client/portal/**` or `audit.yaml` changes. `docker-build` always runs, since
+  the image depends on everything. Pushes to `main` run every job.
+- **A skipped job reports as passed** to required checks. That is what lets a
+  frontend-only PR merge without the Go jobs, but it also means a failed
+  `changes` job would skip everything green. So `changes` must itself be a
+  required check.
+- **Concurrency:** a new push to a PR cancels that PR's in-flight run. Runs on
+  `main` never cancel each other.
+- **Go caches** use `actions/cache` directly, with `setup-go`'s cache off.
+  Keys are `go-test-…` (backend-audit; db-integration restores it read-only)
+  and `go-lint-…` (backend-lint; also holds staticcheck's cache and the
+  installed tools). Each key ends in the commit SHA, with restore-keys falling
+  back to the newest entry, and **only pushes to `main` save**. Don't switch
+  back to `setup-go`'s `cache: true` in more than one job. It keys on `go.sum`
+  alone, so the first job to save owns the key until `go.sum` changes. That
+  once left `main` with a 51MB store-only cache and made every build cold.
+
+### `backend-audit` job (Go tests)
+
+Kept under this name because the ruleset requires it. One gate:
+**`go test -race ./...`** (race detector on). The store integration tests skip
+here because `HARP_TEST_DSN` is unset; they run in `db-integration`.
+
+### `backend-lint` job (Go static checks)
 
 Go version **1.27.x**. Steps, in order — each is a gate:
 
-0. **Validate database migrations** — `./scripts/check-migrations.sh` (runs
-   before Go is even set up). Checks every file in `cmd/migrate/migrations/` is
-   named `NNNNNN_description.{up,down}.sql`, versions start at `000001`, and
-   every version has exactly one up and one down. Same check locally:
+1. **Validate database migrations** — `./scripts/check-migrations.sh`. Checks
+   every file in `cmd/migrate/migrations/` is named
+   `NNNNNN_description.{up,down}.sql`, versions start at `000001`, and every
+   version has exactly one up and one down. Same check locally:
    `task migrate-check`.
-1. **Check gofmt** — `gofmt -l .`; fails if any file is unformatted. Fix with
+2. **Check gofmt** — `gofmt -l .`; fails if any file is unformatted. Fix with
    `gofmt -w .`.
-2. **Verify Dependencies** — `go mod verify`.
-3. **Build** — `go build -v ./...`.
-4. **go vet** — `go vet ./...`.
-5. **staticcheck** — installs `honnef.co/go/tools/cmd/staticcheck@v0.8.1`, then
-   `staticcheck ./...`.
-6. **govulncheck** — installs `golang.org/x/vuln/cmd/govulncheck@v1.8.0`, then
-   `govulncheck ./...`. Fails only on vulnerabilities the code can reach. A
-   newly published advisory can turn it red with no code change. Fix it by
-   bumping the named module to its "Fixed in" version (`go get mod@ver && go mod tidy`).
-7. **Swagger docs drift** — installs `swag@v1.16.6` (keep in step with
-   `github.com/swaggo/swag` in `go.mod`), runs the same commands as
-   `task gen-docs`, and fails if the working tree changed. Fix by running
-   `task gen-docs` and committing `docs/`.
-8. **Tests** — `go test -race ./...` (race detector on). The store integration
-   tests skip here because `HARP_TEST_DSN` is unset; they run in `db-integration`.
+3. **Verify Dependencies** — `go mod verify`.
+4. **go vet** — `go vet ./...`. It also type-checks the main packages that
+   have no tests, which is why there's no separate `go build ./...` step.
+5. **Install tools** — `staticcheck@v0.8.1`, `govulncheck@v1.8.0`,
+   `swag@v1.16.6` (keep swag in step with `github.com/swaggo/swag` in `go.mod`).
+6. **staticcheck** — `staticcheck ./...`.
+7. **govulncheck** — `govulncheck ./...`. Fails only on vulnerabilities the
+   code can reach. A newly published advisory can turn it red with no code
+   change. Fix it by bumping the named module to its "Fixed in" version
+   (`go get mod@ver && go mod tidy`).
+8. **Swagger docs drift** — runs the same commands as `task gen-docs` and fails
+   if the working tree changed. Fix by running `task gen-docs` and committing
+   `docs/`.
 
 ### `db-integration` job (Postgres)
 
@@ -261,9 +287,12 @@ Valid: `feat(auth): add Google OAuth login`, `fix: resolve pagination bug`,
 
 ## Quick answers to common questions
 
-- **"What runs when I open a PR?"** → **CI** (backend-audit, db-integration,
-  docker-build, frontend-audit), **Commits** (PR title check), and
+- **"What runs when I open a PR?"** → **CI** (`changes`, then whichever of
+  backend-audit, backend-lint, db-integration and frontend-audit the changed
+  paths need, plus docker-build always), **Commits** (PR title check), and
   **Migrations** if the PR touches migrations. Release and deploy are `main`-only.
+- **"Why was a job skipped on my PR?"** → the `changes` path filter decided the
+  PR doesn't touch that side. Skipped counts as passed.
 - **"What happens when something merges to `main`?"** → CI runs again and Cloud
   Build deploys to Cloud Run, and release-please updates or creates the
   release PR.
