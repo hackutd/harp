@@ -15,8 +15,9 @@ import (
 
 // These exercise the hand-written SQL against a real PostgreSQL instance. The
 // query builders in this package are otherwise untested -- the handler suite
-// runs entirely on MockStore, and CI has no database -- so a syntax or
-// semantics error in a query would ship unnoticed.
+// runs entirely on MockStore -- so a syntax or semantics error in a query
+// would ship unnoticed. CI runs them in the db-integration job against a
+// throwaway Postgres service container.
 //
 // They are skipped unless HARP_TEST_DSN points at a database migrated to the
 // current version, and they TRUNCATE the tables they use, so point them at a

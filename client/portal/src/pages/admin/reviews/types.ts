@@ -67,8 +67,15 @@ export interface ReviewerStats {
   role: UserRole;
   /** Admins with the same completed count share a rank. */
   rank: number;
+  /** completed = accepted + rejected + waitlisted */
   completed: number;
+  accepted: number;
+  rejected: number;
+  waitlisted: number;
   pending: number;
+  /** Travel recommendations given, and how many were yes. */
+  travel_votes: number;
+  travel_yes: number;
   last_reviewed_at: string | null;
 }
 

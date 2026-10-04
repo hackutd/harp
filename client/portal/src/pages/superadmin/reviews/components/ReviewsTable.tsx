@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PriorityBadge } from "@/pages/admin/_shared";
 import type {
   ApplicationListItem,
   ApplicationSortBy,
@@ -103,9 +104,12 @@ export const ReviewsTable = memo(function ReviewsTable({
                 onClick={() => onSelectApplication(app.id)}
               >
                 <TableCell className="relative">
-                  <Badge className={getStatusColor(app.status)}>
-                    {app.status}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge className={getStatusColor(app.status)}>
+                      {app.status}
+                    </Badge>
+                    <PriorityBadge submittedAt={app.submitted_at} />
+                  </div>
                   <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
                     <Maximize2 className="h-4 w-4 text-muted-foreground" />
                   </span>

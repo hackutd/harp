@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PriorityBadge } from "@/pages/admin/_shared";
 import { useRedactApplicants } from "@/shared/hooks";
 import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
@@ -87,9 +88,12 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                   className="group cursor-pointer hover:bg-muted [&>td]:py-3"
                 >
                   <TableCell className="relative">
-                    <Badge className={getStatusColor(app.status)}>
-                      {app.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className={getStatusColor(app.status)}>
+                        {app.status}
+                      </Badge>
+                      <PriorityBadge submittedAt={app.submitted_at} />
+                    </div>
                     <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
                       <Maximize2 className="h-4 w-4 text-muted-foreground" />
                     </span>

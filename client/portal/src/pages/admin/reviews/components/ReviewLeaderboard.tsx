@@ -48,6 +48,53 @@ function RankBadge({ rank, completed }: { rank: number; completed: number }) {
   );
 }
 
+// Share of this reviewer's completed reviews that got the given vote, led by
+// the percentage with the raw count beside it.
+function VoteCell({
+  count,
+  completed,
+  className,
+}: {
+  count: number;
+  completed: number;
+  className: string;
+}) {
+  return (
+    <TableCell
+      className={cn("text-right tabular-nums whitespace-nowrap", className)}
+    >
+      {completed > 0 ? (
+        <>
+          {Math.round((count / completed) * 100)}%
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            ({count})
+          </span>
+        </>
+      ) : (
+        count
+      )}
+    </TableCell>
+  );
+}
+
+// "67% (4/6)", or a dash when there is nothing to measure yet.
+function RateCell({ count, total }: { count: number; total: number }) {
+  return (
+    <TableCell className="text-right tabular-nums whitespace-nowrap">
+      {total > 0 ? (
+        <>
+          {Math.round((count / total) * 100)}%
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            ({count}/{total})
+          </span>
+        </>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      )}
+    </TableCell>
+  );
+}
+
 export const ReviewLeaderboard = memo(function ReviewLeaderboard({
   reviewers,
   loading,
@@ -64,7 +111,16 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
             <TableHead className="w-20">Rank</TableHead>
             <TableHead>Reviewer</TableHead>
             <TableHead className="text-right">Completed</TableHead>
+            <TableHead className="text-right">Accepted</TableHead>
+            <TableHead className="text-right">Rejected</TableHead>
+            <TableHead className="text-right">Waitlisted</TableHead>
             <TableHead className="text-right">Pending</TableHead>
+            <TableHead
+              className="text-right"
+              title="Yes share of travel recommendations"
+            >
+              Travel Yes
+            </TableHead>
             <TableHead>Last Review</TableHead>
           </TableRow>
         </TableHeader>
@@ -72,7 +128,7 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
           {reviewers.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={5}
+                colSpan={9}
                 className="text-center text-muted-foreground"
               >
                 No reviewers found
@@ -129,9 +185,28 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
                   <TableCell className="text-right font-medium tabular-nums">
                     {reviewer.completed}
                   </TableCell>
+                  <VoteCell
+                    count={reviewer.accepted}
+                    completed={reviewer.completed}
+                    className="text-green-600"
+                  />
+                  <VoteCell
+                    count={reviewer.rejected}
+                    completed={reviewer.completed}
+                    className="text-red-600"
+                  />
+                  <VoteCell
+                    count={reviewer.waitlisted}
+                    completed={reviewer.completed}
+                    className="text-amber-600"
+                  />
                   <TableCell className="text-right text-muted-foreground tabular-nums">
                     {reviewer.pending}
                   </TableCell>
+                  <RateCell
+                    count={reviewer.travel_yes}
+                    total={reviewer.travel_votes}
+                  />
                   <TableCell className="whitespace-nowrap">
                     {reviewer.last_reviewed_at
                       ? new Date(reviewer.last_reviewed_at).toLocaleDateString()
