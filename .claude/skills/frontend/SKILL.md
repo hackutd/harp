@@ -1,11 +1,11 @@
 ---
 name: frontend
-description: "HARP React frontend development guide (React 19 + TypeScript + Vite + Tailwind v4). Generates pages, components, Zustand stores, API modules, form validations, and route definitions following established conventions. Use this skill whenever building new frontend pages, adding UI components, creating Zustand stores, writing API client code, adding form validation, modifying routes, or working in client/portal/. Also use when the user asks to add a new admin page, hacker-facing feature, or super admin view to the React frontend."
+description: "HARP React frontend development guide (React 19 + TypeScript + Vite + Tailwind v4). Generates pages, components, Zustand stores, API modules, form validations, route definitions, and the Vitest unit tests that accompany them, following established conventions. Use this skill whenever building new frontend pages, adding UI components, creating Zustand stores, writing API client code, adding form validation, modifying routes, writing or fixing frontend tests, or working in client/portal/. Also use when the user asks to add a new admin page, hacker-facing feature, or super admin view to the React frontend."
 ---
 
 # HARP Frontend Development Guide
 
-All frontend code lives under `client/portal/`. For adding a new page end-to-end, read `references/new-page.md`.
+All frontend code lives under `client/portal/`. For adding a new page end-to-end, read `references/new-page.md`. For writing tests — which every new feature needs — read `references/testing.md`.
 
 ## File Locations
 
@@ -20,6 +20,8 @@ All frontend code lives under `client/portal/`. For adding a new page end-to-end
 | Admin shared             | `src/pages/admin/_shared/`                         | Barrel via `index.ts`             |
 | Auth guards              | `src/shared/auth/`                                 | Barrel export only                |
 | Routes                   | `src/routes.tsx`                                   | `createBrowserRouter`             |
+| Unit tests               | Beside the source module                           | `<source>.test.ts(x)`             |
+| Test setup / config      | `src/test/setup.ts`, `vitest.config.ts`            | Shared aliases: `vite.aliases.ts` |
 
 ## Import Boundaries (ESLint enforced — breaks CI)
 
@@ -120,6 +122,19 @@ Debounced search: `useState` + `setTimeout(500ms)` + `useRef` to skip first rend
 
 Lazy-load with `React.lazy()` + `<Suspense fallback={<PageLoader />}>`. Guards: `<RequireAuth>` (hacker), `<RequireAdmin>` (admin — applied at `/admin` parent), `<RequireSuperAdmin>` (super admin, path under `sa/`).
 
+## Testing (Vitest)
+
+Every feature ships with tests in the same change. Full recipes and pitfalls: `references/testing.md`.
+
+- `npm test` runs Vitest (jsdom). Tests live beside their source as `<source>.test.ts(x)` under `src/`.
+- Import `describe`/`it`/`expect`/`vi` from `"vitest"` — globals are off.
+- Timezone is pinned to `America/Chicago` in `vitest.config.ts` — assert exact local-time strings.
+- The config resets every mock and stubbed global before each test — set mock behavior inside the test or its `beforeEach`.
+- Stores: mock the page `api.ts` (and `sonner`) with `vi.hoisted` + `vi.mock`; reset with `useStore.setState(useStore.getInitialState(), true)`; cover success, failure, abort, and stale-response paths.
+- Utils / schemas: `it.each` tables over branches and boundaries.
+- Components: Testing Library + `userEvent`, queried by role/label; no snapshots.
+- Fixtures: typed factory functions with `Partial<T>` overrides — `npm run build` type-checks tests.
+
 ## Naming Conventions
 
 | Category        | Convention              | Example                   |
@@ -155,4 +170,6 @@ Tailwind v4 with semantic tokens (`bg-primary`, `text-muted-foreground`) — no 
 - Don't convert backend snake_case to camelCase
 - Don't skip `AbortController` cleanup in `useEffect`
 - Don't skip `<Suspense>` on lazy-loaded routes
+- Don't ship a feature without tests, or assert a known-wrong value to make one pass
+- Don't stub `fetch` outside `shared/lib/api.test.ts` — mock the page `api.ts` instead
 - Don't add `Co-Authored-By` to commits
