@@ -334,6 +334,42 @@ func (s *UsersStore) UpdateRole(ctx context.Context, userID string, role UserRol
 	return &user, nil
 }
 
+// UpdateSuperTokensID points an existing user row at a different SuperTokens
+// user. Only used when ENV=staging, where the database
+// is a branch of prod but the SuperTokens core is not, so every returning user
+// signs in with a SuperTokens ID the row has never seen.
+func (s *UsersStore) UpdateSuperTokensID(ctx context.Context, userID string, supertokensUserID string) (*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET supertokens_user_id = $2, updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
+	`
+
+	var user User
+	err := s.db.QueryRowContext(ctx, query, userID, supertokensUserID).Scan(
+		&user.ID,
+		&user.SuperTokensUserID,
+		&user.Email,
+		&user.Role,
+		&user.AuthMethod,
+		&user.ProfilePictureURL,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

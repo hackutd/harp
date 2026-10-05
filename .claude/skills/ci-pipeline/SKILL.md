@@ -3,13 +3,15 @@ name: ci-pipeline
 description: >-
   Authoritative reference for HARP's CI/CD pipeline — what GitHub Actions run and
   when, PR title validation, the release-please release flow and how the version
-  in version.txt is bumped, how that feeds the Cloud Build → Cloud Run deploy,
+  in version.txt is bumped, how merges deploy staging and release tags deploy
+  prod through Cloud Build → Cloud Run,
   and the local git hooks (pre-commit gofmt + commit-msg Conventional Commits). Use this skill whenever
   someone asks how CI works, what checks run on a PR or push, why a workflow
   exists, how releases or versioning happen, how deploys are triggered, what the
   git hooks do, or how to set them up — even if they don't say "CI" explicitly
   (e.g. "what runs when I open a PR?", "how does a new version ship?", "why is my
-  commit being rejected?", "what does push to main do?"). Prefer this over
+  commit being rejected?", "what does push to main do?", "when does my change
+  reach prod?"). Prefer this over
   guessing from memory; it reflects the actual workflow files in this repo.
 ---
 
@@ -34,16 +36,18 @@ Four pipelines, triggered by different events:
 | ------------------- | ----------------------------------- | ------------------------- | -------------------------------------------------------------- |
 | **CI**              | `audit.yaml`                        | push **or** PR to `main`  | Validate migrations, lint, build, test Go and the portal       |
 | **Commits**         | `conventional-commits.yaml`         | PR opened/edited/synced   | PR **title** must be a Conventional Commit                     |
-| **Migrations**      | `migration-reminder.yaml`           | PR touching `cmd/migrate/migrations/` | Comments a reminder to apply the migration to prod before merging (never fails) |
+| **Migrations**      | `migration-reminder.yaml`           | PR touching `cmd/migrate/migrations/` | Comments a reminder to apply the migration to staging before merging and prod before releasing (never fails) |
 | **release-please**  | `release-please.yaml`               | push to `main`, **`hackutd/harp` only** | Maintain release PR → on merge: tag, GitHub Release, `version.txt`, `CHANGELOG.md`, snapshot branch |
-| **Deploy (CD)**     | Google Cloud Build (not in repo)    | merge to `main`           | Build `Dockerfile` → Cloud Run                                 |
+| **Deploy staging**  | Google Cloud Build (not in repo)    | push to `main`            | Build `Dockerfile` → Cloud Run `harp-staging`                  |
+| **Deploy prod**     | Google Cloud Build (not in repo)    | tag `vX.Y.Z` (release PR merged) | Build `Dockerfile` → Cloud Run `harp`                   |
 
 And two **local** git hooks (they run on your machine, not in CI) keep commits
 clean before they ever reach GitHub.
 
 A normal change flows: branch → commit (hooks run locally) → open PR (CI +
-Commits run) → squash-merge to `main` (CI runs again, deploy fires, and
-release-please updates the release PR).
+Commits run) → squash-merge to `main` (CI runs again, staging deploys, and
+release-please updates the release PR) → merge the release PR (tag → prod
+deploys).
 
 ### One repository
 
@@ -212,7 +216,9 @@ and maintains an open **release PR** that bumps `version.txt` and prepends to
 - **Nothing is released until the release PR is merged.** Then release-please
   creates the `vX.Y.Z` tag and GitHub Release, and the workflow pushes a
   **snapshot branch named after the version** (e.g. `0.14.0`) at the release
-  commit. It refuses to overwrite a branch that already exists.
+  commit. It refuses to overwrite a branch that already exists. **The tag
+  deploys prod** (see [Deploy](#deploy-cd--cloud-build--cloud-run)), so merging
+  the release PR is the prod deploy.
 
 release-please finds the previous version from GitHub Releases/tags (anchored
 by `v0.9.0`), **not** from `version.txt`. If every tag and release were deleted
@@ -230,13 +236,20 @@ annotation in `main.go` is the API doc version and is unrelated.)
 
 ## Deploy (CD) — Cloud Build → Cloud Run
 
-Merges to `main` trigger **Google Cloud Build**, which builds the `Dockerfile`
-and deploys to **Cloud Run**. The trigger lives in the GCP console — there is no
-`cloudbuild.yaml` — and it is independent of GitHub Actions. Cloud Build never
-checks CI. What keeps red code out is the `protect-main` ruleset: PRs need the
-required checks green before they can merge. Members of the bypass team
-(`director-lead`, bypass mode "always") can still push or merge red, and that
-deploys. Migrations are **not** run by the deploy.
+Two **Google Cloud Build** triggers build the `Dockerfile` and deploy it to
+**Cloud Run**:
+
+- **Push to `main`** → `harp-staging` (`https://harp-staging.hackutd.co`).
+- **Push of a tag matching `^v\d+\.\d+\.\d+$`** → `harp`, prod
+  (`https://harp.hackutd.co`). release-please pushes that tag when the release
+  PR merges, so nothing reaches prod until a release.
+
+The triggers live in the GCP console — there is no `cloudbuild.yaml` — and they
+are independent of GitHub Actions. Cloud Build never checks CI. What keeps red
+code out is the `protect-main` ruleset: PRs need the required checks green
+before they can merge. Members of the bypass team (`director-lead`, bypass mode
+"always") can still push or merge red, and that deploys to staging, then to prod
+with the next release. Migrations are **not** run by either deploy.
 
 For the image stages, serving model, env vars, migrations against prod,
 rollback, and deploy-time failures, use the **deployment** skill — this skill
@@ -293,11 +306,14 @@ Valid: `feat(auth): add Google OAuth login`, `fix: resolve pagination bug`,
   **Migrations** if the PR touches migrations. Release and deploy are `main`-only.
 - **"Why was a job skipped on my PR?"** → the `changes` path filter decided the
   PR doesn't touch that side. Skipped counts as passed.
-- **"What happens when something merges to `main`?"** → CI runs again and Cloud
-  Build deploys to Cloud Run, and release-please updates or creates the
-  release PR.
+- **"What happens when something merges to `main`?"** → CI runs again, Cloud
+  Build deploys it to **staging** (`harp-staging`), and release-please updates
+  or creates the release PR. Prod doesn't change.
+- **"When does my change reach prod?"** → when the release-please PR merges.
+  Its tag triggers the prod deploy.
 - **"How do I cut a release?"** → merge the open release-please PR in
-  `hackutd/harp`. You don't tag manually.
+  `hackutd/harp`. You don't tag manually. That merge deploys prod, so apply any
+  pending migrations to prod first.
 - **"Why did CI fail on a migration I didn't touch?"** → the migration check
   looks at the whole directory; a bad name or missing up/down pair anywhere
   fails it. Run `task migrate-check`.

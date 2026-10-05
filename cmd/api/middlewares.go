@@ -156,7 +156,10 @@ func (app *application) AuthRequiredMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
 				googleEnabled := app.config.supertokens.googleClientID != ""
-				user, err = auth.CreateUserFromSession(r.Context(), sessionContainer, app.store, googleEnabled, profilePictureURL)
+				// Staging's database is a Neon branch of prod but its SuperTokens
+				// core is separate, so returning users arrive with unknown IDs.
+				relinkByEmail := app.config.env == "staging"
+				user, err = auth.CreateUserFromSession(r.Context(), sessionContainer, app.store, googleEnabled, relinkByEmail, profilePictureURL)
 				if err != nil {
 					var authErr *auth.AuthMethodMismatchError
 					if errors.As(err, &authErr) {
