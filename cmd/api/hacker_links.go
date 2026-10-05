@@ -11,7 +11,7 @@ import (
 type HackerLinkPayload struct {
 	Label        string `json:"label" validate:"required,min=1,max=100"`
 	URL          string `json:"url" validate:"required,url,max=2000"`
-	Icon         string `json:"icon" validate:"required,oneof=devpost discord github instagram globe link"`
+	Icon         string `json:"icon" validate:"required,oneof=devpost discord github instagram globe link notion"`
 	DisplayOrder int    `json:"display_order" validate:"min=0"`
 }
 

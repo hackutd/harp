@@ -7,7 +7,6 @@ import type {
   FromNameResult,
   HackathonDateRangeResult,
   HackathonNameResult,
-  HackerPackURLResult,
   MealGroupsResult,
   MealGroupStatsResult,
   OnboardingStatus,
@@ -56,26 +55,6 @@ export async function fetchMealGroupStats(
     "/superadmin/settings/meal-groups/stats",
     "meal group stats",
     signal,
-  );
-}
-
-export async function fetchHackerPackURL(
-  signal?: AbortSignal,
-): Promise<ApiResponse<HackerPackURLResult>> {
-  return getRequest<HackerPackURLResult>(
-    "/superadmin/settings/hacker-pack-url",
-    "hacker pack URL",
-    signal,
-  );
-}
-
-export async function updateHackerPackURL(
-  url: string,
-): Promise<ApiResponse<HackerPackURLResult>> {
-  return postRequest<HackerPackURLResult>(
-    "/superadmin/settings/hacker-pack-url",
-    { url },
-    "hacker pack URL",
   );
 }
 
