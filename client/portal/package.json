@@ -14,7 +14,8 @@
     "test:watch": "cross-env TZ=America/Chicago vitest",
     "test:coverage": "cross-env TZ=America/Chicago vitest run --coverage",
     "test:reviews": "node --test scripts/review-regressions.test.mjs",
-    "test:applications": "node --test scripts/application-regressions.test.mjs"
+    "test:applications": "node --test scripts/application-regressions.test.mjs",
+    "test:auth": "node --test scripts/auth-regressions.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -10,7 +10,6 @@ import {
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { signOut } from "supertokens-auth-react/recipe/session";
 
 import { AdminPortalButton } from "@/components/AdminPortalButton";
 import { InstallGuideDialog } from "@/components/InstallGuideDialog";
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { signOutExplicitly } from "@/shared/auth";
 import { useInstallPrompt } from "@/shared/install";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
@@ -108,7 +108,7 @@ export default function ProfilePage() {
   const hasResume = Boolean(application?.resume_path);
 
   const handleLogout = async () => {
-    await signOut();
+    await signOutExplicitly();
     clearUser();
     navigate("/", { replace: true });
   };
@@ -204,7 +204,7 @@ export default function ProfilePage() {
     setDeleting(true);
     const res = await deleteMyAccount();
     if (res.status === 204 || res.status === 200) {
-      await signOut();
+      await signOutExplicitly();
       clearUser();
       navigate("/", { replace: true });
     } else {

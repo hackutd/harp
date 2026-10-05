@@ -167,7 +167,7 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 - **Go lint (`backend-lint`):** migration naming check, gofmt check, `go mod verify`, `go vet`, `staticcheck`, `govulncheck`, Swagger docs drift check (`task gen-docs` must leave no diff)
 - **DB (`db-integration`):** throwaway Postgres 16.3 service container; migrations `up` → `down -all` → `up`, then the store integration tests with `HARP_TEST_DSN` set
 - **Image (`docker-build`):** builds the production `Dockerfile` without pushing
-- **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`
+- **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`, `npm run test:auth`
 
 PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/workflows/migration-reminder.yaml`) to apply the migration to staging before merging and to prod before the release.
 

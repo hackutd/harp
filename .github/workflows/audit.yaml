@@ -301,6 +301,7 @@ jobs:
         run: |
           npm run test:reviews
           npm run test:applications
+          npm run test:auth
 
       - name: Run Tests
         run: |

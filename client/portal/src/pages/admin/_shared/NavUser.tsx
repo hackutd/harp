@@ -2,7 +2,6 @@
 
 import { ChevronsUpDown, Eye, LogOut, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
-import Session from "supertokens-auth-react/recipe/session";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -19,6 +18,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { signOutExplicitly } from "@/shared/auth";
 import { useUserStore } from "@/shared/stores";
 
 export function NavUser({
@@ -47,7 +47,7 @@ export function NavUser({
   };
 
   const handleLogout = async () => {
-    await Session.signOut();
+    await signOutExplicitly();
     clearUser();
     navigate("/");
   };

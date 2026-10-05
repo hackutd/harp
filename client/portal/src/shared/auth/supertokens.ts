@@ -5,6 +5,8 @@ import ThirdParty, { Google } from "supertokens-auth-react/recipe/thirdparty";
 
 import { branding } from "@/branding";
 
+import { withAccountSelection } from "./account-selection";
+
 export const isGoogleAuthEnabled =
   import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
 
@@ -24,6 +26,7 @@ export function initSuperTokens() {
       ...(isGoogleAuthEnabled
         ? [
             ThirdParty.init({
+              override: { functions: withAccountSelection },
               signInAndUpFeature: {
                 providers: [Google.init()],
               },

@@ -156,7 +156,7 @@ directory `client/portal`. Steps, in order:
    this is *both* the TypeScript type check and the production build).
 5. **Dependency Audit** — `npm audit --audit-level=high --omit=dev` (prod deps
    only; high+ severity fails).
-6. **Regression Tests** — `npm run test:reviews` and `npm run test:applications`
+6. **Regression Tests** — `npm run test:reviews`, `npm run test:applications`, and `npm run test:auth`
    (`node --test` over `client/portal/scripts/*.test.mjs`).
 7. **Tests** — runs `npx vitest run` **only if** test files exist (a `__tests__`
    dir or any `*.test.*` / `*.spec.*` under `src`); otherwise it prints "No test
@@ -169,7 +169,7 @@ pushing (or use the `/ci-audit` command). The key mirrors are
 `task migrate-check`, `gofmt -l .`, `go vet ./...`, `staticcheck ./...`,
 `govulncheck ./...`, `task gen-docs && git status --porcelain`,
 `go test -race ./...` for the backend and
-`npm run format:check && npm run lint && npm run build && npm run test:reviews && npm run test:applications`
+`npm run format:check && npm run lint && npm run build && npm run test:reviews && npm run test:applications && npm run test:auth`
 in `client/portal` for the frontend. `db-integration` needs a scratch Postgres,
 and `docker-build` needs `docker build .`.
 
