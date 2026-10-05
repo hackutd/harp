@@ -210,7 +210,8 @@
 
 {{/* A label/value details table. Emails open it with "details-open", add rows
      with {{template "row" (row "Label" "Value")}} (or accentRow to set the
-     value in red), and close it with "details-close". */}}
+     value in red, successRow in green, warningRow in amber), and close it
+     with "details-close". */}}
 {{define "details-open"}}
 <table
   role="presentation"
@@ -243,7 +244,7 @@
     style="
       padding: 16px 0;
       border-bottom: 1px solid #e5e5e5;
-      color: {{if .Accent}}#d63b4f{{else}}#111111{{end}};
+      color: {{if .Accent}}#d63b4f{{else if .Success}}#15803d{{else if .Warning}}#9a7600{{else}}#111111{{end}};
       font-size: 17px;
       line-height: 1.4;
       font-weight: 700;

@@ -207,9 +207,11 @@ func decisionTemplate(decision Decision) (name, subjectFormat string, err error)
 
 // detailRow is one label/value line in an email's details table.
 type detailRow struct {
-	Label  string
-	Value  string
-	Accent bool
+	Label   string
+	Value   string
+	Accent  bool
+	Success bool
+	Warning bool
 }
 
 // emailButton is an email's primary call to action.
@@ -224,6 +226,8 @@ var templateFuncs = template.FuncMap{
 	"brandImage": func() string { return brandImageContentID },
 	"row":        func(label, value string) detailRow { return detailRow{Label: label, Value: value} },
 	"accentRow":  func(label, value string) detailRow { return detailRow{Label: label, Value: value, Accent: true} },
+	"successRow": func(label, value string) detailRow { return detailRow{Label: label, Value: value, Success: true} },
+	"warningRow": func(label, value string) detailRow { return detailRow{Label: label, Value: value, Warning: true} },
 	"button":     func(url, label string) emailButton { return emailButton{URL: url, Label: label} },
 }
 
