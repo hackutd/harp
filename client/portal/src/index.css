@@ -846,16 +846,6 @@ body.hacker-zero-portals {
      (not hidden) keeps sticky positioning working inside the page. */
   overflow-x: clip;
   background-color: #030409;
-  background-image:
-    radial-gradient(circle at 88% 4%, rgb(246 43 232 / 8%), transparent 24%),
-    radial-gradient(circle at 12% 80%, rgb(89 0 255 / 10%), transparent 30%),
-    linear-gradient(rgb(33 255 240 / 2.5%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(33 255 240 / 2.5%) 1px, transparent 1px);
-  background-size:
-    auto,
-    auto,
-    64px 64px,
-    64px 64px;
 }
 
 /* Translate the hacker pages' legacy hard-coded light utilities at the theme
@@ -1008,11 +998,6 @@ body.hacker-zero-portals
 }
 
 .hacker-zero-sidebar [data-sidebar="sidebar"] {
-  background-image: radial-gradient(
-    circle at 0 100%,
-    rgb(89 0 255 / 18%),
-    transparent 42%
-  );
   box-shadow: inset -1px 0 rgb(33 255 240 / 8%);
 }
 
