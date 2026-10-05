@@ -1,6 +1,7 @@
 package mailer
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -22,11 +23,10 @@ func TestMagicLinkTemplateRenders(t *testing.T) {
 		"Zero Day",
 		"hacker@example.com",
 		"https://portal.test/auth/verify?token=abc123",
-		"cid:zero-day-title.webp",
-		`bgcolor="#0B0C15"`,
+		"cid:" + brandImageContentID,
 		"15 minutes",
 		"HackUTD 2026",
-		"Powered by Harp",
+		"hello@hackutd.co",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("magic_link: missing %q", want)
@@ -37,23 +37,22 @@ func TestMagicLinkTemplateRenders(t *testing.T) {
 	}
 }
 
-func TestBrandImageLoads(t *testing.T) {
-	image, err := loadBrandImage()
-	if err != nil {
-		t.Fatal(err)
+func TestBrandImageEmbedded(t *testing.T) {
+	if len(brandImage) == 0 {
+		t.Fatal("email banner is empty")
 	}
-	if len(image) == 0 {
-		t.Fatal("Zero Day email title image is empty")
+	if got := http.DetectContentType(brandImage); got != brandImageContentType {
+		t.Fatalf("email banner is %s, attached as %s", got, brandImageContentType)
 	}
 }
 
-// Every template shares the Zero Day frame from magic_link: an unpainted
-// canvas the client colours, the dark card, the inline title image, and the
-// Harp footer. The image is attached by Content-ID on every send, so a
-// template that forgets it renders a dangling attachment instead of the
-// header. The color-scheme declaration is what keeps inversion-aware clients
-// from repainting the card, so it is asserted alongside the frame.
-func TestAllTemplatesShareZeroDayTheme(t *testing.T) {
+// Every template renders inside the shared frame in layout.html: the inline
+// banner, the red rule beneath it, the signature, and the contact footer. The
+// banner is attached by Content-ID on every send, so a template that loses it
+// renders a dangling attachment instead of the header. The light-only
+// color-scheme declaration is what keeps inversion-aware clients from
+// repainting the white page, so it is asserted alongside the frame.
+func TestAllTemplatesShareFrame(t *testing.T) {
 	decision := decisionEmailData{Name: "Ada", HackathonName: "HackUTD 2026", PortalURL: "https://portal.test", From: "HackUTD"}
 	templates := map[string]any{
 		"magic_link": magicLinkEmailData{
@@ -77,11 +76,12 @@ func TestAllTemplatesShareZeroDayTheme(t *testing.T) {
 			}
 			for _, want := range []string{
 				"cid:" + brandImageContentID,
-				`bgcolor="#0B0C15"`,
-				`<meta name="color-scheme" content="light dark" />`,
-				`<meta name="supported-color-schemes" content="light dark" />`,
+				`bgcolor="#D63B4F"`,
+				`<meta name="color-scheme" content="light only" />`,
+				`<meta name="supported-color-schemes" content="light only" />`,
 				"HackUTD 2026",
-				"Powered by Harp",
+				"Best,",
+				"hello@hackutd.co",
 			} {
 				if !strings.Contains(out, want) {
 					t.Errorf("%s: missing %q", name, want)
@@ -112,7 +112,7 @@ func TestEventTemplatesRender(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, want := range []string{"hacker@example.com", ">7<", "10 minutes"} {
+		for _, want := range []string{"hacker@example.com", "#7", "10 minutes"} {
 			if !strings.Contains(out, want) {
 				t.Errorf("walk_in_queued: missing %q", want)
 			}
