@@ -12,6 +12,7 @@ import { hackerLinkIcon } from "@/shared/lib/hacker-link-icons";
 import type { Application, HackerLink, NotificationFeedItem } from "@/types";
 
 import { ApplicationStatusCards } from "../components/ApplicationStatusCards";
+import { ZeroDaySkylineBackdrop } from "../components/ZeroDaySkyline";
 import { getNotificationFeed } from "../notifications/api";
 import type { HackathonConfig } from "./api";
 import {
@@ -19,7 +20,6 @@ import {
   fetchHackathonConfig,
   fetchHackerLinks,
 } from "./api";
-import { ZeroDaySkyline } from "./components/ZeroDaySkyline";
 
 interface ImportantDate {
   month: string;
@@ -285,15 +285,9 @@ export default function DashboardPage() {
           data-skyline-stage
           className="relative overflow-hidden rounded-xl border border-[#A857FF]/25 bg-[#0B0C15] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)]"
         >
-          {/* A live isometric line city, anchored bottom-right and faded out
-              under the text; the purple light sits over it so the plates
-              take the glow. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 select-none opacity-80 [mask-image:linear-gradient(to_right,transparent_26%,black_62%)]"
-          >
-            <ZeroDaySkyline />
-          </div>
+          {/* A live isometric line city under the text; the purple light
+              sits over it so the plates take the glow. */}
+          <ZeroDaySkylineBackdrop />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)]"

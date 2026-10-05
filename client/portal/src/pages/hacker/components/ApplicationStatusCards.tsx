@@ -10,6 +10,7 @@ import {
   STATUS_MESSAGES,
   STATUS_PILL_COLORS,
 } from "./applicationStatus";
+import { ZeroDaySkylineBackdrop } from "./ZeroDaySkyline";
 
 function formatUSD(cents: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -139,7 +140,7 @@ export function ApplicationStatusCards({
   const canViewSubmission = application.status !== "draft";
 
   const statusCardShell =
-    "rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)] backdrop-blur-xl";
+    "relative overflow-hidden rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)] backdrop-blur-xl";
 
   return (
     <>
@@ -147,10 +148,12 @@ export function ApplicationStatusCards({
       {canViewSubmission ? (
         <button
           type="button"
+          data-skyline-stage
           onClick={() => navigate("/app/application")}
           className={`${statusCardShell} group flex w-full items-center justify-between gap-4 text-left transition-opacity hover:opacity-90`}
         >
-          <span className="block">
+          <ZeroDaySkylineBackdrop />
+          <span className="relative block">
             <span
               className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${STATUS_PILL_COLORS[application.status]}`}
             >
@@ -164,23 +167,26 @@ export function ApplicationStatusCards({
             </span>
           </span>
           <ChevronRight
-            className="size-5 shrink-0 text-white/60 transition-transform group-hover:translate-x-1"
+            className="relative size-5 shrink-0 text-white/60 transition-transform group-hover:translate-x-1"
             strokeWidth={1.75}
           />
         </button>
       ) : (
-        <div className={statusCardShell}>
-          <span
-            className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${STATUS_PILL_COLORS[application.status]}`}
-          >
-            {STATUS_LABELS[application.status]}
-          </span>
-          <h1 className="mt-3 text-xl font-light tracking-tight">
-            Application status
-          </h1>
-          <p className="mt-2 text-sm font-light text-white/70">
-            {STATUS_MESSAGES[application.status]}
-          </p>
+        <div data-skyline-stage className={statusCardShell}>
+          <ZeroDaySkylineBackdrop />
+          <div className="relative">
+            <span
+              className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${STATUS_PILL_COLORS[application.status]}`}
+            >
+              {STATUS_LABELS[application.status]}
+            </span>
+            <h1 className="mt-3 text-xl font-light tracking-tight">
+              Application status
+            </h1>
+            <p className="mt-2 text-sm font-light text-white/70">
+              {STATUS_MESSAGES[application.status]}
+            </p>
+          </div>
         </div>
       )}
 

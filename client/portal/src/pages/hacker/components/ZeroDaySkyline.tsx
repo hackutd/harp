@@ -260,9 +260,9 @@ type Tower = {
   h: number;
   kind: "box" | "tiered" | "spire";
   parts: Solid[];
+  wall: 0 | 1 | 2;
   sp: Spring;
   drawn: number;
-  spire?: Solid;
 };
 
 function seeded(seed: number) {
@@ -312,7 +312,13 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
           kind = "spire";
           h = 90;
         } else if (row.v === 0 && rnd() < 0.35) kind = "tiered";
-        const parts = [solid(row.g), solid(row.g), solid(row.g)];
+        const wall: Tower["wall"] =
+          kind !== "spire" && rnd() < (row.v ? 0.3 : 0.5)
+            ? rnd() < 0.5
+              ? 1
+              : 2
+            : 0;
+        const parts = [solid(row.g), solid(row.g), solid(row.g), solid(row.g)];
         towers.push({
           cx,
           cy,
@@ -321,6 +327,7 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
           h,
           kind,
           parts,
+          wall,
           sp: spring(h),
           drawn: NaN,
         });
@@ -407,6 +414,33 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
         );
         put(p2, prism(mast, null, h, h + 18));
       }
+      // A billboard standing off a camera-facing wall, riding the tower's height.
+      const p3 = t.parts[3];
+      if (t.wall) {
+        const w = Math.max(6, (t.wall === 1 ? t.sy : t.sx) * 0.62);
+        const ph = clamp(h * 0.3, 5, 10);
+        const z0 = t.kind === "tiered" ? h * 0.2 : h * 0.4;
+        const ring =
+          t.wall === 1
+            ? rrect(
+                t.cx + t.sx / 2 + 0.5,
+                t.cy - w / 2,
+                t.cx + t.sx / 2 + 1.3,
+                t.cy + w / 2,
+                0.3,
+              )
+            : rrect(
+                t.cx - w / 2,
+                t.cy + t.sy / 2 + 0.5,
+                t.cx + w / 2,
+                t.cy + t.sy / 2 + 1.3,
+                0.3,
+              );
+        put(p3, prism(ring, inset(ring, 0.5), z0, z0 + ph));
+      } else {
+        p3.sil.removeAttribute("d");
+        p3.cr.removeAttribute("d");
+      }
     }
 
     // -- the monorail: pylons, a rail along u between the rows, one train ----
@@ -445,28 +479,35 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
       cx: number;
       cy: number;
       z: number;
+      w: number;
       sp: Spring;
       drawn: number;
       el: Solid;
       posts: Solid[];
     };
     const boards: Board[] = [];
-    const boardRoofs = roofs.filter((r) => r.row === 0 && r.z < 66 && r.z > 30);
-    for (const idx of [
-      Math.floor(boardRoofs.length * 0.35),
-      boardRoofs.length - 2,
-    ]) {
+    const boardRoofs = roofs
+      .filter((r) => r.z > 20 && r.z < 66 && r.cx !== spireT.cx)
+      .sort((a, b) => a.cx - b.cx);
+    const picked = new Set<number>();
+    for (const f of [0.08, 0.3, 0.48, 0.66, 0.82, 0.96]) {
+      const idx = Math.min(
+        boardRoofs.length - 1,
+        Math.floor(boardRoofs.length * f),
+      );
       const r = boardRoofs[idx];
-      if (!r) continue;
-      const posts = [solid(far), solid(far)];
+      if (!r || picked.has(idx)) continue;
+      picked.add(idx);
+      const g = r.row ? mid : far;
       boards.push({
         cx: r.cx,
         cy: r.cy,
         z: r.z,
+        w: 8 + rnd() * 5,
         sp: spring(RAIL_ANG),
         drawn: NaN,
-        el: solid(far),
-        posts,
+        el: solid(g),
+        posts: [solid(g), solid(g)],
       });
     }
     function drawBoard(b: Board) {
@@ -475,7 +516,7 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
       b.drawn = a;
       const c = Math.cos(a);
       const s = Math.sin(a);
-      for (const [k, d] of [-3.6, 3.6].entries()) {
+      for (const [k, d] of [-(b.w / 2 - 1.6), b.w / 2 - 1.6].entries()) {
         const px = b.cx + d * c;
         const py = b.cy + d * s;
         put(
@@ -488,8 +529,8 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
           ),
         );
       }
-      const face = rotRect(b.cx, b.cy, 11, 1.2, 0.5, a);
-      put(b.el, prism(face, null, b.z + 4, b.z + 11));
+      const face = rotRect(b.cx, b.cy, b.w, 1.2, 0.5, a);
+      put(b.el, prism(face, null, b.z + 4, b.z + 4 + b.w * 0.62));
     }
 
     // -- a tower crane on a far roof, its jib swinging toward the pointer ----
@@ -588,7 +629,13 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
 
     // -- a mast with cables to its neighbours, far right ----------------------
     const mastRoof = roofs
-      .filter((r) => r.row === 0 && r.cx !== spireT.cx)
+      .filter(
+        (r) =>
+          r.row === 0 &&
+          r.cx !== spireT.cx &&
+          r !== craneRoof &&
+          !boards.some((b) => b.cx === r.cx),
+      )
       .sort((a, b) => b.cx - a.cx)[1];
     const mastTop = mastRoof.z + 15;
     put(
@@ -618,25 +665,75 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
       put(solid(far), prism(bar, null, mastTop - dz, mastTop - dz + 0.8));
     }
     const cables = mk<SVGGElement>("g", air);
-    const from = P(mastRoof.cx, mastRoof.cy, mastTop);
-    for (const to of [
-      P(spireT.cx, spireT.cy, spireT.h + 16),
-      ...boards.slice(-1).map((b) => P(b.cx, b.cy, b.z + 11)),
-    ]) {
-      const m = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2 + 7];
+    function wire(from: Pt, to: Pt, sag: number) {
+      const m = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2 + sag];
       const c = mk<SVGPathElement>("path", cables, "lo nf");
       c.setAttribute(
         "d",
         `M${r2(from[0])} ${r2(from[1])}Q${r2(m[0])} ${r2(m[1])} ${r2(to[0])} ${r2(to[1])}`,
       );
     }
+    const mastTip = P(mastRoof.cx, mastRoof.cy, mastTop);
+    wire(mastTip, P(spireT.cx, spireT.cy, spireT.h + 16), 7);
+    for (const b of boards.slice(-1))
+      wire(mastTip, P(b.cx, b.cy, b.z + 4 + b.w * 0.62), 7);
 
-    // -- drones, hovering over the city and keeping clear of the pointer -----
+    // -- rooftop poles strung together along the far row ---------------------
+    const POLE = 7;
+    const poles = farRoofs.filter(
+      (r, i) =>
+        i % 2 === 0 &&
+        r !== craneRoof &&
+        r !== mastRoof &&
+        r.cx !== spireT.cx &&
+        !boards.some((b) => b.cx === r.cx),
+    );
+    for (const r of poles) {
+      put(
+        solid(far),
+        prism(
+          rrect(r.cx - 0.5, r.cy - 0.5, r.cx + 0.5, r.cy + 0.5, 0.25),
+          null,
+          r.z,
+          r.z + POLE,
+        ),
+      );
+    }
+    for (let i = 1; i < poles.length; i++) {
+      const a = poles[i - 1];
+      const b = poles[i];
+      const pa = P(a.cx, a.cy, a.z + POLE);
+      const pb = P(b.cx, b.cy, b.z + POLE);
+      const sag = 3 + Math.hypot(pb[0] - pa[0], pb[1] - pa[1]) * 0.07;
+      wire(pa, pb, sag);
+      wire(
+        P(a.cx, a.cy, a.z + POLE - 1.6),
+        P(b.cx, b.cy, b.z + POLE - 1.6),
+        sag + 1,
+      );
+    }
+    for (const r of poles
+      .filter((r) => Math.abs(r.cx - spireT.cx) < CELL * 6)
+      .slice(0, 2)) {
+      wire(
+        P(spireT.cx, spireT.cy, spireT.h + 10),
+        P(r.cx, r.cy, r.z + POLE),
+        8,
+      );
+    }
+
+    // -- drones, each on its own patrol loop over the city, shying from the pointer
     type Drone = {
+      u0: number;
+      v0: number;
+      au: number;
+      av: number;
+      wu: number;
+      wv: number;
+      ph: number;
+      z: number;
       x: number;
       y: number;
-      z: number;
-      ph: number;
       ox: Spring;
       oy: Spring;
       body: Solid;
@@ -644,21 +741,27 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
       drawnKey: string;
     };
     const drones: Drone[] = [];
-    for (const [u, v, z, ph] of [
-      [4.2, 0.9, 54, 0],
-      [10.6, 1.6, 70, 2.1],
-      [15.8, 0.4, 102, 4.2],
+    for (const [u0, v0, au, av, wu, wv, ph, z] of [
+      [4.6, 1.0, 3.4, 0.9, 0.21, 0.34, 0, 56],
+      [10.4, 1.5, 4.6, 1.3, 0.16, 0.26, 2.1, 72],
+      [15.4, 0.3, 3.0, 1.1, 0.27, 0.18, 4.2, 104],
     ]) {
-      const [x, y] = W(u, v);
+      const [x, y] = W(u0, v0);
       const body = solid(air);
       const rotors = [0, 1, 2, 3].map(() =>
         mk<SVGPathElement>("path", air, "lo"),
       );
       drones.push({
+        u0,
+        v0,
+        au,
+        av,
+        wu,
+        wv,
+        ph,
+        z,
         x,
         y,
-        z,
-        ph,
         ox: spring(0, 40, 12),
         oy: spring(0, 40, 12),
         body,
@@ -666,24 +769,36 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
         drawnKey: "",
       });
     }
-    function drawDrone(d: Drone, bob: number) {
-      const x = d.x + d.ox.x;
-      const y = d.y + d.oy.x;
-      const z = d.z + bob;
-      const key = `${r2(x)},${r2(y)},${r2(z)}`;
+    function drawDrone(d: Drone, t: number) {
+      const gu = d.u0 + d.au * Math.sin(d.wu * t + d.ph);
+      const gv = d.v0 + d.av * Math.cos(d.wv * t + d.ph);
+      const du = d.au * d.wu * Math.cos(d.wu * t + d.ph);
+      const dv = -d.av * d.wv * Math.sin(d.wv * t + d.ph);
+      const [bx, by] = W(gu, gv);
+      d.x = bx;
+      d.y = by;
+      const [hx, hy] = W(du, dv);
+      const ang = Math.atan2(hy, hx);
+      const x = bx + d.ox.x;
+      const y = by + d.oy.x;
+      const z = d.z + Math.sin(t * 1.3 + d.ph) * 2.2;
+      const key = `${r2(x)},${r2(y)},${r2(z)},${r2(ang)}`;
       if (key === d.drawnKey) return;
       d.drawnKey = key;
-      const b = rrect(x - 2.2, y - 2.2, x + 2.2, y + 2.2, 1);
-      put(d.body, prism(b, inset(b, 0.5), z, z + 1.4));
+      put(d.body, prism(rotRect(x, y, 5, 3.6, 1, ang), null, z, z + 1.4));
+      const c = Math.cos(ang);
+      const sn = Math.sin(ang);
       [
         [-1, -1],
         [1, -1],
         [-1, 1],
         [1, 1],
       ].forEach(([dx, dy], k) => {
+        const rx = x + (dx * 3.2 * c - dy * 3.2 * sn);
+        const ry = y + (dx * 3.2 * sn + dy * 3.2 * c);
         d.rotors[k].setAttribute(
           "d",
-          poly(ringAt(circ(x + dx * 3.2, y + dy * 3.2, 1.8, 10), z + 1.6)),
+          poly(ringAt(circ(rx, ry, 1.8, 10), z + 1.6)),
         );
       });
     }
@@ -706,7 +821,16 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
         pts.push(P(t.cx, t.cy, t.h + RISE + (t.kind === "spire" ? 20 : 4)));
       }
       pts.push(P(craneRoof.cx, craneRoof.cy, craneZ + 32));
-      for (const d of drones) pts.push(P(d.x, d.y, d.z + 6));
+      for (const d of drones)
+        for (const [su, sv] of [
+          [-1, -1],
+          [1, -1],
+          [-1, 1],
+          [1, 1],
+        ]) {
+          const [x, y] = W(d.u0 + su * d.au, d.v0 + sv * d.av);
+          pts.push(P(x, y, d.z + 6));
+        }
       pts.push(
         P(W(uMin, RAIL_V)[0], W(uMin, RAIL_V)[1], 0),
         P(W(uMax, RAIL_V)[0], W(uMax, RAIL_V)[1], 0),
@@ -826,7 +950,7 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
       for (const d of drones) {
         if (stepS(d.ox, dt, snap)) moving = true;
         if (stepS(d.oy, dt, snap)) moving = true;
-        drawDrone(d, snap ? 0 : Math.sin(clock * 1.3 + d.ph) * 2.2);
+        drawDrone(d, snap ? 0 : clock);
       }
       const on = snap || Math.floor(clock / 0.9) % 2 === 0;
       if (on !== lampOn) {
@@ -913,5 +1037,23 @@ export function ZeroDaySkyline({ className = "" }: { className?: string }) {
         .zd-sky .dot.off{fill:rgba(255,255,255,.2)}
       `}</style>
     </svg>
+  );
+}
+
+/**
+ * The city as a card backdrop: fills the card, fades out under the text on
+ * the left, ignores the pointer. The card needs `relative overflow-hidden`
+ * and `data-skyline-stage` so the figure can listen to the pointer on it.
+ */
+export function ZeroDaySkylineBackdrop() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 select-none overflow-hidden opacity-80 [mask-image:linear-gradient(to_right,transparent_26%,black_62%)]"
+    >
+      <div className="absolute -bottom-[10%] right-0 h-[120%] w-[120%]">
+        <ZeroDaySkyline />
+      </div>
+    </div>
   );
 }
