@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hackutd/harp/internal/gcs"
 	"github.com/hackutd/harp/internal/mailer"
 	"github.com/hackutd/harp/internal/ratelimiter"
@@ -50,6 +51,9 @@ type application struct {
 	decisionEmailInFlight atomic.Bool
 	// dbPinger backs the health check's database probe; nil skips the probe.
 	dbPinger dbPinger
+	// cfAccessKeys verifies Cloudflare Access tokens. Nil means the Access
+	// check is off, which is everywhere except staging.
+	cfAccessKeys jwt.Keyfunc
 }
 
 type dbPinger interface {
@@ -73,6 +77,7 @@ type config struct {
 	dispatcher       dispatcherConfig
 	appleWallet      appleWalletConfig
 	observability    observabilityConfig
+	cfAccess         cfAccessConfig
 }
 
 // clientIPConfig selects the trusted source of the client address used for
@@ -160,6 +165,13 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(app.clientIPMiddleware())
 	r.Use(app.requestLoggingMiddleware)
+
+	// Staging only: refuse anything that skipped Cloudflare Access, such as a
+	// request to the run.app URL. Ahead of everything else so no route, static
+	// file, or SuperTokens endpoint is reachable around it.
+	if app.cfAccessKeys != nil {
+		r.Use(app.CFAccessMiddleware)
+	}
 
 	// CORS
 	allowedOrigins := []string{}

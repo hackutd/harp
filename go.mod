@@ -5,10 +5,12 @@ go 1.27.0
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/storage v1.60.0
+	github.com/MicahParks/keyfunc/v2 v2.1.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
 	github.com/go-playground/validator/v10 v10.30.1
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
@@ -34,7 +36,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.55.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -52,7 +53,6 @@ require (
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect

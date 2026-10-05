@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/hackutd/harp/docs"
 	"github.com/hackutd/harp/internal/auth"
 	"github.com/hackutd/harp/internal/db"
@@ -131,6 +132,10 @@ func main() {
 			wwdrCertificateBase64: env.GetString("APPLE_WALLET_WWDR_CERTIFICATE_BASE64", ""),
 			iconPath:              env.GetString("APPLE_WALLET_ICON_PATH", "client/portal/public/pwa-192x192.png"),
 		},
+		cfAccess: cfAccessConfig{
+			teamDomain: normalizeCFAccessTeamDomain(env.GetString("CF_ACCESS_TEAM_DOMAIN", "")),
+			aud:        env.GetString("CF_ACCESS_AUD", ""),
+		},
 		observability: observabilityConfig{
 			projectID: env.GetString("GOOGLE_CLOUD_PROJECT", ""),
 			service:   resolveServiceName(env.GetString("SERVICE_NAME", "harp")),
@@ -250,6 +255,22 @@ func main() {
 		logger.Info("Apple Wallet pass generation enabled")
 	}
 
+	// Staging holds a copy of prod's hacker data and is only meant to be reached
+	// through Cloudflare Access, so it refuses to start without the check.
+	var cfAccessKeys jwt.Keyfunc
+	if cfg.env == "staging" {
+		if !cfg.cfAccess.configured() {
+			logger.Fatal("ENV=staging requires CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD")
+		}
+		cfAccessKeys, err = newCFAccessKeyfunc(cfg.cfAccess, func(err error) {
+			logger.Warnw("failed to refresh cloudflare access certs", "error", err)
+		})
+		if err != nil {
+			logger.Fatalw("failed to initialize cloudflare access", "error", err)
+		}
+		logger.Infow("cloudflare access enforced", "team_domain", cfg.cfAccess.teamDomain)
+	}
+
 	// Init app
 	app := &application{
 		config:            cfg,
@@ -262,6 +283,7 @@ func main() {
 		ipRateLimiter:     ipRateLimiter,
 		sessionUserID:     supertokensSessionUserID,
 		dbPinger:          db,
+		cfAccessKeys:      cfAccessKeys,
 	}
 
 	// Metrics collected
