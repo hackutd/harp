@@ -10,6 +10,10 @@ import {
 } from "@/shared/lib/schema-utils";
 import type { Application } from "@/types";
 
+import { CopyResponseButton } from "./CopyResponseButton";
+
+const SHORT_ANSWERS_SECTION = "short_answers";
+
 interface SchemaDetailRendererProps {
   application: Application;
   /** Sections to skip (e.g., "links" if rendered separately). */
@@ -41,9 +45,22 @@ export function SchemaDetailRenderer({
           );
           if (!fields || fields.length === 0) return null;
 
+          const isShortAnswers = section.id === SHORT_ANSWERS_SECTION;
+          const allAnswers = isShortAnswers
+            ? fields
+                .map((f) => getResponseValue(responses, f.id, ""))
+                .filter((v): v is string => typeof v === "string" && !!v)
+                .join("\n\n")
+            : "";
+
           return (
             <div key={section.id}>
-              <h4 className="text-sm font-semibold mb-2">{section.label}</h4>
+              <div className="flex items-center gap-1 mb-2">
+                <h4 className="text-sm font-semibold">{section.label}</h4>
+                {allAnswers && (
+                  <CopyResponseButton text={allAnswers} label={section.label} />
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {fields.map((field) => {
                   const value = getResponseValue(responses, field.id, null);
@@ -81,7 +98,13 @@ export function SchemaDetailRenderer({
                         <Label className="text-muted-foreground text-xs">
                           {field.label}
                         </Label>
-                        <p className="whitespace-pre-wrap">
+                        <p
+                          className={
+                            isShortAnswers
+                              ? "whitespace-pre-wrap mt-1 rounded-md border px-3 py-2 text-[15px] leading-relaxed"
+                              : "whitespace-pre-wrap"
+                          }
+                        >
                           {formatResponseValue(value, field)}
                         </p>
                       </div>
