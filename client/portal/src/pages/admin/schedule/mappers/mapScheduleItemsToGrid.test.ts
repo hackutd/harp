@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ScheduleResponseItem } from "../api";
 import { mapScheduleItemsToGrid } from "./mapScheduleItemsToGrid";
 
-// Tests run under TZ=America/Chicago (pinned in package.json).
+// Tests run under TZ=America/Chicago (pinned in vitest.config.ts).
 // March 2026 dates are after DST starts (Mar 8), so Chicago = CDT = UTC-5.
 
 function item(

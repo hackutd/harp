@@ -1,13 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// External boundaries mocked at module level per testing conventions.
-// SearchBar itself doesn't use SuperTokens/Sonner, but these are the project's
-// standard boundaries and mocking them keeps future refactors from dragging
-// auth/toast side effects into the test environment.
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("supertokens-auth-react", () => ({}));
+import { describe, expect, it, vi } from "vitest";
 
 import { SearchBar } from "./SearchBar";
 
@@ -17,10 +10,6 @@ describe("SearchBar", () => {
   function renderBar(value = "") {
     return render(<SearchBar value={value} onChange={onChange} />);
   }
-
-  beforeEach(() => {
-    onChange.mockClear();
-  });
 
   it("renders a collapsed search button when closed", () => {
     renderBar();

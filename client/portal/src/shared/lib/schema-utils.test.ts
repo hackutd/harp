@@ -1,14 +1,18 @@
+import type { FieldValues, ResolverOptions } from "react-hook-form";
 import { describe, expect, it } from "vitest";
 
 import type { ApplicationSchemaField } from "@/types";
 
 import {
   buildDefaultValues,
+  buildSchemaResolver,
   buildZodSchema,
   deriveSections,
   formatResponseValue,
+  getObsoleteOptions,
   getResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
   stripLabelLinks,
 } from "./schema-utils";
 
@@ -30,7 +34,9 @@ function validate(
   fields: ApplicationSchemaField[],
   values: Record<string, unknown>,
 ) {
-  return buildZodSchema(fields).safeParse(values);
+  // Conditions are resolved against the answers being validated, the same
+  // way buildSchemaResolver feeds them in.
+  return buildZodSchema(fields, values).safeParse(values);
 }
 
 describe("required and optional fields", () => {
@@ -198,6 +204,7 @@ describe("select, multi-select, and checkbox semantics", () => {
 
   it("keeps multi-select defaulting to [] when omitted", () => {
     const result = validate(fields, { size: "S", agree: true });
+    expect(result.success).toBe(true);
     if (result.success) expect(result.data.skills).toEqual([]);
   });
 
@@ -214,6 +221,151 @@ describe("select, multi-select, and checkbox semantics", () => {
     const result = validate(optionalOnly, {});
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.newsletter).toBe(false);
+  });
+});
+
+describe("options that are no longer offered", () => {
+  const size = field({
+    id: "size",
+    type: "select",
+    required: true,
+    options: ["S", "M"],
+  });
+  const skills = field({
+    id: "skills",
+    type: "multi_select",
+    options: ["go", "rust"],
+  });
+
+  it("rejects a saved choice the schema no longer offers", () => {
+    expect(validate([size], { size: "XL" }).success).toBe(false);
+    expect(validate([skills], { skills: ["go", "cobol"] }).success).toBe(false);
+  });
+
+  it("lets drafts keep obsolete choices when options are not enforced", () => {
+    const schema = buildZodSchema([size, skills], null, {
+      enforceOptions: false,
+    });
+    expect(schema.safeParse({ size: "XL", skills: ["cobol"] }).success).toBe(
+      true,
+    );
+  });
+
+  it("reports each obsolete choice once", () => {
+    expect(getObsoleteOptions(skills, ["cobol", "go", "cobol"])).toEqual([
+      "cobol",
+    ]);
+    expect(getObsoleteOptions(size, "S")).toEqual([]);
+    expect(getObsoleteOptions(field({ type: "text" }), "anything")).toEqual([]);
+  });
+});
+
+describe("whole-number fields", () => {
+  it("rejects fractional ages and holds the floor above a lower schema min", () => {
+    const age = field({
+      id: "age",
+      type: "number",
+      required: true,
+      validation: { min: 0 },
+    });
+    expect(validate([age], { age: 20 }).success).toBe(true);
+    expect(validate([age], { age: 20.5 }).success).toBe(false);
+    expect(validate([age], { age: 0 }).success).toBe(false);
+  });
+
+  it("lets the schema raise the floor", () => {
+    const age = field({
+      id: "age",
+      type: "number",
+      required: true,
+      validation: { min: 18 },
+    });
+    expect(validate([age], { age: 17 }).success).toBe(false);
+    expect(validate([age], { age: 18 }).success).toBe(true);
+  });
+
+  it("fails an untouched required number and passes an untouched optional one", () => {
+    expect(
+      validate([field({ id: "n", type: "number", required: true })], {})
+        .success,
+    ).toBe(false);
+    expect(validate([field({ id: "n", type: "number" })], {}).success).toBe(
+      true,
+    );
+  });
+});
+
+describe("conditional fields (show_if / required_if)", () => {
+  const optIn = field({ id: "travel", type: "checkbox" });
+  const city = field({
+    id: "city",
+    required: true,
+    validation: { show_if: "travel" },
+  });
+  const mode = field({
+    id: "mode",
+    type: "select",
+    options: ["Flying", "Driving"],
+  });
+  const airport = field({
+    id: "airport",
+    validation: { required_if: "mode=Flying" },
+  });
+
+  it("does not require a hidden field", () => {
+    expect(validate([optIn, city], { travel: false, city: "" }).success).toBe(
+      true,
+    );
+    expect(isFieldVisible(city, { travel: false })).toBe(false);
+  });
+
+  it("requires a field once its checkbox controller shows it", () => {
+    expect(validate([optIn, city], { travel: true, city: "" }).success).toBe(
+      false,
+    );
+    expect(isFieldVisible(city, { travel: true })).toBe(true);
+  });
+
+  it("requires a field only when its select controller has the matching value", () => {
+    expect(
+      validate([mode, airport], { mode: "Driving", airport: "" }).success,
+    ).toBe(true);
+    expect(
+      validate([mode, airport], { mode: "Flying", airport: "" }).success,
+    ).toBe(false);
+  });
+
+  it("enforces conditions even while another field is still invalid", () => {
+    // Zod skips object-level refinements once any property fails, which once
+    // let an opted-in but empty travel section through until submit.
+    const age = field({ id: "age", type: "number", required: true });
+    const result = validate([age, optIn, city], { travel: true, city: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((i) => i.path[0])).toContain("city");
+    }
+  });
+
+  it("re-evaluates conditions in the form resolver as answers change", async () => {
+    const resolver = buildSchemaResolver([optIn, city]);
+    const options = {
+      fields: {},
+      shouldUseNativeValidation: false,
+    } as ResolverOptions<FieldValues>;
+
+    const hidden = await resolver(
+      { travel: false, city: "" },
+      undefined,
+      options,
+    );
+    expect(hidden.errors).toEqual({});
+
+    const shown = await resolver(
+      { travel: true, city: "" },
+      undefined,
+      options,
+    );
+    expect(shown.errors).toHaveProperty("city");
   });
 });
 

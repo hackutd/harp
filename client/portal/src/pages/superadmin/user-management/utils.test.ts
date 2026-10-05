@@ -54,11 +54,20 @@ describe("getUserInitial", () => {
 });
 
 describe("formatDate", () => {
-  it("renders a short US date label deterministically under the pinned timezone", () => {
-    expect(formatDate("2026-03-14T15:00:00Z")).toMatch(/Mar 1[45], 2026/);
-  });
-
-  it("renders end-to-end dates consistently", () => {
-    expect(formatDate("2026-12-31T23:59:59Z")).toMatch(/Dec (30|31), 2026/);
+  // Tests run under TZ=America/Chicago (pinned in vitest.config.ts).
+  it.each([
+    ["a midday instant", "2026-03-14T15:00:00Z", "Mar 14, 2026"],
+    [
+      "a late-UTC instant that is still the same local day",
+      "2026-12-31T23:59:59Z",
+      "Dec 31, 2026",
+    ],
+    [
+      "an early-UTC instant that is the previous local day",
+      "2026-03-15T03:00:00Z",
+      "Mar 14, 2026",
+    ],
+  ])("renders %s in local time", (_label, iso, expected) => {
+    expect(formatDate(iso)).toBe(expected);
   });
 });

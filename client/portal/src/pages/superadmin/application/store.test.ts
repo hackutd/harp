@@ -41,14 +41,10 @@ function field(
 }
 
 beforeEach(() => {
-  useApplicationSchemaStore.setState({
-    fields: [],
-    sections: [],
-    loading: false,
-    saving: false,
-    contracts: {},
-  });
-  vi.clearAllMocks();
+  useApplicationSchemaStore.setState(
+    useApplicationSchemaStore.getInitialState(),
+    true,
+  );
   contract.fetchSchemaContract.mockResolvedValue({
     status: 200,
     data: { application_schema: [], travel_rsvp_schema: [] },

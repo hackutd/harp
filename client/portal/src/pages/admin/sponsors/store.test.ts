@@ -56,8 +56,7 @@ const payload: SponsorPayload = {
 const listResult = { sponsors: [sponsor("1"), sponsor("2")] };
 
 beforeEach(() => {
-  useSponsorsStore.setState({ sponsors: [], loading: false, saving: false });
-  vi.clearAllMocks();
+  useSponsorsStore.setState(useSponsorsStore.getInitialState(), true);
 });
 
 describe("sponsor store: fetch", () => {

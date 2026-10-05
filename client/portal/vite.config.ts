@@ -7,6 +7,7 @@ import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 import { branding } from "./branding";
+import { aliases } from "./vite.aliases";
 
 // https://vite.dev/config/
 const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:8080";
@@ -193,15 +194,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      // Must precede "@": Vite matches aliases in order and "@" would
-      // otherwise capture "@/branding/..." and send it into src/.
-      "@/branding": path.resolve(__dirname, "./branding"),
-      "@": path.resolve(__dirname, "./src"),
-      "@/components": path.resolve(__dirname, "./src/components"),
-      "@/shared": path.resolve(__dirname, "./src/shared"),
-      "@/layouts": path.resolve(__dirname, "./src/layouts"),
-      "@/pages": path.resolve(__dirname, "./src/pages"),
-    },
+    alias: aliases,
   },
 });

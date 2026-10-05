@@ -41,17 +41,10 @@ const listResult = {
 };
 
 beforeEach(() => {
-  useUserManagementStore.setState({
-    users: [],
-    loading: true,
-    nextCursor: null,
-    prevCursor: null,
-    activeRoles: [],
-    searchInput: "",
-    togglingId: null,
-    updatingRoleId: null,
-  });
-  vi.clearAllMocks();
+  useUserManagementStore.setState(
+    useUserManagementStore.getInitialState(),
+    true,
+  );
 });
 
 describe("user-management store: fetchUsers params", () => {

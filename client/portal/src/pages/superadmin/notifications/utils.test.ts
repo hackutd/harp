@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScheduledNotification } from "./types";
 import {
   DEFAULT_SCHEDULE_LEAD_MS,
+  defaultScheduledLocal,
   getScheduledAtError,
   MIN_SCHEDULE_LEAD_MS,
+  minimumScheduledLocal,
   normalizeNotificationUrlInput,
   sortScheduledNotifications,
   toLocalInputValue,
@@ -56,15 +58,36 @@ describe("sortScheduledNotifications", () => {
 });
 
 describe("toLocalInputValue", () => {
-  it("converts an ISO instant to a local datetime-local input value", () => {
-    // Round-trips through local wall time regardless of host zone.
-    const iso = "2026-03-14T15:30:00Z";
-    const value = toLocalInputValue(iso);
-    expect(value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-    // Converting back with the same zone offset must recover the instant.
-    const parsed = new Date(value);
-    const offsetShift = new Date(iso).getTime() - parsed.getTime();
-    expect(Math.abs(offsetShift) % 60_000).toBe(0);
+  // Tests run under TZ=America/Chicago (pinned in vitest.config.ts).
+  it.each([
+    ["a CDT instant", "2026-03-14T15:30:00Z", "2026-03-14T10:30"],
+    ["a CST instant", "2026-01-15T15:30:00Z", "2026-01-15T09:30"],
+    [
+      "an instant on the previous local day",
+      "2026-03-15T03:00:00Z",
+      "2026-03-14T22:00",
+    ],
+  ])("converts %s to local wall time", (_label, iso, expected) => {
+    expect(toLocalInputValue(iso)).toBe(expected);
+  });
+});
+
+describe("default and minimum scheduled times", () => {
+  it("rounds the lead time up to the next whole minute", () => {
+    vi.setSystemTime(new Date("2026-03-14T15:00:30Z")); // 10:00:30 CDT
+    expect(defaultScheduledLocal()).toBe("2026-03-14T10:06");
+    expect(minimumScheduledLocal()).toBe("2026-03-14T10:02");
+  });
+
+  it("keeps an exact minute as is", () => {
+    vi.setSystemTime(new Date("2026-03-14T15:00:00Z"));
+    expect(defaultScheduledLocal()).toBe("2026-03-14T10:05");
+    expect(minimumScheduledLocal()).toBe("2026-03-14T10:01");
+  });
+
+  it("offers a minimum that getScheduledAtError accepts", () => {
+    vi.setSystemTime(new Date("2026-03-14T15:00:30Z"));
+    expect(getScheduledAtError(minimumScheduledLocal())).toBeNull();
   });
 });
 

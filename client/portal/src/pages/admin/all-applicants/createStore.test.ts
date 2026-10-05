@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createApplicationsStore } from "./createStore";
-import type { ApplicationSortBy, ApplicationStatus } from "./types";
+import {
+  type ApplicationsStoreConfig,
+  createApplicationsStore,
+} from "./createStore";
 
 const api = vi.hoisted(() => ({
   fetchApplications: vi.fn(),
@@ -12,11 +14,6 @@ vi.mock("./api", () => ({
   fetchApplications: api.fetchApplications,
   fetchApplicationStats: api.fetchApplicationStats,
 }));
-
-interface ApplicationsStoreConfig {
-  defaultStatus: ApplicationStatus | null;
-  defaultSortBy?: ApplicationSortBy;
-}
 
 function newState(overrides: Partial<ApplicationsStoreConfig> = {}) {
   return createApplicationsStore({ defaultStatus: null, ...overrides });
@@ -43,7 +40,7 @@ describe("applicant-list store", () => {
     expect(store.stats).toBeNull();
   });
 
-  it("flips loading on and applies fetched applications, cursors, and filters", async () => {
+  it("flips loading on and applies fetched applications and cursors", async () => {
     api.fetchApplications.mockResolvedValue({ status: 200, data: listResult });
 
     const store = newState();
@@ -59,13 +56,20 @@ describe("applicant-list store", () => {
     expect(s.hasMore).toBe(true);
   });
 
-  it("derives status/search from current state when not overridden", async () => {
+  it("derives status/search/sort from current state when not overridden", async () => {
     api.fetchApplications.mockResolvedValue({ status: 200, data: listResult });
-    const store = newState();
+    const store = newState({ defaultSortBy: "created_at" });
     store.getState().setStatusFilter("accepted");
+    await store.getState().fetchApplications({ search: "ada" });
+
+    // A follow-up fetch with no params keeps the remembered view.
     await store.getState().fetchApplications();
-    expect(api.fetchApplications).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "accepted", sort_by: undefined }),
+    expect(api.fetchApplications).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "accepted",
+        search: "ada",
+        sort_by: "created_at",
+      }),
       undefined,
     );
   });

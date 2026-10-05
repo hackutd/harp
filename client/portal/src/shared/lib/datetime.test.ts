@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  formatElapsed,
   formatPickerDate,
   getLocalParts,
   getLocalTimeZoneLabel,
@@ -10,7 +11,7 @@ import {
 } from "./datetime";
 
 // These tests rely on the test process being pinned to America/Chicago
-// (see vitest scripts in package.json) so local-time assertions are stable.
+// (see vitest.config.ts) so local-time assertions are stable.
 
 describe("toDateKey", () => {
   it.each([
@@ -78,18 +79,50 @@ describe("getLocalTimeZoneLabel", () => {
     expect(getLocalTimeZoneLabel().iana).toBe("America/Chicago");
   });
 
-  it("uses a real abbreviation in the label and falls back otherwise", () => {
-    // Summer date resolves to CDT (a real abbreviation).
-    const summer = getLocalTimeZoneLabel(new Date("2026-07-04T18:00:00Z"));
-    expect(summer.abbrev).toBe("CDT");
-    expect(summer.label).toBe("CDT · America/Chicago");
+  it.each([
+    ["summer", "2026-07-04T18:00:00Z", "CDT"],
+    ["winter", "2026-01-15T18:00:00Z", "CST"],
+  ])(
+    "pairs the DST-aware %s abbreviation with the IANA name",
+    (_s, iso, abbrev) => {
+      const zone = getLocalTimeZoneLabel(new Date(iso));
+      expect(zone.abbrev).toBe(abbrev);
+      expect(zone.label).toBe(`${abbrev} · America/Chicago`);
+    },
+  );
 
-    // A GMT-style fallback must not be paired with the IANA name.
-    const winter = getLocalTimeZoneLabel(new Date("2026-01-15T18:00:00Z"));
-    if (/^(GMT|UTC)[+-]/i.test(winter.abbrev)) {
-      expect(winter.label).toBe("America/Chicago");
-    } else {
-      expect(winter.label).toBe(`${winter.abbrev} · America/Chicago`);
+  it("falls back to the IANA name alone for a GMT-offset abbreviation", () => {
+    const spy = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "formatToParts")
+      .mockReturnValue([{ type: "timeZoneName", value: "GMT-6" }]);
+    try {
+      const zone = getLocalTimeZoneLabel(new Date("2026-01-15T18:00:00Z"));
+      expect(zone.abbrev).toBe("GMT-6");
+      expect(zone.label).toBe("America/Chicago");
+    } finally {
+      spy.mockRestore();
     }
+  });
+});
+
+describe("formatElapsed", () => {
+  const start = new Date("2026-03-14T12:00:00Z");
+  const after = (seconds: number) => new Date(start.getTime() + seconds * 1000);
+
+  it.each([
+    ["seconds only", 42, "42s"],
+    ["minutes and seconds", 9 * 60 + 2, "9m 2s"],
+    ["whole minutes", 5 * 60, "5m"],
+    ["hours and minutes, dropping seconds", 3 * 3600 + 15 * 60 + 9, "3h 15m"],
+    ["whole hours", 2 * 3600, "2h"],
+    ["days and hours", 2 * 86400 + 4 * 3600 + 59, "2d 4h"],
+    ["whole days", 86400, "1d"],
+    ["zero", 0, "0s"],
+  ])("formats %s", (_label, seconds, expected) => {
+    expect(formatElapsed(start, after(seconds))).toBe(expected);
+  });
+
+  it("reads an end before the start as 0s", () => {
+    expect(formatElapsed(start, after(-30))).toBe("0s");
   });
 });

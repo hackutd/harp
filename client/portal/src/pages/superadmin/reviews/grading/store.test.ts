@@ -86,8 +86,7 @@ function listResponse(applications: ApplicationListItem[]) {
 }
 
 beforeEach(() => {
-  useGradingStore.getState().reset();
-  vi.clearAllMocks();
+  useGradingStore.setState(useGradingStore.getInitialState(), true);
 });
 
 describe("grading store: stale-response guarding on loadDetail", () => {
@@ -139,7 +138,7 @@ describe("grading store: navigation is bounded at first and last", () => {
       listResponse([app("1"), app("2"), app("3")]),
     );
     await useGradingStore.getState().fetchApplications();
-    useGradingStore.getState().loadDetail("1");
+    // Navigation loads the next detail, so the detail endpoints must answer.
     adminApi.fetchApplicationById.mockResolvedValue({
       status: 200,
       data: undefined,
@@ -181,14 +180,6 @@ describe("grading store: gradeApplication", () => {
       listResponse([app("1"), app("2")]),
     );
     await useGradingStore.getState().fetchApplications();
-    adminApi.fetchApplicationById.mockResolvedValue({
-      status: 200,
-      data: undefined,
-    });
-    reviewsApi.fetchReviewNotes.mockResolvedValue({
-      status: 200,
-      data: { notes: [] },
-    });
 
     gradingApi.setApplicationStatus.mockResolvedValue({ status: 200 });
     await useGradingStore.getState().gradeApplication("1", "accepted");
@@ -202,14 +193,6 @@ describe("grading store: gradeApplication", () => {
   it("keeps state and clears grading when the update fails", async () => {
     adminApi.fetchApplications.mockResolvedValueOnce(listResponse([app("1")]));
     await useGradingStore.getState().fetchApplications();
-    adminApi.fetchApplicationById.mockResolvedValue({
-      status: 200,
-      data: undefined,
-    });
-    reviewsApi.fetchReviewNotes.mockResolvedValue({
-      status: 200,
-      data: { notes: [] },
-    });
 
     gradingApi.setApplicationStatus.mockResolvedValue({ status: 500 });
     const before = useGradingStore.getState().applications[0].status;

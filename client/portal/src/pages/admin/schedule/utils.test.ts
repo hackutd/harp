@@ -9,7 +9,7 @@ import {
   getDateRange,
 } from "./utils";
 
-// Tests run under TZ=America/Chicago (pinned in package.json), so local-time
+// Tests run under TZ=America/Chicago (pinned in vitest.config.ts), so local-time
 // expectations below are deterministic on any host machine.
 
 describe("getDateRange", () => {
@@ -69,10 +69,14 @@ describe("formatQuarterTime", () => {
     },
   );
 
+  it("labels the end-of-day boundary as midnight", () => {
+    // Quarter 96 (24:00) is offered as an end time in the composer.
+    expect(formatQuarterTime(QUARTER_HOUR_SLOTS)).toBe("12:00 AM");
+  });
+
   it("clamps out-of-range quarters defensively", () => {
     expect(formatQuarterTime(-5)).toBe("12:00 AM");
-    // Clamps to the final slot of the day (96 → 24:00 renders as 12:00 PM).
-    expect(formatQuarterTime(QUARTER_HOUR_SLOTS)).toBe("12:00 PM");
+    expect(formatQuarterTime(QUARTER_HOUR_SLOTS + 10)).toBe("12:00 AM");
   });
 });
 

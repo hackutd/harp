@@ -58,8 +58,7 @@ function makeReview(id: string): Review {
 }
 
 beforeEach(() => {
-  useAdminGradingStore.getState().reset();
-  vi.clearAllMocks();
+  useAdminGradingStore.setState(useAdminGradingStore.getInitialState(), true);
   adminApi.fetchApplicationById.mockResolvedValue({
     status: 200,
     data: undefined,

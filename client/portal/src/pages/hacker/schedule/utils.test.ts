@@ -12,7 +12,7 @@ import {
   toDayEvent,
 } from "./utils";
 
-// Tests run under TZ=America/Chicago (pinned in package.json).
+// Tests run under TZ=America/Chicago (pinned in vitest.config.ts).
 
 function item(id: string, startTime: string, endTime: string): ScheduleItem {
   return {
@@ -30,8 +30,8 @@ function item(id: string, startTime: string, endTime: string): ScheduleItem {
 
 /** Local-time helper: builds a UTC ISO instant for the given Chicago wall time. */
 function chicagoInstant(dateKey: string, hour: number, minute: number): string {
-  // Chicago is UTC-6 (CST) in March 2026 after DST starts Mar 8 → UTC-5 (CDT).
-  // Build via Date arithmetic instead of hardcoding offsets.
+  // Built from local Date parts rather than a hardcoded offset, so the CST
+  // (UTC-6) → CDT (UTC-5) switch on Mar 8, 2026 is handled for us.
   const [y, m, d] = dateKey.split("-").map(Number);
   const local = new Date(y, m - 1, d, hour, minute);
   return local.toISOString();
@@ -91,11 +91,19 @@ describe("toDayEvent", () => {
     expect(result?.event.endMin).toBe(24 * 60);
   });
 
-  it("returns null for events ending before they start (previous-day end)", () => {
-    // Start 2026-03-15 local, but end resolves to an earlier calendar day is
-    // impossible with real instants; simulate with reversed invalid input.
-    const result = toDayEvent(item("bad", "not-a-date", "also-bad"));
+  it("returns null for events that end on an earlier day than they start", () => {
+    const result = toDayEvent(
+      item(
+        "reversed",
+        chicagoInstant("2026-03-15", 9, 0),
+        chicagoInstant("2026-03-14", 23, 0),
+      ),
+    );
     expect(result).toBeNull();
+  });
+
+  it("returns null for unparseable timestamps", () => {
+    expect(toDayEvent(item("bad", "not-a-date", "also-bad"))).toBeNull();
   });
 
   it("gives zero/negative-length events a minimum 15-minute span", () => {
@@ -138,14 +146,28 @@ describe("layoutDayEvents", () => {
     expect(new Set(laid.map((e) => e.laneCount))).toEqual(new Set([3]));
   });
 
-  it("reuses a freed lane once an overlap cluster ends", () => {
+  it("reuses a lane freed earlier in the same overlap cluster", () => {
+    // "long" spans the whole cluster; "late" starts after "early" ends, so it
+    // takes lane 1 back instead of opening a third lane.
+    const laid = layoutDayEvents([
+      ev("long", 540, 720),
+      ev("early", 560, 600),
+      ev("late", 610, 650),
+    ]);
+    const byId = new Map(laid.map((e) => [e.item.id, e]));
+    expect(byId.get("early")?.lane).toBe(1);
+    expect(byId.get("late")?.lane).toBe(1);
+    expect(byId.get("late")?.laneCount).toBe(2);
+  });
+
+  it("starts a new full-width cluster once every overlap has ended", () => {
     const laid = layoutDayEvents([
       ev("first", 540, 600),
       ev("overlap", 570, 660),
       ev("later", 660, 720),
     ]);
     const byId = new Map(laid.map((e) => [e.item.id, e]));
-    // "later" starts exactly when the cluster ends → own cluster, full width.
+    expect(byId.get("overlap")?.laneCount).toBe(2);
     expect(byId.get("later")?.laneCount).toBe(1);
   });
 

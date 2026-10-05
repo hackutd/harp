@@ -1,25 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { ApiResponse } from "@/types";
 
 import {
   checkEmailAuthMethod,
   deleteRequest,
+  errorAlert,
   getRequest,
   patchRequest,
   postRequest,
   putRequest,
 } from "./api";
 
+const toast = vi.hoisted(() => ({ error: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
+
+// The config's unstubGlobals restores the real fetch after every test.
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
-});
-
-afterEach(() => {
-  // Reset module-level sequencing between tests so stale request state leaks.
-  vi.unstubAllGlobals();
-  vi.clearAllMocks();
 });
 
 function okResponse(data: unknown, status = 200): Response {
@@ -29,8 +30,12 @@ function okResponse(data: unknown, status = 200): Response {
   });
 }
 
-function errorResponse(error: string | null, status = 400): Response {
-  return new Response(JSON.stringify(error ? { error } : {}), {
+function errorResponse(
+  error: string | null,
+  status = 400,
+  extra: Record<string, unknown> = {},
+): Response {
+  return new Response(JSON.stringify(error ? { error, ...extra } : extra), {
     status,
     headers: { "Content-Type": "application/json" },
   });
@@ -38,72 +43,20 @@ function errorResponse(error: string | null, status = 400): Response {
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-type RequestFactory<M extends HttpMethod> = M extends "GET" | "DELETE"
-  ? (
-      endpoint: string,
-      errorContext?: string,
-      signal?: AbortSignal,
-    ) => Promise<{ status: number }>
-  : (
-      endpoint: string,
-      body: unknown,
-      errorContext?: string,
-      signal?: AbortSignal,
-    ) => Promise<{ status: number }>;
+/** Calls each exported request helper the same way, with an optional body. */
+const send: Record<
+  HttpMethod,
+  (endpoint: string, body?: unknown) => Promise<ApiResponse<unknown>>
+> = {
+  GET: (endpoint) => getRequest(endpoint),
+  POST: (endpoint, body) => postRequest(endpoint, body),
+  PUT: (endpoint, body) => putRequest(endpoint, body),
+  PATCH: (endpoint, body) => patchRequest(endpoint, body),
+  DELETE: (endpoint) => deleteRequest(endpoint),
+};
 
-/** Maps a method name to its exported request factory. */
-function requestFor<M extends HttpMethod>(method: M): RequestFactory<M> {
-  switch (method) {
-    case "GET":
-      return ((endpoint: string, errorContext?: string, signal?: AbortSignal) =>
-        getRequest(endpoint, errorContext ?? "", signal)) as RequestFactory<M>;
-    case "POST":
-      return ((
-        endpoint: string,
-        body: unknown,
-        errorContext?: string,
-        signal?: AbortSignal,
-      ) =>
-        postRequest(
-          endpoint,
-          body,
-          errorContext ?? "",
-          signal,
-        )) as RequestFactory<M>;
-    case "PUT":
-      return ((
-        endpoint: string,
-        body: unknown,
-        errorContext?: string,
-        signal?: AbortSignal,
-      ) =>
-        putRequest(
-          endpoint,
-          body,
-          errorContext ?? "",
-          signal,
-        )) as RequestFactory<M>;
-    case "PATCH":
-      return ((
-        endpoint: string,
-        body: unknown,
-        errorContext?: string,
-        signal?: AbortSignal,
-      ) =>
-        patchRequest(
-          endpoint,
-          body,
-          errorContext ?? "",
-          signal,
-        )) as RequestFactory<M>;
-    default:
-      return ((endpoint: string, errorContext?: string, signal?: AbortSignal) =>
-        deleteRequest(
-          endpoint,
-          errorContext ?? "",
-          signal,
-        )) as RequestFactory<M>;
-  }
+function lastInit(): RequestInit {
+  return fetchMock.mock.calls[0][1] as RequestInit;
 }
 
 describe("request method plumbing against mocked fetch", () => {
@@ -118,23 +71,19 @@ describe("request method plumbing against mocked fetch", () => {
     async (method, body) => {
       fetchMock.mockResolvedValue(okResponse(null));
 
-      if (method === "GET" || method === "DELETE") {
-        await requestFor(method)("/things");
-      } else {
-        await requestFor(method)("/things", body);
-      }
+      await send[method]("/things", body);
 
-      const [input, init] = fetchMock.mock.calls[0];
-      expect(String(input).startsWith("/v1/things")).toBe(true);
-      expect((init as RequestInit).method).toBe(method);
-      expect((init as RequestInit).credentials).toBe("include");
-      expect((init as RequestInit).headers).toMatchObject({
+      expect(String(fetchMock.mock.calls[0][0])).toBe("/v1/things");
+      const init = lastInit();
+      expect(init.method).toBe(method);
+      expect(init.credentials).toBe("include");
+      expect(init.headers).toMatchObject({
         "Content-Type": "application/json",
       });
-      if (method === "GET" || method === "DELETE") {
-        expect((init as RequestInit).body).toBeUndefined();
+      if (body === undefined) {
+        expect(init.body).toBeUndefined();
       } else {
-        expect(JSON.parse((init as RequestInit).body as string)).toEqual(body);
+        expect(JSON.parse(init.body as string)).toEqual(body);
       }
     },
   );
@@ -160,37 +109,45 @@ describe("success envelopes map to typed data", () => {
 });
 
 describe("API error envelopes and fallbacks surface consistently", () => {
-  it.each<[HttpMethod, string, string]>([
-    ["GET", "/things", "Failed to fetch /things"],
-    ["POST", "/things", "Failed to post /things"],
-    ["PUT", "/things", "Failed to update /things"],
-    ["PATCH", "/things", "Failed to update /things"],
-    ["DELETE", "/things", "Failed to delete /things"],
+  it.each<[HttpMethod, string]>([
+    ["GET", "Failed to fetch /things"],
+    ["POST", "Failed to post /things"],
+    ["PUT", "Failed to update /things"],
+    ["PATCH", "Failed to update /things"],
+    ["DELETE", "Failed to delete /things"],
   ])(
-    "%s falls back to the context message when the envelope is empty",
-    async (method, endpoint, expected) => {
+    "%s falls back to the endpoint when the envelope is empty",
+    async (method, expected) => {
       fetchMock.mockResolvedValue(errorResponse(null, 500));
 
-      let res: { status: number; data?: unknown; error?: string };
-      if (method === "GET" || method === "DELETE") {
-        res = (await requestFor(method)(endpoint)) as {
-          status: number;
-          data?: unknown;
-          error?: string;
-        };
-      } else {
-        res = (await requestFor(method)(endpoint, {})) as {
-          status: number;
-          data?: unknown;
-          error?: string;
-        };
-      }
+      const res = await send[method]("/things", {});
 
       expect(res.status).toBe(500);
       expect(res.data).toBeUndefined();
       expect(res.error).toBe(expected);
     },
   );
+
+  it("names the error context instead of the endpoint when one is given", async () => {
+    fetchMock.mockResolvedValue(errorResponse(null, 500));
+    const res = await getRequest("/things", "sponsor list");
+    expect(res.error).toBe("Failed to fetch sponsor list");
+  });
+
+  it("passes field-level validation errors through", async () => {
+    const fields = ["email"];
+    fetchMock.mockResolvedValue(errorResponse("Invalid", 422, { fields }));
+    const res = await postRequest("/things", {});
+    expect(res.fields).toEqual(fields);
+  });
+
+  it("ignores a fields value that is not an array", async () => {
+    fetchMock.mockResolvedValue(
+      errorResponse("Invalid", 422, { fields: "email" }),
+    );
+    const res = await postRequest("/things", {});
+    expect(res.fields).toBeUndefined();
+  });
 
   it("surfaces the server-provided error message from the envelope", async () => {
     fetchMock.mockResolvedValue(errorResponse("Server said no", 422));
@@ -219,8 +176,7 @@ describe("malformed JSON, network failures, and aborts", () => {
 
   it("maps an aborted request to a Request aborted envelope", async () => {
     fetchMock.mockRejectedValue(new DOMException("Aborted", "AbortError"));
-    const controller = new AbortController();
-    const res = await getRequest("/things", "ctx", controller.signal);
+    const res = await getRequest("/things");
     expect(res.status).toBe(0);
     expect(res.error).toBe("Request aborted");
   });
@@ -237,5 +193,31 @@ describe("checkEmailAuthMethod", () => {
     expect(String(input)).toContain(encodeURIComponent("ada+tag@example.com"));
     expect((init as RequestInit).method).toBe("GET");
     expect(res.data).toEqual({ exists: true, auth_method: "google" });
+  });
+});
+
+describe("errorAlert", () => {
+  it.each([
+    [
+      "the custom message first",
+      { status: 500, error: "server" },
+      "custom",
+      "custom",
+    ],
+    [
+      "the response error next",
+      { status: 500, error: "server" },
+      undefined,
+      "server",
+    ],
+    [
+      "a generic fallback last",
+      { status: 500 },
+      undefined,
+      "An unexpected error occurred",
+    ],
+  ])("toasts %s", (_label, res, custom, expected) => {
+    errorAlert(res, custom);
+    expect(toast.error).toHaveBeenCalledWith(expected);
   });
 });

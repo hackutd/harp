@@ -65,15 +65,16 @@ const payload: ScheduledNotificationPayload = {
   scheduled_at: "2026-03-14T16:00:00Z",
 };
 
-const listResult = { notifications: [notification("1"), notification("2")] };
+// Deliberately oldest-first, so the store has to sort it newest-first.
+const listResult = {
+  notifications: [
+    notification("1", { scheduled_at: "2026-03-14T15:00:00Z" }),
+    notification("2", { scheduled_at: "2026-03-14T18:00:00Z" }),
+  ],
+};
 
 beforeEach(() => {
-  useNotificationsStore.setState({
-    notifications: [],
-    loading: false,
-    saving: false,
-  });
-  vi.clearAllMocks();
+  useNotificationsStore.setState(useNotificationsStore.getInitialState(), true);
 });
 
 describe("notification store: fetch", () => {
@@ -87,7 +88,7 @@ describe("notification store: fetch", () => {
     await p;
     const s = useNotificationsStore.getState();
     expect(s.loading).toBe(false);
-    expect(s.notifications.map((n) => n.id)).toEqual(["1", "2"]);
+    expect(s.notifications.map((n) => n.id)).toEqual(["2", "1"]);
   });
 
   it("swallows silent fetches without toggling loading or alerting", async () => {
@@ -95,6 +96,27 @@ describe("notification store: fetch", () => {
     await useNotificationsStore.getState().fetch({ silent: true });
     expect(useNotificationsStore.getState().loading).toBe(false);
     expect(errorAlert).not.toHaveBeenCalled();
+  });
+});
+
+describe("notification store: fetch ordering", () => {
+  it("ignores an older fetch that resolves after a newer one", async () => {
+    let resolveOld!: (v: unknown) => void;
+    api.fetchScheduledNotifications
+      .mockReturnValueOnce(new Promise((resolve) => (resolveOld = resolve)))
+      .mockResolvedValueOnce({
+        status: 200,
+        data: { notifications: [notification("new")] },
+      });
+
+    const older = useNotificationsStore.getState().fetch();
+    await useNotificationsStore.getState().fetch();
+    resolveOld({ status: 200, data: { notifications: [notification("old")] } });
+    await older;
+
+    const s = useNotificationsStore.getState();
+    expect(s.notifications.map((n) => n.id)).toEqual(["new"]);
+    expect(s.loading).toBe(false);
   });
 });
 

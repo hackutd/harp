@@ -77,8 +77,9 @@ export default defineConfig([
             },
 
             // vite.config.ts reads branding to build the PWA manifest and to
-            // substitute the index.html placeholders.
-            { from: "config", allow: ["branding"] },
+            // substitute the index.html placeholders; the Vite and Vitest
+            // configs share their aliases through vite.aliases.ts.
+            { from: "config", allow: ["branding", "config"] },
 
             // branding/ imports nothing. It is consumed by three TypeScript
             // projects with different libs (app/DOM, service worker/WebWorker,
