@@ -169,17 +169,21 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 - **Image (`docker-build`):** builds the production `Dockerfile` without pushing
 - **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`
 
-PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/workflows/migration-reminder.yaml`) to apply the migration to prod before merging.
+PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/workflows/migration-reminder.yaml`) to apply the migration to staging before merging and to prod before the release.
 
 ## Deployment & Infrastructure
 
 - **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — jobs: `changes`, `backend-audit`, `backend-lint`, `db-integration`, `docker-build`, `frontend-audit` (portal)
-- **CD:** Merges to `main` trigger Google Cloud Build → Google Cloud Run (auto-deploy)
+- **CD:** Google Cloud Build → Google Cloud Run, two triggers (in GCP, not in repo):
+  - **Staging:** every push to `main` deploys `harp-staging` (`https://harp-staging.hackutd.co`)
+  - **Prod:** a release tag `vX.Y.Z` deploys `harp` (`https://harp.hackutd.co`). Merging the release-please PR creates the tag, so **a merge to `main` is not live in prod until the next release**
+- **Staging:** `ENV=staging`, real data on a Neon branch of prod (refresh with `neon branches reset staging --parent`), separate SuperTokens, Google OAuth client, GCS bucket and VAPID keys, email through a Mailtrap sandbox, behind Cloudflare Access (`@acmutd.co`). **Never give staging `SENDGRID_API_KEY` or any prod credential** — it holds real hacker emails and push subscriptions. Details in the `deployment` skill
+- **Migrations:** never run by a deploy. Apply to staging before merging the PR, and to prod before merging the release PR
 - **Container:** Multi-stage `Dockerfile` — builds frontend (Node 22), builds Go binary, runs from `scratch` image on port 8080. Frontend is compiled at build time and served as static files
-- **Database:** Neon DB (managed PostgreSQL)
+- **Database:** Neon DB (managed PostgreSQL); branch `production` for prod, child branch `staging` for staging
 - **File Storage:** Google Cloud Storage (GCS)
 - **Auth:** SuperTokens (self-hosted or managed, free tier: 5,000 MAUs) — Passwordless + Google OAuth
-- **Email:** SendGrid
+- **Email:** SendGrid (prod), Mailtrap Email Sandbox over SMTP (staging)
 - **Marketing site:** its own repository (`hackutd/harp-marketing`) and its own Vercel project — not part of this repo or the Cloud Run deploy
 
 ## Git Conventions

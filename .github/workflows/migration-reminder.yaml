@@ -44,10 +44,10 @@ jobs:
 
           $files
 
-          Merging deploys the code, but **the deploy does not run migrations**.
+          Merging deploys this code to staging, and the next release deploys it to prod. **Neither deploy runs migrations.**
 
-          - **Additive** (new table, nullable column, new index): apply it to the production database **before** merging, with \`task migrate-up\` and \`DB_ADDR\` pointed at Neon.
-          - **Destructive** (drop or rename a column, add \`NOT NULL\` without a default): ship it over two deploys. First merge code that no longer depends on the old shape, then migrate.
+          - **Additive** (new table, nullable column, new index): apply it to the **staging** branch before merging, then to **production** before merging the release PR. Use \`task migrate-up\` with \`DB_ADDR\` set to that Neon branch's direct URL.
+          - **Destructive** (drop or rename a column, add \`NOT NULL\` without a default): ship it over two releases. First release code that no longer depends on the old shape, then migrate.
 
           CI's \`db-integration\` job has already applied these up, down, and up again on a throwaway database.
           EOF
