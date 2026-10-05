@@ -42,13 +42,18 @@ Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CL
 
 ### Frontend (`client/portal/`)
 
-| Command                | Description                              |
-| ---------------------- | ---------------------------------------- |
-| `npm run dev`          | Start Vite dev server (port 3000)        |
-| `npm run build`        | TypeScript check + Vite production build |
-| `npm run lint`         | Run ESLint                               |
-| `npm run format`       | Auto-format with Prettier                |
-| `npm run format:check` | Check formatting (runs in CI)            |
+| Command                 | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `npm run dev`           | Start Vite dev server (port 3000)        |
+| `npm run build`         | TypeScript check + Vite production build |
+| `npm run lint`          | Run ESLint                               |
+| `npm run format`        | Auto-format with Prettier                |
+| `npm run format:check`  | Check formatting (runs in CI)            |
+| `npm test`              | Run Vitest unit tests once (runs in CI)  |
+| `npm run test:watch`    | Run Vitest in watch mode                 |
+| `npm run test:coverage` | Run Vitest with a coverage report        |
+
+Unit tests sit beside their source as `<name>.test.ts(x)`; conventions are in `client/portal/README.md`.
 
 ### Dev Tool Prerequisites
 
@@ -167,7 +172,7 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 - **Go lint (`backend-lint`):** migration naming check, gofmt check, `go mod verify`, `go vet`, `staticcheck`, `govulncheck`, Swagger docs drift check (`task gen-docs` must leave no diff)
 - **DB (`db-integration`):** throwaway Postgres 16.3 service container; migrations `up` → `down -all` → `up`, then the store integration tests with `HARP_TEST_DSN` set
 - **Image (`docker-build`):** builds the production `Dockerfile` without pushing
-- **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`, `npm run test:auth`
+- **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`, `npm run test:auth`, `npm test` (Vitest)
 
 PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/workflows/migration-reminder.yaml`) to apply the migration to staging before merging and to prod before the release.
 

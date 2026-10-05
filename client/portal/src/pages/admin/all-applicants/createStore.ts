@@ -34,7 +34,7 @@ export interface ApplicationsState {
   resetPagination: () => void;
 }
 
-interface ApplicationsStoreConfig {
+export interface ApplicationsStoreConfig {
   defaultStatus: ApplicationStatus | null;
   defaultSortBy?: ApplicationSortBy;
 }

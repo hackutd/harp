@@ -98,8 +98,6 @@ type Storage struct {
 		SetAdminScheduleEditEnabled(ctx context.Context, enabled bool) error
 		GetHackathonDateRange(ctx context.Context) (HackathonDateRange, error)
 		SetHackathonDateRange(ctx context.Context, dateRange HackathonDateRange) error
-		GetHackerPackURL(ctx context.Context) (string, error)
-		SetHackerPackURL(ctx context.Context, url string) error
 		GetPointsName(ctx context.Context) (string, error)
 		SetPointsName(ctx context.Context, name string) error
 		GetPointsEnabled(ctx context.Context) (bool, error)

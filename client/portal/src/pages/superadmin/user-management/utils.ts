@@ -38,5 +38,5 @@ export function getUserInitial(
   firstName: string | null,
   email: string,
 ): string {
-  return (firstName?.[0] ?? email[0]).toUpperCase();
+  return (firstName?.[0] ?? email[0] ?? "").toUpperCase();
 }
