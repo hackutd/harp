@@ -158,9 +158,10 @@ directory `client/portal`. Steps, in order:
    only; high+ severity fails).
 6. **Regression Tests** — `npm run test:reviews`, `npm run test:applications`, and `npm run test:auth`
    (`node --test` over `client/portal/scripts/*.test.mjs`).
-7. **Tests** — runs `npx vitest run` **only if** test files exist (a `__tests__`
-   dir or any `*.test.*` / `*.spec.*` under `src`); otherwise it prints "No test
-   files found, skipping" and passes.
+7. **Tests** — runs `npm test` (Vitest, timezone pinned in `vitest.config.ts`)
+   **only if** test files exist (a `__tests__` dir or any `*.test.*` /
+   `*.spec.*` under `src`); otherwise it prints "No test files found, skipping"
+   and passes.
 
 ### Reproducing CI locally
 

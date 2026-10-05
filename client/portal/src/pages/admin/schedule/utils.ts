@@ -20,7 +20,8 @@ export function formatDayHeader(date: Date) {
 
 export function formatQuarterTime(quarter: number) {
   const safeQuarter = Math.max(0, Math.min(quarter, QUARTER_HOUR_SLOTS));
-  const hour24 = Math.floor(safeQuarter / 4);
+  // Quarter 96 is the end-of-day boundary (24:00), which reads as midnight.
+  const hour24 = Math.floor(safeQuarter / 4) % 24;
   const minute = (safeQuarter % 4) * 15;
   const suffix = hour24 >= 12 ? "PM" : "AM";
   const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
