@@ -42,15 +42,10 @@ func NewSendGrid(apiKey, fromEmail, fromName, hackathonName, portalURL string) *
 	}
 }
 
-// send delivers a rendered HTML email to a single recipient. The Zero Day
-// title image every template references by Content-ID is embedded inline;
+// send delivers a rendered HTML email to a single recipient. The banner the
+// layout references by Content-ID is embedded inline;
 // any further attachments are delivered as regular downloads.
 func (m *SendGridMailer) send(id Identity, toEmail, toName, subject, htmlBody string, attachments ...attachment) error {
-	brandImage, err := loadBrandImage()
-	if err != nil {
-		return err
-	}
-
 	message := mail.NewV3Mail()
 	message.SetFrom(mail.NewEmail(id.FromName, id.FromEmail))
 	message.Subject = subject
