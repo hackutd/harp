@@ -60,6 +60,16 @@ function app(id: string): ApplicationListItem {
     reviews_completed: 0,
     has_resume: false,
     points: 0,
+    travel_status: "not_requested",
+    travel_yes_votes: 0,
+    travel_no_votes: 0,
+    travel_approved_amount_cents: null,
+    rsvp_status: "pending",
+    travel_rsvp_status: "pending",
+    rsvp_submitted_at: null,
+    travel_rsvp_submitted_at: null,
+    receipt_count: 0,
+    estimated_travel_cost_cents: null,
   };
 }
 
@@ -166,7 +176,7 @@ describe("grading store: navigation is bounded at first and last", () => {
 });
 
 describe("grading store: gradeApplication", () => {
-  it("marks grading, updates status, and auto-advances", async () => {
+  it("marks grading, updates status, and stays on the graded application", async () => {
     adminApi.fetchApplications.mockResolvedValueOnce(
       listResponse([app("1"), app("2")]),
     );
@@ -185,7 +195,7 @@ describe("grading store: gradeApplication", () => {
 
     expect(useGradingStore.getState().applications[0].status).toBe("accepted");
     expect(useGradingStore.getState().grading).toBe(false);
-    expect(useGradingStore.getState().currentIndex).toBe(1);
+    expect(useGradingStore.getState().currentIndex).toBe(0);
     expect(toast.success).toHaveBeenCalledWith("Application accepted");
   });
 

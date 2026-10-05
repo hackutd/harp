@@ -11,35 +11,29 @@ export const TAG_COLOR_STYLES: Record<string, string> = {
 
 export const EVENT_COLOR_STYLES: Record<
   string,
-  { border: string; background: string; text: string }
+  { background: string; text: string }
 > = {
   Required: {
-    border: "border-red-400",
     background: "bg-red-400/25",
     text: "text-red-900",
   },
   "Company Events": {
-    border: "border-amber-400",
     background: "bg-amber-400/25",
     text: "text-amber-900",
   },
   Food: {
-    border: "border-emerald-400",
     background: "bg-emerald-400/25",
     text: "text-emerald-900",
   },
   Workshops: {
-    border: "border-sky-400",
     background: "bg-sky-400/25",
     text: "text-sky-900",
   },
   "For Fun": {
-    border: "border-violet-400",
     background: "bg-violet-400/25",
     text: "text-violet-900",
   },
   Other: {
-    border: "border-zinc-400",
     background: "bg-zinc-400/25",
     text: "text-zinc-900",
   },

@@ -156,7 +156,7 @@ func (app *application) getAppleWalletPassHandler(w http.ResponseWriter, r *http
 	// the event name only costs us a nicer filename — never the download.
 	hackathonName, err := app.store.Settings.GetHackathonName(r.Context())
 	if err != nil {
-		app.logger.Warnw("failed to read hackathon name for pass filename", "error", err)
+		app.requestLogger(r).Warnw("failed to read hackathon name for pass filename", "error", err)
 	}
 
 	w.Header().Set("Content-Type", appleWalletPassMIMEType)
@@ -166,6 +166,6 @@ func (app *application) getAppleWalletPassHandler(w http.ResponseWriter, r *http
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pass)))
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(pass); err != nil {
-		app.logger.Errorw("failed to write Apple Wallet pass", "user_id", user.ID, "error", err)
+		app.requestLogger(r).Errorw("failed to write Apple Wallet pass", "user_id", user.ID, "error", err)
 	}
 }

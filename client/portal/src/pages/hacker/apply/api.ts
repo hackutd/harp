@@ -47,7 +47,7 @@ export async function updateMyApplication(
   );
 
   if (res.status !== 200) {
-    return { status: res.status, error: res.error };
+    return { status: res.status, error: res.error, fields: res.fields };
   }
 
   const application = unwrapPatchedApplication(res.data);

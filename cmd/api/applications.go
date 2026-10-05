@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
 )
 
 type UpdateApplicationPayload struct {
-	Responses  json.RawMessage `json:"responses"`
+	Responses  json.RawMessage `json:"responses" swaggertype:"object"`
 	ResumePath *string         `json:"resume_path"`
 }
 
@@ -30,7 +30,7 @@ type ApplicationWithSchema struct {
 func (app *application) userPoints(r *http.Request, userID string) int {
 	points, err := app.store.Scans.GetTotalPointsByUserID(r.Context(), userID)
 	if err != nil {
-		app.logger.Warnw("failed to fetch scan points", "user_id", userID, "error", err)
+		app.requestLogger(r).Warnw("failed to fetch scan points", "user_id", userID, "error", err)
 		return 0
 	}
 
@@ -158,8 +158,8 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 			return
 		}
 
-		if validationErrors := validateResponses(schema, responses, false); len(validationErrors) > 0 {
-			app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+		if validationErrors := validateResponses(schema, responses, draftValidation); len(validationErrors) > 0 {
+			app.validationErrorResponse(w, r, validationErrors)
 			return
 		}
 
@@ -196,7 +196,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 //	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	store.Application
-//	@Failure		400	{object}	object{error=string}	"Missing required fields"
+//	@Failure		400	{object}	object{error=string,fields=[]string}	"Missing required fields; fields lists the offending schema field ids"
 //	@Failure		401	{object}	object{error=string}
 //	@Failure		404	{object}	object{error=string}
 //	@Failure		409	{object}	object{error=string}	"Application not in draft status"
@@ -242,15 +242,17 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Validate responses against schema
-	validationErrors := validateResponses(schema, responses, true)
+	validationErrors := validateResponses(schema, responses, finalValidation)
 
 	if len(validationErrors) > 0 {
-		app.badRequestResponse(w, r, fmt.Errorf("validation errors: %v", validationErrors))
+		app.validationErrorResponse(w, r, validationErrors)
 		return
 	}
 
-	// Submit!
-	if err := app.store.Application.Submit(r.Context(), application); err != nil {
+	// Submit! The travel opt-in binding is resolved against the live schema, so
+	// an event that removed the checkbox simply requests no travel.
+	optInFieldID := schemaContractFieldID(schema, travelOptInFieldID)
+	if err := app.store.Application.Submit(r.Context(), application, optInFieldID); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -260,19 +262,84 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-// validateResponses checks each response value against its schema field definition.
-// Returns a list of human-readable validation error strings. When enforceRequired
-// is false, missing/empty required fields are allowed (used for draft saves) while
-// type checks on present values still apply.
-func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, enforceRequired bool) []string {
-	var errs []string
+// fieldValidationError ties a validation failure to the schema field it belongs
+// to, so the handler can report both the message and the offending field id.
+type fieldValidationError struct {
+	Field   string
+	Message string
+}
+
+// validationMessages returns the human-readable half of each error.
+func validationMessages(errs []fieldValidationError) []string {
+	messages := make([]string, 0, len(errs))
+	for _, e := range errs {
+		messages = append(messages, e.Message)
+	}
+	return messages
+}
+
+// validationFieldIDs returns the offending field ids, deduplicated and in the
+// order they were reported.
+func validationFieldIDs(errs []fieldValidationError) []string {
+	seen := make(map[string]struct{}, len(errs))
+	fields := make([]string, 0, len(errs))
+	for _, e := range errs {
+		if _, ok := seen[e.Field]; ok {
+			continue
+		}
+		seen[e.Field] = struct{}{}
+		fields = append(fields, e.Field)
+	}
+	return fields
+}
+
+type responseValidationMode int
+
+const (
+	finalValidation responseValidationMode = iota
+	draftValidation
+)
+
+// validateResponses checks answers against the live schema. Drafts may retain
+// obsolete choices so schema edits cannot prevent saving progress. Final saves
+// require current choices and required answers. Both modes enforce types and
+// length/numeric limits on present values.
+func validateResponses(schema []store.ApplicationSchemaField, responses map[string]interface{}, mode responseValidationMode) []fieldValidationError {
+	var errs []fieldValidationError
+	fail := func(fieldID, message string) {
+		errs = append(errs, fieldValidationError{Field: fieldID, Message: message})
+	}
 
 	for _, field := range schema {
 		val, exists := responses[field.ID]
 
+		// A field hidden by an unsatisfied validation.show_if isn't being asked,
+		// so it is never required — the client doesn't render it either. Type
+		// checks on any leftover value still apply.
+		hidden := false
+		if showIf, ok := field.Validation["show_if"].(string); ok && showIf != "" {
+			hidden = !conditionSatisfied(showIf, responses)
+		}
+
+		// A field with validation.required_if is required only when its
+		// controller condition holds (e.g. travel questions are required only
+		// when travel_reimbursement is checked, or flight fields only when
+		// travel_rsvp_mode is "Flying").
+		required := field.Required
+		if !required {
+			if requiredIf, ok := field.Validation["required_if"].(string); ok && requiredIf != "" {
+				if conditionSatisfied(requiredIf, responses) {
+					required = true
+				}
+			}
+		}
+		if hidden {
+			required = false
+		}
+
 		// Required check
-		if enforceRequired && field.Required && (!exists || isEmpty(val)) {
-			errs = append(errs, field.ID+" is required")
+		if mode == finalValidation && required && (!exists || isEmpty(val)) {
+			fail(field.ID, field.ID+" is required")
 			continue
 		}
 
@@ -286,70 +353,83 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 		case "text", "textarea", "phone":
 			s, ok := val.(string)
 			if !ok {
-				errs = append(errs, field.ID+" must be a string")
+				fail(field.ID, field.ID+" must be a string")
 				continue
 			}
 			if maxLen, ok := field.Validation["maxLength"]; ok {
 				if ml, ok := maxLen.(float64); ok && float64(len(s)) > ml {
-					errs = append(errs, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
+					fail(field.ID, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
 				}
 			}
 
 		case "number":
 			n, ok := val.(float64)
 			if !ok {
-				errs = append(errs, field.ID+" must be a number")
+				fail(field.ID, field.ID+" must be a number")
 				continue
 			}
 			if minVal, ok := field.Validation["min"]; ok {
 				if mv, ok := minVal.(float64); ok && n < mv {
-					errs = append(errs, fmt.Sprintf("%s must be at least %v", field.ID, mv))
+					fail(field.ID, fmt.Sprintf("%s must be at least %v", field.ID, mv))
 				}
 			}
 			if maxVal, ok := field.Validation["max"]; ok {
 				if mv, ok := maxVal.(float64); ok && n > mv {
-					errs = append(errs, fmt.Sprintf("%s must be at most %v", field.ID, mv))
+					fail(field.ID, fmt.Sprintf("%s must be at most %v", field.ID, mv))
 				}
 			}
 
 		case "select":
 			s, ok := val.(string)
 			if !ok {
-				errs = append(errs, field.ID+" must be a string")
+				fail(field.ID, field.ID+" must be a string")
 				continue
 			}
-			if len(field.Options) > 0 && !containsString(field.Options, s) {
-				errs = append(errs, field.ID+" has invalid option: "+s)
+			if mode == finalValidation && len(field.Options) > 0 && !containsString(field.Options, s) {
+				fail(field.ID, field.ID+" has invalid option: "+s)
 			}
 
 		case "multi_select":
 			arr, ok := val.([]interface{})
 			if !ok {
-				errs = append(errs, field.ID+" must be an array")
+				fail(field.ID, field.ID+" must be an array")
 				continue
 			}
 			for _, item := range arr {
 				s, ok := item.(string)
 				if !ok {
-					errs = append(errs, field.ID+" array items must be strings")
+					fail(field.ID, field.ID+" array items must be strings")
 					break
 				}
-				if len(field.Options) > 0 && !containsString(field.Options, s) {
-					errs = append(errs, field.ID+" has invalid option: "+s)
+				if mode == finalValidation && len(field.Options) > 0 && !containsString(field.Options, s) {
+					fail(field.ID, field.ID+" has invalid option: "+s)
 				}
 			}
 
 		case "checkbox":
 			b, ok := val.(bool)
 			if !ok {
-				errs = append(errs, field.ID+" must be a boolean")
-			} else if enforceRequired && field.Required && !b {
-				errs = append(errs, field.ID+" must be checked")
+				fail(field.ID, field.ID+" must be a boolean")
+			} else if mode == finalValidation && required && !b {
+				fail(field.ID, field.ID+" must be checked")
 			}
 		}
 	}
 
 	return errs
+}
+
+// conditionSatisfied evaluates a conditional-field controller expression from
+// validation.show_if / required_if. The expression is either a checkbox field
+// id ("field", satisfied when the response is true) or a select equality
+// ("field=Value", satisfied when the response equals the value).
+func conditionSatisfied(expr string, responses map[string]interface{}) bool {
+	if fieldID, want, found := strings.Cut(expr, "="); found {
+		got, _ := responses[fieldID].(string)
+		return got == want
+	}
+	controller, ok := responses[expr].(bool)
+	return ok && controller
 }
 
 // isEmpty checks if a response value is considered empty
@@ -407,16 +487,21 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 //	@Description	Lists all applications with cursor-based pagination and optional status filter
 //	@Tags			admin/applications
 //	@Produce		json
-//	@Param			cursor		query		string	false	"Pagination cursor"
-//	@Param			status		query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
-//	@Param			limit		query		int		false	"Page size (default 50, max 100)"
-//	@Param			direction	query		string	false	"Pagination direction: forward (default) or backward"
-//	@Param			sort_by		query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes"
-//	@Success		200			{object}	store.ApplicationListResult
-//	@Failure		400			{object}	object{error=string}
-//	@Failure		401			{object}	object{error=string}
-//	@Failure		403			{object}	object{error=string}
-//	@Failure		500			{object}	object{error=string}
+//	@Param			cursor				query		string	false	"Pagination cursor"
+//	@Param			status				query		string	false	"Filter by status (draft, submitted, accepted, rejected, waitlisted)"
+//	@Param			travel_status		query		string	false	"Filter by travel status (not_requested, pending, approved, rejected)"
+//	@Param			rsvp_status			query		string	false	"Filter by RSVP status (pending, confirmed, declined)"
+//	@Param			travel_rsvp_status	query		string	false	"Filter by travel form status (pending, confirmed, declined)"
+//	@Param			has_receipts		query		boolean	false	"Filter by whether at least one receipt was submitted"
+//	@Param			travel_requested	query		boolean	false	"Filter by whether travel reimbursement was requested"
+//	@Param			limit				query		int		false	"Page size (default 50, max 100)"
+//	@Param			direction			query		string	false	"Pagination direction: forward (default) or backward"
+//	@Param			sort_by				query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes, travel_yes_votes"
+//	@Success		200					{object}	store.ApplicationListResult
+//	@Failure		400					{object}	object{error=string}
+//	@Failure		401					{object}	object{error=string}
+//	@Failure		403					{object}	object{error=string}
+//	@Failure		500					{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/applications [get]
 func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.Request) {
@@ -445,6 +530,61 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 			app.badRequestResponse(w, r, errors.New("invalid status value"))
 			return
 		}
+	}
+
+	// Parse travel status filter
+	if travelStr := query.Get("travel_status"); travelStr != "" {
+		travelStatus := store.TravelStatus(travelStr)
+		switch travelStatus {
+		case store.TravelNotRequested, store.TravelPending,
+			store.TravelApproved, store.TravelRejected:
+			filters.TravelStatus = &travelStatus
+		default:
+			app.badRequestResponse(w, r, errors.New("invalid travel_status value"))
+			return
+		}
+	}
+
+	parseRSVPStatus := func(value string) (*store.RSVPStatus, bool) {
+		status := store.RSVPStatus(value)
+		switch status {
+		case store.RSVPPending, store.RSVPConfirmed, store.RSVPDeclined:
+			return &status, true
+		default:
+			return nil, false
+		}
+	}
+	if value := query.Get("rsvp_status"); value != "" {
+		status, ok := parseRSVPStatus(value)
+		if !ok {
+			app.badRequestResponse(w, r, errors.New("invalid rsvp_status value"))
+			return
+		}
+		filters.RSVPStatus = status
+	}
+	if value := query.Get("travel_rsvp_status"); value != "" {
+		status, ok := parseRSVPStatus(value)
+		if !ok {
+			app.badRequestResponse(w, r, errors.New("invalid travel_rsvp_status value"))
+			return
+		}
+		filters.TravelRSVPStatus = status
+	}
+	if value := query.Get("has_receipts"); value != "" {
+		hasReceipts, err := strconv.ParseBool(value)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("has_receipts must be true or false"))
+			return
+		}
+		filters.HasReceipts = &hasReceipts
+	}
+	if value := query.Get("travel_requested"); value != "" {
+		travelRequested, err := strconv.ParseBool(value)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("travel_requested must be true or false"))
+			return
+		}
+		filters.TravelRequested = &travelRequested
 	}
 
 	// Parse search
@@ -487,7 +627,8 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 	if sortStr := query.Get("sort_by"); sortStr != "" {
 		switch store.ApplicationSortBy(sortStr) {
 		case store.SortByCreatedAt, store.SortByAcceptVotes,
-			store.SortByRejectVotes, store.SortByWaitlistVotes:
+			store.SortByRejectVotes, store.SortByWaitlistVotes,
+			store.SortByTravelYesVotes:
 			filters.SortBy = store.ApplicationSortBy(sortStr)
 		default:
 			app.badRequestResponse(w, r, errors.New("invalid sort_by value"))
@@ -508,6 +649,11 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 
 type SetStatusPayload struct {
 	Status store.ApplicationStatus `json:"status" validate:"required,oneof=accepted rejected waitlisted"`
+}
+
+type SetTravelStatusPayload struct {
+	TravelStatus        store.TravelStatus `json:"travel_status" validate:"required,oneof=pending approved rejected"`
+	ApprovedAmountCents *int64             `json:"approved_amount_cents,omitempty" validate:"omitempty,gt=0"`
 }
 
 type ApplicationResponse struct {
@@ -575,6 +721,74 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// setApplicationTravelStatus sets the travel reimbursement decision on an application
+//
+//	@Summary		Set travel reimbursement status (Super Admin)
+//	@Description	Sets the travel reimbursement decision (approved, rejected, or back to pending) on an application that requested travel reimbursement. The application must be submitted, accepted, or waitlisted, and the decision is pinned once the hacker submits their travel RSVP — reset the travel RSVP first to change it.
+//	@Tags			superadmin/applications
+//	@Accept			json
+//	@Produce		json
+//	@Param			applicationID	path		string					true	"Application ID"
+//	@Param			travel_status	body		SetTravelStatusPayload	true	"New travel status"
+//	@Success		200				{object}	ApplicationResponse
+//	@Failure		400				{object}	object{error=string}
+//	@Failure		401				{object}	object{error=string}
+//	@Failure		403				{object}	object{error=string}
+//	@Failure		404				{object}	object{error=string}
+//	@Failure		409				{object}	object{error=string}	"Travel not requested, application not decidable, or travel RSVP already submitted"
+//	@Failure		500				{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/applications/{applicationID}/travel-status [patch]
+func (app *application) setApplicationTravelStatus(w http.ResponseWriter, r *http.Request) {
+	applicationID := chi.URLParam(r, "applicationID")
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+
+	var payload SetTravelStatusPayload
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	if payload.TravelStatus == store.TravelApproved && payload.ApprovedAmountCents == nil {
+		app.badRequestResponse(w, r, errors.New("approved_amount_cents is required when approving travel"))
+		return
+	}
+	if payload.TravelStatus != store.TravelApproved && payload.ApprovedAmountCents != nil {
+		app.badRequestResponse(w, r, errors.New("approved_amount_cents is only allowed when approving travel"))
+		return
+	}
+
+	application, err := app.store.Application.SetTravelStatus(r.Context(), applicationID, payload.TravelStatus, payload.ApprovedAmountCents)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("application not found"))
+		case errors.Is(err, store.ErrTravelNotRequested):
+			app.conflictResponse(w, r, errors.New("applicant did not request travel reimbursement"))
+		case errors.Is(err, store.ErrTravelStatusNotDecidable):
+			app.conflictResponse(w, r, errors.New("travel cannot be decided on a draft or rejected application"))
+		case errors.Is(err, store.ErrTravelRSVPSubmitted):
+			app.conflictResponse(w, r, errors.New("hacker already submitted their travel form; reset it before changing the travel decision"))
+		case errors.Is(err, store.ErrConflict):
+			app.conflictResponse(w, r, errors.New("travel status changed concurrently, try again"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, ApplicationResponse{Application: application}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // getApplication returns a single application by ID with embedded schema
 //
 //	@Summary		Get application by ID (Admin)
@@ -627,10 +841,10 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 // getApplicantEmailsByStatusHandler returns applicant emails filtered by status
 //
 //	@Summary		Get applicant emails by status (Super Admin)
-//	@Description	Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)
+//	@Description	Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)
 //	@Tags			superadmin/applications
 //	@Produce		json
-//	@Param			status	query		string	true	"Application status (accepted, rejected, or waitlisted)"
+//	@Param			status	query		string	true	"Application status (draft, submitted, accepted, waitlisted, or rejected)"
 //	@Success		200		{object}	EmailListResponse
 //	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
@@ -647,9 +861,9 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 
 	status := store.ApplicationStatus(statusStr)
 	switch status {
-	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
+	case store.StatusDraft, store.StatusSubmitted, store.StatusAccepted, store.StatusWaitlisted, store.StatusRejected:
 	default:
-		app.badRequestResponse(w, r, errors.New("status must be one of accepted, rejected, or waitlisted"))
+		app.badRequestResponse(w, r, errors.New("status must be one of draft, submitted, accepted, waitlisted, or rejected"))
 		return
 	}
 

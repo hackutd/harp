@@ -1,9 +1,18 @@
 package mailer
 
-import "github.com/stretchr/testify/mock"
+import (
+	"time"
+
+	"github.com/stretchr/testify/mock"
+)
 
 type MockClient struct {
 	mock.Mock
+}
+
+func (m *MockClient) SendMagicLinkEmail(toEmail, magicLink string, codeLifetime time.Duration) error {
+	args := m.Called(toEmail, magicLink, codeLifetime)
+	return args.Error(0)
 }
 
 func (m *MockClient) SendQREmail(toEmail, toName, userID string) error {

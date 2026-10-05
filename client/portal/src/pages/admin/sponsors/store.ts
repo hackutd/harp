@@ -1,4 +1,7 @@
+import { toast } from "sonner";
 import { create } from "zustand";
+
+import { prepareLogoForUpload } from "@/shared/lib/logo-image";
 
 import {
   createSponsor as apiCreateSponsor,
@@ -7,6 +10,7 @@ import {
   updateSponsor as apiUpdateSponsor,
   uploadSponsorLogo,
 } from "./api";
+import { MAX_LOGO_BYTES } from "./constants";
 import type { Sponsor, SponsorPayload } from "./types";
 
 export interface SponsorsState {
@@ -90,18 +94,23 @@ export const useSponsorsStore = create<SponsorsState>((set) => ({
   },
 
   uploadLogo: async (sponsorId: string, file: File) => {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64Data = result.split(",")[1];
-        resolve(base64Data);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    let logo;
+    try {
+      logo = await prepareLogoForUpload(file);
+    } catch {
+      toast.error("Couldn't read that image. Try a different file.");
+      return null;
+    }
+    if (logo.byteLength > MAX_LOGO_BYTES) {
+      toast.error("Logo is still too large after compression.");
+      return null;
+    }
 
-    const res = await uploadSponsorLogo(sponsorId, base64, file.type);
+    const res = await uploadSponsorLogo(
+      sponsorId,
+      logo.base64,
+      logo.contentType,
+    );
     if (res.status === 200 && res.data) {
       set((state) => ({
         sponsors: state.sponsors.map((s) =>

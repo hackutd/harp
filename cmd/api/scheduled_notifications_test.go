@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,12 +23,13 @@ func withNotificationRouteParam(req *http.Request, id string) *http.Request {
 }
 
 func newTestNotification(id string) store.ScheduledNotification {
+	createdBy := "superadmin-1"
 	return store.ScheduledNotification{
 		ID:          id,
 		Title:       "Applications closing soon",
 		Body:        "Submit your application before midnight",
 		ScheduledAt: time.Now().Add(time.Hour),
-		CreatedBy:   "superadmin-1",
+		CreatedBy:   &createdBy,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -71,7 +72,9 @@ func TestCreateScheduledNotification(t *testing.T) {
 		mockNotifs.On("Create", mock.AnythingOfType("*store.ScheduledNotification")).Run(func(args mock.Arguments) {
 			n := args.Get(0).(*store.ScheduledNotification)
 			n.ID = "new-notif"
-			assert.Equal(t, "superadmin-1", n.CreatedBy)
+			if assert.NotNil(t, n.CreatedBy) {
+				assert.Equal(t, "superadmin-1", *n.CreatedBy)
+			}
 		}).Return(nil).Once()
 
 		body := `{"title":"Test","body":"Hello","scheduled_at":"2030-01-01T00:00:00Z","target_role":"hacker"}`
@@ -225,6 +228,27 @@ func TestUpdateScheduledNotification(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.updateScheduledNotificationHandler))
 		checkResponseCode(t, http.StatusConflict, rr.Code)
+
+		mockNotifs.AssertExpectations(t)
+	})
+
+	t.Run("returns 409 while a dispatcher is delivering it", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockNotifs := app.store.ScheduledNotifications.(*store.MockScheduledNotificationsStore)
+
+		mockNotifs.On("Update", mock.AnythingOfType("*store.ScheduledNotification")).Return(store.ErrNotificationInFlight).Once()
+
+		body := `{"title":"Updated","body":"New body","scheduled_at":"2030-01-01T00:00:00Z"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		req = withNotificationRouteParam(req, "n-1")
+
+		rr := executeRequest(req, http.HandlerFunc(app.updateScheduledNotificationHandler))
+		checkResponseCode(t, http.StatusConflict, rr.Code)
+		// Distinct from "already sent": the operator can simply retry this one.
+		require.Contains(t, rr.Body.String(), "being delivered")
 
 		mockNotifs.AssertExpectations(t)
 	})

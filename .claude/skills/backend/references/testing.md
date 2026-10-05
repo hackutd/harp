@@ -10,7 +10,8 @@ All in `cmd/api/test_utils_test.go`. Use these instead of duplicating setup.
 
 | Helper | What it does |
 |--------|-------------|
-| `newTestApplication(t)` | Build `*application` with mock store, no-op zap logger, mock GCS, mock mailer, real fixed-window rate limiter (20/5s), basic auth `testuser:testpass`, public API key `test-api-key`. |
+| `newTestApplication(t)` | Build `*application` with mock store, no-op zap logger, mock GCS, mock mailer, real fixed-window rate limiters (20/5s per user, 200/5s per IP) with the real SuperTokens session resolver (no cookie → IP fallback, no core contact), basic auth `testuser:testpass`, public API key `test-api-key`. |
+| `headerSessionUserID` | Drop-in for `app.sessionUserID` that reads the session user from the `X-Test-Session-User` header (`testSessionUserHeader`), so rate limiter tests can vary the user per request without a running core. |
 | `executeRequest(req, mux)` | Run req through handler/mux, return `*httptest.ResponseRecorder`. |
 | `checkResponseCode(t, expected, actual)` | Assert status code with descriptive failure. |
 | `addBasicAuth(req)` | Set `Authorization: Basic <testuser:testpass>` header. |

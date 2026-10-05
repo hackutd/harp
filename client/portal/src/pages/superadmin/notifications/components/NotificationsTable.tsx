@@ -1,4 +1,10 @@
-import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Pencil,
+  Plus,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -36,6 +42,8 @@ import type {
 } from "../types";
 import { GenerateFromScheduleDialog } from "./GenerateFromScheduleDialog";
 import { NotificationFormDialog } from "./NotificationFormDialog";
+
+type NotificationTab = "scheduled" | "failed" | "sent";
 
 interface NotificationsTableProps {
   notifications: ScheduledNotification[];
@@ -84,18 +92,24 @@ export function NotificationsTable({
   const [editing, setEditing] = useState<ScheduledNotification | null>(null);
   const [deleteTarget, setDeleteTarget] =
     useState<ScheduledNotification | null>(null);
-  const [tab, setTab] = useState<"scheduled" | "sent">("scheduled");
+  const [tab, setTab] = useState<NotificationTab>("scheduled");
   const [sentLimit, setSentLimit] = useState(SENT_PAGE_SIZE);
 
-  const { scheduled, sent } = useMemo(() => {
+  const { scheduled, failed, sent } = useMemo(() => {
     const scheduled: ScheduledNotification[] = [];
+    const failed: ScheduledNotification[] = [];
     const sent: ScheduledNotification[] = [];
     for (const n of notifications) {
-      (n.sent_at ? sent : scheduled).push(n);
+      // failed_at is terminal: the dispatcher gave up, so these are not still
+      // pending. Left in "Scheduled" they would look like they are about to send.
+      if (n.sent_at) sent.push(n);
+      else if (n.failed_at) failed.push(n);
+      else scheduled.push(n);
     }
     scheduled.sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+    failed.sort((a, b) => (b.failed_at ?? "").localeCompare(a.failed_at ?? ""));
     sent.sort((a, b) => (b.sent_at ?? "").localeCompare(a.sent_at ?? ""));
-    return { scheduled, sent };
+    return { scheduled, failed, sent };
   }, [notifications]);
 
   const openCreate = () => {
@@ -114,7 +128,7 @@ export function NotificationsTable({
     <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       <Tabs
         value={tab}
-        onValueChange={(v) => setTab(v as "scheduled" | "sent")}
+        onValueChange={(v) => setTab(v as NotificationTab)}
         className="flex min-h-0 flex-1 flex-col gap-3"
       >
         <CardHeader className="shrink-0">
@@ -127,6 +141,15 @@ export function NotificationsTable({
                 >
                   Scheduled ({scheduled.length})
                 </TabsTrigger>
+                {failed.length > 0 && (
+                  <TabsTrigger
+                    value="failed"
+                    className="cursor-pointer rounded-sm font-light text-red-600"
+                  >
+                    <TriangleAlert className="mr-1 size-3.5" />
+                    Failed ({failed.length})
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
                   value="sent"
                   className="cursor-pointer rounded-sm font-light"
@@ -139,6 +162,11 @@ export function NotificationsTable({
                 {tab === "scheduled" ? (
                   <span>
                     Push notifications delivered at their scheduled time
+                  </span>
+                ) : tab === "failed" ? (
+                  <span>
+                    Delivery was abandoned after repeated failures. Edit and
+                    save one to queue it again.
                   </span>
                 ) : (
                   <>
@@ -224,6 +252,88 @@ export function NotificationsTable({
                               onClick={() => openEdit(n)}
                               className="cursor-pointer text-muted-foreground"
                               aria-label="Edit"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={saving}
+                              onClick={() => setDeleteTarget(n)}
+                              className="cursor-pointer text-muted-foreground hover:text-red-500"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="failed" className="h-full">
+            <div className="relative h-full overflow-auto p-6 pt-0 pb-3">
+              <Table className={tableClasses}>
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Scheduled</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="w-32 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {failed.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No failed notifications
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    failed.map((n) => (
+                      <TableRow
+                        key={n.id}
+                        className="hover:bg-muted/50 [&>td]:py-3"
+                      >
+                        <TableCell className="max-w-xs">
+                          <div>{n.title}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {n.body}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatTarget(n.target_role)}</TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {formatDateTime(n.scheduled_at)}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div
+                            className="truncate text-xs text-red-600"
+                            title={n.last_error ?? undefined}
+                          >
+                            {n.last_error ?? "Unknown error"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {n.attempts}{" "}
+                            {n.attempts === 1 ? "attempt" : "attempts"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={saving}
+                              onClick={() => openEdit(n)}
+                              className="cursor-pointer text-muted-foreground"
+                              aria-label="Edit and retry"
                             >
                               <Pencil className="size-4" />
                             </Button>

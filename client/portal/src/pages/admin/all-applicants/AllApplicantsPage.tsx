@@ -73,6 +73,22 @@ export default function AllApplicantsPage() {
     clearDetail();
   }, [clearDetail]);
 
+  const selectedIndex = applications.findIndex(
+    (app) => app.id === selectedApplicationId,
+  );
+
+  const handlePreviousApplication = useCallback(() => {
+    if (selectedIndex > 0) {
+      setSelectedApplicationId(applications[selectedIndex - 1].id);
+    }
+  }, [applications, selectedIndex]);
+
+  const handleNextApplication = useCallback(() => {
+    if (selectedIndex !== -1 && selectedIndex < applications.length - 1) {
+      setSelectedApplicationId(applications[selectedIndex + 1].id);
+    }
+  }, [applications, selectedIndex]);
+
   const handleStatusFilter = useCallback(
     (status: ApplicationStatus | null) => {
       fetchApplications({ status });
@@ -101,8 +117,8 @@ export default function AllApplicantsPage() {
         <SectionCards stats={stats} loading={statsLoading} />
       </div>
 
-      <div className="shrink-0 grid grid-cols-2 gap-4 lg:grid-cols-4 items-center">
-        <div className="col-span-2">
+      <div className="shrink-0 flex flex-wrap items-center gap-3">
+        <div>
           {isInitialLoad ? (
             <div className="flex gap-2">
               {[...Array(4)].map((_, i) => (
@@ -118,15 +134,13 @@ export default function AllApplicantsPage() {
             />
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {!redact && (
-            <>
-              <div className="h-5 w-px bg-border shrink-0" />
-              <SearchBar value={searchInput} onChange={setSearchInput} />
-            </>
-          )}
-        </div>
-        <div className="flex justify-end">
+        {!redact && (
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-px bg-border shrink-0" />
+            <SearchBar value={searchInput} onChange={setSearchInput} />
+          </div>
+        )}
+        <div className="ml-auto flex">
           <PaginationControls
             prevCursor={prevCursor}
             nextCursor={nextCursor}
@@ -138,9 +152,7 @@ export default function AllApplicantsPage() {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <Card
-          className={`overflow-hidden flex flex-col ${selectedApplicationId ? "w-1/2 rounded-r-none" : "w-full"}`}
-        >
+        <Card className="overflow-hidden flex flex-col w-full">
           <CardHeader className="shrink-0">
             <CardDescription className="font-light flex items-center gap-1.5">
               <span>{applications.length} application(s) on this page</span>
@@ -165,15 +177,20 @@ export default function AllApplicantsPage() {
             />
           </CardContent>
         </Card>
-
-        {selectedApplicationId && (
-          <ApplicationDetailPanel
-            application={applicationDetail}
-            loading={detailLoading}
-            onClose={handleClosePanel}
-          />
-        )}
       </div>
+
+      <ApplicationDetailPanel
+        application={applicationDetail}
+        loading={detailLoading}
+        open={!!selectedApplicationId}
+        onClose={handleClosePanel}
+        canPrevious={selectedIndex > 0}
+        canNext={
+          selectedIndex !== -1 && selectedIndex < applications.length - 1
+        }
+        onPrevious={handlePreviousApplication}
+        onNext={handleNextApplication}
+      />
     </div>
   );
 }

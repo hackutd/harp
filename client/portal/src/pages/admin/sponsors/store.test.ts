@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MAX_LOGO_BYTES } from "./constants";
 import { useSponsorsStore } from "./store";
 import type { Sponsor, SponsorPayload } from "./types";
 
@@ -18,6 +19,15 @@ vi.mock("./api", () => ({
   deleteSponsor: api.deleteSponsor,
   uploadSponsorLogo: api.uploadSponsorLogo,
 }));
+
+// jsdom has no canvas, so the real downscale/re-encode step cannot run here.
+const logo = vi.hoisted(() => ({ prepareLogoForUpload: vi.fn() }));
+vi.mock("@/shared/lib/logo-image", () => ({
+  prepareLogoForUpload: logo.prepareLogoForUpload,
+}));
+
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
 
 function sponsor(id: string, overrides: Partial<Sponsor> = {}): Sponsor {
   return {
@@ -157,21 +167,13 @@ describe("sponsor store: create / edit / delete", () => {
 });
 
 describe("sponsor store: logo upload", () => {
-  it("reads the file data and updates the sponsor with the new logo", async () => {
+  it("uploads the prepared logo and updates the sponsor", async () => {
     useSponsorsStore.setState({ sponsors: [sponsor("1")] });
-
-    // Stub FileReader.readAsDataURL to emit a data URL synchronously.
-    vi.stubGlobal(
-      "FileReader",
-      class {
-        result = "data:image/png;base64,AAAA";
-        onload: null | (() => void) = null;
-        readAsDataURL() {
-          this.onload?.();
-        }
-      },
-    );
-
+    logo.prepareLogoForUpload.mockResolvedValue({
+      base64: "AAAA",
+      contentType: "image/webp",
+      byteLength: 3,
+    });
     api.uploadSponsorLogo.mockResolvedValue({
       status: 200,
       data: sponsor("1", { logo_data: "AAAA" }),
@@ -185,26 +187,44 @@ describe("sponsor store: logo upload", () => {
     expect(api.uploadSponsorLogo).toHaveBeenCalledWith(
       "1",
       "AAAA",
-      "image/png",
+      "image/webp",
     );
     expect(useSponsorsStore.getState().sponsors[0].logo_data).toBe("AAAA");
   });
 
   it("returns null when logo upload fails", async () => {
-    vi.stubGlobal(
-      "FileReader",
-      class {
-        result = "data:image/png;base64,BBBB";
-        onload: null | (() => void) = null;
-        readAsDataURL() {
-          this.onload?.();
-        }
-      },
-    );
+    logo.prepareLogoForUpload.mockResolvedValue({
+      base64: "BBBB",
+      contentType: "image/webp",
+      byteLength: 3,
+    });
     api.uploadSponsorLogo.mockResolvedValue({ status: 500 });
     const result = await useSponsorsStore
       .getState()
       .uploadLogo("1", new File(["x"], "logo.png", { type: "image/png" }));
     expect(result).toBeNull();
+  });
+
+  it("returns null without uploading when the image cannot be decoded", async () => {
+    logo.prepareLogoForUpload.mockRejectedValue(new Error("bad image"));
+    const result = await useSponsorsStore
+      .getState()
+      .uploadLogo("1", new File(["x"], "logo.png", { type: "image/png" }));
+    expect(result).toBeNull();
+    expect(api.uploadSponsorLogo).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it("returns null without uploading when the logo is still too large", async () => {
+    logo.prepareLogoForUpload.mockResolvedValue({
+      base64: "CCCC",
+      contentType: "image/webp",
+      byteLength: MAX_LOGO_BYTES + 1,
+    });
+    const result = await useSponsorsStore
+      .getState()
+      .uploadLogo("1", new File(["x"], "logo.png", { type: "image/png" }));
+    expect(result).toBeNull();
+    expect(api.uploadSponsorLogo).not.toHaveBeenCalled();
   });
 });

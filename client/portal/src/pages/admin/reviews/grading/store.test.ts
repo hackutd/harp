@@ -4,6 +4,7 @@ import type { Review, ReviewNote } from "../types";
 import { useAdminGradingStore } from "./store";
 
 const reviewApi = vi.hoisted(() => ({
+  claimMoreReviews: vi.fn(),
   fetchPendingReviews: vi.fn(),
   fetchReviewNotes: vi.fn(),
   submitReviewVote: vi.fn(),
@@ -14,6 +15,7 @@ const adminApi = vi.hoisted(() => ({
 }));
 
 vi.mock("../api", () => ({
+  claimMoreReviews: reviewApi.claimMoreReviews,
   fetchPendingReviews: reviewApi.fetchPendingReviews,
   fetchReviewNotes: reviewApi.fetchReviewNotes,
   submitReviewVote: reviewApi.submitReviewVote,
@@ -24,7 +26,11 @@ vi.mock("@/pages/admin/all-applicants/api", () => ({
   fetchApplications: vi.fn(),
 }));
 
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+const toast = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+}));
 vi.mock("sonner", () => ({ toast }));
 
 function makeReview(id: string): Review {
@@ -33,6 +39,7 @@ function makeReview(id: string): Review {
     admin_id: "a1",
     application_id: "app-" + id,
     vote: null,
+    travel_vote: null,
     notes: null,
     assigned_at: "2026-03-14T15:00:00Z",
     reviewed_at: null,
@@ -46,12 +53,21 @@ function makeReview(id: string): Review {
     major: "CS",
     country_of_residence: "US",
     hackathons_attended: 0,
+    travel_status: "not_requested",
   };
 }
 
 beforeEach(() => {
   useAdminGradingStore.getState().reset();
   vi.clearAllMocks();
+  adminApi.fetchApplicationById.mockResolvedValue({
+    status: 200,
+    data: undefined,
+  });
+  reviewApi.fetchReviewNotes.mockResolvedValue({
+    status: 200,
+    data: { notes: [] as ReviewNote[] },
+  });
 });
 
 describe("admin grading store: failed vote preserves review and clears submitting", () => {
@@ -85,12 +101,6 @@ describe("admin grading store: failed vote preserves review and clears submittin
     await useAdminGradingStore.getState().fetchReviews();
 
     useAdminGradingStore.setState({ localNotes: "submit" });
-    const detailRes = { status: 200, data: undefined };
-    adminApi.fetchApplicationById.mockResolvedValue(detailRes);
-    reviewApi.fetchReviewNotes.mockResolvedValue({
-      status: 200,
-      data: { notes: [] as ReviewNote[] },
-    });
     reviewApi.submitReviewVote.mockResolvedValue({ success: true });
 
     await useAdminGradingStore.getState().submitVote("r1", "waitlist");

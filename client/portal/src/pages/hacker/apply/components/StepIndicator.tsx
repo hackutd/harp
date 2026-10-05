@@ -19,7 +19,7 @@ export function StepIndicator({
         type="button"
         onClick={onBack}
         aria-label="Back"
-        className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-colors hover:bg-[#F0F0F0]"
+        className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1"
       >
         <ChevronLeft className="size-5" strokeWidth={1.75} />
       </button>

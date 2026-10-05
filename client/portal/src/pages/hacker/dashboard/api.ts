@@ -1,5 +1,15 @@
 import { getRequest } from "@/shared/lib/api";
-import type { ApiResponse } from "@/types";
+import type { ApiResponse, HackerLinkListResponse } from "@/types";
+
+export async function fetchHackerLinks(
+  signal?: AbortSignal,
+): Promise<ApiResponse<HackerLinkListResponse>> {
+  return getRequest<HackerLinkListResponse>(
+    "/hacker-links",
+    "hacker links",
+    signal,
+  );
+}
 
 // Hackathon identity and key dates, configured by super admins. Kickoff is the
 // hackathon start date rather than a separately configured date.

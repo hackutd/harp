@@ -1,4 +1,9 @@
-import { getRequest, patchRequest, putRequest } from "@/shared/lib/api";
+import {
+  deleteRequest,
+  getRequest,
+  patchRequest,
+  putRequest,
+} from "@/shared/lib/api";
 import type { ApiResponse, UserRole } from "@/types";
 
 import type { FetchUsersParams, UserListResponse } from "./types";
@@ -52,4 +57,8 @@ export async function toggleReviewAssignment(
     { user_id: userId, enabled },
     "review assignment status",
   );
+}
+
+export async function deleteUser(userId: string): Promise<ApiResponse<void>> {
+  return deleteRequest<void>(`/superadmin/users/${userId}`, "user");
 }

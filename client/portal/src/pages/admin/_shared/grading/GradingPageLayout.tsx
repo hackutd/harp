@@ -82,11 +82,13 @@ export function GradingPageLayout({
 
       {/* Content */}
       <div className="flex flex-1 min-h-0">
-        {/* Left panel - Application details (75%) */}
-        <div className="w-3/4 overflow-auto border-r">{detailsPanel}</div>
+        {/* Left panel - Application details (two thirds) */}
+        <div className="min-w-0 w-2/3 overflow-auto border-r">
+          {detailsPanel}
+        </div>
 
-        {/* Right panel (25%) */}
-        <div className="w-1/4 flex flex-col bg-gray-50/50">
+        {/* Right panel - grading information (one third) */}
+        <div className="min-w-0 w-1/3 flex flex-col bg-gray-50/50">
           <div className="flex-1 overflow-auto">{actionPanel}</div>
           {/* Navigation hint */}
           <div className="shrink-0 border-t bg-gray-50 p-4 pt-2">

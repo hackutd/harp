@@ -1,21 +1,19 @@
-import { ExternalLink } from "lucide-react";
+import { FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { ResumePreviewDialog } from "@/pages/admin/_shared/ResumePreviewDialog";
+import { useRedactApplicants } from "@/shared/hooks";
 import type { Application } from "@/types";
 
 interface LinksSectionProps {
   application: Application;
-  onViewResume?: () => void;
-  isOpeningResume?: boolean;
 }
 
-export function LinksSection({
-  application,
-  onViewResume,
-  isOpeningResume = false,
-}: LinksSectionProps) {
-  if (!application.resume_path) {
+export function LinksSection({ application }: LinksSectionProps) {
+  const redact = useRedactApplicants();
+
+  if (redact || !application.resume_path) {
     return null;
   }
 
@@ -26,17 +24,15 @@ export function LinksSection({
         <div>
           <Label className="text-muted-foreground text-xs">Resume</Label>
           <div className="pt-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onViewResume}
-              disabled={!onViewResume}
-              loading={isOpeningResume}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              {isOpeningResume ? "Opening..." : "View Resume"}
-            </Button>
+            <ResumePreviewDialog
+              applicationId={application.id}
+              trigger={
+                <Button type="button" variant="outline" size="sm">
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Resume
+                </Button>
+              }
+            />
           </div>
         </div>
       </div>

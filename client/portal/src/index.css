@@ -5,9 +5,28 @@
    restyle the portal without conflicting with upstream on every merge. */
 @import "../branding/theme.css";
 
+/* Zero Day type, from the marketing site: Satoshi for text, Hypik for display.
+   Hypik is letters only - no digits or punctuation - and its licence asks for
+   a link back (assets/fonts/hypik-LICENSE.txt). */
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Variable.woff2") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hypik";
+  src: url("./assets/fonts/hypik.otf") format("opentype");
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-satoshi: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-hypik: "Hypik", "Satoshi", ui-sans-serif, sans-serif;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -15,6 +34,216 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /*
+   * Chromatic palette
+   *
+   * The schedule's red/amber/emerald/sky/violet 400 colors are the canonical
+   * values. Related Tailwind families are aliases of these ramps so legacy
+   * utilities (yellow, green, blue, purple, etc.) cannot drift visually.
+   */
+  --color-red-50: color-mix(in srgb, var(--portal-red) 10%, white);
+  --color-red-100: color-mix(in srgb, var(--portal-red) 20%, white);
+  --color-red-200: color-mix(in srgb, var(--portal-red) 35%, white);
+  --color-red-300: color-mix(in srgb, var(--portal-red) 65%, white);
+  --color-red-400: var(--portal-red);
+  --color-red-500: color-mix(in srgb, var(--portal-red) 90%, black);
+  --color-red-600: color-mix(in srgb, var(--portal-red) 80%, black);
+  --color-red-700: color-mix(in srgb, var(--portal-red) 65%, black);
+  --color-red-800: color-mix(in srgb, var(--portal-red) 50%, black);
+  --color-red-900: color-mix(in srgb, var(--portal-red) 35%, black);
+  --color-red-950: color-mix(in srgb, var(--portal-red) 20%, black);
+
+  --color-amber-50: color-mix(in srgb, var(--portal-orange) 10%, white);
+  --color-amber-100: color-mix(in srgb, var(--portal-orange) 20%, white);
+  --color-amber-200: color-mix(in srgb, var(--portal-orange) 35%, white);
+  --color-amber-300: color-mix(in srgb, var(--portal-orange) 65%, white);
+  --color-amber-400: var(--portal-orange);
+  --color-amber-500: color-mix(in srgb, var(--portal-orange) 90%, black);
+  --color-amber-600: color-mix(in srgb, var(--portal-orange) 80%, black);
+  --color-amber-700: color-mix(in srgb, var(--portal-orange) 65%, black);
+  --color-amber-800: color-mix(in srgb, var(--portal-orange) 50%, black);
+  --color-amber-900: color-mix(in srgb, var(--portal-orange) 35%, black);
+  --color-amber-950: color-mix(in srgb, var(--portal-orange) 20%, black);
+
+  --color-emerald-50: color-mix(in srgb, var(--portal-green) 10%, white);
+  --color-emerald-100: color-mix(in srgb, var(--portal-green) 20%, white);
+  --color-emerald-200: color-mix(in srgb, var(--portal-green) 35%, white);
+  --color-emerald-300: color-mix(in srgb, var(--portal-green) 65%, white);
+  --color-emerald-400: var(--portal-green);
+  --color-emerald-500: color-mix(in srgb, var(--portal-green) 90%, black);
+  --color-emerald-600: color-mix(in srgb, var(--portal-green) 80%, black);
+  --color-emerald-700: color-mix(in srgb, var(--portal-green) 65%, black);
+  --color-emerald-800: color-mix(in srgb, var(--portal-green) 50%, black);
+  --color-emerald-900: color-mix(in srgb, var(--portal-green) 35%, black);
+  --color-emerald-950: color-mix(in srgb, var(--portal-green) 20%, black);
+
+  --color-sky-50: color-mix(in srgb, var(--portal-blue) 10%, white);
+  --color-sky-100: color-mix(in srgb, var(--portal-blue) 20%, white);
+  --color-sky-200: color-mix(in srgb, var(--portal-blue) 35%, white);
+  --color-sky-300: color-mix(in srgb, var(--portal-blue) 65%, white);
+  --color-sky-400: var(--portal-blue);
+  --color-sky-500: color-mix(in srgb, var(--portal-blue) 90%, black);
+  --color-sky-600: color-mix(in srgb, var(--portal-blue) 80%, black);
+  --color-sky-700: color-mix(in srgb, var(--portal-blue) 65%, black);
+  --color-sky-800: color-mix(in srgb, var(--portal-blue) 50%, black);
+  --color-sky-900: color-mix(in srgb, var(--portal-blue) 35%, black);
+  --color-sky-950: color-mix(in srgb, var(--portal-blue) 20%, black);
+
+  --color-violet-50: color-mix(in srgb, var(--portal-purple) 10%, white);
+  --color-violet-100: color-mix(in srgb, var(--portal-purple) 20%, white);
+  --color-violet-200: color-mix(in srgb, var(--portal-purple) 35%, white);
+  --color-violet-300: color-mix(in srgb, var(--portal-purple) 65%, white);
+  --color-violet-400: var(--portal-purple);
+  --color-violet-500: color-mix(in srgb, var(--portal-purple) 90%, black);
+  --color-violet-600: color-mix(in srgb, var(--portal-purple) 80%, black);
+  --color-violet-700: color-mix(in srgb, var(--portal-purple) 65%, black);
+  --color-violet-800: color-mix(in srgb, var(--portal-purple) 50%, black);
+  --color-violet-900: color-mix(in srgb, var(--portal-purple) 35%, black);
+  --color-violet-950: color-mix(in srgb, var(--portal-purple) 20%, black);
+
+  /* Red aliases. */
+  --color-rose-50: var(--color-red-50);
+  --color-rose-100: var(--color-red-100);
+  --color-rose-200: var(--color-red-200);
+  --color-rose-300: var(--color-red-300);
+  --color-rose-400: var(--color-red-400);
+  --color-rose-500: var(--color-red-500);
+  --color-rose-600: var(--color-red-600);
+  --color-rose-700: var(--color-red-700);
+  --color-rose-800: var(--color-red-800);
+  --color-rose-900: var(--color-red-900);
+  --color-rose-950: var(--color-red-950);
+
+  /* Orange aliases. */
+  --color-orange-50: var(--color-amber-50);
+  --color-orange-100: var(--color-amber-100);
+  --color-orange-200: var(--color-amber-200);
+  --color-orange-300: var(--color-amber-300);
+  --color-orange-400: var(--color-amber-400);
+  --color-orange-500: var(--color-amber-500);
+  --color-orange-600: var(--color-amber-600);
+  --color-orange-700: var(--color-amber-700);
+  --color-orange-800: var(--color-amber-800);
+  --color-orange-900: var(--color-amber-900);
+  --color-orange-950: var(--color-amber-950);
+  --color-yellow-50: var(--color-amber-50);
+  --color-yellow-100: var(--color-amber-100);
+  --color-yellow-200: var(--color-amber-200);
+  --color-yellow-300: var(--color-amber-300);
+  --color-yellow-400: var(--color-amber-400);
+  --color-yellow-500: var(--color-amber-500);
+  --color-yellow-600: var(--color-amber-600);
+  --color-yellow-700: var(--color-amber-700);
+  --color-yellow-800: var(--color-amber-800);
+  --color-yellow-900: var(--color-amber-900);
+  --color-yellow-950: var(--color-amber-950);
+
+  /* Green aliases. */
+  --color-lime-50: var(--color-emerald-50);
+  --color-lime-100: var(--color-emerald-100);
+  --color-lime-200: var(--color-emerald-200);
+  --color-lime-300: var(--color-emerald-300);
+  --color-lime-400: var(--color-emerald-400);
+  --color-lime-500: var(--color-emerald-500);
+  --color-lime-600: var(--color-emerald-600);
+  --color-lime-700: var(--color-emerald-700);
+  --color-lime-800: var(--color-emerald-800);
+  --color-lime-900: var(--color-emerald-900);
+  --color-lime-950: var(--color-emerald-950);
+  --color-green-50: var(--color-emerald-50);
+  --color-green-100: var(--color-emerald-100);
+  --color-green-200: var(--color-emerald-200);
+  --color-green-300: var(--color-emerald-300);
+  --color-green-400: var(--color-emerald-400);
+  --color-green-500: var(--color-emerald-500);
+  --color-green-600: var(--color-emerald-600);
+  --color-green-700: var(--color-emerald-700);
+  --color-green-800: var(--color-emerald-800);
+  --color-green-900: var(--color-emerald-900);
+  --color-green-950: var(--color-emerald-950);
+  --color-teal-50: var(--color-emerald-50);
+  --color-teal-100: var(--color-emerald-100);
+  --color-teal-200: var(--color-emerald-200);
+  --color-teal-300: var(--color-emerald-300);
+  --color-teal-400: var(--color-emerald-400);
+  --color-teal-500: var(--color-emerald-500);
+  --color-teal-600: var(--color-emerald-600);
+  --color-teal-700: var(--color-emerald-700);
+  --color-teal-800: var(--color-emerald-800);
+  --color-teal-900: var(--color-emerald-900);
+  --color-teal-950: var(--color-emerald-950);
+
+  /* Blue aliases. */
+  --color-cyan-50: var(--color-sky-50);
+  --color-cyan-100: var(--color-sky-100);
+  --color-cyan-200: var(--color-sky-200);
+  --color-cyan-300: var(--color-sky-300);
+  --color-cyan-400: var(--color-sky-400);
+  --color-cyan-500: var(--color-sky-500);
+  --color-cyan-600: var(--color-sky-600);
+  --color-cyan-700: var(--color-sky-700);
+  --color-cyan-800: var(--color-sky-800);
+  --color-cyan-900: var(--color-sky-900);
+  --color-cyan-950: var(--color-sky-950);
+  --color-blue-50: var(--color-sky-50);
+  --color-blue-100: var(--color-sky-100);
+  --color-blue-200: var(--color-sky-200);
+  --color-blue-300: var(--color-sky-300);
+  --color-blue-400: var(--color-sky-400);
+  --color-blue-500: var(--color-sky-500);
+  --color-blue-600: var(--color-sky-600);
+  --color-blue-700: var(--color-sky-700);
+  --color-blue-800: var(--color-sky-800);
+  --color-blue-900: var(--color-sky-900);
+  --color-blue-950: var(--color-sky-950);
+
+  /* Purple aliases. */
+  --color-indigo-50: var(--color-violet-50);
+  --color-indigo-100: var(--color-violet-100);
+  --color-indigo-200: var(--color-violet-200);
+  --color-indigo-300: var(--color-violet-300);
+  --color-indigo-400: var(--color-violet-400);
+  --color-indigo-500: var(--color-violet-500);
+  --color-indigo-600: var(--color-violet-600);
+  --color-indigo-700: var(--color-violet-700);
+  --color-indigo-800: var(--color-violet-800);
+  --color-indigo-900: var(--color-violet-900);
+  --color-indigo-950: var(--color-violet-950);
+  --color-purple-50: var(--color-violet-50);
+  --color-purple-100: var(--color-violet-100);
+  --color-purple-200: var(--color-violet-200);
+  --color-purple-300: var(--color-violet-300);
+  --color-purple-400: var(--color-violet-400);
+  --color-purple-500: var(--color-violet-500);
+  --color-purple-600: var(--color-violet-600);
+  --color-purple-700: var(--color-violet-700);
+  --color-purple-800: var(--color-violet-800);
+  --color-purple-900: var(--color-violet-900);
+  --color-purple-950: var(--color-violet-950);
+  --color-fuchsia-50: var(--color-violet-50);
+  --color-fuchsia-100: var(--color-violet-100);
+  --color-fuchsia-200: var(--color-violet-200);
+  --color-fuchsia-300: var(--color-violet-300);
+  --color-fuchsia-400: var(--color-violet-400);
+  --color-fuchsia-500: var(--color-violet-500);
+  --color-fuchsia-600: var(--color-violet-600);
+  --color-fuchsia-700: var(--color-violet-700);
+  --color-fuchsia-800: var(--color-violet-800);
+  --color-fuchsia-900: var(--color-violet-900);
+  --color-fuchsia-950: var(--color-violet-950);
+  --color-pink-50: var(--color-violet-50);
+  --color-pink-100: var(--color-violet-100);
+  --color-pink-200: var(--color-violet-200);
+  --color-pink-300: var(--color-violet-300);
+  --color-pink-400: var(--color-violet-400);
+  --color-pink-500: var(--color-violet-500);
+  --color-pink-600: var(--color-violet-600);
+  --color-pink-700: var(--color-violet-700);
+  --color-pink-800: var(--color-violet-800);
+  --color-pink-900: var(--color-violet-900);
+  --color-pink-950: var(--color-violet-950);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -30,6 +259,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -68,6 +298,69 @@
   select:not(:disabled),
   summary {
     cursor: pointer;
+  }
+}
+
+/*
+ * Cyberpunk 2077 cursor set, copied from zero-day-2026. Hotspots come from the
+ * original .cur headers; 2x copies are nearest-doubled pixel art. Each value
+ * falls back to the native keyword if the image fails.
+ *
+ * Hacker and public pages only: AdminLayout puts .admin-portal on <body> (body,
+ * not the layout, so Radix portals are covered too) and keeps native cursors.
+ */
+:root {
+  --cp-arrow:
+    image-set(
+        url("/cursors/cp-arrow.png") 1x,
+        url("/cursors/cp-arrow@2x.png") 2x
+      )
+      0 8,
+    auto;
+  --cp-beam:
+    image-set(url("/cursors/cp-beam.png") 1x, url("/cursors/cp-beam@2x.png") 2x)
+      17 15,
+    text;
+  --cp-hand:
+    image-set(url("/cursors/cp-link.png") 1x, url("/cursors/cp-link@2x.png") 2x)
+      6 5,
+    pointer;
+}
+
+/* Base layer, so cursor-* utilities (not-allowed, grab, ...) still win. */
+@layer base {
+  body:not(.admin-portal) {
+    cursor: var(--cp-arrow);
+  }
+  body:not(.admin-portal) :is(input, textarea, [contenteditable="true"]) {
+    cursor: var(--cp-beam);
+  }
+  body:not(.admin-portal)
+    :is(
+      a[href],
+      label,
+      button:not(:disabled),
+      [role="button"]:not(:disabled),
+      [role="tab"]:not([data-disabled]):not([aria-disabled="true"]),
+      [role="menuitem"]:not([data-disabled]):not([aria-disabled="true"]),
+      [role="menuitemcheckbox"]:not([data-disabled]):not(
+          [aria-disabled="true"]
+        ),
+      [role="menuitemradio"]:not([data-disabled]):not([aria-disabled="true"]),
+      [role="option"]:not([data-disabled]):not([aria-disabled="true"]),
+      [role="switch"]:not(:disabled),
+      select:not(:disabled),
+      summary
+    ) {
+    cursor: var(--cp-hand);
+  }
+}
+
+/* Many components set the cursor-pointer utility explicitly, which beats the
+   base layer and would show the native hand; swap it for the custom one. */
+@layer utilities {
+  body:not(.admin-portal) .cursor-pointer:not(:disabled) {
+    cursor: var(--cp-hand);
   }
 }
 
@@ -125,4 +418,898 @@
 
 .animate-celebration-fade-in {
   animation: celebration-fade-in 0.3s ease-out;
+}
+
+/* ---------------------------------------------------------------------------
+ * Login mascots
+ *
+ * The mascot webps animate in place on their own (run cycle, wings, walk), so
+ * these keyframes only move them around the sign-in page. Used by
+ * `pages/public/components/MascotField.tsx`.
+ * ------------------------------------------------------------------------ */
+
+/* Jaguar: sprints the width of the screen, waits off-screen, turns, sprints
+   back. The scaleX flip is scheduled while it is off-screen so it never reads
+   as a pivot in mid-stride. */
+@keyframes mascot-dash {
+  0% {
+    transform: translate3d(115vw, 0, 0) scaleX(1);
+  }
+  20% {
+    transform: translate3d(-45vw, 0, 0) scaleX(1);
+  }
+  20.01%,
+  60% {
+    transform: translate3d(-45vw, 0, 0) scaleX(-1);
+  }
+  80%,
+  100% {
+    transform: translate3d(115vw, 0, 0) scaleX(-1);
+  }
+}
+
+/* Timing is driven by custom properties rather than set directly, so a single
+   mascot can be re-timed from the JSX. These rules are unlayered and would
+   otherwise win over Tailwind's `[animation-duration:…]` utilities. */
+.mascot-dash {
+  animation: mascot-dash var(--mascot-duration, 24s) linear
+    var(--mascot-delay, 0s) infinite;
+  will-change: transform;
+}
+
+/* Wandering: waypoints inside a --roam-x by --roam-y box rather than a straight
+   there-and-back, so the path never reads as a pendulum. The box hangs off the
+   mascot's anchor corner, so the signs of the two vars are what aim it at open
+   space. Easing applies per segment, which gives the drift-and-pause rhythm of
+   something that keeps changing its mind. */
+@keyframes mascot-roam {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(
+      calc(var(--roam-x, 0px) * 0.85),
+      calc(var(--roam-y, 0px) * 0.2),
+      0
+    );
+  }
+  35% {
+    transform: translate3d(
+      calc(var(--roam-x, 0px) * 0.3),
+      calc(var(--roam-y, 0px) * 0.85),
+      0
+    );
+  }
+  52% {
+    transform: translate3d(var(--roam-x, 0px), var(--roam-y, 0px), 0);
+  }
+  70% {
+    transform: translate3d(
+      calc(var(--roam-x, 0px) * 0.45),
+      calc(var(--roam-y, 0px) * 0.35),
+      0
+    );
+  }
+  86% {
+    transform: translate3d(
+      calc(var(--roam-x, 0px) * 0.9),
+      calc(var(--roam-y, 0px) * 0.75),
+      0
+    );
+  }
+}
+
+.mascot-roam {
+  animation: mascot-roam var(--mascot-duration, 21s) ease-in-out
+    var(--mascot-delay, 0s) infinite;
+  will-change: transform;
+}
+
+/* Hovering: bobs and tips on a shorter period than the drift underneath it, so
+   the two never settle into an obvious repeat. */
+@keyframes mascot-hover {
+  0%,
+  100% {
+    transform: translate3d(0, calc(var(--float, 10px) * -1), 0) rotate(-5deg);
+  }
+  50% {
+    transform: translate3d(0, var(--float, 10px), 0) rotate(5deg);
+  }
+}
+
+.mascot-hover {
+  animation: mascot-hover var(--mascot-bounce-duration, 6.5s) ease-in-out
+    var(--mascot-bounce-delay, 0s) infinite;
+}
+
+/* A small bounce for the ones whose own animation is a walk in place. */
+@keyframes mascot-waddle {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-2.5deg);
+  }
+  50% {
+    transform: translate3d(0, calc(var(--waddle, 4px) * -1), 0) rotate(2.5deg);
+  }
+}
+
+.mascot-waddle {
+  animation: mascot-waddle var(--mascot-bounce-duration, 2.8s) ease-in-out
+    var(--mascot-bounce-delay, 0s) infinite;
+}
+
+/* Walks the length of --patrol, turns, doubles back part of the way, turns
+   again — four legs of uneven length so it reads as pottering about rather than
+   pacing. scaleX passing through 0 at each end is what sells the turn, and the
+   keyframes are spaced by distance so the walking speed stays constant.
+
+   The raccoon art faces left, so scaleX(-1) is the one that walks it forwards
+   to the right: every leg travelling in +x is mirrored, every leg travelling
+   back to the left is not. */
+@keyframes mascot-patrol {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(-1);
+  }
+  29% {
+    transform: translate3d(var(--patrol, 80px), 0, 0) scaleX(-1);
+  }
+  33% {
+    transform: translate3d(var(--patrol, 80px), 0, 0) scaleX(1);
+  }
+  52% {
+    transform: translate3d(calc(var(--patrol, 80px) * 0.35), 0, 0) scaleX(1);
+  }
+  56% {
+    transform: translate3d(calc(var(--patrol, 80px) * 0.35), 0, 0) scaleX(-1);
+  }
+  69% {
+    transform: translate3d(calc(var(--patrol, 80px) * 0.8), 0, 0) scaleX(-1);
+  }
+  73% {
+    transform: translate3d(calc(var(--patrol, 80px) * 0.8), 0, 0) scaleX(1);
+  }
+  96% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scaleX(-1);
+  }
+}
+
+.mascot-patrol {
+  animation: mascot-patrol var(--mascot-duration, 24s) linear
+    var(--mascot-delay, 0s) infinite;
+  will-change: transform;
+}
+
+/* The mascots are decoration, and the webps keep animating even when the layer
+   stops moving — so drop the whole field rather than freeze it. */
+@media (prefers-reduced-motion: reduce) {
+  .mascot-field {
+    display: none;
+  }
+}
+
+/* On a landscape phone the form fills the viewport top to bottom, leaving the
+   mascots nowhere to wander that isn't on top of it. */
+@media (max-height: 560px) {
+  .mascot-field {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Zero Day login
+ *
+ * The login screen is intentionally isolated from the portal's light UI. Its
+ * gradients behave as sparse neon light pollution over a black canvas, while
+ * the grid, scanlines, and clipped panels supply the technical geometry.
+ * ------------------------------------------------------------------------ */
+
+.zero-login {
+  background-color: #020307;
+  background-image:
+    radial-gradient(circle at 10% 18%, rgb(89 0 255 / 22%), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgb(246 43 232 / 14%), transparent 24%),
+    radial-gradient(circle at 58% 105%, rgb(33 255 240 / 10%), transparent 34%);
+}
+
+.zero-login::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 0 44%,
+    rgb(89 0 255 / 6%) 44.1% 44.3%,
+    transparent 44.4% 100%
+  );
+  content: "";
+}
+
+.zero-login-grid {
+  background-image:
+    linear-gradient(rgb(33 255 240 / 9%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(33 255 240 / 9%) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 2%,
+    black 32%,
+    transparent
+  );
+  opacity: 0.22;
+  transform: perspective(720px) rotateX(64deg) scale(1.65) translateY(18%);
+  transform-origin: bottom;
+}
+
+.zero-login-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 3px,
+    rgb(255 255 255 / 2.5%) 4px
+  );
+  opacity: 0.4;
+}
+
+.zero-login-panel {
+  background: linear-gradient(
+    135deg,
+    rgb(33 255 240 / 72%),
+    rgb(255 255 255 / 12%) 30%,
+    rgb(255 255 255 / 12%) 68%,
+    rgb(246 43 232 / 72%)
+  );
+  clip-path: polygon(
+    0 0,
+    calc(100% - 24px) 0,
+    100% 24px,
+    100% 100%,
+    24px 100%,
+    0 calc(100% - 24px)
+  );
+  filter: drop-shadow(0 28px 60px rgb(0 0 0 / 48%));
+}
+
+.zero-login-panel::after {
+  position: absolute;
+  top: 0;
+  right: 24px;
+  width: 72px;
+  height: 1px;
+  background: #f62be8;
+  box-shadow: 0 0 12px #f62be8;
+  content: "";
+}
+
+.zero-login-panel-inner {
+  min-height: 100%;
+  background: rgb(7 8 15 / 94%);
+  clip-path: inherit;
+  backdrop-filter: blur(18px);
+}
+
+.zero-cut-button {
+  border-radius: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 11px) 0,
+    100% 11px,
+    100% 100%,
+    11px 100%,
+    0 calc(100% - 11px)
+  );
+}
+
+.zero-cut-sm {
+  border-radius: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% 100%,
+    8px 100%,
+    0 calc(100% - 8px)
+  );
+}
+
+.zero-login-legal-link {
+  position: relative;
+  display: inline-block;
+  text-decoration: none;
+  transition:
+    color 280ms ease,
+    text-shadow 280ms ease;
+}
+
+.zero-login-legal-link::before,
+.zero-login-legal-link::after {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  left: 0;
+  height: 1px;
+  content: "";
+}
+
+.zero-login-legal-link::before {
+  background: rgb(255 255 255 / 38%);
+}
+
+.zero-login-legal-link::after {
+  background: #21fff0;
+  box-shadow: 0 0 8px rgb(33 255 240 / 70%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 280ms ease;
+}
+
+.zero-login-legal-link:hover,
+.zero-login-legal-link:focus-visible {
+  color: #21fff0;
+  text-shadow: 0 0 12px rgb(33 255 240 / 55%);
+  outline: none;
+}
+
+.zero-login-legal-link:hover::after,
+.zero-login-legal-link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* Sign-in page footer links: the same sweep-in underline and nudge as main's
+   cyan versions, recoloured to the page's grey-and-white palette. */
+.login-sweep-link {
+  position: relative;
+  display: inline-block;
+  text-decoration: none;
+  transition: color 280ms ease;
+}
+
+.login-sweep-link::before,
+.login-sweep-link::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  content: "";
+}
+
+.login-sweep-link::before {
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.login-sweep-link::after {
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 280ms ease;
+}
+
+.login-sweep-link:hover,
+.login-sweep-link:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.login-sweep-link:hover::after,
+.login-sweep-link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.login-harp-link {
+  transition:
+    color 240ms ease,
+    transform 240ms ease;
+}
+
+.login-harp-link:hover,
+.login-harp-link:focus-visible {
+  transform: translateX(2px);
+}
+
+/* Zero Day hacker portal. The theme class lives at the shared hacker layout,
+   so admin and public pages retain their existing palette. A matching body
+   class covers Radix portals, which render outside the layout subtree. */
+.hacker-zero-theme,
+body.hacker-zero-portals {
+  --background: #080910;
+  --foreground: #f8f8ff;
+  --card: #0b0c15;
+  --card-foreground: #f8f8ff;
+  --popover: #0d0e18;
+  --popover-foreground: #f8f8ff;
+  --primary: #5900ff;
+  --primary-foreground: #ffffff;
+  --secondary: #151625;
+  --secondary-foreground: #f8f8ff;
+  --muted: #151625;
+  --muted-foreground: rgb(255 255 255 / 52%);
+  --accent: rgb(33 255 240 / 10%);
+  --accent-foreground: #21fff0;
+  --border: rgb(255 255 255 / 11%);
+  --input: rgb(255 255 255 / 13%);
+  --ring: rgb(33 255 240 / 65%);
+}
+
+body.hacker-zero-portals {
+  background: #030409;
+  color: #f8f8ff;
+}
+
+.zero-hacker-surface {
+  /* The hacker portal is phone-first: a long application question or a long
+     URL answer must wrap, never turn the page into a sideways scroller. clip
+     (not hidden) keeps sticky positioning working inside the page. */
+  overflow-x: clip;
+  background-color: #030409;
+  background-image:
+    radial-gradient(circle at 88% 4%, rgb(246 43 232 / 8%), transparent 24%),
+    radial-gradient(circle at 12% 80%, rgb(89 0 255 / 10%), transparent 30%),
+    linear-gradient(rgb(33 255 240 / 2.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(33 255 240 / 2.5%) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    64px 64px,
+    64px 64px;
+}
+
+/* Translate the hacker pages' legacy hard-coded light utilities at the theme
+   boundary. QR and camera surfaces opt out because their contrast is
+   functional rather than decorative. */
+:where(.hacker-zero-theme, body.hacker-zero-portals) .text-black {
+  color: #f8f8ff;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(
+    [class~="text-[#8A8A8A]"],
+    [class~="text-[#6B6B6B]"],
+    [class~="text-[#9B9B9B]"],
+    [class~="text-[#B4B4B4]"],
+    [class~="text-[#B8B8B8]"],
+    [class~="text-[#C4C4C4]"]
+  ) {
+  color: rgb(255 255 255 / 48%);
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(
+    [class~="text-[#1A1A1A]"],
+    [class~="text-[#282828]"],
+    [class~="text-[#3D3D3D]"]
+  ) {
+  color: rgb(255 255 255 / 82%);
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  .bg-white:not([data-hacker-keep-light]) {
+  background-color: #0b0c15;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  .bg-black:not([data-hacker-keep-black]) {
+  background-color: #5900ff;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(
+    [class~="bg-[#FAFAFA]"],
+    [class~="bg-[#F5F5F5]"],
+    [class~="bg-[#F2F2F2]"],
+    [class~="bg-[#F0F0F0]"],
+    [class~="bg-[#EDEDED]"],
+    [class~="bg-[#E5E5E5]"]
+  ) {
+  background-color: #11121e;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is([class~="bg-white/95"], [class~="bg-white/90"]) {
+  background-color: rgb(11 12 21 / 96%);
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(
+    [class~="border-[#E5E5E5]"],
+    [class~="border-[#D9D9D9]"],
+    [class~="border-[#F0F0F0]"],
+    [class~="border-[#EDEDED]"],
+    [class~="border-[#C9C9C9]"]
+  ) {
+  border-color: rgb(255 255 255 / 12%);
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is([class~="divide-[#F0F0F0]"], [class~="divide-[#F5F5F5]"])
+  > :not(:last-child) {
+  border-color: rgb(255 255 255 / 10%);
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(
+    [class~="hover:bg-[#FAFAFA]"],
+    [class~="hover:bg-[#F5F5F5]"],
+    [class~="hover:bg-[#F2F2F2]"],
+    [class~="hover:bg-[#F0F0F0]"],
+    [class~="hover:bg-[#EDEDED]"]
+  ):hover {
+  background-color: rgb(33 255 240 / 8%);
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is([class~="hover:text-black"], [class~="focus-visible:text-black"]):hover,
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  [class~="focus-visible:text-black"]:focus-visible {
+  color: #21fff0;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(
+    [class~="hover:border-black"],
+    [class~="focus-visible:border-black"]
+  ):hover,
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  [class~="focus-visible:border-black"]:focus-visible {
+  border-color: #21fff0;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is([class~="hover:bg-black/85"], [class~="active:bg-black/80"]):hover,
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  [class~="active:bg-black/80"]:active {
+  background-color: #6d1cff;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(input, textarea, select) {
+  color: #f8f8ff;
+  caret-color: #21fff0;
+}
+
+:where(.hacker-zero-theme, body.hacker-zero-portals)
+  :is(input, textarea)::placeholder {
+  color: rgb(255 255 255 / 32%);
+}
+
+body.hacker-zero-portals
+  :is(
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="select-content"],
+    [data-slot="popover-content"],
+    [data-slot="sheet-content"],
+    [data-slot="drawer-content"],
+    [data-slot="hover-card-content"]
+  ) {
+  border-color: rgb(255 255 255 / 12%);
+  background-color: #0b0c15;
+  color: #f8f8ff;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 58%);
+}
+
+body.hacker-zero-portals
+  :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
+  background-color: rgb(0 0 0 / 72%);
+}
+
+.hacker-zero-sidebar {
+  --sidebar: #070810;
+  --sidebar-foreground: rgb(255 255 255 / 72%);
+  --sidebar-accent: rgb(89 0 255 / 22%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 10%);
+  --sidebar-ring: rgb(33 255 240 / 55%);
+}
+
+.hacker-zero-sidebar [data-sidebar="sidebar"] {
+  background-image: radial-gradient(
+    circle at 0 100%,
+    rgb(89 0 255 / 18%),
+    transparent 42%
+  );
+  box-shadow: inset -1px 0 rgb(33 255 240 / 8%);
+}
+
+.hacker-zero-sidebar [data-sidebar="header"] {
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  padding-block: 0.75rem;
+}
+
+.hacker-zero-sidebar [data-sidebar="group-label"] {
+  color: rgb(33 255 240 / 55%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.hacker-zero-sidebar [data-sidebar="menu-button"] {
+  color: rgb(255 255 255 / 58%);
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.hacker-zero-sidebar [data-sidebar="menu-button"]:hover {
+  background: rgb(33 255 240 / 8%);
+  color: #21fff0;
+}
+
+.hacker-zero-sidebar [data-sidebar="menu-button"][data-active="true"] {
+  background: rgb(89 0 255 / 30%);
+  color: #ffffff;
+  box-shadow:
+    inset 2px 0 #21fff0,
+    0 0 18px rgb(89 0 255 / 12%);
+}
+
+.hacker-zero-sidebar [data-sidebar="menu-button"][data-size="lg"] {
+  color: rgb(255 255 255 / 72%);
+}
+
+.hacker-zero-sidebar [data-slot="avatar-fallback"] {
+  background: rgb(33 255 240 / 10%);
+  color: #21fff0;
+}
+
+.hacker-zero-sidebar [data-sidebar="rail"]:hover::after {
+  background: #21fff0;
+}
+
+/* Indeterminate sweep for the auth-flow loading panel. Short and sharp rather
+   than atmospheric — it reports that something is happening. */
+@keyframes zero-scan-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.zero-scan-line {
+  animation: zero-scan-sweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zero-scan-line {
+    width: 100%;
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 639px) {
+  .zero-login {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgb(89 0 255 / 20%), transparent 30%),
+      radial-gradient(circle at 96% 42%, rgb(246 43 232 / 10%), transparent 25%);
+  }
+
+  .zero-login-grid {
+    background-size: 48px 48px;
+    opacity: 0.14;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Login card border
+ *
+ * A conic gradient turns slowly behind the card: `::before` is the 1px rim,
+ * clipped to the card's notch (`--notch`), and `::after` is the same gradient
+ * blurred into a soft glow, left unclipped so it can bleed past the corners.
+ * The card sits on top and must be opaque, or the rim's fill shows through.
+ * `@property` lets the angle itself animate, so only the light moves.
+ * ------------------------------------------------------------------------ */
+
+@property --login-angle {
+  syntax: "<angle>";
+  initial-value: 200deg;
+  inherits: false;
+}
+
+@keyframes login-border-turn {
+  to {
+    --login-angle: 560deg;
+  }
+}
+
+.login-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.login-glow::before,
+.login-glow::after {
+  position: absolute;
+  inset: -1px;
+  background: conic-gradient(
+    from var(--login-angle),
+    #7828ff,
+    transparent 22%,
+    transparent 48%,
+    #dbc4ff 58%,
+    transparent 70%,
+    #7828ff
+  );
+  content: "";
+  animation: login-border-turn 12s linear infinite;
+}
+
+.login-glow::before {
+  z-index: -1;
+  clip-path: var(--notch);
+  background-color: rgb(255 255 255 / 8%);
+}
+
+.login-glow::after {
+  z-index: -2;
+  filter: blur(28px);
+  opacity: 0.35;
+}
+
+.login-glow-card {
+  background: #0e011f;
+  clip-path: var(--notch);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-glow::before,
+  .login-glow::after {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Shooting stars, from zeroday.hackutd.co (`.star-field` in its globals.css).
+ *
+ * The same streak and timing: each star's flight is the first fifth of a long
+ * cycle and the rest is empty sky. The site restarts its single star from a
+ * scroll handler; here there is nothing to sync with, so two stars simply loop
+ * half a cycle apart, one in each direction. Two animations compose on the
+ * star, one growing and shrinking the tail and one carrying it across; the
+ * field's tilt angles the path.
+ * ------------------------------------------------------------------------ */
+
+.star-field {
+  --star-cycle: 14s;
+  position: absolute;
+  inset: -20% -15%;
+  transform: rotate(8deg);
+  pointer-events: none;
+}
+
+/* A mirrored field: its stars fly right to left, still descending, and the
+   flip keeps the bright head at the leading end. */
+.star-field-reverse {
+  transform: scaleX(-1) rotate(8deg);
+}
+
+.shooting-star {
+  position: absolute;
+  top: var(--star-top, 26%);
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  /* Bright at the right-hand end, because that end leads. */
+  background: linear-gradient(
+    90deg,
+    rgba(219, 196, 255, 0) 0%,
+    rgba(219, 196, 255, 0.85) 65%,
+    #ffffff 100%
+  );
+  filter: drop-shadow(0 0 6px rgba(190, 150, 255, 0.95));
+  animation:
+    star-tail var(--star-cycle) ease-in-out infinite,
+    star-shoot var(--star-cycle) ease-in-out infinite;
+  animation-delay: var(--star-delay, 0s);
+}
+
+/* The cross-glint at the head, mirrored to make an X. */
+.shooting-star::before,
+.shooting-star::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 1px);
+  right: 0;
+  height: 2px;
+  border-radius: 100%;
+  background: linear-gradient(
+    -45deg,
+    rgba(219, 196, 255, 0),
+    rgba(233, 220, 255, 1),
+    rgba(219, 196, 255, 0)
+  );
+  animation: star-glint var(--star-cycle) ease-in-out infinite;
+  animation-delay: var(--star-delay, 0s);
+}
+
+.shooting-star::before {
+  transform: translateX(50%) rotateZ(45deg);
+}
+
+.shooting-star::after {
+  transform: translateX(50%) rotateZ(-45deg);
+}
+
+@keyframes star-shoot {
+  0% {
+    transform: translateX(0);
+  }
+  20%,
+  100% {
+    transform: translateX(130vw);
+  }
+}
+
+@keyframes star-tail {
+  0% {
+    width: 0;
+  }
+  4%,
+  17% {
+    width: 180px;
+  }
+  20%,
+  100% {
+    width: 0;
+  }
+}
+
+@keyframes star-glint {
+  0%,
+  20%,
+  100% {
+    width: 0;
+  }
+  5%,
+  16% {
+    width: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-field {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Cyberpunk cursors, from zeroday.hackutd.co (public/cursors). Scoped to the
+ * pages that opt in with `.zero-cursor`. The hotspots are the ones baked into
+ * the original .cur files - the arrow's tip is 8px down its bitmap, the hand's
+ * at (6,5), the beam's centred at (17,15) - so clicks land where the cursor
+ * points. Each keeps its native keyword as the fallback.
+ * ------------------------------------------------------------------------ */
+
+.zero-cursor {
+  cursor:
+    image-set(
+        url("/cursors/cp-arrow.png") 1x,
+        url("/cursors/cp-arrow@2x.png") 2x
+      )
+      0 8,
+    auto;
+}
+
+.zero-cursor :is(a, button:not(:disabled), summary, label, [role="button"]) {
+  cursor:
+    image-set(url("/cursors/cp-link.png") 1x, url("/cursors/cp-link@2x.png") 2x)
+      6 5,
+    pointer;
+}
+
+.zero-cursor :is(input, textarea, [contenteditable="true"]) {
+  cursor:
+    image-set(url("/cursors/cp-beam.png") 1x, url("/cursors/cp-beam@2x.png") 2x)
+      17 15,
+    text;
 }

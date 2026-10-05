@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/hackutd/harp/internal/gcs"
 	"github.com/hackutd/harp/internal/mailer"
@@ -29,8 +31,29 @@ type application struct {
 	mailer            mailer.Client
 	gcsClient         gcs.Client
 	appleWalletPasses appleWalletPassGenerator
-	rateLimiter       ratelimiter.Limiter
-	dispatcherCancel  context.CancelFunc
+	// rateLimiter buckets requests by verified session user ID; ipRateLimiter
+	// is the fallback for requests without one. Split so the shared-IP budget
+	// (a venue full of hackers behind one NAT) can be tuned independently.
+	rateLimiter   ratelimiter.Limiter
+	ipRateLimiter ratelimiter.Limiter
+	// sessionUserID resolves the SuperTokens user ID for a request without
+	// requiring a session. Injected so tests can stub it.
+	sessionUserID    sessionUserIDResolver
+	dispatcherCancel context.CancelFunc
+	// pushClient is the HTTP client the dispatcher uses to reach push services.
+	pushClient *http.Client
+	// backgroundJobs tracks work handed off from a request to a goroutine
+	// (e.g. decision email sends) so shutdown can drain it before exiting.
+	backgroundJobs sync.WaitGroup
+	// decisionEmailInFlight is set while a decision email run is sending, so
+	// a concurrent request cannot start a second run over the same recipients.
+	decisionEmailInFlight atomic.Bool
+	// dbPinger backs the health check's database probe; nil skips the probe.
+	dbPinger dbPinger
+}
+
+type dbPinger interface {
+	PingContext(ctx context.Context) error
 }
 
 type config struct {
@@ -43,16 +66,38 @@ type config struct {
 	gcs              gcsConfig
 	auth             authConfig
 	rateLimiter      ratelimiter.Config
+	clientIP         clientIPConfig
 	supertokens      supertokensConfig
 	publicCORSOrigin string
 	vapid            vapidConfig
+	dispatcher       dispatcherConfig
 	appleWallet      appleWalletConfig
+	observability    observabilityConfig
+}
+
+// clientIPConfig selects the trusted source of the client address used for
+// per-IP rate limiting. header wins when set; otherwise trustedProxies > 0
+// reads X-Forwarded-For; otherwise the TCP peer address is used.
+type clientIPConfig struct {
+	header         string
+	trustedProxies int
 }
 
 type vapidConfig struct {
 	publicKey  string
 	privateKey string
 	subject    string
+	// allowedEndpointHosts is the push-service host allowlist (exact or
+	// subdomain match) that subscription endpoints must fall under.
+	allowedEndpointHosts []string
+}
+
+// dispatcherConfig tunes the scheduled-notification dispatcher.
+type dispatcherConfig struct {
+	// maxLateness is how far past its scheduled time a notification may still be
+	// delivered. Past it the notification is failed rather than sent, because a
+	// "starting in 15 minutes" reminder arriving an hour late misinforms hackers.
+	maxLateness time.Duration
 }
 
 type supertokensConfig struct {
@@ -95,8 +140,10 @@ const swaggerTagsSorter = `(a, b) => {
 		"admin/schedule",
 		"admin/sponsors",
 		"admin/faq",
+		"admin/tracks",
 		"superadmin/applications",
 		"superadmin/emails",
+		"superadmin/hacker-links",
 		"superadmin/settings",
 		"superadmin/users"
 	];
@@ -111,9 +158,8 @@ func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(app.clientIPMiddleware())
+	r.Use(app.requestLoggingMiddleware)
 
 	// CORS
 	allowedOrigins := []string{}
@@ -136,18 +182,28 @@ func (app *application) mount() http.Handler {
 	// Applied at root level so it intercepts /auth/* requests.
 	r.Use(supertokens.Middleware)
 
-	// Ratelimiter
-	if app.config.rateLimiter.Enabled {
-		r.Use(app.RateLimiterMiddleware)
-	}
-
 	r.Route("/v1", func(r chi.Router) {
+		// Ratelimiter. Scoped to the API so the SPA shell and static assets
+		// (served from /*) are never throttled; /auth/* is handled by the
+		// SuperTokens middleware above and never reaches this router.
+		if app.config.rateLimiter.Enabled {
+			r.Use(app.RateLimiterMiddleware)
+		}
+
 		// Public API (key auth)
 		r.Route("/public", func(r chi.Router) {
-			r.Use(app.APIKeyMiddleware)
-			r.Get("/schedule", app.getPublicScheduleHandler)
-			r.Get("/sponsors", app.getPublicSponsorsHandler)
-			r.Get("/faq", app.getPublicFAQHandler)
+			// Logo bytes are keyless: the URLs go straight into <img> tags and
+			// image optimizers, which cannot send X-API-Key.
+			r.Get("/sponsors/{sponsorID}/logo", app.getPublicSponsorLogoHandler)
+			r.Get("/tracks/{trackID}/logo", app.getPublicTrackLogoHandler)
+
+			r.Group(func(r chi.Router) {
+				r.Use(app.APIKeyMiddleware)
+				r.Get("/schedule", app.getPublicScheduleHandler)
+				r.Get("/sponsors", app.getPublicSponsorsHandler)
+				r.Get("/faq", app.getPublicFAQHandler)
+				r.Get("/tracks", app.getPublicTracksHandler)
+			})
 		})
 
 		// Legal document links. Unauthenticated on purpose: the login page
@@ -184,6 +240,7 @@ func (app *application) mount() http.Handler {
 			r.Get("/schedule", app.getHackerScheduleHandler)
 			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
 			r.Get("/faq", app.getHackerFAQHandler)
+			r.Get("/hacker-links", app.getHackerLinksHandler)
 			r.Get("/hacker-pack", app.getHackerPackHandler)
 			r.Get("/points-config", app.getPointsConfigHandler)
 			r.Get("/hackathon-config", app.getHackathonConfigHandler)
@@ -197,6 +254,23 @@ func (app *application) mount() http.Handler {
 				// Viewing your own resume is allowed in any status,
 				// even after applications close.
 				r.Get("/me/resume-url", app.getMyResumeDownloadURLHandler)
+
+				// RSVP is gated by its own toggle, not ApplicationsEnabled:
+				// applications are typically closed by the time acceptances go out.
+				r.Get("/me/rsvp", app.getMyRSVPHandler)
+				r.Group(func(r chi.Router) {
+					r.Use(app.RSVPEnabledMiddleware)
+					r.Post("/me/rsvp", app.submitMyRSVPHandler)
+				})
+
+				// Travel RSVP (proof of travel) mirrors the RSVP gating with its own toggle
+				r.Get("/me/travel-rsvp", app.getMyTravelRSVPHandler)
+				r.Get("/me/travel-rsvp/receipt-url", app.getMyTravelReceiptURLHandler)
+				r.Group(func(r chi.Router) {
+					r.Use(app.TravelRSVPEnabledMiddleware)
+					r.Post("/me/travel-rsvp", app.submitMyTravelRSVPHandler)
+					r.Post("/me/travel-rsvp/receipt-upload-url", app.generateTravelReceiptUploadURLHandler)
+				})
 
 				r.Group(func(r chi.Router) {
 					r.Use(app.ApplicationsEnabledMiddleware)
@@ -218,6 +292,7 @@ func (app *application) mount() http.Handler {
 						r.Get("/stats", app.getApplicationStatsHandler)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
+						r.Get("/{applicationID}/travel-receipt-urls", app.getTravelReceiptURLsHandler)
 
 						// Assigned Applications
 						r.Get("/{applicationID}/notes", app.getApplicationNotes)
@@ -227,9 +302,10 @@ func (app *application) mount() http.Handler {
 					// Reviews
 					r.Route("/reviews", func(r chi.Router) {
 						r.Get("/pending", app.getPendingReviews)
-						r.Get("/next", app.getNextReview)
+						r.Post("/claim", app.claimReviews)
 						r.Put("/{reviewID}", app.submitVote)
 						r.Get("/completed", app.getCompletedReviews)
+						r.Get("/leaderboard", app.getReviewLeaderboard)
 					})
 
 					// Scans
@@ -279,6 +355,20 @@ func (app *application) mount() http.Handler {
 							r.Delete("/{faqID}", app.deleteFAQHandler)
 						})
 					})
+
+					// Challenge tracks
+					r.Route("/tracks", func(r chi.Router) {
+						r.Get("/", app.listTracksHandler)
+						r.Get("/edit-permission", app.getTrackEditPermissionHandler)
+
+						r.Group(func(r chi.Router) {
+							r.Use(app.AdminTrackEditPermissionMiddleware)
+							r.Post("/", app.createTrackHandler)
+							r.Put("/{trackID}", app.updateTrackHandler)
+							r.Delete("/{trackID}", app.deleteTrackHandler)
+							r.Put("/{trackID}/logo", app.uploadTrackLogoHandler)
+						})
+					})
 				})
 			})
 
@@ -287,11 +377,31 @@ func (app *application) mount() http.Handler {
 				// Super admin routes
 				r.Route("/superadmin", func(r chi.Router) {
 					r.Post("/reset-hackathon", app.resetHackathonHandler)
+					r.Get("/forms/summary", app.getFormsOverview)
+
+					// Hacker links
+					r.Route("/hacker-links", func(r chi.Router) {
+						r.Get("/", app.listHackerLinksHandler)
+						r.Post("/", app.createHackerLinkHandler)
+						r.Put("/{linkID}", app.updateHackerLinkHandler)
+						r.Delete("/{linkID}", app.deleteHackerLinkHandler)
+					})
 
 					// Configs
 					r.Route("/settings", func(r chi.Router) {
+						r.Get("/schema-contract", app.getSchemaContract)
 						r.Get("/application-schema", app.getApplicationSchema)
 						r.Put("/application-schema", app.updateApplicationSchema)
+						r.Get("/rsvp-schema", app.getRSVPSchema)
+						r.Put("/rsvp-schema", app.updateRSVPSchema)
+						r.Get("/rsvp-enabled", app.getRSVPEnabled)
+						r.Put("/rsvp-enabled", app.setRSVPEnabled)
+						r.Get("/check-in-requires-rsvp", app.getCheckInRequiresRSVP)
+						r.Put("/check-in-requires-rsvp", app.setCheckInRequiresRSVP)
+						r.Get("/travel-rsvp-schema", app.getTravelRSVPSchema)
+						r.Put("/travel-rsvp-schema", app.updateTravelRSVPSchema)
+						r.Get("/travel-rsvp-enabled", app.getTravelRSVPEnabled)
+						r.Put("/travel-rsvp-enabled", app.setTravelRSVPEnabled)
 						r.Get("/reviews-per-app", app.getReviewsPerApp)
 						r.Post("/reviews-per-app", app.setReviewsPerApp)
 						r.Put("/review-assignment-toggle", app.setReviewAssignmentToggle)
@@ -301,6 +411,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/admin-sponsor-edit-toggle", app.setAdminSponsorEditToggle)
 						r.Get("/admin-faq-edit-toggle", app.getAdminFAQEditToggle)
 						r.Post("/admin-faq-edit-toggle", app.setAdminFAQEditToggle)
+						r.Get("/admin-track-edit-toggle", app.getAdminTrackEditToggle)
+						r.Post("/admin-track-edit-toggle", app.setAdminTrackEditToggle)
 						r.Get("/hackathon-date-range", app.getHackathonDateRange)
 						r.Post("/hackathon-date-range", app.setHackathonDateRange)
 						r.Get("/hacker-pack-url", app.getHackerPackURL)
@@ -339,6 +451,10 @@ func (app *application) mount() http.Handler {
 						r.Post("/assign", app.batchAssignReviews)
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
+						r.Patch("/{applicationID}/travel-status", app.setApplicationTravelStatus)
+						// Repair hatches for the one-shot hacker RSVPs
+						r.Post("/{applicationID}/rsvp/reset", app.resetApplicationRSVPHandler)
+						r.Post("/{applicationID}/travel-rsvp/reset", app.resetApplicationTravelRSVPHandler)
 					})
 
 					// Outbound decision emails
@@ -351,6 +467,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/users", func(r chi.Router) {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
+						r.Delete("/{userID}", app.deleteUserHandler)
 					})
 
 					// Scheduled push notifications
@@ -400,7 +517,9 @@ func (app *application) run(mux http.Handler) error {
 			app.dispatcherCancel()
 		}
 
-		shutdown <- server.Shutdown(ctx)
+		err := server.Shutdown(ctx)
+		app.drainBackgroundJobs(ctx)
+		shutdown <- err
 	}()
 
 	app.logger.Infow("server has started", "addr", app.config.addr, "env", app.config.env)
@@ -418,4 +537,20 @@ func (app *application) run(mux http.Handler) error {
 	app.logger.Infow("server has stopped", "addr", app.config.addr, "env", app.config.env)
 
 	return nil
+}
+
+// drainBackgroundJobs waits for request-spawned goroutines to finish, giving
+// up when ctx expires so shutdown stays bounded.
+func (app *application) drainBackgroundJobs(ctx context.Context) {
+	done := make(chan struct{})
+	go func() {
+		app.backgroundJobs.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		app.logger.Warnw("shutdown timed out waiting for background jobs", "error", ctx.Err())
+	}
 }

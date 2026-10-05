@@ -1,4 +1,4 @@
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { memo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -22,8 +22,10 @@ interface GradingVotingPanelProps {
   notesLoading: boolean;
   submitting: boolean;
   aiPercent: number | null;
+  travelVote: boolean | null;
   onAiPercentUpdate: (percent: number) => void;
   onNotesChange: (notes: string) => void;
+  onTravelVoteChange: (vote: boolean) => void;
   onVote: (vote: ReviewVote) => void;
 }
 
@@ -34,8 +36,10 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
   notesLoading,
   submitting,
   aiPercent,
+  travelVote,
   onAiPercentUpdate,
   onNotesChange,
+  onTravelVoteChange,
   onVote,
 }: GradingVotingPanelProps) {
   const [editing, setEditing] = useState(false);
@@ -74,6 +78,10 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
     }
     setEditing(false);
   }
+
+  const travelRequested = review.travel_status !== "not_requested";
+  const travelVoteMissing =
+    travelRequested && !review.vote && travelVote == null;
 
   return (
     <div className="space-y-4 p-4">
@@ -150,6 +158,54 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
         )}
       </div>
 
+      {/* Travel Reimbursement Vote — only when the applicant requested travel */}
+      {travelRequested && (
+        <div>
+          <Label className="text-xs text-muted-foreground">
+            Travel Reimbursement
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            This applicant requested travel reimbursement. Should they receive
+            it?
+          </p>
+          {review.vote ? (
+            <p className="text-sm mt-1.5">
+              You voted:{" "}
+              <span className="font-medium">
+                {review.travel_vote == null
+                  ? "—"
+                  : review.travel_vote
+                    ? "Yes"
+                    : "No"}
+              </span>
+            </p>
+          ) : (
+            <div className="flex gap-2 mt-1.5">
+              <Button
+                size="sm"
+                variant={travelVote === true ? "default" : "outline"}
+                className="flex-1 cursor-pointer"
+                disabled={submitting}
+                onClick={() => onTravelVoteChange(true)}
+              >
+                <ThumbsUp className="h-3.5 w-3.5 mr-1" />
+                Yes
+              </Button>
+              <Button
+                size="sm"
+                variant={travelVote === false ? "default" : "outline"}
+                className="flex-1 cursor-pointer"
+                disabled={submitting}
+                onClick={() => onTravelVoteChange(false)}
+              >
+                <ThumbsDown className="h-3.5 w-3.5 mr-1" />
+                No
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Vote Section */}
       {review.vote ? (
         <div className="text-center py-2">
@@ -165,11 +221,16 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
       ) : (
         <>
           <GradingActionButtons
-            disabled={submitting}
+            disabled={submitting || travelVoteMissing}
             onReject={() => onVote("reject")}
             onWaitlist={() => onVote("waitlist")}
             onAccept={() => onVote("accept")}
           />
+          {travelVoteMissing && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Cast a travel reimbursement vote before submitting
+            </p>
+          )}
           {submitting && (
             <p className="text-xs text-muted-foreground text-center mt-2">
               Submitting vote...

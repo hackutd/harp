@@ -1,0 +1,62 @@
+name: Migrations
+
+# The deploy never runs migrations, and the schema has to be live before the
+# code that needs it. This leaves one comment on any PR that adds or changes a
+# migration so the step isn't forgotten at merge time. It is a reminder, not a
+# gate: it never fails and never touches a database.
+#
+# pull_request_target so the comment also posts on PRs from forks, whose
+# pull_request token is read-only. That is safe only because this job never
+# checks out or runs the PR's code; it reads the file list through the API.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "cmd/migrate/migrations/**"
+
+permissions:
+  pull-requests: write
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment with the migrations to apply
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          marker='<!-- harp-migration-reminder -->'
+
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" \
+            --jq '.[] | select(.filename | test("^cmd/migrate/migrations/.*\\.up\\.sql$")) | "- `\(.filename)` (\(.status))"')
+
+          if [ -z "$files" ]; then
+            echo "No up migrations changed."
+            exit 0
+          fi
+
+          body_file="$RUNNER_TEMP/body.md"
+          cat > "$body_file" <<EOF
+          $marker
+          ### This PR changes database migrations
+
+          $files
+
+          Merging deploys this code to staging, and the next release deploys it to prod. **Neither deploy runs migrations.**
+
+          - **Additive** (new table, nullable column, new index): apply it to the **staging** branch before merging, then to **production** before merging the release PR. Use \`task migrate-up\` with \`DB_ADDR\` set to that Neon branch's direct URL.
+          - **Destructive** (drop or rename a column, add \`NOT NULL\` without a default): ship it over two releases. First release code that no longer depends on the old shape, then migrate.
+
+          CI's \`db-integration\` job has already applied these up, down, and up again on a throwaway database.
+          EOF
+
+          existing=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n1)
+
+          if [ -n "$existing" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$existing" -F body=@"$body_file" > /dev/null
+          else
+            gh api --method POST "repos/$REPO/issues/$PR/comments" -F body=@"$body_file" > /dev/null
+          fi

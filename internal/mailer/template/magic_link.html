@@ -1,0 +1,30 @@
+{{define "title"}}Your Zero Day access link{{end}}
+{{define "preheader"}}Your secure link to sign in to the {{.HackathonName}} portal.{{end}}
+{{define "heading"}}Sign in to {{.HackathonName}}{{end}}
+{{define "content"}}
+<p style="{{template "p-style"}}">Hi hacker!</p>
+<p style="{{template "p-style"}}">
+  We received a sign-in request for <strong>{{.Email}}</strong>. Use the
+  button below to enter the portal.
+</p>
+{{template "details-open"}}
+{{template "row" (row "Email" .Email)}}
+{{template "row" (accentRow "Expires" (printf "In %s, single use" .Expires))}}
+{{template "details-close"}}
+{{template "button" (button .MagicLink "Enter the portal")}}
+<p style="{{template "caption-style"}}">
+  Link expires in {{.Expires}} and can be used once
+</p>
+<p style="margin: 32px 0 8px; color: #6b7280; font-size: 14px; line-height: 1.6">
+  Button not working? Copy this link into your browser:
+</p>
+<p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; word-break: break-all">
+  <a href="{{.MagicLink}}" style="color: #d63b4f; text-decoration: underline"
+    >{{.MagicLink}}</a
+  >
+</p>
+<p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6">
+  If you didn't request this link, you can safely ignore this email. Never
+  forward it or share its link.
+</p>
+{{end}}

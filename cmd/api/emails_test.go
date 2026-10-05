@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,6 +42,13 @@ func stubDecisionMailer(app *application) *mailer.MockClient {
 	return mockMailer
 }
 
+// stubDecisionMarker accepts the per-recipient sent-marker writes made by the
+// background dispatch for the given kind.
+func stubDecisionMarker(mockApps *store.MockApplicationStore, kind store.DecisionEmailKind) {
+	mockApps.On("SetDecisionEmailSent", mock.AnythingOfType("[]string"), kind, true).
+		Return(nil).Maybe()
+}
+
 func sendDecisionEmailsRequest(body string) *http.Request {
 	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -64,8 +72,7 @@ func TestSendDecisionEmails(t *testing.T) {
 			Return(pending, nil).Once()
 		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, false).
 			Return(all, nil).Once()
-		mockApps.On("SetDecisionEmailSent", []string{"app-1", "app-2"}, store.DecisionEmailKindDecision, true).
-			Return(nil).Once()
+		stubDecisionMarker(mockApps, store.DecisionEmailKindDecision)
 
 		req := sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted","waitlisted"]}`)
 		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
@@ -79,6 +86,11 @@ func TestSendDecisionEmails(t *testing.T) {
 		assert.Equal(t, 2, body.Data.Queued)
 		assert.Equal(t, 1, body.Data.Skipped)
 
+		app.backgroundJobs.Wait()
+		mockApps.AssertCalled(t, "SetDecisionEmailSent", []string{"app-1"}, store.DecisionEmailKindDecision, true)
+		mockApps.AssertCalled(t, "SetDecisionEmailSent", []string{"app-2"}, store.DecisionEmailKindDecision, true)
+		mockApps.AssertNotCalled(t, "SetDecisionEmailSent", []string{"app-1", "app-2"}, store.DecisionEmailKindDecision, true)
+		assert.False(t, app.decisionEmailInFlight.Load())
 		mockApps.AssertExpectations(t)
 	})
 
@@ -96,8 +108,7 @@ func TestSendDecisionEmails(t *testing.T) {
 			Return(pending, nil).Once()
 		mockApps.On("GetDecisionEmailRecipients", store.DecisionEmailStatuses, store.DecisionEmailKindAnnouncement, false).
 			Return(pending, nil).Once()
-		mockApps.On("SetDecisionEmailSent", []string{"app-1"}, store.DecisionEmailKindAnnouncement, true).
-			Return(nil).Once()
+		stubDecisionMarker(mockApps, store.DecisionEmailKindAnnouncement)
 
 		req := sendDecisionEmailsRequest(`{"mode":"announcement","statuses":["accepted"]}`)
 		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
@@ -111,6 +122,7 @@ func TestSendDecisionEmails(t *testing.T) {
 		assert.Equal(t, 1, body.Data.Queued)
 		assert.Equal(t, 0, body.Data.Skipped)
 
+		app.backgroundJobs.Wait()
 		mockApps.AssertExpectations(t)
 	})
 
@@ -128,8 +140,7 @@ func TestSendDecisionEmails(t *testing.T) {
 		// onlyUnsent=false, and no second call to compute skipped.
 		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, false).
 			Return(all, nil).Once()
-		mockApps.On("SetDecisionEmailSent", []string{"app-1", "app-2"}, store.DecisionEmailKindDecision, true).
-			Return(nil).Once()
+		stubDecisionMarker(mockApps, store.DecisionEmailKindDecision)
 
 		req := sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted"],"resend_all":true}`)
 		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
@@ -142,6 +153,7 @@ func TestSendDecisionEmails(t *testing.T) {
 		assert.Equal(t, 2, body.Data.Queued)
 		assert.Equal(t, 0, body.Data.Skipped)
 
+		app.backgroundJobs.Wait()
 		mockApps.AssertExpectations(t)
 	})
 
@@ -169,6 +181,51 @@ func TestSendDecisionEmails(t *testing.T) {
 		assert.Equal(t, 1, body.Data.Skipped)
 
 		mockApps.AssertNotCalled(t, "SetDecisionEmailSent", mock.Anything, mock.Anything, mock.Anything)
+		assert.False(t, app.decisionEmailInFlight.Load())
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("returns 409 while a previous run is still sending", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockMailer := app.mailer.(*mailer.MockClient)
+
+		pending := []store.DecisionEmailRecipient{
+			newDecisionRecipient("app-1", "a@test.com", store.StatusAccepted),
+		}
+		statuses := []store.ApplicationStatus{store.StatusAccepted}
+		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, true).
+			Return(pending, nil).Once()
+		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, false).
+			Return(pending, nil).Once()
+		stubDecisionMarker(mockApps, store.DecisionEmailKindDecision)
+
+		// Hold the first run's send open until the second request has been
+		// answered, so the two provably overlap.
+		release := make(chan struct{})
+		mockMailer.On("SendDecisionEmail", "a@test.com", "Ada", mailer.DecisionAccepted).
+			Run(func(mock.Arguments) { <-release }).
+			Return(nil).Once()
+
+		first := executeRequest(
+			sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted"]}`),
+			http.HandlerFunc(app.sendDecisionEmailsHandler),
+		)
+		checkResponseCode(t, http.StatusOK, first.Code)
+
+		second := executeRequest(
+			sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted"]}`),
+			http.HandlerFunc(app.sendDecisionEmailsHandler),
+		)
+		checkResponseCode(t, http.StatusConflict, second.Code)
+
+		close(release)
+		app.backgroundJobs.Wait()
+
+		// The second request must not have re-read recipients.
+		mockApps.AssertNumberOfCalls(t, "GetDecisionEmailRecipients", 2)
+		assert.False(t, app.decisionEmailInFlight.Load())
+		mockMailer.AssertExpectations(t)
 		mockApps.AssertExpectations(t)
 	})
 
@@ -205,7 +262,7 @@ func TestSendDecisionEmails(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 
-	t.Run("returns 500 when fetching recipients fails", func(t *testing.T) {
+	t.Run("returns 500 when fetching recipients fails and releases the run lock", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
 
@@ -217,38 +274,13 @@ func TestSendDecisionEmails(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
 		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 
-		mockApps.AssertExpectations(t)
-	})
-
-	t.Run("returns 500 without sending when the sent marker cannot be written", func(t *testing.T) {
-		app := newTestApplication(t)
-		mockApps := app.store.Application.(*store.MockApplicationStore)
-		mockMailer := app.mailer.(*mailer.MockClient)
-
-		pending := []store.DecisionEmailRecipient{
-			newDecisionRecipient("app-1", "a@test.com", store.StatusAccepted),
-		}
-
-		statuses := []store.ApplicationStatus{store.StatusAccepted}
-		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, true).
-			Return(pending, nil).Once()
-		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, false).
-			Return(pending, nil).Once()
-		mockApps.On("SetDecisionEmailSent", []string{"app-1"}, store.DecisionEmailKindDecision, true).
-			Return(assert.AnError).Once()
-
-		req := sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted"]}`)
-		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
-		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
-
-		// Nothing may go out if we could not record that it went out.
-		mockMailer.AssertNotCalled(t, "SendDecisionEmail", mock.Anything, mock.Anything, mock.Anything)
+		assert.False(t, app.decisionEmailInFlight.Load())
 		mockApps.AssertExpectations(t)
 	})
 }
 
 func TestDispatchDecisionEmails(t *testing.T) {
-	t.Run("clears the sent marker for failed sends", func(t *testing.T) {
+	t.Run("marks only successful sends, after the send", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
 		mockMailer := app.mailer.(*mailer.MockClient)
@@ -258,14 +290,55 @@ func TestDispatchDecisionEmails(t *testing.T) {
 			newDecisionRecipient("app-2", "bad@test.com", store.StatusRejected),
 		}
 
+		var (
+			mu   sync.Mutex
+			sent bool
+		)
 		mockMailer.On("SendDecisionEmail", "ok@test.com", "Ada", mailer.DecisionAccepted).
+			Run(func(mock.Arguments) {
+				mu.Lock()
+				sent = true
+				mu.Unlock()
+			}).
 			Return(nil).Once()
 		mockMailer.On("SendDecisionEmail", "bad@test.com", "Ada", mailer.DecisionRejected).
 			Return(assert.AnError).Once()
-		mockApps.On("SetDecisionEmailSent", []string{"app-2"}, store.DecisionEmailKindDecision, false).
+		mockApps.On("SetDecisionEmailSent", []string{"app-1"}, store.DecisionEmailKindDecision, true).
+			Run(func(mock.Arguments) {
+				mu.Lock()
+				defer mu.Unlock()
+				assert.True(t, sent, "marker written before the email was sent")
+			}).
 			Return(nil).Once()
 
 		// Called synchronously here so the assertions are deterministic.
+		app.dispatchDecisionEmails(recipients, store.DecisionEmailKindDecision)
+
+		mockMailer.AssertExpectations(t)
+		mockApps.AssertExpectations(t)
+		// The failed recipient is never touched: it stays unmarked and is
+		// picked up by the next run.
+		mockApps.AssertNotCalled(t, "SetDecisionEmailSent", []string{"app-2"}, mock.Anything, mock.Anything)
+		mockApps.AssertNotCalled(t, "SetDecisionEmailSent", mock.Anything, mock.Anything, false)
+	})
+
+	t.Run("keeps going when a marker write fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockMailer := app.mailer.(*mailer.MockClient)
+
+		recipients := []store.DecisionEmailRecipient{
+			newDecisionRecipient("app-1", "a@test.com", store.StatusAccepted),
+			newDecisionRecipient("app-2", "b@test.com", store.StatusAccepted),
+		}
+
+		mockMailer.On("SendDecisionEmail", "a@test.com", "Ada", mailer.DecisionAccepted).Return(nil).Once()
+		mockMailer.On("SendDecisionEmail", "b@test.com", "Ada", mailer.DecisionAccepted).Return(nil).Once()
+		mockApps.On("SetDecisionEmailSent", []string{"app-1"}, store.DecisionEmailKindDecision, true).
+			Return(assert.AnError).Once()
+		mockApps.On("SetDecisionEmailSent", []string{"app-2"}, store.DecisionEmailKindDecision, true).
+			Return(nil).Once()
+
 		app.dispatchDecisionEmails(recipients, store.DecisionEmailKindDecision)
 
 		mockMailer.AssertExpectations(t)
@@ -274,6 +347,7 @@ func TestDispatchDecisionEmails(t *testing.T) {
 
 	t.Run("falls back to a generic name when first name is missing", func(t *testing.T) {
 		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
 		mockMailer := app.mailer.(*mailer.MockClient)
 
 		recipients := []store.DecisionEmailRecipient{{
@@ -285,10 +359,13 @@ func TestDispatchDecisionEmails(t *testing.T) {
 
 		mockMailer.On("SendDecisionsReleasedEmail", "nameless@test.com", "Hacker").
 			Return(nil).Once()
+		mockApps.On("SetDecisionEmailSent", []string{"app-1"}, store.DecisionEmailKindAnnouncement, true).
+			Return(nil).Once()
 
 		app.dispatchDecisionEmails(recipients, store.DecisionEmailKindAnnouncement)
 
 		mockMailer.AssertExpectations(t)
+		mockApps.AssertExpectations(t)
 	})
 }
 

@@ -1,20 +1,26 @@
 export interface TagColor {
-  hex: string;
+  color: string;
   label: string;
 }
 
-// Keyed by lowercased tag name. Names and colors mirror the admin schedule
-// composer's preset tags (DEFAULT_SCHEDULE_TAGS + EVENT_COLOR_STYLES, which
-// use the Tailwind *-400 palette) so hacker-side filters match admin events.
+// Keyed by lowercased tag name. Values reference the shared CSS palette in
+// branding/theme.css so the schedule, Tailwind utilities, and charts cannot
+// drift apart.
 export const TAG_COLORS: Record<string, TagColor> = {
-  required: { hex: "#FF6467", label: "Required" }, // red-400
-  "company events": { hex: "#FFB900", label: "Company Events" }, // amber-400
-  food: { hex: "#00D492", label: "Food" }, // emerald-400
-  workshops: { hex: "#00BCFF", label: "Workshops" }, // sky-400
-  "for fun": { hex: "#A684FF", label: "For Fun" }, // violet-400
+  required: { color: "var(--portal-red)", label: "Required" },
+  "company events": {
+    color: "var(--portal-orange)",
+    label: "Company Events",
+  },
+  food: { color: "var(--portal-green)", label: "Food" },
+  workshops: { color: "var(--portal-blue)", label: "Workshops" },
+  "for fun": { color: "var(--portal-purple)", label: "For Fun" },
 };
 
-export const FALLBACK_TAG_COLOR: TagColor = { hex: "#9F9FA9", label: "Other" }; // zinc-400
+export const FALLBACK_TAG_COLOR: TagColor = {
+  color: "var(--portal-neutral)",
+  label: "Other",
+};
 
 export function tagColor(tags: string[]): TagColor {
   for (const tag of tags) {
@@ -24,9 +30,7 @@ export function tagColor(tags: string[]): TagColor {
   return FALLBACK_TAG_COLOR;
 }
 
-export function withAlpha(hex: string, alpha: number): string {
-  const a = Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `${hex}${a}`;
+export function withAlpha(color: string, alpha: number): string {
+  const percentage = Math.round(Math.min(1, Math.max(0, alpha)) * 100);
+  return `color-mix(in srgb, ${color} ${percentage}%, transparent)`;
 }

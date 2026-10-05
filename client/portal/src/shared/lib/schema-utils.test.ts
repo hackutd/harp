@@ -44,17 +44,30 @@ describe("required and optional fields", () => {
     expect(ok.success).toBe(true);
   });
 
-  it("lets optional fields fall back to empty defaults", () => {
+  it("lets optional fields be left blank", () => {
     const fields = [
       field({ id: "nickname" }),
       field({ id: "bio", type: "textarea" }),
     ];
-    const result = validate(fields, {});
+    // Optional text falls back to "", optional textarea accepts the "" that
+    // buildDefaultValues seeds the form with.
+    const result = validate(fields, { bio: "" });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.nickname).toBe("");
       expect(result.data.bio).toBe("");
     }
+  });
+
+  it("rejects whitespace-only answers to required text and textarea", () => {
+    const fields = [
+      field({ id: "name", required: true }),
+      field({ id: "essay", type: "textarea", required: true }),
+    ];
+    expect(validate(fields, { name: "   ", essay: "ok" }).success).toBe(false);
+    expect(validate(fields, { name: "ok", essay: "  \n " }).success).toBe(
+      false,
+    );
   });
 
   it("reports which field failed with its label", () => {
@@ -79,11 +92,14 @@ describe("required and optional fields", () => {
   });
 });
 
-describe("phone validation (US format)", () => {
+describe("phone validation (international E.164)", () => {
   it.each([
-    ["+12145551234", true],
-    ["+18015550100", true],
-  ])("accepts canonical %s", (phone) => {
+    ["+12145551234"],
+    ["+18015550100"],
+    ["+441234567890"],
+    ["+1234567"], // 7 digits: the minimum
+    ["+123456789012345"], // 15 digits: the maximum
+  ])("accepts %s", (phone) => {
     expect(
       validate([field({ id: "p", type: "phone", required: true })], {
         p: phone,
@@ -92,9 +108,11 @@ describe("phone validation (US format)", () => {
   });
 
   it.each([
-    ["invalid contact info: too short", "+1214555123"],
+    ["too short", "+123456"],
+    ["too long", "+1234567890123456"],
+    ["missing the plus", "12145551234"],
+    ["a leading zero country code", "+02145551234"],
     ["non-canonical formatting", "(214) 555-1234"],
-    ["wrong country code", "+441234567890"],
     ["letters present", "+1abc5551234"],
   ])("rejects %s", (_label, phone) => {
     expect(
@@ -207,7 +225,8 @@ describe("buildDefaultValues", () => {
       field({ id: "m", type: "multi_select" }),
       field({ id: "c", type: "checkbox" }),
     ]);
-    expect(defaults).toEqual({ t: "", n: 0, m: [], c: false });
+    // Numbers start blank so an untouched required number fails validation.
+    expect(defaults).toEqual({ t: "", n: undefined, m: [], c: false });
   });
 });
 

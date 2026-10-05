@@ -1,12 +1,12 @@
 # Workflow Queue Pattern
 
-For features where work items are claimed by an admin, processed, and submitted. Examples: application reviews (`pending` → `next` → `submit` → `completed`).
+For features where work items are claimed by an admin, processed, and submitted. Examples: application reviews (`pending` → `submit` → `completed`, then `claim` for more).
 
 ## When to Use
 
 You have a stream of work items distributed across many admins, and:
 - An admin wants to **see what's assigned to them** (pending list).
-- An admin wants the **next item to work on** (atomic claim from a queue).
+- An admin who has **finished their queue wants more** (atomic claim).
 - An admin **submits a result** that closes the item.
 - An admin wants to **see what they've already done** (completed list).
 
@@ -58,63 +58,53 @@ Pending = `vote IS NULL`. Order oldest-first. Hydrate with relevant target detai
 
 Completed = `vote IS NOT NULL`. Order most-recent-first.
 
-### Atomic claim (`AssignNextForAdmin`)
+### Claim more (`ClaimForAdmin`)
 
-The critical operation. Wrap in a transaction so concurrent admins don't claim the same item.
+The critical operation. Once an admin's queue is empty, it hands them up to `limit` more items in one transaction and returns how many it claimed. Two sources, in order:
+
+1. **Fill a slot** — a submitted application still below the reviews-per-application target gets a new row (`INSERT`, the trigger bumps `reviews_assigned`).
+2. **Take over** — when nothing is below target (the normal state right after a batch run), move an unstarted review from another holder by updating its `admin_id`. Holders who can no longer review (demoted, or a super admin with assignment off) go first; then the longest queue, taking from its end. The total per application never changes.
 
 ```go
-func (s *ApplicationReviewsStore) AssignNextForAdmin(ctx context.Context, adminID string, reviewsPerApp int) (*ApplicationReview, error) {
-    ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+func (s *ApplicationReviewsStore) ClaimForAdmin(ctx context.Context, adminID string, reviewsPerApp, limit int) (int, error) {
+    ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2) // several statements
     defer cancel()
-
     tx, err := s.db.BeginTx(ctx, nil)
-    if err != nil { return nil, err }
+    // ...
     defer tx.Rollback()
 
-    // 1) Find next eligible target — locked, skipped if another tx holds it
-    findQuery := `
-        SELECT id FROM applications
-        WHERE status = 'submitted'
-          AND reviews_assigned < $1
-          AND user_id != $2                        -- no self-review
-          AND NOT EXISTS (
-              SELECT 1 FROM application_reviews ar
-              WHERE ar.application_id = applications.id AND ar.admin_id = $2
-          )
-        ORDER BY reviews_assigned ASC, submitted_at ASC
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED                     -- key clause: concurrent claims don't collide
-    `
-    var applicationID string
-    if err := tx.QueryRowContext(ctx, findQuery, reviewsPerApp, adminID).Scan(&applicationID); err != nil {
-        if errors.Is(err, sql.ErrNoRows) { return nil, ErrNotFound }
-        return nil, err
-    }
+    // 1) Serialize: lock the same settings row BatchAssign locks (create it if missing).
+    //    Claims run one at a time and never alongside a batch; the row also yields the
+    //    disabled super admins via parseReviewAssignmentEntries + disabledReviewerIDs.
+    //    INSERT INTO settings (key, value) VALUES ($1, '[]') ON CONFLICT (key) DO NOTHING
+    //    SELECT value FROM settings WHERE key = $1 FOR UPDATE
 
-    // 2) Insert assignment, idempotent on uniqueness collision
-    insertQuery := `
-        INSERT INTO application_reviews (application_id, admin_id)
-        VALUES ($1, $2)
-        ON CONFLICT (application_id, admin_id) DO NOTHING
-        RETURNING id, application_id, admin_id, vote, notes, assigned_at, reviewed_at, created_at, updated_at
-    `
-    var review ApplicationReview
-    if err := tx.QueryRowContext(ctx, insertQuery, applicationID, adminID).Scan(/* ... */); err != nil {
-        if errors.Is(err, sql.ErrNoRows) { return nil, ErrNotFound }
-        return nil, err
-    }
+    // 2) Refuse while the admin still has visible pending work -> ErrConflict
+    //    (vote IS NULL AND a.status = 'submitted', same visibility as GetPendingByAdminID)
 
-    if err := tx.Commit(); err != nil { return nil, err }
-    return &review, nil
+    // 3) for claimed < limit:
+    //    a) fill: SELECT id FROM applications WHERE status = 'submitted' AND reviews_assigned < $target
+    //       AND user_id != $admin AND NOT EXISTS (row for this admin)
+    //       ORDER BY reviews_assigned, submitted_at, id LIMIT 1 FOR UPDATE SKIP LOCKED  -> INSERT
+    //    b) else take over (CTE counts each holder's pending and flags orphaned holders):
+    //       ... AND (h.orphaned OR h.pending >= claimed + 2)
+    //       ORDER BY h.orphaned DESC, h.pending DESC, ar.assigned_at DESC, ar.id DESC
+    //       LIMIT 1 FOR UPDATE OF ar SKIP LOCKED
+    //       -> UPDATE application_reviews SET admin_id = $admin, assigned_at = NOW() WHERE id = $1
+    //    c) neither -> stop
+    return claimed, tx.Commit()
 }
 ```
 
 Key clauses:
-- `FOR UPDATE SKIP LOCKED` — locks the row for this transaction; if another transaction has it, skip and try the next.
-- `ORDER BY reviews_assigned ASC, submitted_at ASC` — workload balancing across the queue.
-- `user_id != $2` — admins don't review their own submissions.
-- `NOT EXISTS (... AND admin_id = $2)` — same admin can't be assigned the same item twice.
-- `ON CONFLICT ... DO NOTHING` — safety net; the unique constraint enforces it.
+- **Settings row `FOR UPDATE`** — without one lock shared by every claim, two admins claiming at once each see a holder's whole queue and can drain it together; a double click could pass the empty-queue check twice.
+- **Balance rule `pending >= claimed + 2`** — a holder only gives a review up while they would still have more than the claimer, so work never bounces between two admins and nobody loses the review they are down to. Orphaned holders are exempt.
+- **Take from the end of the queue** — queues are graded from the front (`ORDER BY assigned_at, id`), so the last row is the one least likely to be open on the holder's screen.
+- **`UPDATE`, not delete + insert** — `vote`/`travel_vote` stay NULL, so the counter trigger leaves `reviews_assigned` alone.
+- `user_id != admin` and `NOT EXISTS (row for this admin)` — no self-review, and the unique `(application_id, admin_id)` pair is never violated.
+- `SKIP LOCKED` — a vote in flight on a row locks it; skip rather than wait.
+
+A holder who votes on a review that moved gets `ErrVoteNotApplied` → 404 from `submitVote`; the grading UI drops it from the queue and moves on.
 
 ### Submit result
 
@@ -149,33 +139,46 @@ func (app *application) getPendingReviews(w http.ResponseWriter, r *http.Request
 
 `user.ID` from context — never trust an admin ID from query/body.
 
-### Claim next
+### Claim more
 
-May call into a settings dependency (e.g., reviews-per-app) before claiming:
+Gate super admins on their assignment toggle, read the target, claim, then return the admin's new queue:
 
 ```go
-//  @Router   /admin/reviews/next [get]
-func (app *application) getNextReview(w http.ResponseWriter, r *http.Request) {
+const reviewClaimBatchSize = 5
+
+type ClaimReviewsResponse struct {
+    Claimed int                                  `json:"claimed"`
+    Reviews []store.ApplicationReviewWithDetails `json:"reviews"`
+}
+
+//  @Router   /admin/reviews/claim [post]
+func (app *application) claimReviews(w http.ResponseWriter, r *http.Request) {
     user := getUserFromContext(r.Context())
+    if user.Role == store.RoleSuperAdmin {
+        // GetReviewAssignmentToggle -> forbiddenMessageResponse when off
+    }
 
     reviewsPerApp, err := app.store.Settings.GetReviewsPerApplication(r.Context())
     if err != nil { app.internalServerError(w, r, err); return }
 
-    review, err := app.store.ApplicationReviews.AssignNextForAdmin(r.Context(), user.ID, reviewsPerApp)
+    claimed, err := app.store.ApplicationReviews.ClaimForAdmin(r.Context(), user.ID, reviewsPerApp, reviewClaimBatchSize)
     if err != nil {
         switch {
-        case errors.Is(err, store.ErrNotFound):
-            app.notFoundResponse(w, r, errors.New("no applications need review"))
+        case errors.Is(err, store.ErrConflict):
+            app.conflictResponse(w, r, errors.New("finish your assigned reviews before claiming more"))
         default:
             app.internalServerError(w, r, err)
         }
         return
     }
-    app.jsonResponse(w, http.StatusOK, ReviewResponse{Review: *review})
+
+    reviews, err := app.store.ApplicationReviews.GetPendingByAdminID(r.Context(), user.ID)
+    if err != nil { app.internalServerError(w, r, err); return }
+    app.jsonResponse(w, http.StatusOK, ClaimReviewsResponse{Claimed: claimed, Reviews: reviews})
 }
 ```
 
-`ErrNotFound` here means "queue is empty, try again later" — surface that as 404 with a specific message.
+Claiming nothing is a 200 with `claimed: 0` — "up to N" coming back empty is not an error. It is a POST: it changes assignments.
 
 ### Submit
 
@@ -222,7 +225,7 @@ r.Group(func(r chi.Router) {
     r.Route("/admin", func(r chi.Router) {
         r.Route("/reviews", func(r chi.Router) {
             r.Get("/pending",   app.getPendingReviews)
-            r.Get("/next",      app.getNextReview)
+            r.Post("/claim",    app.claimReviews)
             r.Put("/{reviewID}", app.submitVote)
             r.Get("/completed", app.getCompletedReviews)
         })
@@ -238,7 +241,7 @@ Coverage checklist:
 |----------|-------|
 | Pending list | returns items, returns empty list |
 | Completed list | returns items |
-| Claim next | success returns review, 404 when queue empty, 500 on store error |
+| Claim more | success returns claimed count + queue, 200 with `claimed: 0`, 409 while queue non-empty, 403 for a super admin with assignment off, 500 on store error |
 | Submit | success (with and without notes), 400 invalid vote, 404 not found / not yours |
 
 For `submitVote`, mock the user-scoped variant — assert the admin ID is passed:
@@ -251,7 +254,7 @@ See `cmd/api/reviews_test.go`.
 
 ## What NOT to Do
 
-- Don't claim work without `FOR UPDATE SKIP LOCKED` — concurrent admins WILL collide.
+- Don't claim work without `FOR UPDATE SKIP LOCKED` and the shared settings-row lock — concurrent admins WILL collide.
 - Don't drop the unique `(target_id, admin_id)` constraint — bulk re-assign and idempotent claim both rely on it.
 - Don't trust an admin ID from URL/body — pull it from `getUserFromContext`.
 - Don't update parent counter columns from the handler — the trigger handles that.

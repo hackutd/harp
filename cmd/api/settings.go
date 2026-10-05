@@ -15,6 +15,9 @@ type UpdateApplicationSchemaPayload struct {
 
 type ApplicationSchemaResponse struct {
 	Fields []store.ApplicationSchemaField `json:"fields"`
+	// Warnings names well-known bindings the saved schema no longer declares,
+	// so the editor can say which feature just went inactive.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // getApplicationSchema returns the configurable application schema
@@ -48,7 +51,7 @@ func (app *application) getApplicationSchema(w http.ResponseWriter, r *http.Requ
 // updateApplicationSchema replaces the application schema
 //
 //	@Summary		Update application schema (Super Admin)
-//	@Description	Replaces the application schema with the provided array of fields
+//	@Description	Replaces the application schema with the provided array of fields. Rejected when a well-known field the backend reads (see /superadmin/settings/schema-contract) is still present but no longer usable; removing such a field is allowed and comes back as a warning.
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
@@ -72,14 +75,10 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Validate unique IDs
-	idMap := make(map[string]bool)
-	for _, f := range req.Fields {
-		if idMap[f.ID] {
-			app.badRequestResponse(w, r, errors.New("duplicate field ID: "+f.ID))
-			return
-		}
-		idMap[f.ID] = true
+	warnings, err := validateSchemaFields(applicationSchemaContracts, req.Fields)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
 	}
 
 	if err := app.store.Settings.UpdateApplicationSchema(r.Context(), req.Fields); err != nil {
@@ -87,7 +86,381 @@ func (app *application) updateApplicationSchema(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	response := ApplicationSchemaResponse(req)
+	response := ApplicationSchemaResponse{Fields: req.Fields, Warnings: warnings}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type UpdateRSVPSchemaPayload struct {
+	Fields []store.ApplicationSchemaField `json:"fields" validate:"required,dive"`
+}
+
+type RSVPSchemaResponse struct {
+	Fields []store.ApplicationSchemaField `json:"fields"`
+}
+
+// getRSVPSchema returns the configurable RSVP schema
+//
+//	@Summary		Get RSVP schema (Super Admin)
+//	@Description	Returns the configurable RSVP form schema fields for accepted hackers
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	RSVPSchemaResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/rsvp-schema [get]
+func (app *application) getRSVPSchema(w http.ResponseWriter, r *http.Request) {
+	fields, err := app.store.Settings.GetRSVPSchema(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := RSVPSchemaResponse{
+		Fields: fields,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// updateRSVPSchema replaces the RSVP schema
+//
+//	@Summary		Update RSVP schema (Super Admin)
+//	@Description	Replaces the RSVP form schema with the provided array of fields
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			fields	body		UpdateRSVPSchemaPayload	true	"Schema fields to set"
+//	@Success		200		{object}	RSVPSchemaResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/rsvp-schema [put]
+func (app *application) updateRSVPSchema(w http.ResponseWriter, r *http.Request) {
+	var req UpdateRSVPSchemaPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if _, err := validateSchemaFields(nil, req.Fields); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.UpdateRSVPSchema(r.Context(), req.Fields); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := RSVPSchemaResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type SetRSVPEnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type RSVPEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getRSVPEnabled returns whether RSVPs are currently open
+//
+//	@Summary		Get RSVP enabled status (Super Admin)
+//	@Description	Returns whether accepted hackers can currently submit an RSVP
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	RSVPEnabledResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/rsvp-enabled [get]
+func (app *application) getRSVPEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetRSVPEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := RSVPEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setRSVPEnabled updates whether RSVPs are currently open
+//
+//	@Summary		Set RSVP enabled status (Super Admin)
+//	@Description	Sets whether accepted hackers can currently submit an RSVP. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetRSVPEnabledPayload	true	"Enable or disable RSVPs"
+//	@Success		200		{object}	RSVPEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/rsvp-enabled [put]
+func (app *application) setRSVPEnabled(w http.ResponseWriter, r *http.Request) {
+	var req SetRSVPEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetRSVPEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := RSVPEnabledResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type SetCheckInRequiresRSVPPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type CheckInRequiresRSVPResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getCheckInRequiresRSVP returns whether check-in requires a confirmed RSVP
+//
+//	@Summary		Get check-in RSVP requirement (Super Admin)
+//	@Description	Returns whether the scanner refuses to check in hackers who have not confirmed their RSVP
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	CheckInRequiresRSVPResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/check-in-requires-rsvp [get]
+func (app *application) getCheckInRequiresRSVP(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetCheckInRequiresRSVP(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := CheckInRequiresRSVPResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setCheckInRequiresRSVP updates whether check-in requires a confirmed RSVP
+//
+//	@Summary		Set check-in RSVP requirement (Super Admin)
+//	@Description	Sets whether the scanner refuses to check in hackers who have not confirmed their RSVP. Turn this off only for a hackathon that does not run the RSVP form at all, since every application then sits at 'pending'. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetCheckInRequiresRSVPPayload	true	"Enable or disable the RSVP requirement"
+//	@Success		200		{object}	CheckInRequiresRSVPResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/check-in-requires-rsvp [put]
+func (app *application) setCheckInRequiresRSVP(w http.ResponseWriter, r *http.Request) {
+	var req SetCheckInRequiresRSVPPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetCheckInRequiresRSVP(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := CheckInRequiresRSVPResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type UpdateTravelRSVPSchemaPayload struct {
+	Fields []store.ApplicationSchemaField `json:"fields" validate:"required,dive"`
+}
+
+type TravelRSVPSchemaResponse struct {
+	Fields []store.ApplicationSchemaField `json:"fields"`
+	// Warnings names well-known bindings the saved schema no longer declares,
+	// so the editor can say which feature just went inactive.
+	Warnings []string `json:"warnings,omitempty"`
+}
+
+// getTravelRSVPSchema returns the configurable travel RSVP schema
+//
+//	@Summary		Get travel RSVP schema (Super Admin)
+//	@Description	Returns the configurable travel RSVP form schema fields for hackers with approved travel reimbursement
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	TravelRSVPSchemaResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/travel-rsvp-schema [get]
+func (app *application) getTravelRSVPSchema(w http.ResponseWriter, r *http.Request) {
+	fields, err := app.store.Settings.GetTravelRSVPSchema(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := TravelRSVPSchemaResponse{
+		Fields: fields,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// updateTravelRSVPSchema replaces the travel RSVP schema
+//
+//	@Summary		Update travel RSVP schema (Super Admin)
+//	@Description	Replaces the travel RSVP form schema with the provided array of fields. Rejected when a well-known field the backend reads (see /superadmin/settings/schema-contract) is still present but no longer usable; removing such a field is allowed and comes back as a warning.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			fields	body		UpdateTravelRSVPSchemaPayload	true	"Schema fields to set"
+//	@Success		200		{object}	TravelRSVPSchemaResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/travel-rsvp-schema [put]
+func (app *application) updateTravelRSVPSchema(w http.ResponseWriter, r *http.Request) {
+	var req UpdateTravelRSVPSchemaPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	warnings, err := validateSchemaFields(travelRSVPSchemaContracts, req.Fields)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.UpdateTravelRSVPSchema(r.Context(), req.Fields); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := TravelRSVPSchemaResponse{Fields: req.Fields, Warnings: warnings}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type SetTravelRSVPEnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type TravelRSVPEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getTravelRSVPEnabled returns whether travel RSVPs are currently open
+//
+//	@Summary		Get travel RSVP enabled status (Super Admin)
+//	@Description	Returns whether hackers with approved travel can currently submit their travel RSVP
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	TravelRSVPEnabledResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/travel-rsvp-enabled [get]
+func (app *application) getTravelRSVPEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetTravelRSVPEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := TravelRSVPEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setTravelRSVPEnabled updates whether travel RSVPs are currently open
+//
+//	@Summary		Set travel RSVP enabled status (Super Admin)
+//	@Description	Sets whether hackers with approved travel can currently submit their travel RSVP. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetTravelRSVPEnabledPayload	true	"Enable or disable travel RSVPs"
+//	@Success		200		{object}	TravelRSVPEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/travel-rsvp-enabled [put]
+func (app *application) setTravelRSVPEnabled(w http.ResponseWriter, r *http.Request) {
+	var req SetTravelRSVPEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetTravelRSVPEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := TravelRSVPEnabledResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
@@ -130,10 +503,10 @@ func (app *application) getReviewsPerApp(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// setReviewsPerApp sets the number of reviews required per application
+// setReviewsPerApp sets the assignment target per application
 //
 //	@Summary		Set reviews per application (Super Admin)
-//	@Description	Sets the number of reviews required per application
+//	@Description	Sets the reviewer assignment target per application; run batch assignment to fill it
 //	@Tags			superadmin/settings
 //	@Accept			json
 //	@Produce		json
@@ -202,6 +575,14 @@ type SetAdminFAQEditTogglePayload struct {
 }
 
 type AdminFAQEditToggleResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+type SetAdminTrackEditTogglePayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminTrackEditToggleResponse struct {
 	Enabled bool `json:"enabled"`
 }
 
@@ -489,6 +870,68 @@ func (app *application) setAdminFAQEditToggle(w http.ResponseWriter, r *http.Req
 	}
 
 	response := AdminFAQEditToggleResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// getAdminTrackEditToggle returns whether admins can edit challenge tracks
+//
+//	@Summary		Get admin track edit state (Super Admin)
+//	@Description	Returns whether users with admin role can create, update, and delete challenge tracks
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	AdminTrackEditToggleResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-track-edit-toggle [get]
+func (app *application) getAdminTrackEditToggle(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetAdminTrackEditEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminTrackEditToggleResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setAdminTrackEditToggle updates whether admins can edit challenge tracks
+//
+//	@Summary		Set admin track edit state (Super Admin)
+//	@Description	Updates whether users with admin role can create, update, and delete challenge tracks
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			enabled	body		SetAdminTrackEditTogglePayload	true	"Admin track editing enabled state"
+//	@Success		200		{object}	AdminTrackEditToggleResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/admin-track-edit-toggle [post]
+func (app *application) setAdminTrackEditToggle(w http.ResponseWriter, r *http.Request) {
+	var req SetAdminTrackEditTogglePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetAdminTrackEditEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := AdminTrackEditToggleResponse(req)
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)

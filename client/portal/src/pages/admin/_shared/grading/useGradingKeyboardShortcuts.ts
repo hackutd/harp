@@ -3,6 +3,8 @@ import { useNavigate } from "react-router";
 
 interface UseGradingKeyboardShortcutsOptions {
   disabled: boolean;
+  /** Ignore every shortcut, e.g. while a modal owns the keyboard. */
+  suspended?: boolean;
   canAct: boolean;
   escapeUrl: string;
   onNavigateNext: () => void;
@@ -14,6 +16,7 @@ interface UseGradingKeyboardShortcutsOptions {
 
 export function useGradingKeyboardShortcuts({
   disabled,
+  suspended = false,
   canAct,
   escapeUrl,
   onNavigateNext,
@@ -26,6 +29,8 @@ export function useGradingKeyboardShortcuts({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (suspended) return;
+
       const activeElement = document.activeElement;
       const isInputFocused =
         activeElement instanceof HTMLTextAreaElement ||
@@ -77,6 +82,7 @@ export function useGradingKeyboardShortcuts({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     disabled,
+    suspended,
     canAct,
     escapeUrl,
     onNavigateNext,

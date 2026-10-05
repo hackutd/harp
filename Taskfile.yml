@@ -32,6 +32,11 @@ tasks:
     cmds:
       - go run cmd/migrate/seed/main.go
 
+  reset-schema:
+    desc: Restore form schemas to the shipped defaults (task reset-schema -- -all -dry-run)
+    cmds:
+      - go run ./cmd/resetschema {{.CLI_ARGS}}
+
   gen-docs:
     desc: Generate Swagger docs
     cmds:

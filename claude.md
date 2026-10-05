@@ -14,6 +14,12 @@ The public marketing site lives in a **separate repository** (`hackutd/harp-mark
 
 Local dev ports: backend `8080`, portal `3000`. Port 3000 is pinned for the portal by `FRONTEND_URL` and the SuperTokens `WebsiteDomain`, so the marketing site takes 3001 when run alongside.
 
+## Working Style
+
+- **Fix the code, don't build a test rig.** Diagnose from the source, make the change, and hand it back. The maintainer runs the app and verifies visually themselves.
+- Do not scaffold throwaway harness pages, mock-API entry points, or browser-automation scripts inside this repo to prove a UI change works.
+- Existing checks are enough: `task test` for Go, `npm run build` / `npm run lint` for the portal.
+
 ## Commands
 
 ### Backend (Go)
@@ -55,7 +61,8 @@ Note: `air` runs `task gen-docs` as a pre-command on every rebuild, so `swag` CL
 - **Entry point:** `cmd/api/main.go` — loads config, `cmd/api/api.go` — Chi router setup in `mount()`
 - **Database:** PostgreSQL 16.3, raw SQL (no ORM), repository pattern in `internal/store/`
 - **Auth:** SuperTokens (Passwordless magic link + Google OAuth), initialized in `internal/auth/`
-- **Middleware chain:** RequestID → RealIP → Logger → Recoverer → CORS → SuperTokens → RateLimiter → AuthRequired → RequireRole
+- **Middleware chain:** RequestID → ClientIP → Logger → Recoverer → CORS → SuperTokens → RateLimiter (`/v1` only) → AuthRequired → RequireRole
+- **Rate limiting:** keyed by SuperTokens user ID when the request carries a verified session (`RATELIMITER_REQUESTS_COUNT`), falling back to client IP otherwise (`RATELIMITER_IP_REQUESTS_COUNT`, larger because a whole venue shares one NAT). The client IP comes from `CLIENT_IP_HEADER` (default `CF-Connecting-IP`) or `CLIENT_IP_TRUSTED_PROXIES` hops into `X-Forwarded-For`; other forwarded headers are ignored. Static assets and `/auth/*` are never limited.
 - **Roles (hierarchical):** `hacker` (1) < `admin` (2) < `super_admin` (3)
 - **JSON envelope:** Success: `{"data": ...}`, Error: `{"error": "..."}`
 - **Pagination:** Cursor-based with base64-encoded JSON cursors
@@ -100,7 +107,7 @@ Tests live in `cmd/api/` (`_test.go` files, same package as handlers):
 - `internal/db/` — PostgreSQL connection setup (pgx)
 - `internal/mailer/` — SendGrid email with embedded Go templates
 - `internal/auth/` — SuperTokens init, user creation from session
-- `internal/ratelimiter/` — fixed-window rate limiter
+- `internal/ratelimiter/` — fixed-window rate limiter (one instance per user-ID bucket, one per IP bucket)
 - `internal/logger/` — Zap logger (dev/prod modes based on `ENV`)
 
 ### Frontend (React 19 + TypeScript + Vite)
@@ -155,18 +162,28 @@ Vite dev server proxies `/v1/*` and most `/auth/*` to Go backend (port 8080). Fr
 
 Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 
-- **Go:** gofmt check, `go mod verify`, build, `go vet`, `staticcheck`, `go test -race ./...`
-- **Portal:** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`
+- **Path filter (`changes`):** on PRs, Go jobs run only when Go/backend files change and `frontend-audit` only when `client/portal/` changes; skipped jobs count as passed. Pushes to `main` run everything. A new push to a PR cancels its previous run.
+- **Go tests (`backend-audit`):** `go test -race ./...`
+- **Go lint (`backend-lint`):** migration naming check, gofmt check, `go mod verify`, `go vet`, `staticcheck`, `govulncheck`, Swagger docs drift check (`task gen-docs` must leave no diff)
+- **DB (`db-integration`):** throwaway Postgres 16.3 service container; migrations `up` → `down -all` → `up`, then the store integration tests with `HARP_TEST_DSN` set
+- **Image (`docker-build`):** builds the production `Dockerfile` without pushing
+- **Portal (`frontend-audit`):** `npm run format:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `npm run test:reviews`, `npm run test:applications`
+
+PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/workflows/migration-reminder.yaml`) to apply the migration to staging before merging and to prod before the release.
 
 ## Deployment & Infrastructure
 
-- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — two jobs: `backend-audit`, `frontend-audit` (portal)
-- **CD:** Merges to `main` trigger Google Cloud Build → Google Cloud Run (auto-deploy)
+- **CI:** GitHub Actions (`.github/workflows/audit.yaml`) runs on every push/PR to `main` — jobs: `changes`, `backend-audit`, `backend-lint`, `db-integration`, `docker-build`, `frontend-audit` (portal)
+- **CD:** Google Cloud Build → Google Cloud Run, two triggers (in GCP, not in repo):
+  - **Staging:** every push to `main` deploys `harp-staging` (`https://harp-staging.hackutd.co`)
+  - **Prod:** a release tag `vX.Y.Z` deploys `harp` (`https://harp.hackutd.co`). Merging the release-please PR creates the tag, so **a merge to `main` is not live in prod until the next release**
+- **Staging:** `ENV=staging`, real data on a Neon branch of prod (refresh with `neon branches reset staging --parent`), separate SuperTokens, Google OAuth client, GCS bucket and VAPID keys, email through a Mailtrap sandbox, behind Cloudflare Access (`@acmutd.co`). **Never give staging `SENDGRID_API_KEY` or any prod credential** — it holds real hacker emails and push subscriptions. Details in the `deployment` skill
+- **Migrations:** never run by a deploy. Apply to staging before merging the PR, and to prod before merging the release PR
 - **Container:** Multi-stage `Dockerfile` — builds frontend (Node 22), builds Go binary, runs from `scratch` image on port 8080. Frontend is compiled at build time and served as static files
-- **Database:** Neon DB (managed PostgreSQL)
+- **Database:** Neon DB (managed PostgreSQL); branch `production` for prod, child branch `staging` for staging
 - **File Storage:** Google Cloud Storage (GCS)
 - **Auth:** SuperTokens (self-hosted or managed, free tier: 5,000 MAUs) — Passwordless + Google OAuth
-- **Email:** SendGrid
+- **Email:** SendGrid (prod), Mailtrap Email Sandbox over SMTP (staging)
 - **Marketing site:** its own repository (`hackutd/harp-marketing`) and its own Vercel project — not part of this repo or the Cloud Run deploy
 
 ## Git Conventions
@@ -181,6 +198,6 @@ Runs on every push/PR to `main` (`.github/workflows/audit.yaml`):
 
 **Auth:** `GET /v1/auth/check-email`, `GET /v1/auth/me`
 **Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`, `GET /v1/points-config`
-**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/next`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
+**Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/leaderboard`, `POST /v1/admin/reviews/claim`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
 **Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/settings/points-name`, `GET|POST /v1/superadmin/settings/points-enabled`, `POST /v1/superadmin/scans/rebalance-stats`, `POST /v1/superadmin/emails/decisions`, `GET /v1/superadmin/emails/decisions/stats`, `GET /v1/superadmin/walk-ins`, `POST /v1/superadmin/walk-ins/promote`
 **Infra (Basic Auth):** `GET /v1/health`, `GET /v1/debug/vars`, `GET /v1/swagger/*`

@@ -40,3 +40,12 @@ export async function sendDecisionEmails(payload: SendDecisionEmailsPayload) {
     "send decision emails",
   );
 }
+
+// Additive response from POST /superadmin/applications/assign.
+export interface BatchAssignmentResult {
+  reviews_created: number;
+  reviews_removed: number;
+  reviews_per_application: number;
+  applications_below_target: number;
+  reviews_unfilled: number;
+}

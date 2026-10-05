@@ -9,7 +9,15 @@ export interface ScheduledNotification {
   scheduled_at: string;
   sent_at: string | null;
   recipient_count: number;
-  created_by: string;
+  schedule_id: string | null;
+  /** A revocable delivery lease held by the dispatcher, not a delivery record. */
+  claimed_at: string | null;
+  attempts: number;
+  /** Terminal: the dispatcher gave up. `last_error` says why. */
+  failed_at: string | null;
+  last_error: string | null;
+  /** Null once the author's account is deleted. */
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

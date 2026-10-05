@@ -5,6 +5,7 @@ import { fetchApplicationById } from "@/pages/admin/all-applicants/api";
 import type { Application } from "@/types";
 
 import {
+  claimMoreReviews,
   fetchPendingReviews,
   fetchReviewNotes,
   submitReviewVote,
@@ -14,6 +15,7 @@ import type { Review, ReviewNote, ReviewVote } from "../types";
 interface GradingState {
   reviews: Review[];
   loading: boolean;
+  error: string | null;
   currentIndex: number;
   detail: Application | null;
   detailLoading: boolean;
@@ -21,18 +23,26 @@ interface GradingState {
   notesLoading: boolean;
   submitting: boolean;
   localNotes: string;
-  fetchReviews: () => Promise<void>;
+  localTravelVote: boolean | null;
+  claiming: boolean;
+  fetchReviews: (
+    targetReviewId?: string,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
   navigatePrev: () => void;
   submitVote: (reviewId: string, vote: ReviewVote) => Promise<void>;
+  claimMore: () => Promise<void>;
   setLocalNotes: (notes: string) => void;
+  setLocalTravelVote: (vote: boolean) => void;
   reset: () => void;
 }
 
 const initialState = {
   reviews: [] as Review[],
   loading: false,
+  error: null as string | null,
   currentIndex: 0,
   detail: null as Application | null,
   detailLoading: false,
@@ -40,21 +50,40 @@ const initialState = {
   notesLoading: false,
   submitting: false,
   localNotes: "",
+  localTravelVote: null as boolean | null,
+  claiming: false,
 };
 
 let loadDetailSeq = 0;
+let fetchSequence = 0;
 
 export const useAdminGradingStore = create<GradingState>((set, get) => ({
   ...initialState,
 
-  fetchReviews: async () => {
-    set({ loading: true });
-    const res = await fetchPendingReviews();
+  fetchReviews: async (targetReviewId, signal) => {
+    const requestId = ++fetchSequence;
+    ++loadDetailSeq;
+    set({ ...initialState, loading: true });
+    const res = await fetchPendingReviews(signal);
 
+    if (requestId !== fetchSequence) return;
+    if (signal?.aborted) {
+      set({ loading: false });
+      return;
+    }
     if (res.status === 200 && res.data) {
-      set({ reviews: res.data.reviews, loading: false });
+      const reviews = res.data.reviews;
+      const targetIndex = reviews.findIndex((r) => r.id === targetReviewId);
+      const currentIndex = Math.max(0, targetIndex);
+      set({ reviews, currentIndex, loading: false, error: null });
+      if (reviews.length > 0) {
+        await get().loadDetail(reviews[currentIndex].application_id);
+      }
     } else {
-      set({ reviews: [], loading: false });
+      set({
+        loading: false,
+        error: res.error || "Unable to load reviews. Please try again.",
+      });
     }
   },
 
@@ -66,6 +95,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
       detail: null,
       notes: [],
       localNotes: "",
+      localTravelVote: null,
     });
 
     const [detailRes, notesRes] = await Promise.all([
@@ -90,7 +120,8 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   navigateNext: () => {
-    const { reviews, currentIndex } = get();
+    const { reviews, currentIndex, loading, error, submitting } = get();
+    if (loading || error || submitting) return;
     if (currentIndex < reviews.length - 1) {
       const newIndex = currentIndex + 1;
       set({ currentIndex: newIndex });
@@ -99,7 +130,8 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   navigatePrev: () => {
-    const { reviews, currentIndex } = get();
+    const { reviews, currentIndex, loading, error, submitting } = get();
+    if (loading || error || submitting) return;
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       set({ currentIndex: newIndex });
@@ -108,15 +140,28 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
   },
 
   submitVote: async (reviewId: string, vote: ReviewVote) => {
+    if (get().loading || get().error || get().submitting) return;
+    const queueVersion = fetchSequence;
     set({ submitting: true });
 
-    const { localNotes } = get();
+    const { localNotes, localTravelVote, reviews: allReviews } = get();
+    const review = allReviews.find((r) => r.id === reviewId);
+    const travelRequested =
+      !!review && review.travel_status !== "not_requested";
     const result = await submitReviewVote(reviewId, {
       vote,
+      travel_vote:
+        travelRequested && localTravelVote !== null
+          ? localTravelVote
+          : undefined,
       notes: localNotes || undefined,
     });
 
-    if (result.success) {
+    if (queueVersion !== fetchSequence) return;
+    // A 404 means the review is no longer this admin's: another reviewer
+    // picked it up. Drop it from the queue the same way and move on.
+    const reassigned = !result.success && result.status === 404;
+    if (result.success || reassigned) {
       const { reviews, currentIndex } = get();
       const filtered = reviews.filter((r) => r.id !== reviewId);
       const newIndex = Math.min(currentIndex, filtered.length - 1);
@@ -126,14 +171,25 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
         currentIndex: Math.max(0, newIndex),
         submitting: false,
         localNotes: "",
+        localTravelVote: null,
       });
 
-      toast.success(`Vote submitted: ${vote}`);
+      if (reassigned) {
+        toast.info("This review is no longer assigned to you. Moving on.");
+      } else {
+        toast.success(`Vote submitted: ${vote}`);
+      }
 
       if (filtered.length > 0) {
         get().loadDetail(filtered[Math.max(0, newIndex)].application_id);
       } else {
-        set({ detail: null, notes: [] });
+        ++loadDetailSeq;
+        set({
+          detail: null,
+          notes: [],
+          detailLoading: false,
+          notesLoading: false,
+        });
       }
     } else {
       set({ submitting: false });
@@ -141,12 +197,48 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
     }
   },
 
+  claimMore: async () => {
+    const { loading, submitting, claiming } = get();
+    if (loading || submitting || claiming) return;
+    const requestId = ++fetchSequence;
+    ++loadDetailSeq;
+    set({ claiming: true });
+
+    const result = await claimMoreReviews();
+
+    // The page was reset or refetched while this was in flight.
+    if (requestId !== fetchSequence) return;
+    set({ claiming: false });
+    if (!result.success) {
+      toast.error(result.error ?? "Failed to get more reviews");
+      return;
+    }
+
+    const reviews = result.reviews;
+    set({ reviews, currentIndex: 0, localNotes: "", localTravelVote: null });
+    if (result.claimed === 0) {
+      toast.info("No reviews are available to pick up right now");
+    } else {
+      toast.success(
+        `Picked up ${result.claimed} review${result.claimed === 1 ? "" : "s"}`,
+      );
+    }
+    if (reviews.length > 0) {
+      await get().loadDetail(reviews[0].application_id);
+    }
+  },
+
   setLocalNotes: (notes: string) => {
     set({ localNotes: notes });
   },
 
+  setLocalTravelVote: (vote: boolean) => {
+    set({ localTravelVote: vote });
+  },
+
   reset: () => {
-    loadDetailSeq = 0;
+    ++loadDetailSeq;
+    ++fetchSequence;
     set(initialState);
   },
 }));

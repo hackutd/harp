@@ -2,6 +2,7 @@ import {
   deriveSections,
   formatResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
@@ -11,8 +12,8 @@ interface ApplicationSummaryProps {
   responses: Record<string, unknown>;
   userEmail?: string;
   hasResume: boolean;
-  /** Section that hosts the resume; defaults to "links". */
-  resumeSectionId?: string;
+  /** Section that hosts the resume; defaults to "links". Pass null to omit the resume row (e.g. RSVP schemas). */
+  resumeSectionId?: string | null;
 }
 
 function SummaryRow({
@@ -39,14 +40,18 @@ function SummaryRow({
     );
   }
 
+  // flex-wrap keeps a short question and its answer on one line, and drops the
+  // answer onto its own right-aligned line when the pair is too wide for the
+  // screen. Without it a long question sets the row's width and the whole page
+  // scrolls sideways on a phone.
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
       <span
         title={truncateLabel ? label : undefined}
         className={
           truncateLabel
             ? "min-w-0 flex-1 truncate text-xs font-light text-[#8A8A8A]"
-            : "shrink-0 text-xs font-light text-[#8A8A8A]"
+            : "max-w-full text-xs font-light break-words text-[#8A8A8A]"
         }
       >
         {label}
@@ -55,7 +60,7 @@ function SummaryRow({
         className={
           truncateLabel
             ? "shrink-0 text-right text-sm font-light text-black"
-            : "text-right text-sm font-light break-words text-black"
+            : "ml-auto max-w-full text-right text-sm font-light break-words text-black"
         }
       >
         {value || "Not provided"}
@@ -97,15 +102,17 @@ export function ApplicationSummary({
               {sectionId === "personal" && userEmail && (
                 <SummaryRow label="Email" value={userEmail} />
               )}
-              {fields.map((field) => (
-                <SummaryRow
-                  key={field.id}
-                  label={stripLabelLinks(field.label)}
-                  value={formatResponseValue(responses[field.id], field)}
-                  truncateLabel={field.type === "checkbox"}
-                  stacked={field.type === "textarea"}
-                />
-              ))}
+              {fields.map((field) =>
+                isFieldVisible(field, responses) ? (
+                  <SummaryRow
+                    key={field.id}
+                    label={stripLabelLinks(field.label)}
+                    value={formatResponseValue(responses[field.id], field)}
+                    truncateLabel={field.type === "checkbox"}
+                    stacked={field.type === "textarea"}
+                  />
+                ) : null,
+              )}
               {sectionId === resumeSectionId && (
                 <SummaryRow
                   label="Resume"

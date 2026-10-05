@@ -68,6 +68,9 @@ function fireSubmitConfetti(): void {
 async function fireAcceptedConfetti(): Promise<void> {
   const confettiModule = await import("canvas-confetti");
   const confetti = confettiModule.default;
+  const accentColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--portal-orange")
+    .trim();
 
   // First burst — center, diverse shapes
   confetti({
@@ -78,7 +81,7 @@ async function fireAcceptedConfetti(): Promise<void> {
     gravity: 0.7,
     scalar: 1,
     shapes: ["square", "circle"],
-    colors: ["#000000", "#FFFFFF", "#D4AF37"],
+    colors: ["#000000", "#FFFFFF", accentColor],
   });
 
   // Second burst — slight delay, from the left
@@ -92,7 +95,7 @@ async function fireAcceptedConfetti(): Promise<void> {
       gravity: 0.6,
       scalar: 0.9,
       shapes: ["square"],
-      colors: ["#000000", "#D4AF37", "#FFFFFF"],
+      colors: ["#000000", accentColor, "#FFFFFF"],
     });
   }, 150);
 
@@ -107,7 +110,7 @@ async function fireAcceptedConfetti(): Promise<void> {
       gravity: 0.6,
       scalar: 0.9,
       shapes: ["square"],
-      colors: ["#000000", "#D4AF37", "#FFFFFF"],
+      colors: ["#000000", accentColor, "#FFFFFF"],
     });
   }, 300);
 
@@ -121,7 +124,7 @@ async function fireAcceptedConfetti(): Promise<void> {
       gravity: 0.5,
       scalar: 1.1,
       shapes: ["square", "circle"],
-      colors: ["#000000", "#FFFFFF", "#D4AF37", "#555555"],
+      colors: ["#000000", "#FFFFFF", accentColor, "#555555"],
     });
   }, 500);
 }

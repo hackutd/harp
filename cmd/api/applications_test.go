@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -29,7 +29,8 @@ func newCompleteApplication(userID string) *store.Application {
 			"level_of_study":"Undergraduate","hackathons_attended":2,
 			"experience_level":"Intermediate","heard_about":"Friend",
 			"shirt_size":"M",
-			"ack_mlh_coc":true,"ack_mlh_privacy":true
+			"ack_mlh_coc":true,"ack_mlh_data_sharing":true,
+			"ack_mlh_contest_terms":true,"ack_mlh_privacy_policy":true
 		}`),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -251,7 +252,32 @@ func TestSubmitApplication(t *testing.T) {
 
 		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
 		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
-		mockApps.On("Submit", application).Return(nil).Once()
+		// No travel opt-in checkbox in this schema, so the binding is inactive
+		mockApps.On("Submit", application, "").Return(nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should pass the travel opt-in binding when the schema declares it", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: travelOptInFieldID, Type: "checkbox", Label: "Travel reimbursement"},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockApps.On("Submit", application, travelOptInFieldID).Return(nil).Once()
 
 		req, err := http.NewRequest(http.MethodPost, "/", nil)
 		require.NoError(t, err)
@@ -382,6 +408,139 @@ func TestSubmitApplication(t *testing.T) {
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
 		assert.Contains(t, body.Error, "age must be at most")
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should return 400 with the field id when a required multi_select is empty", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","last_name":"Doe","dietary_restrictions":[]}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: "dietary_restrictions", Type: "multi_select", Label: "Dietary Restrictions", Required: true, Options: []string{"Vegan", "Halal"}},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Error  string   `json:"error"`
+			Fields []string `json:"fields"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Contains(t, body.Error, "dietary_restrictions is required")
+		// The field ids let the form blame the question instead of showing the
+		// raw message.
+		assert.Equal(t, []string{"dietary_restrictions"}, body.Fields)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should report every offending field id once", func(t *testing.T) {
+		user := newTestUser()
+		application := &store.Application{ID: "app-1", UserID: user.ID, Status: store.StatusDraft}
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Fields []string `json:"fields"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"first_name", "last_name"}, body.Fields)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should not require a field hidden by an unsatisfied show_if", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+
+		// travel_origin is required, but its controlling checkbox is unchecked,
+		// so the form never asks for it and submit must not block on it.
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: travelOptInFieldID, Type: "checkbox", Label: "Travel reimbursement"},
+			{
+				ID: "travel_origin", Type: "text", Label: "Traveling from", Required: true,
+				Validation: map[string]interface{}{"show_if": travelOptInFieldID},
+			},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+		mockApps.On("Submit", application, travelOptInFieldID).Return(nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("should require a field once its show_if condition holds", func(t *testing.T) {
+		user := newTestUser()
+		application := newCompleteApplication(user.ID)
+		application.Responses = json.RawMessage(`{"first_name":"John","last_name":"Doe","travel_reimbursement":true}`)
+
+		schema := []store.ApplicationSchemaField{
+			{ID: "first_name", Type: "text", Label: "First Name", Required: true},
+			{ID: "last_name", Type: "text", Label: "Last Name", Required: true},
+			{ID: travelOptInFieldID, Type: "checkbox", Label: "Travel reimbursement"},
+			{
+				ID: "travel_origin", Type: "text", Label: "Traveling from", Required: true,
+				Validation: map[string]interface{}{"show_if": travelOptInFieldID},
+			},
+		}
+
+		mockApps.On("GetByUserID", user.ID).Return(application, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(schema, nil).Once()
+
+		req, err := http.NewRequest(http.MethodPost, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.submitApplicationHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		var body struct {
+			Fields []string `json:"fields"`
+		}
+		err = json.NewDecoder(rr.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"travel_origin"}, body.Fields)
 
 		mockApps.AssertExpectations(t)
 		mockSettings.AssertExpectations(t)
@@ -563,6 +722,60 @@ func TestListApplications(t *testing.T) {
 		checkResponseCode(t, http.StatusOK, rr.Code)
 
 		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should accept form response filters", func(t *testing.T) {
+		rsvpStatus := store.RSVPConfirmed
+		travelRSVPStatus := store.RSVPPending
+		travelStatus := store.TravelApproved
+		hasReceipts := true
+		travelRequested := true
+		result := &store.ApplicationListResult{
+			Applications: []store.ApplicationListItem{},
+			HasMore:      false,
+		}
+
+		mockApps.On("List",
+			store.ApplicationListFilters{
+				TravelStatus:     &travelStatus,
+				RSVPStatus:       &rsvpStatus,
+				TravelRSVPStatus: &travelRSVPStatus,
+				HasReceipts:      &hasReceipts,
+				TravelRequested:  &travelRequested,
+			},
+			(*store.ApplicationCursor)(nil),
+			store.DirectionForward,
+			50,
+		).Return(result, nil).Once()
+
+		req, err := http.NewRequest(
+			http.MethodGet,
+			"/?travel_status=approved&rsvp_status=confirmed&travel_rsvp_status=pending&has_receipts=true&travel_requested=true",
+			nil,
+		)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should reject invalid form response filters", func(t *testing.T) {
+		for _, query := range []string{
+			"?rsvp_status=maybe",
+			"?travel_rsvp_status=maybe",
+			"?has_receipts=maybe",
+			"?travel_requested=maybe",
+		} {
+			req, err := http.NewRequest(http.MethodGet, "/"+query, nil)
+			require.NoError(t, err)
+			req = setUserContext(req, newAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+			checkResponseCode(t, http.StatusBadRequest, rr.Code)
+		}
 	})
 
 	t.Run("should return 400 for invalid sort_by", func(t *testing.T) {
@@ -756,5 +969,204 @@ func TestSetApplicationStatus(t *testing.T) {
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
 
 		mockApps.AssertExpectations(t)
+	})
+}
+
+func TestSetApplicationTravelStatus(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+
+	t.Run("should set travel status to approved", func(t *testing.T) {
+		returned := &store.Application{ID: "app-1", TravelStatus: store.TravelApproved}
+		mockApps.On("SetTravelStatus", "app-1", store.TravelApproved, mock.AnythingOfType("*int64")).Return(returned, nil).Once()
+
+		body := `{"travel_status":"approved","approved_amount_cents":32500}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should require an amount when approving travel", func(t *testing.T) {
+		body := `{"travel_status":"approved"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+		assert.Contains(t, rr.Body.String(), "approved_amount_cents")
+	})
+
+	t.Run("should return 400 for invalid travel status value", func(t *testing.T) {
+		body := `{"travel_status":"not_requested"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "app-1")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should return 404 when application not found", func(t *testing.T) {
+		mockApps.On("SetTravelStatus", "nonexistent", store.TravelRejected, (*int64)(nil)).Return(nil, store.ErrNotFound).Once()
+
+		body := `{"travel_status":"rejected"}`
+		req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("applicationID", "nonexistent")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+		checkResponseCode(t, http.StatusNotFound, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	// Each refusal reason gets its own message, since they call for different
+	// fixes: nothing to decide, decide the application first, or reset the
+	// travel RSVP before revoking the approval it was submitted under.
+	conflicts := []struct {
+		name        string
+		storeErr    error
+		wantMessage string
+	}{
+		{
+			name:        "applicant did not request travel",
+			storeErr:    store.ErrTravelNotRequested,
+			wantMessage: "did not request travel reimbursement",
+		},
+		{
+			name:        "application is rejected or still a draft",
+			storeErr:    store.ErrTravelStatusNotDecidable,
+			wantMessage: "draft or rejected application",
+		},
+		{
+			name:        "travel RSVP is already submitted",
+			storeErr:    store.ErrTravelRSVPSubmitted,
+			wantMessage: "reset it before changing the travel decision",
+		},
+	}
+
+	for _, tc := range conflicts {
+		t.Run("should return 409 when "+tc.name, func(t *testing.T) {
+			mockApps.On("SetTravelStatus", "app-1", store.TravelApproved, mock.AnythingOfType("*int64")).Return(nil, tc.storeErr).Once()
+
+			body := `{"travel_status":"approved","approved_amount_cents":32500}`
+			req, err := http.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			req = setUserContext(req, newSuperAdminUser())
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("applicationID", "app-1")
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+			rr := executeRequest(req, http.HandlerFunc(app.setApplicationTravelStatus))
+			checkResponseCode(t, http.StatusConflict, rr.Code)
+
+			var errBody struct {
+				Error string `json:"error"`
+			}
+			require.NoError(t, json.NewDecoder(rr.Body).Decode(&errBody))
+			assert.Contains(t, errBody.Error, tc.wantMessage)
+
+			mockApps.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGetApplicantEmailsByStatus(t *testing.T) {
+	validStatuses := []store.ApplicationStatus{
+		store.StatusDraft,
+		store.StatusSubmitted,
+		store.StatusAccepted,
+		store.StatusWaitlisted,
+		store.StatusRejected,
+	}
+
+	for _, status := range validStatuses {
+		t.Run("accepts "+string(status)+" and returns matching emails", func(t *testing.T) {
+			app := newTestApplication(t)
+			mockApps := app.store.Application.(*store.MockApplicationStore)
+
+			firstName := "Ada"
+			lastName := "Lovelace"
+			users := []store.UserEmailInfo{
+				{Email: "ada@test.com", FirstName: &firstName, LastName: &lastName},
+			}
+			mockApps.On("GetEmailsByStatus", status).Return(users, nil).Once()
+
+			req, err := http.NewRequest(
+				http.MethodGet,
+				"/superadmin/applications/emails?status="+string(status),
+				nil,
+			)
+			require.NoError(t, err)
+			req = setUserContext(req, newSuperAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+			checkResponseCode(t, http.StatusOK, rr.Code)
+
+			var body struct {
+				Data EmailListResponse `json:"data"`
+			}
+			require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+			require.Len(t, body.Data.Applicants, 1)
+			assert.Equal(t, "ada@test.com", body.Data.Applicants[0].Email)
+			assert.Equal(t, &firstName, body.Data.Applicants[0].FirstName)
+
+			mockApps.AssertExpectations(t)
+		})
+	}
+
+	t.Run("returns 400 when status is missing", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		req, err := http.NewRequest(http.MethodGet, "/superadmin/applications/emails", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+	})
+
+	t.Run("returns 400 for an unknown status", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+
+		req, err := http.NewRequest(
+			http.MethodGet,
+			"/superadmin/applications/emails?status=not_a_status",
+			nil,
+		)
+		require.NoError(t, err)
+		req = setUserContext(req, newSuperAdminUser())
+
+		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
 	})
 }

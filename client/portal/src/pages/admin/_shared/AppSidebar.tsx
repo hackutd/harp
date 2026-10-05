@@ -6,10 +6,12 @@ import {
   ClipboardList,
   DoorOpen,
   Handshake,
+  Link2,
   MessageSquare,
   ScanLine,
   Settings,
   Star,
+  Trophy,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -65,28 +67,38 @@ const eventNav = [
     url: "/admin/faq",
     icon: MessageSquare,
   },
+  {
+    name: "Tracks",
+    url: "/admin/tracks",
+    icon: Trophy,
+  },
 ];
 
 const superAdminNav = [
+  {
+    name: "Forms",
+    url: "/admin/sa/forms",
+    icon: ClipboardList,
+  },
   {
     name: "Reviews",
     url: "/admin/sa/reviews",
     icon: Star,
   },
   {
-    name: "User Management",
+    name: "Users",
     url: "/admin/sa/user-management",
     icon: Users,
-  },
-  {
-    name: "Application",
-    url: "/admin/sa/application",
-    icon: ClipboardList,
   },
   {
     name: "Notifications",
     url: "/admin/sa/notifications",
     icon: Bell,
+  },
+  {
+    name: "Hacker Links",
+    url: "/admin/sa/hacker-links",
+    icon: Link2,
   },
   {
     name: "Walk-In Queue",

@@ -5,6 +5,7 @@ import {
   deriveSections,
   formatResponseValue,
   groupFieldsBySection,
+  isFieldVisible,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
 import type { ApplicationSchemaField } from "@/types";
@@ -74,19 +75,29 @@ function ReviewField({
     );
   }
 
+  // flex-wrap keeps a short question and its answer on one line, and drops the
+  // answer onto its own right-aligned line when the pair is too wide for the
+  // screen. Without it a long question sets the row's width and the whole page
+  // scrolls sideways on a phone.
   return (
-    <div className="flex items-baseline justify-between gap-4">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <span
         title={truncateLabel ? label : undefined}
         className={
           truncateLabel
             ? "min-w-0 flex-1 truncate text-xs font-light text-[#8A8A8A]"
-            : "shrink-0 text-xs font-light text-[#8A8A8A]"
+            : "max-w-full text-xs font-light break-words text-[#8A8A8A]"
         }
       >
         {label}
       </span>
-      <span className="shrink-0 text-right text-sm font-light text-black">
+      <span
+        className={
+          truncateLabel
+            ? "shrink-0 text-right text-sm font-light text-black"
+            : "ml-auto max-w-full text-right text-sm font-light break-words text-black"
+        }
+      >
         {value || "Not provided"}
       </span>
     </div>
@@ -113,7 +124,8 @@ export function ReviewStep({
           Review
         </h1>
         <p className="text-sm font-light text-[#8A8A8A]">
-          Check your answers before submitting
+          Check your answers before submitting. Once you submit, your
+          application can no longer be edited.
         </p>
       </div>
 
@@ -134,6 +146,7 @@ export function ReviewStep({
                 <ReviewField label="Email" value={userEmail} />
               )}
               {fields.map((field) => {
+                if (!isFieldVisible(field, values)) return null;
                 const isAgreement = field.type === "checkbox";
                 const isLongAnswer = field.type === "textarea";
                 return (
@@ -149,7 +162,7 @@ export function ReviewStep({
                 );
               })}
               {sectionId === resumeSectionId && (
-                <div className="flex items-baseline justify-between gap-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span className="shrink-0 text-xs font-light text-[#8A8A8A]">
                     Resume
                   </span>

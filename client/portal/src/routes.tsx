@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 
 import { ErrorPage } from "@/components/ErrorPage";
+import { HackerPageLoader } from "@/components/HackerPageLoader";
 import { PageLoader } from "@/components/PageLoader";
 // Auth pages stay eager (critical path)
 import {
@@ -24,7 +25,13 @@ const DashboardPage = lazy(
   () => import("@/pages/hacker/dashboard/DashboardPage"),
 );
 const ApplyPage = lazy(() => import("@/pages/hacker/apply/ApplyPage"));
-const StatusPage = lazy(() => import("@/pages/hacker/status/StatusPage"));
+const ApplicationDetailPage = lazy(
+  () => import("@/pages/hacker/application/ApplicationDetailPage"),
+);
+const HackerRSVPPage = lazy(() => import("@/pages/hacker/rsvp/RSVPPage"));
+const HackerTravelRSVPPage = lazy(
+  () => import("@/pages/hacker/travel-rsvp/TravelRSVPPage"),
+);
 const HackerLayout = lazy(() => import("@/layouts/HackerLayout"));
 const HackerScanPage = lazy(() => import("@/pages/hacker/scan/ScanPage"));
 const HackerSchedulePage = lazy(
@@ -43,8 +50,8 @@ const HackerPackPage = lazy(
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
-const SuperAdminApplicationPage = lazy(
-  () => import("@/pages/superadmin/application/ApplicationPage"),
+const SuperAdminFormsPage = lazy(
+  () => import("@/pages/superadmin/forms/FormsPage"),
 );
 const SuperAdminReviewsPage = lazy(
   () => import("@/pages/superadmin/reviews/ReviewsPage"),
@@ -58,6 +65,9 @@ const SuperAdminScansPage = lazy(
 const SuperAdminNotificationsPage = lazy(
   () => import("@/pages/superadmin/notifications/NotificationsPage"),
 );
+const SuperAdminHackerLinksPage = lazy(
+  () => import("@/pages/superadmin/hacker-links/HackerLinksPage"),
+);
 const SuperAdminWalkInQueuePage = lazy(
   () => import("@/pages/superadmin/walk-in-queue/WalkInQueuePage"),
 );
@@ -66,6 +76,7 @@ const AdminGradingPage = lazy(
 );
 const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
 const FAQAdminPage = lazy(() => import("@/pages/admin/faq/FAQPage"));
+const TracksPage = lazy(() => import("@/pages/admin/tracks/TracksPage"));
 
 export const router = createBrowserRouter([
   {
@@ -95,7 +106,7 @@ export const router = createBrowserRouter([
         path: "/app",
         element: (
           <RequireAuth>
-            <Suspense fallback={<PageLoader />}>
+            <Suspense fallback={<HackerPageLoader fullscreen />}>
               <HackerLayout />
             </Suspense>
           </RequireAuth>
@@ -104,7 +115,7 @@ export const router = createBrowserRouter([
           {
             index: true,
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <DashboardPage />
               </Suspense>
             ),
@@ -112,23 +123,49 @@ export const router = createBrowserRouter([
           {
             path: "apply",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <ApplyPage />
               </Suspense>
             ),
           },
+          // The standalone status page is gone — the dashboard shows the
+          // status cards now. Redirect stale links/bookmarks.
           {
             path: "status",
+            element: <Navigate to="/app" replace />,
+          },
+          {
+            path: "status/application",
+            element: <Navigate to="/app/application" replace />,
+          },
+          {
+            path: "application",
             element: (
-              <Suspense fallback={<PageLoader />}>
-                <StatusPage />
+              <Suspense fallback={<HackerPageLoader />}>
+                <ApplicationDetailPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "rsvp",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerRSVPPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "travel-rsvp",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerTravelRSVPPage />
               </Suspense>
             ),
           },
           {
             path: "scan",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <HackerScanPage />
               </Suspense>
             ),
@@ -136,7 +173,7 @@ export const router = createBrowserRouter([
           {
             path: "schedule",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <HackerSchedulePage />
               </Suspense>
             ),
@@ -144,7 +181,7 @@ export const router = createBrowserRouter([
           {
             path: "profile",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <HackerProfilePage />
               </Suspense>
             ),
@@ -152,7 +189,7 @@ export const router = createBrowserRouter([
           {
             path: "notifications",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <HackerNotificationsPage />
               </Suspense>
             ),
@@ -160,7 +197,7 @@ export const router = createBrowserRouter([
           {
             path: "faq",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <HackerFAQPage />
               </Suspense>
             ),
@@ -168,7 +205,7 @@ export const router = createBrowserRouter([
           {
             path: "hacker-pack",
             element: (
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<HackerPageLoader />}>
                 <HackerPackPage />
               </Suspense>
             ),
@@ -247,6 +284,14 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
           },
+          {
+            path: "tracks",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <TracksPage />
+              </Suspense>
+            ),
+          },
           // Super Admin routes (nested under admin layout, guarded individually)
           {
             path: "sa/user-management",
@@ -262,8 +307,45 @@ export const router = createBrowserRouter([
             path: "sa/application",
             element: (
               <RequireSuperAdmin>
+                <Navigate
+                  to="/admin/sa/forms/application?tab=builder"
+                  replace
+                />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/rsvp",
+            element: (
+              <RequireSuperAdmin>
+                <Navigate to="/admin/sa/forms/rsvp?tab=builder" replace />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/travel-rsvp",
+            element: (
+              <RequireSuperAdmin>
+                <Navigate to="/admin/sa/forms/travel?tab=builder" replace />
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/forms",
+            element: (
+              <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
-                  <SuperAdminApplicationPage />
+                  <SuperAdminFormsPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/forms/:formKey",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminFormsPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),
@@ -304,6 +386,16 @@ export const router = createBrowserRouter([
               <RequireSuperAdmin>
                 <Suspense fallback={<PageLoader />}>
                   <SuperAdminNotificationsPage />
+                </Suspense>
+              </RequireSuperAdmin>
+            ),
+          },
+          {
+            path: "sa/hacker-links",
+            element: (
+              <RequireSuperAdmin>
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminHackerLinksPage />
                 </Suspense>
               </RequireSuperAdmin>
             ),

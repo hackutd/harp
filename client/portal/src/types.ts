@@ -29,6 +29,14 @@ export type ApplicationStatus =
   | "rejected"
   | "waitlisted";
 
+export type RSVPStatus = "pending" | "confirmed" | "declined";
+
+export type TravelStatus =
+  | "not_requested"
+  | "pending"
+  | "approved"
+  | "rejected";
+
 export type ReviewVote = "accept" | "waitlist" | "reject";
 
 export interface Review {
@@ -36,6 +44,7 @@ export interface Review {
   admin_id: string;
   application_id: string;
   vote: ReviewVote | null;
+  travel_vote: boolean | null;
   notes: string | null;
   assigned_at: string;
   reviewed_at: string | null;
@@ -49,6 +58,7 @@ export interface Review {
   major: string | null;
   country_of_residence: string | null;
   hackathons_attended: number | null;
+  travel_status: TravelStatus;
 }
 
 export interface PendingReviewsResponse {
@@ -80,7 +90,7 @@ export interface Application {
   user_id: string;
   status: ApplicationStatus;
   responses: Record<string, unknown>;
-  /** Embedded on GET /applications/me; absent on mutation responses. */
+  /** Embedded on application GET/PATCH and resume DELETE responses. */
   application_schema?: ApplicationSchemaField[];
   /** Total scan points; populated on read endpoints. */
   points?: number;
@@ -96,6 +106,21 @@ export interface Application {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  /** RSVP decision for accepted hackers; "pending" until they claim/decline their spot. */
+  rsvp_status: RSVPStatus;
+  rsvp_responses: Record<string, unknown>;
+  rsvp_submitted_at: string | null;
+  /** Travel reimbursement review state; "pending" once submitted with the travel opt-in. */
+  travel_status: TravelStatus;
+  travel_yes_votes: number;
+  travel_no_votes: number;
+  /** Organizer-approved commitment; distinct from the requested estimate. */
+  travel_approved_amount_cents: number | null;
+  /** Travel RSVP (proof of travel) for hackers with approved travel; "pending" until they submit. */
+  travel_rsvp_status: RSVPStatus;
+  travel_rsvp_responses: Record<string, unknown>;
+  travel_rsvp_submitted_at: string | null;
+  travel_receipt_paths: string[] | null;
 }
 
 export interface ScheduleItem {
@@ -120,15 +145,42 @@ export interface NotificationFeedItem {
   sent_at: string | null;
   recipient_count: number;
   schedule_id: string | null;
-  created_by: string;
+  /** A revocable delivery lease held by the dispatcher, not a delivery record. */
+  claimed_at: string | null;
+  attempts: number;
+  /** Terminal: the dispatcher gave up. `last_error` says why. */
+  failed_at: string | null;
+  last_error: string | null;
+  /** Null once the author's account is deleted. */
+  created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface HackerLink {
+  id: string;
+  label: string;
+  url: string;
+  icon: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HackerLinkListResponse {
+  hacker_links: HackerLink[];
 }
 
 export interface ApiResponse<T = unknown> {
   status: number;
   data?: T;
   error?: string;
+  /**
+   * Field ids an endpoint blamed for a failed request, when it reports them.
+   * Lets a form map a server-side rejection back onto its own inputs instead of
+   * showing the raw message.
+   */
+  fields?: string[];
 }
 
 export interface Scan {
@@ -166,6 +218,16 @@ export interface ApplicationListItem {
   ai_percent: number | null;
   has_resume: boolean;
   points: number;
+  travel_status: TravelStatus;
+  travel_yes_votes: number;
+  travel_no_votes: number;
+  travel_approved_amount_cents: number | null;
+  rsvp_status: RSVPStatus;
+  travel_rsvp_status: RSVPStatus;
+  rsvp_submitted_at: string | null;
+  travel_rsvp_submitted_at: string | null;
+  receipt_count: number;
+  estimated_travel_cost_cents: number | null;
 }
 
 // Paginated response from admin applications endpoint

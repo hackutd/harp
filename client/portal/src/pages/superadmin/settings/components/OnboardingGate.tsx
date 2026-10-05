@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { useUserStore } from "@/shared/stores";
 
 import { fetchOnboardingStatus } from "../api";
@@ -13,10 +14,11 @@ import { OnboardingDialog } from "./OnboardingDialog";
 export function OnboardingGate() {
   const user = useUserStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!isSuperAdmin) return;
+    if (!isSuperAdmin || isMobile) return;
 
     const controller = new AbortController();
     const check = async () => {
@@ -29,9 +31,9 @@ export function OnboardingGate() {
 
     check();
     return () => controller.abort();
-  }, [isSuperAdmin]);
+  }, [isMobile, isSuperAdmin]);
 
-  if (!isSuperAdmin) return null;
+  if (!isSuperAdmin || isMobile) return null;
 
   return <OnboardingDialog open={open} onOpenChange={setOpen} />;
 }

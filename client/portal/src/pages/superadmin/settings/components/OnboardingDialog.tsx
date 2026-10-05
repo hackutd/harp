@@ -23,7 +23,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { errorAlert } from "@/shared/lib/api";
 import {
   formatPickerDate,
@@ -338,11 +337,8 @@ export function OnboardingDialog({
         <DialogPortal>
           {/* Everything behind the card is blurred so setup is the only focus. */}
           <DialogOverlay className="bg-black/60 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            onInteractOutside={(event) => event.preventDefault()}
-            className="fixed top-1/2 left-1/2 z-50 flex max-h-[92vh] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
-          >
-            <div className="flex items-start gap-3 border-b border-zinc-800 px-6 py-4">
+          <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+            <div className="flex shrink-0 items-start gap-3 border-b border-zinc-800 px-6 py-4">
               <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-900">
                 <Rocket className="size-4 text-zinc-300" />
               </span>
@@ -357,7 +353,7 @@ export function OnboardingDialog({
               </div>
             </div>
 
-            <ScrollArea className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <div className="space-y-5 p-6">
                 <div className="space-y-1.5">
                   <Label htmlFor="onboarding-name" className="text-zinc-300">
@@ -530,9 +526,9 @@ export function OnboardingDialog({
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-zinc-800 p-4">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-800 p-4">
               <p className="text-xs text-red-400">{validationError ?? ""}</p>
               <div className="flex gap-2">
                 <Button

@@ -6,19 +6,97 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: read
+
+# A new push to a PR cancels the run it supersedes. Pushes to main each get
+# their own group (run_id), so post-merge runs never cancel each other.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+# Go caches. GOCACHE is keyed by commit so it stays current instead of freezing
+# at whatever the first run for a go.sum built; restore-keys fall back to the
+# newest entry. Only pushes to main save, so PR runs never add 500MB entries.
+# Each job that saves uses its own prefix: setup-go's built-in cache keys on
+# go.sum alone, and whichever job saved first owned the key until go.sum
+# changed, which once left main with a 51MB store-only cache.
+env:
+  GO_CACHE_PATHS: |
+    ~/.cache/go-build
+    ~/go/pkg/mod
+
 jobs:
+  # Decides which jobs a PR needs. Jobs it skips report as passed to required
+  # checks, so if this job fails nothing downstream may run; keep it a
+  # required check. Pushes to main always run everything.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ github.event_name == 'push' || steps.filter.outputs.backend == 'true' }}
+      frontend: ${{ github.event_name == 'push' || steps.filter.outputs.frontend == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            backend:
+              - "**/*.go"
+              - "go.mod"
+              - "go.sum"
+              - "cmd/**"
+              - "internal/**"
+              - "docs/**"
+              - "scripts/check-migrations.sh"
+              - ".github/workflows/audit.yaml"
+            frontend:
+              - "client/portal/**"
+              - ".github/workflows/audit.yaml"
+
+  # Kept under this name because it is a required check in the ruleset.
   backend-audit:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.x"
+          cache: false
+
+      - name: Restore Go cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-test-${{ runner.os }}-
+
+      - name: Run Tests
+        run: go test -race ./...
+
+      - name: Save Go cache
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
+  backend-lint:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Validate database migrations
         run: ./scripts/check-migrations.sh
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.24.x"
 
       - name: Check gofmt
         run: |
@@ -32,25 +110,164 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.x"
+          cache: false
+
+      # Also carries staticcheck's own analysis cache and the installed tools.
+      - name: Restore Go cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ env.GO_CACHE_PATHS }}
+            ~/.cache/staticcheck
+            ~/go/bin
+          key: go-lint-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-lint-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-lint-${{ runner.os }}-
+
       - name: Verify Dependencies
         run: go mod verify
 
-      - name: Build
-        run: go build -v ./...
-
+      # Also type-checks the main packages that have no tests, so it covers
+      # what a separate `go build ./...` step used to.
       - name: Run go vet
         run: go vet ./...
 
-      - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+      # Keep the swag version in step with github.com/swaggo/swag in go.mod.
+      - name: Install tools
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
+          go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
 
       - name: Run staticcheck
         run: staticcheck ./...
 
-      - name: Run Tests
-        run: go test -race ./...
+      # Fails only on vulnerabilities the code can actually reach, the Go
+      # counterpart of the npm audit in frontend-audit. A newly published
+      # advisory can turn this red without any code change; bump the module to
+      # the "Fixed in" version it names.
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+      # docs/ is committed, and air regenerates it locally, so a handler change
+      # pushed without its regenerated docs leaves the served Swagger stale.
+      # Same commands as `task gen-docs`.
+      - name: Check Swagger docs are up to date
+        run: |
+          swag init -d cmd/api,internal/store -g main.go -o docs --parseDependency
+          swag fmt
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Swagger docs are out of date. Run 'task gen-docs' and commit the result."
+            echo ""
+            git status --porcelain
+            git --no-pager diff --stat
+            exit 1
+          fi
+
+      - name: Save Go cache
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.GO_CACHE_PATHS }}
+            ~/.cache/staticcheck
+            ~/go/bin
+          key: go-lint-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
+  # The store's hand-written SQL only runs against a real database here; the
+  # handler suite in backend-audit uses MockStore. This job also proves every
+  # migration applies on a clean database and that every down migration
+  # unwinds cleanly, which is what a rollback depends on.
+  #
+  # The database is a throwaway service container that exists only for this
+  # job. Nothing here touches Neon or any shared database.
+  db-integration:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.3
+        env:
+          POSTGRES_DB: harp_test
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: adminpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U admin -d harp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HARP_TEST_DSN: postgres://admin:adminpassword@localhost:5432/harp_test?sslmode=disable
+      MIGRATIONS_PATH: cmd/migrate/migrations
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.x"
+          cache: false
+
+      # Read-only: backend-audit's race build covers this package, and saving
+      # a store-only cache here would just take up space.
+      - name: Restore Go cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-test-${{ runner.os }}-
+
+      - name: Install migrate CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/migrate"
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP/migrate" migrate
+          echo "$RUNNER_TEMP/migrate" >> "$GITHUB_PATH"
+
+      - name: Apply all migrations
+        run: migrate -path "$MIGRATIONS_PATH" -database "$HARP_TEST_DSN" up
+
+      - name: Roll back all migrations
+        run: migrate -path "$MIGRATIONS_PATH" -database "$HARP_TEST_DSN" down -all
+
+      - name: Re-apply all migrations
+        run: migrate -path "$MIGRATIONS_PATH" -database "$HARP_TEST_DSN" up
+
+      - name: Run store integration tests
+        run: go test -race -count=1 ./internal/store/
+
+  # The Cloud Build deploy builds this Dockerfile from scratch on every merge,
+  # and nothing else does. Building it here catches a broken COPY path or a
+  # base-image mismatch on the PR instead of at deploy time. Nothing is pushed.
+  # Runs on every PR, whatever it touches: the image depends on all of it.
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   frontend-audit:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,6 +296,11 @@ jobs:
 
       - name: Dependency Audit
         run: npm audit --audit-level=high --omit=dev
+
+      - name: Regression Tests
+        run: |
+          npm run test:reviews
+          npm run test:applications
 
       - name: Run Tests
         run: |

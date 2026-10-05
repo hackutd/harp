@@ -21,6 +21,7 @@ function makeReview(id: string, overrides: Partial<Review> = {}): Review {
     admin_id: "a1",
     application_id: "app-" + id,
     vote: null,
+    travel_vote: null,
     notes: null,
     assigned_at: "2026-03-14T15:00:00Z",
     reviewed_at: null,
@@ -34,6 +35,7 @@ function makeReview(id: string, overrides: Partial<Review> = {}): Review {
     major: "CS",
     country_of_residence: "US",
     hackathons_attended: 2,
+    travel_status: "not_requested",
     ...overrides,
   };
 }

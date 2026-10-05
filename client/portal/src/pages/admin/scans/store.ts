@@ -11,6 +11,7 @@ import {
   saveScanTypes as apiSaveScanTypes,
 } from "./api";
 import type { Scan, ScanStat, ScanType } from "./types";
+import { spendsPoints } from "./utils";
 
 export interface ScanResult {
   success: boolean;
@@ -92,7 +93,9 @@ export const useScansStore = create<ScansState>((set, get) => ({
         scanning: false,
         lastScanResult: {
           success: true,
-          message: "Scanned successfully",
+          message: spendsPoints(activeScanType.category)
+            ? "Purchase complete"
+            : "Scanned successfully",
           scan: res.data,
         },
       });
@@ -105,7 +108,13 @@ export const useScansStore = create<ScansState>((set, get) => ({
       } else if (res.status === 409) {
         message = `Already scanned for ${activeScanType.display_name}`;
       } else if (res.status === 403) {
-        message = "User must check in first";
+        // The scan endpoints send a real reason ("rsvp declined", "not accepted
+        // (status: waitlisted)"); only generic 403s from the role middleware
+        // fall back to the opaque "forbidden" body.
+        message =
+          res.error && res.error !== "forbidden"
+            ? res.error
+            : "User must check in first";
       } else if (res.status === 402) {
         message = res.error || "Insufficient points";
       }

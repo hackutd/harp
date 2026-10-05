@@ -1,5 +1,102 @@
 # Changelog
 
+## [0.15.0](https://github.com/hackutd/harp/compare/v0.14.0...v0.15.0) (2026-10-05)
+
+
+### Features
+
+* add drag drop for sponsor logos ([9cf6704](https://github.com/hackutd/harp/commit/9cf67048e4010f0df54a1b4702b7c85fccad119b))
+* allow admin to edit votes ([b81cb72](https://github.com/hackutd/harp/commit/b81cb72fd2804565edd567c721de42e7d969c955))
+* **auth:** relink users by email on staging ([#187](https://github.com/hackutd/harp/issues/187)) ([a6d0e61](https://github.com/hackutd/harp/commit/a6d0e61f72906016ecaa014f3ec28dbca6f27da5))
+* exportable emails ([#174](https://github.com/hackutd/harp/issues/174)) ([387aa71](https://github.com/hackutd/harp/commit/387aa7198f09df6c04eaa2a0401cd894a92f145b))
+* exportable emails (hackutd/harp[#174](https://github.com/hackutd/harp/issues/174)) ([efa52c8](https://github.com/hackutd/harp/commit/efa52c80a21585d743c2af319f3f55fc9d0330bb))
+* **login:** restyle sign-in to match the Zero Day site ([f57cbc2](https://github.com/hackutd/harp/commit/f57cbc2450189f32b7ce171718d9962cf8bd519b))
+* **portal:** add cyberpunk cursor set from zero-day ([2d9542c](https://github.com/hackutd/harp/commit/2d9542c23006634ec62791e653d767293d3fdc05))
+* **portal:** add cyberpunk cursor set from zero-day ([f075368](https://github.com/hackutd/harp/commit/f0753686be0b8684c5d3c69bbc8ffab3bb3bff29))
+* public endpoint for tracks ([#159](https://github.com/hackutd/harp/issues/159)) ([fd52190](https://github.com/hackutd/harp/commit/fd521904077a3c032c75a027f832d0c7144fe428))
+* **public:** serve sponsor/track logos as cacheable URLs and downscale uploads ([9930649](https://github.com/hackutd/harp/commit/99306498e6aaec7791dd5593a016f17d472e4b15))
+* restyle error page for ZERODAY ([8c0ab22](https://github.com/hackutd/harp/commit/8c0ab22e45622b8f5eb4fb243977bff4e752af2b))
+* restyle error page for ZERODAY ([0b5736e](https://github.com/hackutd/harp/commit/0b5736ea2f112d9dcdf1736bac4339ae8aecbdc7))
+* reviews leader board and ability to request more reviews ([372c1a4](https://github.com/hackutd/harp/commit/372c1a4afc3ea9545e5eb839890305adad99f5b6))
+* **reviews:** add Priority badge for applications submitted by Oct 3 11:59pm CT ([#182](https://github.com/hackutd/harp/issues/182)) ([088e90d](https://github.com/hackutd/harp/commit/088e90d5537c19f860a793eb6a8345c46166d607))
+* **reviews:** per-reviewer vote breakdown and travel yes rate on the leaderboard ([#181](https://github.com/hackutd/harp/issues/181)) ([dad8849](https://github.com/hackutd/harp/commit/dad88490f79d6bd680fbf32bd168560458373926))
+* structured Cloud Logging access logs, trace correlation and Error Reporting events ([#164](https://github.com/hackutd/harp/issues/164)) ([ec8a91c](https://github.com/hackutd/harp/commit/ec8a91cdd876da156daca12c73c71ad556552a17))
+* structured Cloud Logging access logs, trace correlation and Error Reporting events ([#164](https://github.com/hackutd/harp/issues/164)) ([69b1c73](https://github.com/hackutd/harp/commit/69b1c73278bf0a1092ef4fbdb7fb002da2d1a3e3))
+* time to submit section on reviews ([805f03f](https://github.com/hackutd/harp/commit/805f03fd7e613c2be051b8b4cea3a70f8d9ee69d))
+* track logo drag and drop ([86d04dd](https://github.com/hackutd/harp/commit/86d04dd9ab9866da44dc240e438756e670ff8505))
+
+
+### Bug Fixes
+
+* (sa): form unwanted scroll ([33819bc](https://github.com/hackutd/harp/commit/33819bc6889efb1c8e2f1378617c543071694fcf))
+* a more balanced review process & confirmation dialogs ([#156](https://github.com/hackutd/harp/issues/156)) ([6602bba](https://github.com/hackutd/harp/commit/6602bba9c315d507bdffd759d560ff84af6e9e8e))
+* allow for country code on phone number application ([6a1bc2e](https://github.com/hackutd/harp/commit/6a1bc2eb707950dd2b91f2e7d50ab6a210bfd949))
+* application mobile view dropdown ([61e1d02](https://github.com/hackutd/harp/commit/61e1d02afb47301eaa2b959f0057f9d402de36ff))
+* bug with email written and clicking sign in with google ([6fc0202](https://github.com/hackutd/harp/commit/6fc0202192677a72cdb29fa303c3e27f8fce71c0))
+* **ci:** harden go mod download against proxy stream resets ([f4cff18](https://github.com/hackutd/harp/commit/f4cff181ac9e1d623ab26947e77ecf465247bb10))
+* column width for all-applicants ([#188](https://github.com/hackutd/harp/issues/188)) ([e79c2ca](https://github.com/hackutd/harp/commit/e79c2ca22945bd920b15b25ac4b2e2c9b1164871))
+* drop stale pending reviews and scope assignment toggle to super admins ([#161](https://github.com/hackutd/harp/issues/161)) ([a2a95bb](https://github.com/hackutd/harp/commit/a2a95bb44b332ff72f1bd577c19e8e6ace912e3f))
+* drop stale pending reviews and scope assignment toggle to super admins ([#161](https://github.com/hackutd/harp/issues/161)) ([5575463](https://github.com/hackutd/harp/commit/55754636d2bd208d4cbc929bad751292402bef98))
+* error messaging on applications ([#157](https://github.com/hackutd/harp/issues/157)) ([5d5aad4](https://github.com/hackutd/harp/commit/5d5aad4fb18aa3fe023792725b4fb20a0d583565))
+* form validation issue ([0ae3edc](https://github.com/hackutd/harp/commit/0ae3edcce64f29a6481e2bfe7c22baa6c19457b3))
+* frontend mobile UI issues with application summary ([6755710](https://github.com/hackutd/harp/commit/6755710e2334137bd3341ed11f695163165c0ac1))
+* hide perfered name ([19f9aeb](https://github.com/hackutd/harp/commit/19f9aeba258621388b32cd63a8870309029a659b))
+* hide PII from admins ([1983f8a](https://github.com/hackutd/harp/commit/1983f8a07e0c4accb119b52f984e962bac2fe291))
+* mark decision emails sent per recipient after delivery, not before dispatch ([660fbbf](https://github.com/hackutd/harp/commit/660fbbf62c2d2ef0228908b8f4274adbfe186a4a))
+* **notifications:** lease deliveries instead of marking sent on claim ([023d441](https://github.com/hackutd/harp/commit/023d44175f9ea7212513c229cac9090b554f0f50))
+* **notifications:** lease deliveries instead of marking sent on claim ([#167](https://github.com/hackutd/harp/issues/167)) ([8e995db](https://github.com/hackutd/harp/commit/8e995db8926a8cca79f36f0426948bcd5d8b4c55))
+* **notifications:** restrict push endpoints to known push services and bound dispatcher requests ([#153](https://github.com/hackutd/harp/issues/153)) ([18014b3](https://github.com/hackutd/harp/commit/18014b35308696326dfc58aaa28c9dee96ecc6f0))
+* ordering issue on form ([851d461](https://github.com/hackutd/harp/commit/851d461fff057a7cfbc322733b21c983dd70a45a))
+* phone number input ([75c4c2f](https://github.com/hackutd/harp/commit/75c4c2fcd7ef8d69fb5120a7467a1f7ea8a99caa))
+* port bug fixes from hackutd-harp (check-in RSVP gate, decision emails, phone/draft/validation, mobile UI) ([#165](https://github.com/hackutd/harp/issues/165)) ([88245d8](https://github.com/hackutd/harp/commit/88245d818498cc28a9ab120cfee5bfd54b0dca87))
+* **portal:** keep native cursors on admin and swap cursor-pointer hand ([d52d4e5](https://github.com/hackutd/harp/commit/d52d4e53a946c1b460819a36815d7ce5415e827e))
+* **portal:** keep native cursors on admin and swap cursor-pointer hand ([edec8d9](https://github.com/hackutd/harp/commit/edec8d937851f5138b6e9b8a0f6a49632a8a0002))
+* **portal:** reload stale tabs on any chunk load failure and offer reload on the error page ([3201851](https://github.com/hackutd/harp/commit/3201851081e0bdbf70c5d55446c198811c7361d3))
+* **pwa:** stop precaching the shell and bundles so deploys do not strand open tabs ([168dcf1](https://github.com/hackutd/harp/commit/168dcf134241d70948bb41231fccfaec961092f4))
+* **ratelimiter:** atomic fixed-window counting and explicit client-IP trust ([#155](https://github.com/hackutd/harp/issues/155)) ([e5f2a1d](https://github.com/hackutd/harp/commit/e5f2a1dbc38dd60a2311fa6e66d80b3b7fa9d1c7))
+* required conditional check against application form ([571eb9f](https://github.com/hackutd/harp/commit/571eb9fb83d8656251a194b791cea8daebeb3ead))
+* **reviews:** break workload ties at random so reviewers do not share identical queues ([6d8dbd9](https://github.com/hackutd/harp/commit/6d8dbd984ba18d0907fa6f860376f0084c502c18))
+* **sa:** let the forms overview scroll ([b7b83f5](https://github.com/hackutd/harp/commit/b7b83f539667f6755e53d7cc7b158106c4ad52e1))
+* spa cache issue on new deployments ([a7cc67e](https://github.com/hackutd/harp/commit/a7cc67eedbdff9eeefe2fbfa0e4f5e70b861b093))
+* toggle if required a confirmed RSVP ([fa33e3c](https://github.com/hackutd/harp/commit/fa33e3c6b39fc1d476305529934c4038b4195e58))
+
+## [0.14.0](https://github.com/hackutd/harp/compare/v0.13.0...v0.14.0) (2026-09-08)
+
+
+### Features
+
+* public endpoint for tracks ([#159](https://github.com/hackutd/harp/issues/159)) ([4228aef](https://github.com/hackutd/harp/commit/4228aefeb92f130c42b114c5612e28c18c548c65))
+
+
+### Bug Fixes
+
+* (sa): form unwanted scroll ([e216a57](https://github.com/hackutd/harp/commit/e216a57ee85175925565ed87c17960b1d5ee4519))
+* a more balanced review process & confirmation dialogs ([#156](https://github.com/hackutd/harp/issues/156)) ([831806d](https://github.com/hackutd/harp/commit/831806d40248085e2401573020ce16ed5f197d20))
+* error messaging on applications ([#157](https://github.com/hackutd/harp/issues/157)) ([72533ac](https://github.com/hackutd/harp/commit/72533acfa7073884e53c9dfbaf3271e37abff1b9))
+* **notifications:** restrict push endpoints to known push services and bound dispatcher requests ([#153](https://github.com/hackutd/harp/issues/153)) ([9ca9dff](https://github.com/hackutd/harp/commit/9ca9dffe513669c2d355689a613faed4c95e7c94))
+* **ratelimiter:** atomic fixed-window counting and explicit client-IP trust ([#155](https://github.com/hackutd/harp/issues/155)) ([dd215e6](https://github.com/hackutd/harp/commit/dd215e69f45b9a34eddddf81b086d12a8b3145ad))
+* required conditional check against application form ([95030e0](https://github.com/hackutd/harp/commit/95030e07918e629bce96e23d8ab823f91001ed55))
+
+## [0.13.0](https://github.com/hackutd/harp/compare/v0.12.0...v0.13.0) (2026-09-02)
+
+
+### Features
+
+* "Add to Home Screen" wording + "Get Notified" push dialog ([#142](https://github.com/hackutd/harp/issues/142)) ([db20740](https://github.com/hackutd/harp/commit/db20740136e4917f4252c849e1422f098939d6f9))
+* auto-open install walkthrough on mobile browsers instead of toast ([#144](https://github.com/hackutd/harp/issues/144)) ([74598c5](https://github.com/hackutd/harp/commit/74598c58fe3ce771adaa667fe4c47b17f8ee3937))
+* hide hacker information from admins ([#140](https://github.com/hackutd/harp/issues/140)) ([f9ec8d0](https://github.com/hackutd/harp/commit/f9ec8d09e6533372ab8a95ca1f3013047c50d513))
+* install walkthrough slideshow + push notification dialog ([#138](https://github.com/hackutd/harp/issues/138)) ([67c84cc](https://github.com/hackutd/harp/commit/67c84cc7754d25f3cbfcfd44d186e1e11bb24eae))
+* many frontend improvements & delete user ([#151](https://github.com/hackutd/harp/issues/151)) ([7bf35b0](https://github.com/hackutd/harp/commit/7bf35b0078d6f7930efdbcb31b5a7dd252e664b9))
+* performance optimizations ([#149](https://github.com/hackutd/harp/issues/149)) ([ae11579](https://github.com/hackutd/harp/commit/ae115796032c1f1df0a55b8261ce12c4791a07b2))
+* rsvp and travel ([#145](https://github.com/hackutd/harp/issues/145)) ([49ba0e8](https://github.com/hackutd/harp/commit/49ba0e892e90e61ae4dffd9134e18e71ec52dc19))
+* superadmin-configurable Hacker Links shown as cards on hacker home ([#143](https://github.com/hackutd/harp/issues/143)) ([f3d6a1c](https://github.com/hackutd/harp/commit/f3d6a1c7cfd60f37cbb82efa97ed0c75fda94640))
+* surface hacker meal group in portal UI ([#139](https://github.com/hackutd/harp/issues/139)) ([4a20ee8](https://github.com/hackutd/harp/commit/4a20ee82d79960ee24f0f46f7ef0e2dd11252c60))
+
+
+### Bug Fixes
+
+* key rate limiter by session user with per-IP fallback ([#152](https://github.com/hackutd/harp/issues/152)) ([cca2761](https://github.com/hackutd/harp/commit/cca2761f4e9f855ffbe9c60c2d0ae038da4378f0))
+
 ## [0.12.0](https://github.com/hackutd/harp/compare/v0.11.0...v0.12.0) (2026-08-27)
 
 

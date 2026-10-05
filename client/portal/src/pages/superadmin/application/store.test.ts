@@ -13,6 +13,13 @@ vi.mock("./api", () => ({
   saveApplicationSchema: api.saveApplicationSchema,
 }));
 
+const contract = vi.hoisted(() => ({
+  fetchSchemaContract: vi.fn(),
+}));
+vi.mock("./contract", () => ({
+  fetchSchemaContract: contract.fetchSchemaContract,
+}));
+
 const errorAlert = vi.hoisted(() => vi.fn());
 vi.mock("@/shared/lib/api", () => ({ errorAlert }));
 
@@ -39,8 +46,13 @@ beforeEach(() => {
     sections: [],
     loading: false,
     saving: false,
+    contracts: {},
   });
   vi.clearAllMocks();
+  contract.fetchSchemaContract.mockResolvedValue({
+    status: 200,
+    data: { application_schema: [], travel_rsvp_schema: [] },
+  });
 });
 
 describe("application-schema store: fetch", () => {

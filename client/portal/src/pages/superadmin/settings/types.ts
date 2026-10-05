@@ -7,11 +7,13 @@ export interface ResetHackathonOptions {
   reset_notifications: boolean;
   reset_sponsors: boolean;
   reset_faqs: boolean;
+  reset_tracks: boolean;
   reset_config: boolean;
 }
 
 export interface ResetHackathonResult extends ResetHackathonOptions {
   resumes_deleted: number;
+  receipts_deleted: number;
 }
 
 export interface MealGroupsResult {

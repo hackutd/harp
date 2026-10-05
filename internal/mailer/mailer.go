@@ -5,6 +5,9 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"time"
+
+	qrcode "github.com/skip2/go-qrcode"
 
 	"github.com/hackutd/harp/internal/slug"
 )
@@ -17,7 +20,39 @@ const (
 	// defaultQRAttachmentFilename is used when the configured event name has no
 	// ASCII characters to build a filename from.
 	defaultQRAttachmentFilename = "qr-code.png"
+
+	// brandImageContentID is the Content-ID the layout's banner references as
+	// cid:zero-day-banner.jpg. The image is attached inline on every send so
+	// the header renders without the client having to fetch a remote asset.
+	brandImageContentID   = "zero-day-banner.jpg"
+	brandImageContentType = "image/jpeg"
 )
+
+// brandImage is the email banner. It is compiled into the binary so every
+// send has it regardless of the working directory or container layout. It is
+// a JPEG rather than WebP because Outlook for Windows cannot display WebP, and
+// it is sized to 1200px (2x the 600px layout) because it rides along with
+// every email.
+//
+//go:embed assets/zero-day-banner.jpg
+var brandImage []byte
+
+// attachment is a provider-agnostic file to attach to an outgoing email.
+type attachment struct {
+	Filename    string
+	ContentType string
+	Content     []byte
+}
+
+// qrAttachment renders the hacker's check-in QR code as a PNG attachment
+// named after the configured event.
+func qrAttachment(hackathonName, userID string) (attachment, error) {
+	png, err := qrcode.Encode(userID, qrcode.Medium, 256)
+	if err != nil {
+		return attachment{}, fmt.Errorf("generating QR code: %w", err)
+	}
+	return attachment{Filename: qrAttachmentFilename(hackathonName), ContentType: "image/png", Content: png}, nil
+}
 
 // qrAttachmentFilename names the attached QR image after the configured event,
 // so a hacker saves smu-hacks-2027-qr-code.png rather than a file named after
@@ -47,6 +82,7 @@ const (
 )
 
 type Client interface {
+	SendMagicLinkEmail(toEmail, magicLink string, codeLifetime time.Duration) error
 	SendQREmail(toEmail, toName, userID string) error
 	SendWalkInQueuedEmail(toEmail string, position int) error
 	SendWalkInAcceptedEmail(toEmail, userID string) error
@@ -56,6 +92,32 @@ type Client interface {
 	// hackathon name and sender identity can come from runtime settings
 	// instead of the env vars used at boot.
 	SetIdentityResolver(fn IdentityFunc)
+}
+
+type magicLinkEmailData struct {
+	Email         string
+	MagicLink     string
+	Expires       string
+	HackathonName string
+	From          string
+}
+
+func magicLinkLifetime(duration time.Duration) string {
+	minutes := int(duration.Round(time.Minute) / time.Minute)
+	if minutes <= 0 {
+		return "a short time"
+	}
+	if minutes == 1 {
+		return "1 minute"
+	}
+	if minutes%60 == 0 {
+		hours := minutes / 60
+		if hours == 1 {
+			return "1 hour"
+		}
+		return fmt.Sprintf("%d hours", hours)
+	}
+	return fmt.Sprintf("%d minutes", minutes)
 }
 
 // Identity is the sender identity and event name used in outgoing email.
@@ -143,20 +205,43 @@ func decisionTemplate(decision Decision) (name, subjectFormat string, err error)
 	return "", "", fmt.Errorf("unknown decision: %q", decision)
 }
 
-// renderTemplate reads, parses, and executes an embedded email template.
-func renderTemplate(name string, data any) (string, error) {
-	raw, err := FS.ReadFile("template/" + name + ".html")
-	if err != nil {
-		return "", fmt.Errorf("reading %s template: %w", name, err)
-	}
+// detailRow is one label/value line in an email's details table.
+type detailRow struct {
+	Label   string
+	Value   string
+	Accent  bool
+	Success bool
+	Warning bool
+}
 
-	tmpl, err := template.New(name).Parse(string(raw))
+// emailButton is an email's primary call to action.
+type emailButton struct {
+	URL   string
+	Label string
+}
+
+// templateFuncs lets an email hand several values to a shared layout block,
+// which a template call alone can't do.
+var templateFuncs = template.FuncMap{
+	"brandImage": func() string { return brandImageContentID },
+	"row":        func(label, value string) detailRow { return detailRow{Label: label, Value: value} },
+	"accentRow":  func(label, value string) detailRow { return detailRow{Label: label, Value: value, Accent: true} },
+	"successRow": func(label, value string) detailRow { return detailRow{Label: label, Value: value, Success: true} },
+	"warningRow": func(label, value string) detailRow { return detailRow{Label: label, Value: value, Warning: true} },
+	"button":     func(url, label string) emailButton { return emailButton{URL: url, Label: label} },
+}
+
+// renderTemplate executes an embedded email template. Each email defines its
+// title, preheader, heading and content blocks and is rendered inside the
+// shared frame in layout.html.
+func renderTemplate(name string, data any) (string, error) {
+	tmpl, err := template.New(name).Funcs(templateFuncs).ParseFS(FS, "template/layout.html", "template/"+name+".html")
 	if err != nil {
 		return "", fmt.Errorf("parsing %s template: %w", name, err)
 	}
 
 	var body bytes.Buffer
-	if err := tmpl.Execute(&body, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&body, "layout", data); err != nil {
 		return "", fmt.Errorf("executing %s template: %w", name, err)
 	}
 

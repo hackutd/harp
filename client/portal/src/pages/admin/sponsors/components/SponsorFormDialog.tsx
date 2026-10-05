@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { ALLOWED_LOGO_TYPES, MAX_LOGO_SOURCE_BYTES } from "../constants";
 import type { Sponsor, SponsorPayload } from "../types";
 
 const TIER_OPTIONS = [
@@ -31,8 +32,6 @@ const TIER_OPTIONS = [
   "Bronze",
   "Standard",
 ];
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 interface SponsorFormDialogProps {
   open: boolean;
@@ -64,19 +63,17 @@ function SponsorForm({
       ? `data:${sponsor.logo_content_type};base64,${sponsor.logo_data}`
       : "",
   );
+  const [isDraggingLogo, setIsDraggingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
+  const acceptLogoFile = (file: File) => {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
       toast.error("Unsupported file type. Use PNG, JPEG, WebP, or GIF.");
       return;
     }
 
-    if (file.size > MAX_SIZE_BYTES) {
-      toast.error("File too large. Maximum size is 1MB.");
+    if (file.size > MAX_LOGO_SOURCE_BYTES) {
+      toast.error("File too large. Maximum size is 10MB.");
       return;
     }
 
@@ -84,6 +81,31 @@ function SponsorForm({
     const reader = new FileReader();
     reader.onload = () => setLogoPreview(reader.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) acceptLogoFile(file);
+  };
+
+  const handleLogoDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setIsDraggingLogo(true);
+  };
+
+  const handleLogoDragLeave = (e: React.DragEvent<HTMLButtonElement>) => {
+    // dragleave also fires when moving onto a child; only reset on real exit.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setIsDraggingLogo(false);
+  };
+
+  const handleLogoDrop = (e: React.DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setIsDraggingLogo(false);
+    const file = e.dataTransfer.files[0];
+    if (file) acceptLogoFile(file);
   };
 
   const clearLogo = () => {
@@ -116,52 +138,64 @@ function SponsorForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label>Logo</Label>
-        <div className="flex items-center gap-3">
-          {logoPreview ? (
-            <img
-              src={logoPreview}
-              alt="Logo preview"
-              className="size-12 rounded object-contain border"
-            />
-          ) : (
-            <div className="size-12 rounded border border-dashed flex items-center justify-center text-muted-foreground">
-              <ImagePlus className="size-5" />
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept={ALLOWED_TYPES.join(",")}
-              className="hidden"
-              onChange={handleLogoChange}
-            />
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept={ALLOWED_LOGO_TYPES.join(",")}
+          className="hidden"
+          onChange={handleLogoChange}
+        />
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            onDragOver={handleLogoDragOver}
+            onDragLeave={handleLogoDragLeave}
+            onDrop={handleLogoDrop}
+            className={`flex h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              isDraggingLogo
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50"
+            }`}
+          >
+            {logoPreview ? (
+              <>
+                <img
+                  src={logoPreview}
+                  alt="Logo preview"
+                  className="h-16 max-w-full object-contain"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Drop or click to replace
+                </span>
+              </>
+            ) : (
+              <>
+                <ImagePlus className="size-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {isDraggingLogo
+                    ? "Drop to upload"
+                    : "Drop logo here or click to browse"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  PNG, JPEG, WebP, or GIF · max 10MB
+                </span>
+              </>
+            )}
+          </button>
+          {logoFile && (
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => logoInputRef.current?.click()}
-              className="cursor-pointer"
+              variant="ghost"
+              size="icon-sm"
+              onClick={clearLogo}
+              aria-label="Remove selected logo"
+              className="absolute right-1.5 top-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
             >
-              <ImagePlus className="mr-1 size-3" />
-              {logoPreview ? "Replace" : "Choose file"}
+              <X className="size-4" />
             </Button>
-            {logoFile && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={clearLogo}
-                className="cursor-pointer text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          PNG, JPEG, WebP, or GIF (max 1MB)
-        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="sponsor-name">Name</Label>

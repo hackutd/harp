@@ -1,4 +1,4 @@
-import { Trash2, Upload } from "lucide-react";
+import { CheckCircle2, ReceiptText, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ const RESUME_PREVIEW_MAX_MB = 5;
 interface ApplicationPreviewProps {
   fields: ApplicationSchemaField[];
   sections: SectionDef[];
+  systemBlock?: "rsvp_decision" | "travel_receipts";
 }
 
 function PreviewSection({
@@ -175,6 +176,7 @@ function renderField(field: ApplicationSchemaField) {
 export function ApplicationPreview({
   fields,
   sections,
+  systemBlock,
 }: ApplicationPreviewProps) {
   const grouped = groupFieldsBySection(fields);
 
@@ -210,6 +212,50 @@ export function ApplicationPreview({
           </PreviewSection>
         );
       })}
+
+      {systemBlock === "rsvp_decision" && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-muted-foreground" />
+            <h3 className="font-medium">Attendance decision</h3>
+            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+              Built in
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Accepted hackers confirm or decline their spot before submitting
+            these answers.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="outline" disabled>
+              Decline spot
+            </Button>
+            <Button type="button" disabled>
+              Confirm spot
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {systemBlock === "travel_receipts" && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-center gap-2">
+            <ReceiptText className="size-4 text-muted-foreground" />
+            <h3 className="font-medium">Travel receipts</h3>
+            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+              Built in
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Hackers can upload multiple PDF or image receipts. This block is
+            always included and cannot be removed from the schema.
+          </p>
+          <Button type="button" variant="outline" disabled className="w-full">
+            <Upload className="size-4" />
+            Add receipts
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,14 +1,13 @@
-import { ExternalLink } from "lucide-react";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { errorAlert } from "@/shared/lib/api";
+import { ResumePreviewDialog } from "@/pages/admin/_shared/ResumePreviewDialog";
+import { useRedactApplicants } from "@/shared/hooks";
 import type { Application } from "@/types";
 
-import { fetchApplicationResumeURL } from "../../all-applicants/api";
 import { SchemaDetailRenderer } from "../../all-applicants/components/detail-sections/SchemaDetailRenderer";
+import { TimelineSection } from "../../all-applicants/components/detail-sections/TimelineSection";
 import type { Review } from "../types";
 
 interface ApplicationDetailsPanelProps {
@@ -22,32 +21,8 @@ export function ApplicationDetailsPanel({
   selectedReview,
   isExpanded,
 }: ApplicationDetailsPanelProps) {
+  const redact = useRedactApplicants();
   const gridCols = isExpanded ? "grid-cols-4" : "grid-cols-2";
-  const [isOpeningResume, setIsOpeningResume] = useState(false);
-
-  const handleViewResume = useCallback(async () => {
-    if (!application.resume_path || isOpeningResume) {
-      return;
-    }
-
-    const resumeTab = window.open("", "_blank");
-    if (!resumeTab) {
-      toast.error("Please allow popups to view resumes.");
-      return;
-    }
-
-    setIsOpeningResume(true);
-    const res = await fetchApplicationResumeURL(application.id);
-
-    if (res.status === 200 && res.data?.download_url) {
-      resumeTab.location.href = res.data.download_url;
-    } else {
-      resumeTab.close();
-      errorAlert(res, "Failed to open resume");
-    }
-
-    setIsOpeningResume(false);
-  }, [application.id, application.resume_path, isOpeningResume]);
 
   return (
     <div className="space-y-6 pb-2">
@@ -55,50 +30,26 @@ export function ApplicationDetailsPanel({
       <SchemaDetailRenderer application={application} />
 
       {/* Resume link */}
-      {application.resume_path && (
+      {!redact && application.resume_path && (
         <div>
           <h4 className="text-sm font-semibold mb-2">Resume</h4>
           <div className="text-sm">
             <div className="pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleViewResume}
-                loading={isOpeningResume}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                {isOpeningResume ? "Opening..." : "View Resume"}
-              </Button>
+              <ResumePreviewDialog
+                applicationId={application.id}
+                trigger={
+                  <Button type="button" variant="outline" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Resume
+                  </Button>
+                }
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* Timeline */}
-      <div>
-        <h4 className="text-sm font-semibold mb-2">Timeline</h4>
-        <div className={`grid ${gridCols} gap-3 text-sm`}>
-          <div>
-            <Label className="text-muted-foreground text-xs">Submitted</Label>
-            <p>
-              {application.submitted_at
-                ? new Date(application.submitted_at).toLocaleString()
-                : "N/A"}
-            </p>
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-xs">Created</Label>
-            <p>{new Date(application.created_at).toLocaleString()}</p>
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-xs">
-              Last Updated
-            </Label>
-            <p>{new Date(application.updated_at).toLocaleString()}</p>
-          </div>
-        </div>
-      </div>
+      <TimelineSection application={application} />
 
       {/* Review Info */}
       <div>

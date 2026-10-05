@@ -1,3 +1,5 @@
+import type { RSVPStatus, TravelStatus } from "@/types";
+
 export type ApplicationStatus =
   | "draft"
   | "submitted"
@@ -31,6 +33,17 @@ export interface ApplicationListItem {
   reviews_completed: number;
   has_resume: boolean;
   points: number;
+  travel_status: TravelStatus;
+  travel_yes_votes: number;
+  travel_no_votes: number;
+  travel_approved_amount_cents: number | null;
+  /** One-shot hacker decisions; a submitted travel RSVP pins the travel status. */
+  rsvp_status: RSVPStatus;
+  travel_rsvp_status: RSVPStatus;
+  rsvp_submitted_at: string | null;
+  travel_rsvp_submitted_at: string | null;
+  receipt_count: number;
+  estimated_travel_cost_cents: number | null;
 }
 
 export interface ApplicationListResult {
@@ -54,11 +67,17 @@ export type ApplicationSortBy =
   | "created_at"
   | "accept_votes"
   | "reject_votes"
-  | "waitlist_votes";
+  | "waitlist_votes"
+  | "travel_yes_votes";
 
 export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
+  travel_status?: TravelStatus;
+  rsvp_status?: RSVPStatus;
+  travel_rsvp_status?: RSVPStatus;
+  has_receipts?: boolean;
+  travel_requested?: boolean;
   direction?: "forward" | "backward";
   search?: string;
   sort_by?: ApplicationSortBy;

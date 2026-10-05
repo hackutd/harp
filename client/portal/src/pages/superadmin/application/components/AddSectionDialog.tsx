@@ -13,12 +13,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { useApplicationSchemaStore } from "../store";
+import type { SchemaStore } from "../createSchemaStore";
 
-export function AddSectionDialog() {
+interface AddSectionDialogProps {
+  store: SchemaStore;
+}
+
+export function AddSectionDialog({ store: useStore }: AddSectionDialogProps) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
-  const addSection = useApplicationSchemaStore((s) => s.addSection);
+  const addSection = useStore((s) => s.addSection);
 
   const handleAdd = () => {
     if (!label.trim()) return;

@@ -51,6 +51,36 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Filter by travel status (not_requested, pending, approved, rejected)",
+                        "name": "travel_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by RSVP status (pending, confirmed, declined)",
+                        "name": "rsvp_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by travel form status (pending, confirmed, declined)",
+                        "name": "travel_rsvp_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by whether at least one receipt was submitted",
+                        "name": "has_receipts",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by whether travel reimbursement was requested",
+                        "name": "travel_requested",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page size (default 50, max 100)",
                         "name": "limit",
@@ -64,7 +94,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes",
+                        "description": "Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes, travel_yes_votes",
                         "name": "sort_by",
                         "in": "query"
                     }
@@ -538,6 +568,106 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/{applicationID}/travel-receipt-urls": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates signed GCS download URLs for all of an application's travel receipts.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/applications"
+                ],
+                "summary": "Get travel receipt download URLs (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelReceiptURLsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/faq": {
             "get": {
                 "security": [
@@ -906,6 +1036,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/reviews/claim": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Once the current admin has no pending reviews, assigns them up to 5 more and returns their new pending queue. Submitted applications below the reviews-per-application target are filled first; after that, unstarted reviews move over from reviewers who can no longer review and then from the longest queues, never leaving a holder with fewer pending reviews than the claimer. Every application keeps the same number of assigned reviews. Returns an empty list when nothing can be claimed. Super admins who have disabled their review assignment toggle are refused.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/reviews"
+                ],
+                "summary": "Claim more reviews (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ClaimReviewsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Review assignment disabled for this super admin",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Admin still has pending reviews",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/reviews/completed": {
             "get": {
                 "security": [
@@ -964,26 +1163,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/reviews/next": {
+        "/admin/reviews/leaderboard": {
             "get": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Automatically assigns the next submitted application needing review to the current admin and returns it",
+                "description": "Returns every admin and super admin with their completed and pending review counts, most completed first. Admins with the same completed count share a rank.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "admin/reviews"
                 ],
-                "summary": "Get next review assignment (Admin)",
+                "summary": "Get review leaderboard (Admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.ReviewResponse"
+                            "$ref": "#/definitions/main.ReviewLeaderboardResponse"
                         }
                     },
                     "401": {
@@ -999,17 +1198,6 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No applications need review",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -1098,7 +1286,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records the admin's vote (accept/reject/waitlist) on an assigned application review",
+                "description": "Records the admin's vote (accept/reject/waitlist) on an assigned application review. A travel_vote (yes/no) is required when the applicant requested travel reimbursement and must be omitted otherwise. Calling this again on a review that already has a vote replaces the vote, travel_vote, and notes, and resets reviewed_at.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1118,7 +1306,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Vote and optional notes",
+                        "description": "Vote, optional travel vote, and optional notes",
                         "name": "vote",
                         "in": "body",
                         "required": true,
@@ -1178,6 +1366,17 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1199,7 +1398,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records a scan for a user. Validates scan type exists and is active. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.",
+                "description": "Records a scan for a user. Validates scan type exists and is active. Check-in scans require the user to be accepted and, unless the check_in_requires_rsvp setting is off, to have confirmed their RSVP; hackers promoted from the walk-in queue are exempt from the RSVP requirement. Non-check_in scans require the user to have checked in first. Shop scans deduct the type's points from the user's balance and are repeatable.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1262,7 +1461,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Forbidden",
+                        "description": "Not accepted, RSVP not confirmed, or not yet checked in",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -1273,7 +1472,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "Conflict",
+                        "description": "Already scanned for this type",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -2328,6 +2527,475 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/tracks": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns all challenge tracks ordered by display order",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/tracks"
+                ],
+                "summary": "List tracks (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TrackListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Creates a new challenge track",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/tracks"
+                ],
+                "summary": "Create track (Admin)",
+                "parameters": [
+                    {
+                        "description": "Track to create",
+                        "name": "track",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.TrackPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.Track"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/tracks/edit-permission": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether the current user may create, update, or delete challenge tracks. Super admins are always allowed; admins depend on the admin track edit setting.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/tracks"
+                ],
+                "summary": "Get track edit permission (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TrackEditPermissionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/tracks/{trackID}": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates an existing challenge track. The logo is not touched here; use the logo endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/tracks"
+                ],
+                "summary": "Update track (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track ID",
+                        "name": "trackID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Track updates",
+                        "name": "track",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.TrackPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Track"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Deletes a challenge track",
+                "tags": [
+                    "admin/tracks"
+                ],
+                "summary": "Delete track (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track ID",
+                        "name": "trackID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/tracks/{trackID}/logo": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Uploads a base64-encoded logo image for a challenge track",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/tracks"
+                ],
+                "summary": "Upload track logo (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track ID",
+                        "name": "trackID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Base64-encoded logo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.LogoUploadPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Track"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/applications/enabled": {
             "get": {
                 "security": [
@@ -2724,6 +3392,167 @@ const docTemplate = `{
                 }
             }
         },
+        "/applications/me/rsvp": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's RSVP state along with the configurable RSVP form schema and whether RSVPs are currently open. Application must be accepted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get RSVP",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RSVPResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Application not accepted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Submits the authenticated user's RSVP decision (confirm or decline). Confirming requires all required RSVP schema fields to be filled. Application must be accepted and RSVP must still be pending. This is a one-shot action.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Submit RSVP",
+                "parameters": [
+                    {
+                        "description": "RSVP decision and form responses",
+                        "name": "rsvp",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SubmitRSVPPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RSVPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing required fields",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Application not accepted or RSVPs closed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "RSVP already submitted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/applications/me/submit": {
             "post": {
                 "security": [
@@ -2747,12 +3576,18 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Missing required fields",
+                        "description": "Missing required fields; fields lists the offending schema field ids",
                         "schema": {
                             "type": "object",
                             "properties": {
                                 "error": {
                                     "type": "string"
+                                },
+                                "fields": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 }
                             }
                         }
@@ -2781,6 +3616,361 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Application not in draft status",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/applications/me/travel-rsvp": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's travel RSVP state along with the configurable travel RSVP form schema and whether travel RSVPs are currently open. Requires an accepted application with a confirmed RSVP and approved travel reimbursement.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get travel RSVP",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelRSVPResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not accepted, spot not claimed, or travel not approved",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Submits the authenticated user's travel RSVP (confirm with travel details and receipt uploads, or decline the reimbursement). Confirming requires all required travel RSVP schema fields, and at least one receipt when flying. Requires an accepted application with a confirmed RSVP, approved travel, and a pending travel RSVP. This is a one-shot action.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Submit travel RSVP",
+                "parameters": [
+                    {
+                        "description": "Travel RSVP decision, form responses, and receipt paths",
+                        "name": "travel_rsvp",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SubmitTravelRSVPPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelRSVPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing required fields or invalid receipts",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not eligible or travel RSVPs closed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Travel RSVP already submitted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/applications/me/travel-rsvp/receipt-upload-url": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS upload URL for a travel receipt (PDF, PNG, or JPEG). Requires an accepted application with a confirmed RSVP, approved travel, and a pending travel RSVP.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Generate travel receipt upload URL",
+                "parameters": [
+                    {
+                        "description": "Receipt content type",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelReceiptUploadURLPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelReceiptUploadURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/applications/me/travel-rsvp/receipt-url": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS download URL for one of the authenticated user's travel receipts.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get my travel receipt download URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Receipt object path",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResumeDownloadURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -2964,6 +4154,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/hacker-links": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns all configured hacker links, ordered by display order",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Get hacker links",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.HackerLinkListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/hacker-pack": {
             "get": {
                 "security": [
@@ -3018,7 +4255,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "Returns the health status of the API",
+                "description": "Returns the health status of the API, including database reachability. Responds 503 when the database cannot be reached.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3031,7 +4268,16 @@ const docTemplate = `{
                 "summary": "Health check endpoint",
                 "responses": {
                     "200": {
-                        "description": "status and environment",
+                        "description": "status, environment, version and database state",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "database unreachable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3451,7 +4697,7 @@ const docTemplate = `{
         },
         "/public/sponsors": {
             "get": {
-                "description": "Returns all sponsors, ordered by display order. Logos are returned inline as base64 in logo_data, with the MIME type in logo_content_type — not as URLs.",
+                "description": "Returns all sponsors, ordered by display order. Each sponsor's logo is referenced by logo_url (an absolute, versioned URL to /public/sponsors/{sponsorID}/logo), or \"\" when the sponsor has no logo. Logo bytes are not inlined.",
                 "produces": [
                     "application/json"
                 ],
@@ -3472,11 +4718,188 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.SponsorListResponse"
+                            "$ref": "#/definitions/main.PublicSponsorListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/public/sponsors/{sponsorID}/logo": {
+            "get": {
+                "description": "Returns the sponsor's logo as raw image bytes with the stored content type. No API key is required so the URL can be used directly in an \u003cimg\u003e tag or by an image optimizer. Responses carry an ETag; when ?v matches the current version the response is immutable for a year, otherwise it is cacheable for five minutes.",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get sponsor logo (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sponsor ID",
+                        "name": "sponsorID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Logo version (updated_at as unix seconds), as embedded in logo_url",
+                        "name": "v",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/public/tracks": {
+            "get": {
+                "description": "Returns all challenge tracks, ordered by display order. Each track's logo is referenced by logo_url (an absolute, versioned URL to /public/tracks/{trackID}/logo), or \"\" when the track has no logo. Logo bytes are not inlined.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get tracks (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API Key",
+                        "name": "X-API-Key",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PublicTrackListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/public/tracks/{trackID}/logo": {
+            "get": {
+                "description": "Returns the track's logo as raw image bytes with the stored content type. No API key is required so the URL can be used directly in an \u003cimg\u003e tag or by an image optimizer. Responses carry an ETag; when ?v matches the current version the response is immutable for a year, otherwise it is cacheable for five minutes.",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/gif"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get track logo (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track ID",
+                        "name": "trackID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Logo version (updated_at as unix seconds), as embedded in logo_url",
+                        "name": "v",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified"
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -3659,7 +5082,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a list of applicant emails filtered by application status (accepted, rejected, or waitlisted)",
+                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)",
                 "produces": [
                     "application/json"
                 ],
@@ -3670,7 +5093,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Application status (accepted, rejected, or waitlisted)",
+                        "description": "Application status (draft, submitted, accepted, waitlisted, or rejected)",
                         "name": "status",
                         "in": "query",
                         "required": true
@@ -3707,6 +5130,95 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/applications/{applicationID}/rsvp/reset": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Clears a hacker's submitted RSVP so they can claim or decline their spot again. The travel RSVP is cleared along with it — it is only reachable through a confirmed RSVP — and any uploaded travel receipts are removed from object storage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/applications"
+                ],
+                "summary": "Reset RSVP (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -3831,6 +5343,207 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/applications/{applicationID}/travel-rsvp/reset": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Clears a hacker's submitted travel RSVP so they can fill the travel form again, and removes their uploaded receipts from object storage. The event RSVP is left untouched. Also the way to unpin a travel decision after the hacker has submitted their travel form.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/applications"
+                ],
+                "summary": "Reset travel RSVP (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/applications/{applicationID}/travel-status": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the travel reimbursement decision (approved, rejected, or back to pending) on an application that requested travel reimbursement. The application must be submitted, accepted, or waitlisted, and the decision is pinned once the hacker submits their travel RSVP — reset the travel RSVP first to change it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/applications"
+                ],
+                "summary": "Set travel reimbursement status (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New travel status",
+                        "name": "travel_status",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetTravelStatusPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Travel not requested, application not decidable, or travel RSVP already submitted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/emails/decisions": {
             "post": {
                 "security": [
@@ -3838,7 +5551,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background; the response reports how many were queued.",
+                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 while a previous run is still sending.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3900,6 +5613,17 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3949,6 +5673,373 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/forms/summary": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/forms"
+                ],
+                "summary": "Get forms operations overview (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.FormsOverviewResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/hacker-links": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns all hacker links ordered by display order",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/hacker-links"
+                ],
+                "summary": "List hacker links (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.HackerLinkListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Creates a new hacker link shown on the hacker dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/hacker-links"
+                ],
+                "summary": "Create hacker link (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Hacker link to create",
+                        "name": "link",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.HackerLinkPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.HackerLink"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/hacker-links/{linkID}": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates an existing hacker link",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/hacker-links"
+                ],
+                "summary": "Update hacker link (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hacker link ID",
+                        "name": "linkID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Hacker link updates",
+                        "name": "link",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.HackerLinkPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.HackerLink"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Deletes a hacker link",
+                "tags": [
+                    "superadmin/hacker-links"
+                ],
+                "summary": "Delete hacker link (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hacker link ID",
+                        "name": "linkID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -4118,7 +6209,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; reminders whose send time has already passed are skipped.",
+                "description": "Creates a reminder notification for each schedule event, scheduled the configured number of minutes before the event start time. Re-running replaces any pending schedule-generated reminders so the latest schedule and lead time are used; sent, failed and currently-delivering reminders are left alone, and reminders whose send time has already passed are skipped.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4271,7 +6362,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Updates a pending notification. Returns 409 if already sent.",
+                "description": "Updates a pending notification. Returns 409 if already sent or currently being delivered.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4383,7 +6474,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.",
+                "description": "Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, challenge tracks, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4876,6 +6967,145 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/admin-track-edit-toggle": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether users with admin role can create, update, and delete challenge tracks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get admin track edit state (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.AdminTrackEditToggleResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Updates whether users with admin role can create, update, and delete challenge tracks",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set admin track edit state (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Admin track editing enabled state",
+                        "name": "enabled",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetAdminTrackEditTogglePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.AdminTrackEditToggleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/application-due-date": {
             "get": {
                 "security": [
@@ -5078,7 +7308,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Replaces the application schema with the provided array of fields",
+                "description": "Replaces the application schema with the provided array of fields. Rejected when a well-known field the backend reads (see /superadmin/settings/schema-contract) is still present but no longer usable; removing such a field is allowed and comes back as a warning.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5188,6 +7418,145 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.ApplicationsEnabledResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/check-in-requires-rsvp": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether the scanner refuses to check in hackers who have not confirmed their RSVP",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get check-in RSVP requirement (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CheckInRequiresRSVPResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets whether the scanner refuses to check in hackers who have not confirmed their RSVP. Turn this off only for a hackathon that does not run the RSVP form at all, since every application then sits at 'pending'. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set check-in RSVP requirement (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Enable or disable the RSVP requirement",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetCheckInRequiresRSVPPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CheckInRequiresRSVPResponse"
                         }
                     },
                     "400": {
@@ -6833,7 +9202,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Sets the number of reviews required per application",
+                "description": "Sets the reviewer assignment target per application; run batch assignment to fill it",
                 "consumes": [
                     "application/json"
                 ],
@@ -6860,6 +9229,284 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.ReviewsPerAppResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/rsvp-enabled": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether accepted hackers can currently submit an RSVP",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get RSVP enabled status (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RSVPEnabledResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets whether accepted hackers can currently submit an RSVP. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set RSVP enabled status (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Enable or disable RSVPs",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetRSVPEnabledPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RSVPEnabledResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/rsvp-schema": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configurable RSVP form schema fields for accepted hackers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get RSVP schema (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RSVPSchemaResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Replaces the RSVP form schema with the provided array of fields",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Update RSVP schema (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Schema fields to set",
+                        "name": "fields",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateRSVPSchemaPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RSVPSchemaResponse"
                         }
                     },
                     "400": {
@@ -6980,6 +9627,53 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/schema-contract": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the field IDs and option values the backend reads out of the editable schemas, so the schema editors can flag those fields and block edits that would silently break travel reimbursement.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get schema field contracts (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.SchemaContractResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -7131,6 +9825,284 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/travel-rsvp-enabled": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether hackers with approved travel can currently submit their travel RSVP",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get travel RSVP enabled status (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelRSVPEnabledResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets whether hackers with approved travel can currently submit their travel RSVP. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set travel RSVP enabled status (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Enable or disable travel RSVPs",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetTravelRSVPEnabledPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelRSVPEnabledResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/travel-rsvp-schema": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the configurable travel RSVP form schema fields for hackers with approved travel reimbursement",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get travel RSVP schema (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelRSVPSchemaResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Replaces the travel RSVP form schema with the provided array of fields. Rejected when a well-known field the backend reads (see /superadmin/settings/schema-contract) is still present but no longer usable; removing such a field is allowed and comes back as a warning.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Update travel RSVP schema (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Schema fields to set",
+                        "name": "fields",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateTravelRSVPSchemaPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelRSVPSchemaResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/users": {
             "get": {
                 "security": [
@@ -7198,6 +10170,100 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/users/{userID}": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Permanently deletes a user along with their application, uploaded files, scans, reviews, and auth identity. Cannot be used on your own account.",
+                "tags": [
+                    "superadmin/users"
+                ],
+                "summary": "Delete a user (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -7470,7 +10536,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Permanently deletes the authenticated user's account, application, scans, and auth identity",
+                "description": "Permanently deletes the authenticated user's account, application, uploads, scans, and auth identity",
                 "tags": [
                     "hackers"
                 ],
@@ -7596,6 +10662,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.AdminTrackEditToggleResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.ApplicantInfo": {
             "type": "object",
             "properties": {
@@ -7625,6 +10699,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                },
+                "warnings": {
+                    "description": "Warnings names well-known bindings the saved schema no longer declares,\nso the editor can say which feature just went inactive.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }
@@ -7675,11 +10756,47 @@ const docTemplate = `{
                 "reviews_completed": {
                     "type": "integer"
                 },
+                "rsvp_responses": {
+                    "type": "object"
+                },
+                "rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "rsvp_submitted_at": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
                 },
                 "submitted_at": {
                     "type": "string"
+                },
+                "travel_approved_amount_cents": {
+                    "type": "integer"
+                },
+                "travel_no_votes": {
+                    "type": "integer"
+                },
+                "travel_receipt_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "travel_rsvp_responses": {
+                    "type": "object"
+                },
+                "travel_rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "travel_rsvp_submitted_at": {
+                    "type": "string"
+                },
+                "travel_status": {
+                    "$ref": "#/definitions/store.TravelStatus"
+                },
+                "travel_yes_votes": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -7708,6 +10825,28 @@ const docTemplate = `{
                 },
                 "exists": {
                     "type": "boolean"
+                }
+            }
+        },
+        "main.CheckInRequiresRSVPResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.ClaimReviewsResponse": {
+            "type": "object",
+            "properties": {
+                "claimed": {
+                    "type": "integer"
+                },
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationReviewWithDetails"
+                    }
                 }
             }
         },
@@ -7763,6 +10902,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "scanned_by": {
+                    "description": "Nil once the staff account that performed the scan is deleted; the scan\nitself belongs to the hacker and outlives them.",
                     "type": "string"
                 },
                 "user_id": {
@@ -7885,6 +11025,34 @@ const docTemplate = `{
                 }
             }
         },
+        "main.FormAvailability": {
+            "type": "object",
+            "properties": {
+                "due_date": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.FormsOverviewResponse": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "$ref": "#/definitions/main.FormAvailability"
+                },
+                "rsvp": {
+                    "$ref": "#/definitions/main.FormAvailability"
+                },
+                "stats": {
+                    "$ref": "#/definitions/store.FormOperationsStats"
+                },
+                "travel": {
+                    "$ref": "#/definitions/main.FormAvailability"
+                }
+            }
+        },
         "main.FromNameResponse": {
             "type": "object",
             "properties": {
@@ -7954,6 +11122,51 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "main.HackerLinkListResponse": {
+            "type": "object",
+            "properties": {
+                "hacker_links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.HackerLink"
+                    }
+                }
+            }
+        },
+        "main.HackerLinkPayload": {
+            "type": "object",
+            "required": [
+                "icon",
+                "label",
+                "url"
+            ],
+            "properties": {
+                "display_order": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "icon": {
+                    "type": "string",
+                    "enum": [
+                        "devpost",
+                        "discord",
+                        "github",
+                        "instagram",
+                        "globe",
+                        "link"
+                    ]
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "url": {
+                    "type": "string",
+                    "maxLength": 2000
                 }
             }
         },
@@ -8122,6 +11335,137 @@ const docTemplate = `{
                 }
             }
         },
+        "main.PublicSponsor": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "website_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.PublicSponsorListResponse": {
+            "type": "object",
+            "properties": {
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.PublicSponsor"
+                    }
+                }
+            }
+        },
+        "main.PublicTrack": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
+                "prizes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.TrackPrize"
+                    }
+                },
+                "sponsor_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.PublicTrackListResponse": {
+            "type": "object",
+            "properties": {
+                "tracks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.PublicTrack"
+                    }
+                }
+            }
+        },
+        "main.RSVPEnabledResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.RSVPResponse": {
+            "type": "object",
+            "properties": {
+                "rsvp_enabled": {
+                    "type": "boolean"
+                },
+                "rsvp_responses": {
+                    "type": "object"
+                },
+                "rsvp_schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                },
+                "rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "rsvp_submitted_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.RSVPSchemaResponse": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                }
+            }
+        },
         "main.ResetHackathonPayload": {
             "type": "object",
             "properties": {
@@ -8151,12 +11495,19 @@ const docTemplate = `{
                 },
                 "reset_sponsors": {
                     "type": "boolean"
+                },
+                "reset_tracks": {
+                    "type": "boolean"
                 }
             }
         },
         "main.ResetHackathonResponse": {
             "type": "object",
             "properties": {
+                "receipts_deleted": {
+                    "description": "ReceiptsDeleted counts the travel receipt files queued for removal from\nobject storage, on the same best-effort basis as ResumesDeleted.",
+                    "type": "integer"
+                },
                 "reset_applications": {
                     "type": "boolean"
                 },
@@ -8182,6 +11533,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "reset_sponsors": {
+                    "type": "boolean"
+                },
+                "reset_tracks": {
                     "type": "boolean"
                 },
                 "resumes_deleted": {
@@ -8217,6 +11571,17 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "main.ReviewLeaderboardResponse": {
+            "type": "object",
+            "properties": {
+                "reviewers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ReviewerStats"
+                    }
                 }
             }
         },
@@ -8333,6 +11698,51 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SchemaContractResponse": {
+            "type": "object",
+            "properties": {
+                "application_schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.SchemaFieldContract"
+                    }
+                },
+                "travel_rsvp_schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.SchemaFieldContract"
+                    }
+                }
+            }
+        },
+        "main.SchemaFieldContract": {
+            "type": "object",
+            "properties": {
+                "field_id": {
+                    "description": "FieldID is the response key the backend reads.",
+                    "type": "string"
+                },
+                "inactive_warning": {
+                    "description": "InactiveWarning explains what stops working when the field is removed.",
+                    "type": "string"
+                },
+                "purpose": {
+                    "description": "Purpose names the feature that depends on the field, for editor badges.",
+                    "type": "string"
+                },
+                "required_options": {
+                    "description": "RequiredOptions are option values that must survive on the field.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required_type": {
+                    "description": "RequiredType is the field type the binding needs to keep working.",
+                    "type": "string"
+                }
+            }
+        },
         "main.SendDecisionEmailsPayload": {
             "type": "object",
             "required": [
@@ -8405,7 +11815,23 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SetAdminTrackEditTogglePayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.SetApplicationsEnabledPayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.SetCheckInRequiresRSVPPayload": {
             "type": "object",
             "properties": {
                 "enabled": {
@@ -8505,6 +11931,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SetRSVPEnabledPayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.SetReviewAssignmentTogglePayload": {
             "type": "object",
             "required": [
@@ -8547,6 +11981,37 @@ const docTemplate = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/store.ApplicationStatus"
+                        }
+                    ]
+                }
+            }
+        },
+        "main.SetTravelRSVPEnabledPayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.SetTravelStatusPayload": {
+            "type": "object",
+            "required": [
+                "travel_status"
+            ],
+            "properties": {
+                "approved_amount_cents": {
+                    "type": "integer"
+                },
+                "travel_status": {
+                    "enum": [
+                        "pending",
+                        "approved",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.TravelStatus"
                         }
                     ]
                 }
@@ -8600,6 +12065,58 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SubmitRSVPPayload": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "responses": {
+                    "type": "object"
+                },
+                "status": {
+                    "enum": [
+                        "confirmed",
+                        "declined"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.RSVPStatus"
+                        }
+                    ]
+                }
+            }
+        },
+        "main.SubmitTravelRSVPPayload": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "receipt_paths": {
+                    "description": "ReceiptPaths holds up to 5 uploaded receipt object paths.",
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "responses": {
+                    "type": "object"
+                },
+                "status": {
+                    "enum": [
+                        "confirmed",
+                        "declined"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.RSVPStatus"
+                        }
+                    ]
+                }
+            }
+        },
         "main.SubmitVotePayload": {
             "type": "object",
             "required": [
@@ -8609,6 +12126,9 @@ const docTemplate = `{
                 "notes": {
                     "type": "string",
                     "maxLength": 1000
+                },
+                "travel_vote": {
+                    "type": "boolean"
                 },
                 "vote": {
                     "enum": [
@@ -8646,6 +12166,190 @@ const docTemplate = `{
                 }
             }
         },
+        "main.TrackEditPermissionResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.TrackListResponse": {
+            "type": "object",
+            "properties": {
+                "tracks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.Track"
+                    }
+                }
+            }
+        },
+        "main.TrackPayload": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "prizes": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                        "$ref": "#/definitions/main.TrackPrizePayload"
+                    }
+                },
+                "sponsor_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                }
+            }
+        },
+        "main.TrackPrizePayload": {
+            "type": "object",
+            "required": [
+                "place",
+                "prize"
+            ],
+            "properties": {
+                "place": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 1
+                },
+                "prize": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                }
+            }
+        },
+        "main.TravelRSVPEnabledResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "main.TravelRSVPResponse": {
+            "type": "object",
+            "properties": {
+                "receipt_required_field_id": {
+                    "description": "ReceiptRequiredFieldID and ReceiptRequiredValue tell the client which\nanswer makes a receipt upload mandatory, so the rule lives in one place.",
+                    "type": "string"
+                },
+                "receipt_required_value": {
+                    "type": "string"
+                },
+                "travel_approved_amount_cents": {
+                    "description": "TravelApprovedAmountCents is the reimbursement amount the organizers\ncommitted to, shown to the hacker on the travel form. It is decided by a\nsuper admin and is never editable by the hacker.",
+                    "type": "integer"
+                },
+                "travel_receipt_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "travel_rsvp_enabled": {
+                    "type": "boolean"
+                },
+                "travel_rsvp_responses": {
+                    "type": "object"
+                },
+                "travel_rsvp_schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                },
+                "travel_rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "travel_rsvp_submitted_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.TravelRSVPSchemaResponse": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
+                    }
+                },
+                "warnings": {
+                    "description": "Warnings names well-known bindings the saved schema no longer declares,\nso the editor can say which feature just went inactive.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "main.TravelReceiptURL": {
+            "type": "object",
+            "properties": {
+                "download_url": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.TravelReceiptURLsResponse": {
+            "type": "object",
+            "properties": {
+                "receipts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.TravelReceiptURL"
+                    }
+                }
+            }
+        },
+        "main.TravelReceiptUploadURLPayload": {
+            "type": "object",
+            "required": [
+                "content_type"
+            ],
+            "properties": {
+                "content_type": {
+                    "type": "string",
+                    "enum": [
+                        "application/pdf",
+                        "image/png",
+                        "image/jpeg"
+                    ]
+                }
+            }
+        },
+        "main.TravelReceiptUploadURLResponse": {
+            "type": "object",
+            "properties": {
+                "receipt_path": {
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
+                }
+            }
+        },
         "main.URLSettingResponse": {
             "type": "object",
             "properties": {
@@ -8666,7 +12370,15 @@ const docTemplate = `{
             }
         },
         "main.UpdateApplicationPayload": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "responses": {
+                    "type": "object"
+                },
+                "resume_path": {
+                    "type": "string"
+                }
+            }
         },
         "main.UpdateApplicationSchemaPayload": {
             "type": "object",
@@ -8693,6 +12405,20 @@ const docTemplate = `{
                     "maxItems": 50,
                     "items": {
                         "type": "string"
+                    }
+                }
+            }
+        },
+        "main.UpdateRSVPSchemaPayload": {
+            "type": "object",
+            "required": [
+                "fields"
+            ],
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
                     }
                 }
             }
@@ -8760,6 +12486,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                }
+            }
+        },
+        "main.UpdateTravelRSVPSchemaPayload": {
+            "type": "object",
+            "required": [
+                "fields"
+            ],
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationSchemaField"
                     }
                 }
             }
@@ -8862,11 +12602,47 @@ const docTemplate = `{
                 "reviews_completed": {
                     "type": "integer"
                 },
+                "rsvp_responses": {
+                    "type": "object"
+                },
+                "rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "rsvp_submitted_at": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
                 },
                 "submitted_at": {
                     "type": "string"
+                },
+                "travel_approved_amount_cents": {
+                    "type": "integer"
+                },
+                "travel_no_votes": {
+                    "type": "integer"
+                },
+                "travel_receipt_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "travel_rsvp_responses": {
+                    "type": "object"
+                },
+                "travel_rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "travel_rsvp_submitted_at": {
+                    "type": "string"
+                },
+                "travel_status": {
+                    "$ref": "#/definitions/store.TravelStatus"
+                },
+                "travel_yes_votes": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -8875,6 +12651,38 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "waitlist_votes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.ApplicationFormStats": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "integer"
+                },
+                "awaiting_decision": {
+                    "type": "integer"
+                },
+                "completion_rate": {
+                    "type": "number"
+                },
+                "drafts": {
+                    "type": "integer"
+                },
+                "latest_submission": {
+                    "type": "string"
+                },
+                "rejected": {
+                    "type": "integer"
+                },
+                "started": {
+                    "type": "integer"
+                },
+                "submitted": {
+                    "type": "integer"
+                },
+                "waitlisted": {
                     "type": "integer"
                 }
             }
@@ -8899,6 +12707,9 @@ const docTemplate = `{
                 },
                 "email": {
                     "type": "string"
+                },
+                "estimated_travel_cost_cents": {
+                    "type": "integer"
                 },
                 "first_name": {
                     "type": "string"
@@ -8933,6 +12744,9 @@ const docTemplate = `{
                 "points": {
                     "type": "integer"
                 },
+                "receipt_count": {
+                    "type": "integer"
+                },
                 "reject_votes": {
                     "type": "integer"
                 },
@@ -8942,11 +12756,40 @@ const docTemplate = `{
                 "reviews_completed": {
                     "type": "integer"
                 },
+                "rsvp_status": {
+                    "description": "RSVPStatus and TravelRSVPStatus let the review UI tell whether the hacker\nhas already acted on a one-shot RSVP, which pins the travel decision.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.RSVPStatus"
+                        }
+                    ]
+                },
+                "rsvp_submitted_at": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/store.ApplicationStatus"
                 },
                 "submitted_at": {
                     "type": "string"
+                },
+                "travel_approved_amount_cents": {
+                    "type": "integer"
+                },
+                "travel_no_votes": {
+                    "type": "integer"
+                },
+                "travel_rsvp_status": {
+                    "$ref": "#/definitions/store.RSVPStatus"
+                },
+                "travel_rsvp_submitted_at": {
+                    "type": "string"
+                },
+                "travel_status": {
+                    "$ref": "#/definitions/store.TravelStatus"
+                },
+                "travel_yes_votes": {
+                    "type": "integer"
                 },
                 "university": {
                     "type": "string"
@@ -9006,6 +12849,9 @@ const docTemplate = `{
                 "reviewed_at": {
                     "type": "string"
                 },
+                "travel_vote": {
+                    "type": "boolean"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -9059,6 +12905,12 @@ const docTemplate = `{
                 },
                 "reviewed_at": {
                     "type": "string"
+                },
+                "travel_status": {
+                    "$ref": "#/definitions/store.TravelStatus"
+                },
+                "travel_vote": {
+                    "type": "boolean"
                 },
                 "university": {
                     "type": "string"
@@ -9167,7 +13019,19 @@ const docTemplate = `{
         "store.BatchAssignmentResult": {
             "type": "object",
             "properties": {
+                "applications_below_target": {
+                    "type": "integer"
+                },
                 "reviews_created": {
+                    "type": "integer"
+                },
+                "reviews_per_application": {
+                    "type": "integer"
+                },
+                "reviews_removed": {
+                    "type": "integer"
+                },
+                "reviews_unfilled": {
                     "type": "integer"
                 }
             }
@@ -9226,6 +13090,82 @@ const docTemplate = `{
                 }
             }
         },
+        "store.FormOperationsStats": {
+            "type": "object",
+            "properties": {
+                "applications": {
+                    "$ref": "#/definitions/store.ApplicationFormStats"
+                },
+                "rsvp": {
+                    "$ref": "#/definitions/store.RSVPFormStats"
+                },
+                "travel": {
+                    "$ref": "#/definitions/store.TravelFormStats"
+                }
+            }
+        },
+        "store.HackerLink": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.RSVPFormStats": {
+            "type": "object",
+            "properties": {
+                "confirmed": {
+                    "type": "integer"
+                },
+                "declined": {
+                    "type": "integer"
+                },
+                "eligible": {
+                    "type": "integer"
+                },
+                "latest_response": {
+                    "type": "string"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "response_rate": {
+                    "type": "number"
+                }
+            }
+        },
+        "store.RSVPStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "confirmed",
+                "declined"
+            ],
+            "x-enum-varnames": [
+                "RSVPPending",
+                "RSVPConfirmed",
+                "RSVPDeclined"
+            ]
+        },
         "store.ReviewNote": {
             "type": "object",
             "properties": {
@@ -9256,6 +13196,56 @@ const docTemplate = `{
                 "ReviewVoteWaitlist"
             ]
         },
+        "store.ReviewerStats": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "integer"
+                },
+                "admin_id": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "last_reviewed_at": {
+                    "type": "string"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "profile_picture_url": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "rejected": {
+                    "type": "integer"
+                },
+                "role": {
+                    "$ref": "#/definitions/store.UserRole"
+                },
+                "travel_votes": {
+                    "type": "integer"
+                },
+                "travel_yes": {
+                    "type": "integer"
+                },
+                "waitlisted": {
+                    "type": "integer"
+                }
+            }
+        },
         "store.Scan": {
             "type": "object",
             "properties": {
@@ -9275,6 +13265,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "scanned_by": {
+                    "description": "Nil once the staff account that performed the scan is deleted; the scan\nitself belongs to the hacker and outlives them.",
                     "type": "string"
                 },
                 "user_id": {
@@ -9403,16 +13394,31 @@ const docTemplate = `{
         "store.ScheduledNotification": {
             "type": "object",
             "properties": {
+                "attempts": {
+                    "type": "integer"
+                },
                 "body": {
+                    "type": "string"
+                },
+                "claimed_at": {
+                    "description": "ClaimedAt is a revocable delivery lease, not a delivery record: a dispatcher\nholds it while it fans out pushes, and it is cleared again on every outcome.\nOnly SentAt means hackers were actually notified.",
                     "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "created_by": {
+                    "description": "Nil once the author's account is deleted; the notification outlives them.",
+                    "type": "string"
+                },
+                "failed_at": {
+                    "description": "FailedAt is terminal — the dispatcher gave up. LastError says why, and is also\nset (without FailedAt) on a retryable failure so operators can see what happened.",
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "last_error": {
                     "type": "string"
                 },
                 "recipient_count": {
@@ -9475,6 +13481,114 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "store.Track": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo_content_type": {
+                    "type": "string"
+                },
+                "logo_data": {
+                    "type": "string"
+                },
+                "prizes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.TrackPrize"
+                    }
+                },
+                "sponsor_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.TrackPrize": {
+            "type": "object",
+            "properties": {
+                "place": {
+                    "type": "string"
+                },
+                "prize": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.TravelFormStats": {
+            "type": "object",
+            "properties": {
+                "approved": {
+                    "type": "integer"
+                },
+                "approved_amount_cents": {
+                    "type": "integer"
+                },
+                "decision_pending": {
+                    "type": "integer"
+                },
+                "form_declined": {
+                    "type": "integer"
+                },
+                "form_eligible": {
+                    "type": "integer"
+                },
+                "form_pending": {
+                    "type": "integer"
+                },
+                "form_submitted": {
+                    "type": "integer"
+                },
+                "latest_travel_form_submission": {
+                    "type": "string"
+                },
+                "people_with_receipts": {
+                    "type": "integer"
+                },
+                "receipt_files": {
+                    "type": "integer"
+                },
+                "rejected": {
+                    "type": "integer"
+                },
+                "requested": {
+                    "type": "integer"
+                },
+                "requested_estimate_cents": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.TravelStatus": {
+            "type": "string",
+            "enum": [
+                "not_requested",
+                "pending",
+                "approved",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "TravelNotRequested",
+                "TravelPending",
+                "TravelApproved",
+                "TravelRejected"
+            ]
         },
         "store.User": {
             "type": "object",

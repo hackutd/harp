@@ -7,6 +7,11 @@ gets features first.
 
 Most hackathons redesign their site every year. Harp assumes you will too.
 
+This repository is also HackUTD's live portal, so `main` always carries
+whatever theme HackUTD is running this year. Treat that design as an example,
+not a baseline: copy the repo, then restyle it for your event (an AI coding
+assistant handles most of that well).
+
 ## The model
 
 Take a release, deploy it, and treat the code as yours from that moment.
