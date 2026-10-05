@@ -1,16 +1,14 @@
-import { Check, Pencil, ThumbsDown, ThumbsUp, X } from "lucide-react";
-import { memo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { memo, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   GradingActionButtons,
   ReviewerNotesList,
 } from "@/pages/admin/_shared/grading";
 
-import { setAIPercent } from "../../api";
+import { AIPercentField } from "../../components/AIPercentField";
 import { NotesTextarea } from "../../components/NotesTextarea";
 import { VoteBadge } from "../../components/VoteBadge";
 import type { Review, ReviewNote, ReviewVote } from "../../types";
@@ -42,42 +40,7 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
   onTravelVoteChange,
   onVote,
 }: GradingVotingPanelProps) {
-  const [editing, setEditing] = useState(false);
-  const [inputValue, setInputValue] = useState("");
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  function startEditing() {
-    setInputValue(aiPercent?.toString() ?? "");
-    setEditing(true);
-  }
-
-  function cancelEditing() {
-    setEditing(false);
-  }
-
-  async function saveEditing() {
-    const trimmed = inputValue.trim();
-    if (trimmed === "") {
-      toast.error("AI percentage is required");
-      return;
-    }
-    const percent = Number(trimmed);
-    if (!Number.isInteger(percent) || percent < 0 || percent > 100) {
-      toast.error("AI percent must be a whole number between 0 and 100");
-      return;
-    }
-
-    const result = await setAIPercent(review.application_id, {
-      ai_percent: percent,
-    });
-    if (result.success) {
-      onAiPercentUpdate(percent);
-      toast.success("AI percent saved");
-    } else {
-      toast.error(result.error ?? "Failed to set AI percent");
-    }
-    setEditing(false);
-  }
 
   const travelRequested = review.travel_status !== "not_requested";
   const travelVoteMissing =
@@ -108,55 +71,12 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
         />
       </div>
 
-      {/* AI Percent */}
-      <div>
-        <Label className="text-xs text-muted-foreground">AI Percent</Label>
-        {editing ? (
-          <div className="flex items-center gap-2 mt-1">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              className="h-7 w-24 text-sm"
-              autoFocus
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 cursor-pointer"
-              onClick={saveEditing}
-            >
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 cursor-pointer"
-              onClick={cancelEditing}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 mt-1">
-            <p
-              className={`text-sm ${aiPercent == null ? "text-muted-foreground italic" : ""}`}
-            >
-              {aiPercent != null ? `${aiPercent}%` : "Not set"}
-            </p>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 cursor-pointer"
-              onClick={startEditing}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-      </div>
+      <AIPercentField
+        key={review.application_id}
+        applicationId={review.application_id}
+        aiPercent={aiPercent}
+        onUpdate={onAiPercentUpdate}
+      />
 
       {/* Travel Reimbursement Vote — only when the applicant requested travel */}
       {travelRequested && (
