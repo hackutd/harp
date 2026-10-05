@@ -384,14 +384,11 @@
   0% {
     transform: translateX(0);
   }
-  30% {
-    transform: translateX(6px);
+  35% {
+    transform: translateX(4px);
   }
-  55% {
-    transform: translateX(-1.5px);
-  }
-  75% {
-    transform: translateX(2px);
+  70% {
+    transform: translateX(-0.75px);
   }
   100% {
     transform: translateX(0);
@@ -399,7 +396,7 @@
 }
 
 .group:hover .animate-chevron-spring {
-  animation: chevron-spring 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: chevron-spring 0.5s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
