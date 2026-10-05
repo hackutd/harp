@@ -19,6 +19,7 @@ import {
   fetchHackathonConfig,
   fetchHackerLinks,
 } from "./api";
+import { ZeroDaySkyline } from "./components/ZeroDaySkyline";
 
 interface ImportantDate {
   month: string;
@@ -280,60 +281,78 @@ export default function DashboardPage() {
       {decided ? (
         <ApplicationStatusCards application={application} />
       ) : (
-        <div className="rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)] backdrop-blur-xl">
-          <span
-            className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide ${status.color}`}
+        <div
+          data-skyline-stage
+          className="relative overflow-hidden rounded-xl border border-[#A857FF]/25 bg-[#0B0C15] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)]"
+        >
+          {/* A live isometric line city, anchored bottom-right and faded out
+              under the text; the purple light sits over it so the plates
+              take the glow. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 select-none opacity-80 [mask-image:linear-gradient(to_right,transparent_26%,black_62%)]"
           >
-            {status.label}
-          </span>
-          <h1 className="mt-3 text-xl font-light tracking-tight">
-            {hackathonName}
-          </h1>
-          {applicationsClosed ? (
-            <p className="mt-1 text-sm font-light text-white/70">
-              The application portal is not currently accepting submissions.
-              Please check back later.
-              {application?.status === "draft" &&
-                " Your draft has been saved and will be here when applications reopen."}
-              {contactEmail && (
-                <>
-                  {" "}
-                  If you believe this is a mistake, reach out to{" "}
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    onClick={handleCopyEmail}
-                    className="text-white underline underline-offset-2"
-                  >
-                    {contactEmail}
-                  </a>
-                  .
-                </>
-              )}
-            </p>
-          ) : (
-            <>
-              {statusSubtext && (
-                <p className="mt-1 text-sm font-light text-white/70">
-                  {statusSubtext}
-                </p>
-              )}
-              {isDraft && (
-                <div className="mt-3 h-1 w-full rounded-full bg-white/10">
-                  <div
-                    className="h-1 rounded-full bg-[#21FFF0] shadow-[0_0_10px_rgba(33,255,240,0.65)] transition-all"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-              )}
-              <Link
-                to={isDraft ? "/app/apply" : "/app/application"}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#5900FF] px-5 py-2 text-sm font-medium text-white shadow-[0_0_20px_rgba(89,0,255,0.28)] transition-colors hover:bg-[#6D1CFF] active:scale-[0.98]"
-              >
-                {isDraft ? "Continue" : "View submission"}
-                <ChevronRight className="size-4" strokeWidth={1.75} />
-              </Link>
-            </>
-          )}
+            <ZeroDaySkyline />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)]"
+          />
+          <div className="relative">
+            <span
+              className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide ${status.color}`}
+            >
+              {status.label}
+            </span>
+            <h1 className="mt-3 text-xl font-light tracking-tight">
+              {hackathonName}
+            </h1>
+            {applicationsClosed ? (
+              <p className="mt-1 text-sm font-light text-white/70">
+                The application portal is not currently accepting submissions.
+                Please check back later.
+                {application?.status === "draft" &&
+                  " Your draft has been saved and will be here when applications reopen."}
+                {contactEmail && (
+                  <>
+                    {" "}
+                    If you believe this is a mistake, reach out to{" "}
+                    <a
+                      href={`mailto:${contactEmail}`}
+                      onClick={handleCopyEmail}
+                      className="text-white underline underline-offset-2"
+                    >
+                      {contactEmail}
+                    </a>
+                    .
+                  </>
+                )}
+              </p>
+            ) : (
+              <>
+                {statusSubtext && (
+                  <p className="mt-1 text-sm font-light text-white/70">
+                    {statusSubtext}
+                  </p>
+                )}
+                {isDraft && (
+                  <div className="mt-3 h-1 w-full rounded-full bg-white/10">
+                    <div
+                      className="h-1 rounded-full bg-[#21FFF0] shadow-[0_0_10px_rgba(33,255,240,0.65)] transition-all"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                )}
+                <Link
+                  to={isDraft ? "/app/apply" : "/app/application"}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#5900FF] px-5 py-2 text-sm font-medium text-white shadow-[0_0_20px_rgba(89,0,255,0.28)] transition-colors hover:bg-[#6D1CFF] active:scale-[0.98]"
+                >
+                  {isDraft ? "Continue" : "View submission"}
+                  <ChevronRight className="size-4" strokeWidth={1.75} />
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
 
