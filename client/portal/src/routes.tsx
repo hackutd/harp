@@ -44,9 +44,7 @@ const HackerNotificationsPage = lazy(
   () => import("@/pages/hacker/notifications/NotificationsPage"),
 );
 const HackerFAQPage = lazy(() => import("@/pages/hacker/faq/FAQPage"));
-const HackerPackPage = lazy(
-  () => import("@/pages/hacker/hacker-pack/HackerPackPage"),
-);
+const HackerNotionPage = lazy(() => import("@/pages/hacker/notion/NotionPage"));
 const SuperAdminUserManagementPage = lazy(
   () => import("@/pages/superadmin/user-management/UserManagementPage"),
 );
@@ -203,10 +201,10 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: "hacker-pack",
+            path: "notion/:linkId",
             element: (
               <Suspense fallback={<HackerPageLoader />}>
-                <HackerPackPage />
+                <HackerNotionPage />
               </Suspense>
             ),
           },

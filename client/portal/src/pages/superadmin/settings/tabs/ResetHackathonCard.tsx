@@ -74,7 +74,7 @@ const RESET_ITEMS: {
   {
     id: "reset_config",
     label: "Hackathon Config",
-    desc: "Clears the hackathon name, dates, application deadline, points name, and hacker pack link. It also closes applications and disables points until the next event is configured.",
+    desc: "Clears the hackathon name, dates, application deadline, and points name. It also closes applications and disables points until the next event is configured.",
   },
   {
     id: "reset_settings",

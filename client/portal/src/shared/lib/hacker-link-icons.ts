@@ -2,7 +2,11 @@ import type { LucideIcon } from "lucide-react";
 import { Github, Globe, Instagram, Link2 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
-import { DevpostIcon, DiscordIcon } from "./hacker-link-brand-icons";
+import {
+  DevpostIcon,
+  DiscordIcon,
+  NotionIcon,
+} from "./hacker-link-brand-icons";
 
 export type HackerLinkIconComponent =
   | LucideIcon
@@ -14,6 +18,7 @@ export const HACKER_LINK_ICONS: Record<string, HackerLinkIconComponent> = {
   github: Github,
   instagram: Instagram,
   globe: Globe,
+  notion: NotionIcon,
   link: Link2,
 };
 
@@ -23,6 +28,7 @@ export const HACKER_LINK_ICON_OPTIONS = [
   { value: "github", label: "GitHub" },
   { value: "instagram", label: "Instagram" },
   { value: "globe", label: "Website" },
+  { value: "notion", label: "Notion page" },
   { value: "link", label: "Generic link" },
 ] as const;
 

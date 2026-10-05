@@ -40,3 +40,15 @@ export function DiscordIcon(props: SVGProps<SVGSVGElement>) {
     </BrandIcon>
   );
 }
+
+// Notion's cube-and-N mark, simplified to an outline.
+export function NotionIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BrandIcon {...props}>
+      <path d="M4 4.5l11-.9 5 3.4v13l-12 .9-4-3.4z" />
+      <path d="M4 4.5l4 3.4 12-.9" />
+      <path d="M8 7.9v13" />
+      <path d="M11.5 11v6M11.5 11l4.5 6M16 10.5V17" />
+    </BrandIcon>
+  );
+}
