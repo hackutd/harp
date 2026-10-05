@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, ChevronRight, Mail, MessageSquare } from "lucide-react";
+import { ChevronRight, Mail, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -12,7 +12,6 @@ import { hackerLinkIcon } from "@/shared/lib/hacker-link-icons";
 import type { Application, HackerLink, NotificationFeedItem } from "@/types";
 
 import { ApplicationStatusCards } from "../components/ApplicationStatusCards";
-import { fetchHackerPackURL } from "../hacker-pack/api";
 import { getNotificationFeed } from "../notifications/api";
 import type { HackathonConfig } from "./api";
 import {
@@ -71,7 +70,6 @@ interface QuickLink {
 }
 
 const QUICK_LINKS: Omit<QuickLink, "href">[] = [
-  { label: "Hacker Pack", icon: BookOpen, to: "/app/hacker-pack" },
   { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
   { label: "Contact", icon: Mail },
 ];
@@ -128,7 +126,6 @@ export default function DashboardPage() {
   const location = useLocation();
   const [application, setApplication] = useState<Application | null>(null);
   const [feed, setFeed] = useState<NotificationFeedItem[]>([]);
-  const [hackerPackURL, setHackerPackURL] = useState("");
   const [config, setConfig] = useState<HackathonConfig | null>(null);
   const [hackerLinks, setHackerLinks] = useState<HackerLink[]>([]);
   const [applicationsEnabled, setApplicationsEnabled] = useState<
@@ -169,7 +166,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const [appRes, feedRes, packRes, configRes, enabledRes, linksRes] =
+      const [appRes, feedRes, configRes, enabledRes, linksRes] =
         await Promise.all([
           getRequest<Application>(
             "/applications/me",
@@ -177,7 +174,6 @@ export default function DashboardPage() {
             controller.signal,
           ),
           getNotificationFeed(controller.signal),
-          fetchHackerPackURL(controller.signal),
           fetchHackathonConfig(controller.signal),
           fetchApplicationsEnabled(controller.signal),
           fetchHackerLinks(controller.signal),
@@ -188,9 +184,6 @@ export default function DashboardPage() {
       }
       if (feedRes.status === 200 && feedRes.data) {
         setFeed(feedRes.data.notifications ?? []);
-      }
-      if (packRes.status === 200 && packRes.data) {
-        setHackerPackURL(packRes.data.url.trim());
       }
       if (configRes.status === 200 && configRes.data) {
         setConfig(configRes.data);
@@ -403,9 +396,7 @@ export default function DashboardPage() {
       {/* Quick links */}
       <section className="mt-5 grid grid-cols-3 gap-3">
         {QUICK_LINKS.filter(
-          ({ to, label }) =>
-            (to !== "/app/hacker-pack" || hackerPackURL) &&
-            (label !== "Contact" || contactEmail),
+          ({ label }) => label !== "Contact" || contactEmail,
         ).map(({ label, icon: Icon, to }) => {
           const href =
             label === "Contact" ? `mailto:${contactEmail}` : undefined;
@@ -436,18 +427,35 @@ export default function DashboardPage() {
         })}
         {hackerLinks.map((link) => {
           const Icon = hackerLinkIcon(link.icon);
-          return (
+          const className =
+            "flex flex-col items-start gap-2 rounded-lg border border-white/10 bg-[#0B0C15]/80 p-4 transition-colors hover:border-[#F62BE8]/35 hover:bg-[#10121D] active:scale-[0.98]";
+          const content = (
+            <>
+              <Icon className="size-5 text-[#F62BE8]" strokeWidth={1.5} />
+              <span className="text-sm font-normal text-white">
+                {link.label}
+              </span>
+            </>
+          );
+          // Notion pages open embedded in the portal; everything else is an
+          // external site.
+          return link.icon === "notion" ? (
+            <Link
+              key={link.id}
+              to={`/app/notion/${link.id}`}
+              className={className}
+            >
+              {content}
+            </Link>
+          ) : (
             <a
               key={link.id}
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-start gap-2 rounded-lg border border-white/10 bg-[#0B0C15]/80 p-4 transition-colors hover:border-[#F62BE8]/35 hover:bg-[#10121D] active:scale-[0.98]"
+              className={className}
             >
-              <Icon className="size-5 text-[#F62BE8]" strokeWidth={1.5} />
-              <span className="text-sm font-normal text-white">
-                {link.label}
-              </span>
+              {content}
             </a>
           );
         })}

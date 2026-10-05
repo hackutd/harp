@@ -1,31 +1,41 @@
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { notionOpenURL } from "@/shared/lib/notion-embed";
+import type { HackerLink } from "@/types";
 
-import { fetchHackerPackURL } from "./api";
+import { fetchHackerLinks } from "../dashboard/api";
 
-export default function HackerPackPage() {
+// Embeds a Notion page configured as a hacker link (icon "notion"). The link's
+// URL is the src from Notion's "Embed this page" snippet.
+export default function NotionPage() {
   const navigate = useNavigate();
-  const [url, setUrl] = useState("");
+  const { linkId } = useParams<{ linkId: string }>();
+  const [link, setLink] = useState<HackerLink | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const openUrl = url.replace(/\/ebd\/+/i, "/");
+  const url = link?.url.trim() ?? "";
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const res = await fetchHackerPackURL(controller.signal);
+      setLoading(true);
+      const res = await fetchHackerLinks(controller.signal);
       if (controller.signal.aborted) return;
       if (res.status === 200 && res.data) {
-        setUrl(res.data.url.trim());
+        setLink(
+          res.data.hacker_links.find(
+            (l) => l.id === linkId && l.icon === "notion",
+          ) ?? null,
+        );
       }
       setLoading(false);
     };
     load();
     return () => controller.abort();
-  }, []);
+  }, [linkId]);
 
   return (
     <div className="flex h-[calc(100svh-6rem)] flex-col md:h-svh">
@@ -40,7 +50,7 @@ export default function HackerPackPage() {
         </button>
         {url && (
           <a
-            href={openUrl}
+            href={notionOpenURL(url)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#E5E5E5] px-3.5 py-1.5 text-xs font-light text-[#6B6B6B] transition-colors hover:text-black"
@@ -57,14 +67,14 @@ export default function HackerPackPage() {
         ) : !url ? (
           <div className="flex flex-1 items-center justify-center rounded-sm border border-[#E5E5E5] bg-[#FAFAFA] px-6 py-16 text-center">
             <p className="text-sm font-light text-[#8A8A8A]">
-              The Hacker Pack isn't available yet. Check back soon.
+              This page isn't available. Check back soon.
             </p>
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-hidden rounded-sm border border-[#E5E5E5] bg-[#FAFAFA]">
             <iframe
               src={url}
-              title="Hacker Pack"
+              title={link?.label ?? "Notion page"}
               className="h-full w-full"
               style={{ colorScheme: "dark" }}
               allowFullScreen

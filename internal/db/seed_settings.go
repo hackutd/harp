@@ -50,7 +50,6 @@ func seedSettings(db *sql.DB, superAdminIDs []string, tl timeline) {
 	// Legal links shown on the login page.
 	set(store.SettingsKeyPrivacyPolicyURL, "https://example.com/privacy")
 	set(store.SettingsKeyTermsURL, "https://example.com/terms")
-	set(store.SettingsKeyHackerPackURL, "https://example.com/hacker-pack")
 
 	// Form availability. applications_enabled is left open even though the due
 	// date has passed, so the Forms settings tab renders its past-deadline

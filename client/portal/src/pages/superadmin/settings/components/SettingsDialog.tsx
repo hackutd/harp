@@ -2,7 +2,6 @@
 
 import {
   AlertTriangle,
-  BookOpen,
   Rocket,
   ShieldCheck,
   UtensilsCrossed,
@@ -23,23 +22,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
 import HackathonTab from "../tabs/HackathonTab";
-import HackerPackTab from "../tabs/HackerPackTab";
 import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
 
-type SettingsTab =
-  | "hackathon"
-  | "permissions"
-  | "meal-groups"
-  | "hacker-pack"
-  | "reset";
+type SettingsTab = "hackathon" | "permissions" | "meal-groups" | "reset";
 
 const settingsTabs = [
   { id: "hackathon" as const, label: "Hackathon", icon: Rocket },
   { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
   { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
-  { id: "hacker-pack" as const, label: "Hacker Pack", icon: BookOpen },
   { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
 ];
 
@@ -97,7 +89,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                 {activeTab === "hackathon" && <HackathonTab />}
                 {activeTab === "permissions" && <PermissionsTab />}
                 {activeTab === "meal-groups" && <MealGroupsTab />}
-                {activeTab === "hacker-pack" && <HackerPackTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>
             </ScrollArea>
