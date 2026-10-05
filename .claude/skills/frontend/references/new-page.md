@@ -344,6 +344,15 @@ const FeaturePage = lazy(
 
 For admin pages, add a link in the sidebar. The sidebar is defined in `src/pages/admin/_shared/`. Add the new page's path and icon to the nav items array.
 
+## Step 9: Write Tests
+
+Add tests beside the files you created — see `testing.md` in this directory for recipes:
+
+- `store.test.ts` — mock `./api` and `sonner`; cover each action's success, failure, abort, and stale-response paths.
+- `utils.test.ts` / mapper tests — `it.each` tables over every branch and boundary.
+- `validations.test.ts` — each form rule at and past its bound.
+- `components/*.test.tsx` — only for components with real interaction logic; query by role/label with `userEvent`.
+
 ## Checklist
 
 Before considering the page complete:
@@ -355,5 +364,7 @@ Before considering the page complete:
 - [ ] Route is lazy-loaded with `<Suspense fallback={<PageLoader />}>`
 - [ ] Route has the correct auth guard (`RequireAuth`, `RequireAdmin`, or `RequireSuperAdmin`)
 - [ ] Imports follow boundary rules (no cross-page imports, no deep `@/shared/auth/*` imports)
+- [ ] Store, utils, and validations have co-located `*.test.ts` files (see `testing.md`)
+- [ ] `npm test` passes, and each new test passes when run alone
 - [ ] `npm run lint` passes
-- [ ] `npm run build` passes (TypeScript + Vite)
+- [ ] `npm run build` passes (TypeScript + Vite, tests included)
