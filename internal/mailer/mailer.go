@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"os"
 	"time"
 
 	qrcode "github.com/skip2/go-qrcode"
@@ -22,21 +21,21 @@ const (
 	// ASCII characters to build a filename from.
 	defaultQRAttachmentFilename = "qr-code.png"
 
-	// brandImageContentID is the Content-ID every template references as
-	// cid:zero-day-title.webp. The image is embedded inline on every send so
+	// brandImageContentID is the Content-ID the layout's banner references as
+	// cid:zero-day-banner.jpg. The image is attached inline on every send so
 	// the header renders without the client having to fetch a remote asset.
-	brandImageContentID   = "zero-day-title.webp"
-	brandImageContentType = "image/webp"
+	brandImageContentID   = "zero-day-banner.jpg"
+	brandImageContentType = "image/jpeg"
 )
 
-// brandImagePaths are tried in order: the production container ships the
-// asset under static/, while local dev and tests read it from the portal
-// source tree (from the repo root or from within this package).
-var brandImagePaths = []string{
-	"static/email-assets/zero-day-title.webp",
-	"client/portal/src/assets/title-login.webp",
-	"../../client/portal/src/assets/title-login.webp",
-}
+// brandImage is the email banner. It is compiled into the binary so every
+// send has it regardless of the working directory or container layout. It is
+// a JPEG rather than WebP because Outlook for Windows cannot display WebP, and
+// it is sized to 1200px (2x the 600px layout) because it rides along with
+// every email.
+//
+//go:embed assets/zero-day-banner.jpg
+var brandImage []byte
 
 // attachment is a provider-agnostic file to attach to an outgoing email.
 type attachment struct {
@@ -101,18 +100,6 @@ type magicLinkEmailData struct {
 	Expires       string
 	HackathonName string
 	From          string
-}
-
-func loadBrandImage() ([]byte, error) {
-	var lastErr error
-	for _, path := range brandImagePaths {
-		image, err := os.ReadFile(path)
-		if err == nil {
-			return image, nil
-		}
-		lastErr = err
-	}
-	return nil, fmt.Errorf("reading Zero Day email title image: %w", lastErr)
 }
 
 func magicLinkLifetime(duration time.Duration) string {
@@ -218,20 +205,39 @@ func decisionTemplate(decision Decision) (name, subjectFormat string, err error)
 	return "", "", fmt.Errorf("unknown decision: %q", decision)
 }
 
-// renderTemplate reads, parses, and executes an embedded email template.
-func renderTemplate(name string, data any) (string, error) {
-	raw, err := FS.ReadFile("template/" + name + ".html")
-	if err != nil {
-		return "", fmt.Errorf("reading %s template: %w", name, err)
-	}
+// detailRow is one label/value line in an email's details table.
+type detailRow struct {
+	Label  string
+	Value  string
+	Accent bool
+}
 
-	tmpl, err := template.New(name).Parse(string(raw))
+// emailButton is an email's primary call to action.
+type emailButton struct {
+	URL   string
+	Label string
+}
+
+// templateFuncs lets an email hand several values to a shared layout block,
+// which a template call alone can't do.
+var templateFuncs = template.FuncMap{
+	"brandImage": func() string { return brandImageContentID },
+	"row":        func(label, value string) detailRow { return detailRow{Label: label, Value: value} },
+	"accentRow":  func(label, value string) detailRow { return detailRow{Label: label, Value: value, Accent: true} },
+	"button":     func(url, label string) emailButton { return emailButton{URL: url, Label: label} },
+}
+
+// renderTemplate executes an embedded email template. Each email defines its
+// title, preheader, heading and content blocks and is rendered inside the
+// shared frame in layout.html.
+func renderTemplate(name string, data any) (string, error) {
+	tmpl, err := template.New(name).Funcs(templateFuncs).ParseFS(FS, "template/layout.html", "template/"+name+".html")
 	if err != nil {
 		return "", fmt.Errorf("parsing %s template: %w", name, err)
 	}
 
 	var body bytes.Buffer
-	if err := tmpl.Execute(&body, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&body, "layout", data); err != nil {
 		return "", fmt.Errorf("executing %s template: %w", name, err)
 	}
 

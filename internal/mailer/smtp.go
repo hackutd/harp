@@ -42,15 +42,10 @@ func NewSMTP(host string, port int, username, password, fromEmail, fromName, hac
 	}, nil
 }
 
-// send delivers a rendered HTML email to a single recipient. The Zero Day
-// title image every template references by Content-ID is embedded inline;
+// send delivers a rendered HTML email to a single recipient. The banner the
+// layout references by Content-ID is embedded inline;
 // any further attachments are delivered as regular downloads.
 func (m *SMTPMailer) send(id Identity, toEmail, toName, subject, htmlBody string, attachments ...attachment) error {
-	brandImage, err := loadBrandImage()
-	if err != nil {
-		return err
-	}
-
 	msg := mail.NewMsg()
 	if err := msg.FromFormat(id.FromName, id.FromEmail); err != nil {
 		return fmt.Errorf("setting from address: %w", err)
@@ -62,7 +57,7 @@ func (m *SMTPMailer) send(id Identity, toEmail, toName, subject, htmlBody string
 	msg.SetBodyString(mail.TypeTextHTML, htmlBody)
 
 	if err := msg.EmbedReader(brandImageContentID, bytes.NewReader(brandImage), mail.WithFileContentType(brandImageContentType)); err != nil {
-		return fmt.Errorf("embedding Zero Day email title image: %w", err)
+		return fmt.Errorf("embedding email banner: %w", err)
 	}
 	for _, a := range attachments {
 		if err := msg.AttachReader(a.Filename, bytes.NewReader(a.Content), mail.WithFileContentType(mail.ContentType(a.ContentType))); err != nil {

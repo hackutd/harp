@@ -14,11 +14,7 @@ func TestRenderPreviews(t *testing.T) {
 	if dir == "" {
 		t.Skip("EMAIL_PREVIEW_DIR not set")
 	}
-	image, err := loadBrandImage()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, brandImageContentID), image, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, brandImageContentID), brandImage, 0o644); err != nil {
 		t.Fatal(err)
 	}
 

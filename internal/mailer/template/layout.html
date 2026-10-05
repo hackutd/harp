@@ -1,0 +1,293 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{template "title" .}}</title>
+    <!-- The frame is a light page: a full-bleed banner over a red rule, then
+         black text on white. Declaring a light-only scheme is what stops Apple
+         Mail, iOS Mail and Outlook.com from repainting it in a dark client; the
+         Gmail app ignores the declaration and inverts by luminance, which no
+         email can opt out of. Every color is inline so clients that strip
+         <style> still render the design; the stylesheet only tightens the
+         gutters on phones. -->
+    <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light only" />
+    <style>
+      :root {
+        color-scheme: light only;
+        supported-color-schemes: light only;
+      }
+      @media (max-width: 620px) {
+        .zd-pad {
+          padding-left: 20px !important;
+          padding-right: 20px !important;
+        }
+        .zd-heading {
+          font-size: 26px !important;
+        }
+        .zd-label {
+          width: 96px !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    bgcolor="#FFFFFF"
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: Helvetica, Arial, sans-serif;
+    "
+  >
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        color: transparent;
+      "
+    >
+      {{template "preheader" .}}
+    </div>
+
+    <table
+      role="presentation"
+      bgcolor="#FFFFFF"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="width: 100%; background-color: #ffffff"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="width: 100%; max-width: 600px"
+          >
+            <tr>
+              <td bgcolor="#0B0C15" style="background-color: #0b0c15">
+                <img
+                  src="cid:{{brandImage}}"
+                  width="600"
+                  height="137"
+                  alt="HackUTD's Zero Day, presented by T-Mobile"
+                  style="
+                    display: block;
+                    width: 100%;
+                    max-width: 600px;
+                    height: auto;
+                    border: 0;
+                  "
+                />
+              </td>
+            </tr>
+            <tr>
+              <td
+                bgcolor="#D63B4F"
+                height="4"
+                style="
+                  height: 4px;
+                  background-color: #d63b4f;
+                  font-size: 0;
+                  line-height: 0;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+            <tr>
+              <td class="zd-pad" style="padding: 40px 32px 8px">
+                <h1
+                  class="zd-heading"
+                  style="
+                    margin: 0 0 28px;
+                    color: #111111;
+                    font-size: 30px;
+                    line-height: 1.25;
+                    font-weight: 700;
+                  "
+                >
+                  {{template "heading" .}}
+                </h1>
+                {{template "content" .}}
+                <p
+                  style="
+                    margin: 32px 0 0;
+                    color: #1f1f1f;
+                    font-size: 16px;
+                    line-height: 1.6;
+                  "
+                >
+                  Questions? Email us at
+                  <a
+                    href="mailto:hello@hackutd.co"
+                    style="color: #d63b4f; text-decoration: underline"
+                    >hello@hackutd.co</a
+                  >.
+                </p>
+                <p
+                  style="
+                    margin: 28px 0 40px;
+                    color: #111111;
+                    font-size: 16px;
+                    line-height: 1.6;
+                    font-weight: 700;
+                  "
+                >
+                  Best,<br />
+                  {{.From}} |
+                  <a
+                    href="mailto:hello@hackutd.co"
+                    style="color: #d63b4f; text-decoration: underline"
+                    >hello@hackutd.co</a
+                  >
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="zd-pad"
+                bgcolor="#F9F9F9"
+                style="
+                  padding: 24px 32px;
+                  background-color: #f9f9f9;
+                  border-top: 1px solid #e5e5e5;
+                  font-size: 15px;
+                  line-height: 1.6;
+                "
+              >
+                <a
+                  href="https://hackutd.co"
+                  style="color: #555555; text-decoration: underline"
+                  >hackutd.co</a
+                >&nbsp;&nbsp;&nbsp;&nbsp;
+                <a
+                  href="https://www.instagram.com/hackutd"
+                  style="color: #555555; text-decoration: underline"
+                  >Instagram</a
+                >&nbsp;&nbsp;&nbsp;&nbsp;
+                <a
+                  href="mailto:hello@hackutd.co"
+                  style="color: #555555; text-decoration: underline"
+                  >hello@hackutd.co</a
+                >
+              </td>
+            </tr>
+            <tr>
+              <td
+                align="center"
+                class="zd-pad"
+                style="
+                  padding: 24px 32px 40px;
+                  color: #444444;
+                  font-size: 14px;
+                  line-height: 1.6;
+                "
+              >
+                HackUTD Team<br />
+                800 West Campbell Road, Richardson, TX 75080
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+{{end}}
+
+{{/* Inline styles shared by every email's body copy. */}}
+{{define "p-style"}}margin: 0 0 20px; color: #1f1f1f; font-size: 16px; line-height: 1.6;{{end}}
+{{define "caption-style"}}margin: 16px 0 0; color: #6b7280; font-size: 15px; line-height: 1.5; text-align: center;{{end}}
+
+{{/* A label/value details table. Emails open it with "details-open", add rows
+     with {{template "row" (row "Label" "Value")}} (or accentRow to set the
+     value in red), and close it with "details-close". */}}
+{{define "details-open"}}
+<table
+  role="presentation"
+  width="100%"
+  cellpadding="0"
+  cellspacing="0"
+  border="0"
+  style="width: 100%; margin: 12px 0 8px; border-top: 1px solid #e5e5e5"
+>
+{{end}}
+{{define "details-close"}}</table>{{end}}
+{{define "row"}}
+<tr>
+  <td
+    class="zd-label"
+    width="160"
+    style="
+      width: 160px;
+      padding: 16px 12px 16px 0;
+      border-bottom: 1px solid #e5e5e5;
+      color: #6b7280;
+      font-size: 17px;
+      line-height: 1.4;
+      vertical-align: top;
+    "
+  >
+    {{.Label}}
+  </td>
+  <td
+    style="
+      padding: 16px 0;
+      border-bottom: 1px solid #e5e5e5;
+      color: {{if .Accent}}#d63b4f{{else}}#111111{{end}};
+      font-size: 17px;
+      line-height: 1.4;
+      font-weight: 700;
+      vertical-align: top;
+    "
+  >
+    {{.Value}}
+  </td>
+</tr>
+{{end}}
+
+{{/* Event rows shared by the emails that point a hacker at the venue. */}}
+{{define "event-rows"}}
+{{template "row" (row "Event" "November 7 and 8")}}
+{{template "row" (row "Where" "ECSW, UT Dallas")}}
+{{end}}
+
+{{/* Primary call to action: {{template "button" (button .PortalURL "Label")}}. */}}
+{{define "button"}}
+<table
+  role="presentation"
+  cellpadding="0"
+  cellspacing="0"
+  border="0"
+  align="center"
+  style="margin: 32px auto 0"
+>
+  <tr>
+    <td align="center" bgcolor="#D63B4F" style="border-radius: 6px">
+      <a
+        href="{{.URL}}"
+        style="
+          display: inline-block;
+          padding: 15px 40px;
+          color: #ffffff;
+          font-size: 18px;
+          line-height: 22px;
+          font-weight: 700;
+          text-decoration: none;
+          border-radius: 6px;
+        "
+        >{{.Label}}</a
+      >
+    </td>
+  </tr>
+</table>
+{{end}}
