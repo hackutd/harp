@@ -42,7 +42,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
       <Table className="border-collapse table-fixed min-w-[1500px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
-            <TableHead className="w-28">Status</TableHead>
+            <TableHead className="w-46">Status</TableHead>
             <TableHead className="w-28">Travel RSVP</TableHead>
             <TableHead className="w-48">
               {redact ? "Applicant" : "Name"}
