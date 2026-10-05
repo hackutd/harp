@@ -166,8 +166,11 @@ export function ApplicationStatusCards({
               {STATUS_MESSAGES[application.status]}
             </span>
           </span>
-          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#0B0C15]/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm transition-transform group-hover:translate-x-1">
-            <ChevronRight className="size-4 text-white" strokeWidth={1.75} />
+          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#0B0C15]/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm">
+            <ChevronRight
+              className="animate-chevron-spring size-4 text-white"
+              strokeWidth={1.75}
+            />
           </span>
         </button>
       ) : (
