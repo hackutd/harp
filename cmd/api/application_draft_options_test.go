@@ -83,6 +83,8 @@ func TestDraftAndFinalResponseValidation(t *testing.T) {
 		{"required checkbox", store.ApplicationSchemaField{Type: "checkbox", Required: true}, false, false, true},
 		{"numeric limit", store.ApplicationSchemaField{Type: "number", Validation: map[string]interface{}{"max": float64(10)}}, float64(20), true, true},
 		{"length limit", store.ApplicationSchemaField{Type: "text", Validation: map[string]interface{}{"maxLength": float64(2)}}, "Long", true, true},
+		{"length limit counts characters not bytes", store.ApplicationSchemaField{Type: "textarea", Validation: map[string]interface{}{"maxLength": float64(5)}}, "“ok!”", false, false},
+		{"length limit multibyte over", store.ApplicationSchemaField{Type: "textarea", Validation: map[string]interface{}{"maxLength": float64(5)}}, "“okay”", true, true},
 		{"hidden obsolete choice", store.ApplicationSchemaField{Type: "select", Options: []string{"Current"}, Validation: map[string]interface{}{"show_if": "enabled"}}, "Old", false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

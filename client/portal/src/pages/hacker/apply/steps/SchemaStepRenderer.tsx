@@ -50,6 +50,8 @@ import {
 import { cn } from "@/shared/lib/utils";
 import type { ApplicationSchemaField } from "@/types";
 
+import { describeCharacterLimit } from "../characterLimit";
+
 type ApplicationFormValues = FieldValues & Record<string, unknown>;
 type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
 
@@ -180,6 +182,24 @@ export function SchemaStepRenderer({
  * asterisk, and underline already signal those — while still surfacing
  * format errors (e.g. an invalid phone number).
  */
+function CharacterLimit({
+  value,
+  maxLength,
+}: {
+  value: unknown;
+  maxLength: number;
+}) {
+  const { text, over } = describeCharacterLimit(value, maxLength);
+  return (
+    <FormDescription
+      aria-live="polite"
+      className={cn("text-xs font-light", over && "text-destructive")}
+    >
+      {text}
+    </FormDescription>
+  );
+}
+
 function FieldMessage() {
   const { error } = useFormField();
   const message = error ? String(error.message ?? "") : "";
@@ -323,9 +343,10 @@ function SchemaFormField({
                 />
               </FormControl>
               {typeof validation.maxLength === "number" && (
-                <FormDescription className="text-xs font-light">
-                  Max {validation.maxLength} characters
-                </FormDescription>
+                <CharacterLimit
+                  value={formField.value}
+                  maxLength={validation.maxLength}
+                />
               )}
               <FieldMessage />
             </FormItem>

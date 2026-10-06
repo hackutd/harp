@@ -265,7 +265,7 @@ function buildFieldZod(
         const maxLength = validation.maxLength as number;
         s = s.max(
           maxLength,
-          `${label} must be ${maxLength} characters or fewer`,
+          `${label} is too long (max ${maxLength} characters)`,
         );
       }
       if (field.required) {

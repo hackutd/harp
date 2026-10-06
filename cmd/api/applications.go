@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
@@ -427,8 +428,10 @@ func validateResponses(schema []store.ApplicationSchemaField, responses map[stri
 				fail(field.ID, field.ID+" must be a string")
 				continue
 			}
+			// Count characters, not bytes, so the limit matches what the form
+			// shows and curly quotes pasted from a doc do not eat into it.
 			if maxLen, ok := field.Validation["maxLength"]; ok {
-				if ml, ok := maxLen.(float64); ok && float64(len(s)) > ml {
+				if ml, ok := maxLen.(float64); ok && float64(utf8.RuneCountInString(s)) > ml {
 					fail(field.ID, fmt.Sprintf("%s exceeds max length of %d", field.ID, int(ml)))
 				}
 			}

@@ -94,7 +94,13 @@ describe("required and optional fields", () => {
       field({ id: "bio", type: "textarea", validation: { maxLength: 5 } }),
     ];
     expect(validate(fields, { bio: "12345" }).success).toBe(true);
-    expect(validate(fields, { bio: "123456" }).success).toBe(false);
+    const result = validate(fields, { bio: "123456" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe(
+        "Full name is too long (max 5 characters)",
+      );
+    }
   });
 });
 
