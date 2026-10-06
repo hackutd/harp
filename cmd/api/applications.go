@@ -615,6 +615,7 @@ func (app *application) getApplicationTimelineHandler(w http.ResponseWriter, r *
 //	@Param			travel_rsvp_status	query		string	false	"Filter by travel form status (pending, confirmed, declined)"
 //	@Param			has_receipts		query		boolean	false	"Filter by whether at least one receipt was submitted"
 //	@Param			travel_requested	query		boolean	false	"Filter by whether travel reimbursement was requested"
+//	@Param			checked_in			query		boolean	false	"Filter by whether the hacker has a check-in scan"
 //	@Param			limit				query		int		false	"Page size (default 50, max 100)"
 //	@Param			direction			query		string	false	"Pagination direction: forward (default) or backward"
 //	@Param			sort_by				query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes, travel_yes_votes"
@@ -706,6 +707,14 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 			return
 		}
 		filters.TravelRequested = &travelRequested
+	}
+	if value := query.Get("checked_in"); value != "" {
+		checkedIn, err := strconv.ParseBool(value)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("checked_in must be true or false"))
+			return
+		}
+		filters.CheckedIn = &checkedIn
 	}
 
 	// Parse search
@@ -962,15 +971,16 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 // getApplicantEmailsByStatusHandler returns applicant emails filtered by status
 //
 //	@Summary		Get applicant emails by status (Super Admin)
-//	@Description	Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)
+//	@Description	Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected), optionally narrowed by RSVP status. The RSVP filter only applies to accepted applications, so it requires status=accepted.
 //	@Tags			superadmin/applications
 //	@Produce		json
-//	@Param			status	query		string	true	"Application status (draft, submitted, accepted, waitlisted, or rejected)"
-//	@Success		200		{object}	EmailListResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
+//	@Param			status		query		string	true	"Application status (draft, submitted, accepted, waitlisted, or rejected)"
+//	@Param			rsvp_status	query		string	false	"RSVP status (pending, confirmed, declined); requires status=accepted"
+//	@Success		200			{object}	EmailListResponse
+//	@Failure		400			{object}	object{error=string}
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		403			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/superadmin/applications/emails [get]
 func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -988,7 +998,26 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	users, err := app.store.Application.GetEmailsByStatus(r.Context(), status)
+	// Every application row defaults to rsvp_status 'pending', so the filter is
+	// only meaningful for accepted hackers. Refuse it elsewhere rather than
+	// hand back, say, every rejected applicant as "RSVP pending".
+	var rsvpStatus *store.RSVPStatus
+	if value := r.URL.Query().Get("rsvp_status"); value != "" {
+		parsed := store.RSVPStatus(value)
+		switch parsed {
+		case store.RSVPPending, store.RSVPConfirmed, store.RSVPDeclined:
+		default:
+			app.badRequestResponse(w, r, errors.New("rsvp_status must be one of pending, confirmed, or declined"))
+			return
+		}
+		if status != store.StatusAccepted {
+			app.badRequestResponse(w, r, errors.New("rsvp_status requires status=accepted"))
+			return
+		}
+		rsvpStatus = &parsed
+	}
+
+	users, err := app.store.Application.GetEmailsByStatus(r.Context(), status, rsvpStatus)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return

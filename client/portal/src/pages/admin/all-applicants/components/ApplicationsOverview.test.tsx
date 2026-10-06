@@ -12,6 +12,11 @@ const stats: ApplicationStats = {
   waitlisted: 10,
   draft: 60,
   acceptance_rate: 33.333,
+  rsvp_pending: 0,
+  rsvp_confirmed: 0,
+  rsvp_declined: 0,
+  checked_in: 0,
+  no_shows: 0,
 };
 
 const points: ApplicationTimelinePoint[] = [

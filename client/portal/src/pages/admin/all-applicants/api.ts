@@ -46,6 +46,10 @@ export async function fetchApplications(
     queryParams.set("travel_requested", String(params.travel_requested));
   }
 
+  if (params?.checked_in != null) {
+    queryParams.set("checked_in", String(params.checked_in));
+  }
+
   if (params?.cursor) {
     queryParams.set("cursor", params.cursor);
   }

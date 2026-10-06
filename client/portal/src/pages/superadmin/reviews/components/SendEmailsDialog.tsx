@@ -38,6 +38,7 @@ import type {
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 import { errorAlert } from "@/shared/lib/api";
+import type { RSVPStatus } from "@/types";
 
 import {
   fetchApplicantEmails,
@@ -54,6 +55,8 @@ import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUSES,
   DECIDED_STATUSES,
+  RSVP_EXPORT_OPTIONS,
+  RSVP_EXPORT_STATUSES,
 } from "../types";
 
 type EmailsTab = DecisionEmailMode | "export";
@@ -63,6 +66,14 @@ const STATUS_DESCRIPTIONS: Record<DecidedStatus, string> = {
   waitlisted: "Explains the waitlist and that spots may still open up.",
   rejected: "Warm decline that encourages reapplying next year.",
 };
+
+/** One CSV group: a status, optionally narrowed by RSVP state. */
+interface ExportGroup {
+  status: ApplicationStatus;
+  rsvpStatus?: RSVPStatus;
+  /** Written to the CSV status column and the file name. */
+  key: string;
+}
 
 function csvEscape(value: string | null) {
   const str = value ?? "";
@@ -105,6 +116,10 @@ function SendEmailsDialogBody({
     tab === "announcement" ? "announcement" : "decision";
   const [selected, setSelected] = useState<DecidedStatus[]>([]);
   const [exportSelected, setExportSelected] = useState<ApplicationStatus[]>([]);
+  const [rsvpExportSelected, setRSVPExportSelected] = useState<RSVPStatus[]>(
+    [],
+  );
+  const exportGroupCount = exportSelected.length + rsvpExportSelected.length;
   const [resendAll, setResendAll] = useState(false);
 
   const [emailStats, setEmailStats] = useState<DecisionEmailStats | null>(null);
@@ -217,11 +232,27 @@ function SendEmailsDialogBody({
     setExportSelected(checked ? [...APPLICATION_STATUSES] : []);
   }
 
-  async function handleExportCsv(exportStatuses: ApplicationStatus[]) {
-    if (exportStatuses.length === 0) return;
+  function toggleRSVPExport(rsvpStatus: RSVPStatus, checked: boolean) {
+    setRSVPExportSelected((prev) =>
+      checked ? [...prev, rsvpStatus] : prev.filter((s) => s !== rsvpStatus),
+    );
+  }
+
+  async function handleExportCsv() {
+    const groups: ExportGroup[] = [
+      ...exportSelected.map((status) => ({ status, key: status })),
+      ...rsvpExportSelected.map((rsvpStatus) => ({
+        status: "accepted" as const,
+        rsvpStatus,
+        key: `accepted_rsvp_${rsvpStatus}`,
+      })),
+    ];
+    if (groups.length === 0) return;
 
     setDownloadingCsv(true);
-    const results = await Promise.all(exportStatuses.map(fetchApplicantEmails));
+    const results = await Promise.all(
+      groups.map((g) => fetchApplicantEmails(g.status, g.rsvpStatus)),
+    );
 
     const failed = results.find((res) => res.status !== 200 || !res.data);
     if (failed) {
@@ -233,7 +264,7 @@ function SendEmailsDialogBody({
     const rows = results.flatMap((res, i) =>
       (res.data?.applicants ?? []).map(
         (a) =>
-          `${csvEscape(a.email)},${csvEscape(a.first_name)},${csvEscape(a.last_name)},${exportStatuses[i]}`,
+          `${csvEscape(a.email)},${csvEscape(a.first_name)},${csvEscape(a.last_name)},${groups[i].key}`,
       ),
     );
     const csv = ["email,first_name,last_name,status", ...rows].join("\n");
@@ -243,9 +274,9 @@ function SendEmailsDialogBody({
     const link = document.createElement("a");
     link.href = url;
     link.download =
-      exportStatuses.length === APPLICATION_STATUSES.length
+      allExportSelected && rsvpExportSelected.length === 0
         ? "all_applicants.csv"
-        : `${exportStatuses.join("_")}_applicants.csv`;
+        : `${groups.map((g) => g.key).join("_")}_applicants.csv`;
     link.click();
     URL.revokeObjectURL(url);
     setDownloadingCsv(false);
@@ -418,19 +449,53 @@ function SendEmailsDialogBody({
               </div>
             ))}
 
+            <div className="pt-3">
+              <p className="text-sm font-medium">RSVP follow-up</p>
+              <p className="text-xs text-muted-foreground">
+                Accepted applicants by RSVP response.
+              </p>
+            </div>
+
+            {RSVP_EXPORT_STATUSES.map((rsvpStatus) => (
+              <div
+                key={rsvpStatus}
+                className="flex items-start gap-3 rounded-md border p-3"
+              >
+                <Checkbox
+                  id={`export-rsvp-${rsvpStatus}`}
+                  checked={rsvpExportSelected.includes(rsvpStatus)}
+                  onCheckedChange={(checked) =>
+                    toggleRSVPExport(rsvpStatus, !!checked)
+                  }
+                  className="mt-0.5 cursor-pointer"
+                />
+                <div className="grid gap-1">
+                  <Label
+                    htmlFor={`export-rsvp-${rsvpStatus}`}
+                    className="cursor-pointer text-sm font-medium"
+                  >
+                    {RSVP_EXPORT_OPTIONS[rsvpStatus].label}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {RSVP_EXPORT_OPTIONS[rsvpStatus].description}
+                  </p>
+                </div>
+              </div>
+            ))}
+
             <div className="pt-1">
               <Button
                 variant="outline"
                 size="sm"
                 className="cursor-pointer font-light"
-                disabled={exportSelected.length === 0}
+                disabled={exportGroupCount === 0}
                 loading={downloadingCsv}
-                onClick={() => handleExportCsv(exportSelected)}
+                onClick={handleExportCsv}
               >
                 {!downloadingCsv && <Download className="size-3.5" />}
                 {downloadingCsv
                   ? "Generating..."
-                  : `Export CSV${exportSelected.length > 0 ? ` — ${exportSelected.length} status${exportSelected.length === 1 ? "" : "s"}` : ""}`}
+                  : `Export CSV${exportGroupCount > 0 ? ` — ${exportGroupCount} group${exportGroupCount === 1 ? "" : "s"}` : ""}`}
               </Button>
             </div>
           </TabsContent>

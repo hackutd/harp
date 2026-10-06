@@ -92,6 +92,40 @@ describe("applicant-list store", () => {
     );
   });
 
+  it("remembers rsvp_status/checked_in across paging until cleared with null", async () => {
+    api.fetchApplications.mockResolvedValue({ status: 200, data: listResult });
+    const store = newState();
+    await store.getState().fetchApplications({
+      status: "accepted",
+      rsvp_status: "confirmed",
+      checked_in: false,
+    });
+    expect(store.getState().currentRSVPStatus).toBe("confirmed");
+    expect(store.getState().currentCheckedIn).toBe(false);
+
+    // Paging passes only a cursor; the attendance view must survive it.
+    await store.getState().fetchApplications({ cursor: "nxt" });
+    expect(api.fetchApplications).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        cursor: "nxt",
+        status: "accepted",
+        rsvp_status: "confirmed",
+        checked_in: false,
+      }),
+      undefined,
+    );
+
+    await store
+      .getState()
+      .fetchApplications({ rsvp_status: null, checked_in: null });
+    expect(api.fetchApplications).toHaveBeenLastCalledWith(
+      expect.objectContaining({ rsvp_status: null, checked_in: null }),
+      undefined,
+    );
+    expect(store.getState().currentRSVPStatus).toBeNull();
+    expect(store.getState().currentCheckedIn).toBeNull();
+  });
+
   it("clears the list on a failed fetch", async () => {
     api.fetchApplications.mockResolvedValue({ status: 500 });
     const store = newState();
@@ -135,5 +169,17 @@ describe("applicant-list store", () => {
     expect(s.hasMore).toBe(false);
     expect(s.currentStatus).toBe("draft");
     expect(s.currentSearch).toBe("");
+  });
+
+  it("drops attendance filters on resetPagination", async () => {
+    api.fetchApplications.mockResolvedValue({ status: 200, data: listResult });
+    const store = newState();
+    await store.getState().fetchApplications({
+      rsvp_status: "pending",
+      checked_in: true,
+    });
+    store.getState().resetPagination();
+    expect(store.getState().currentRSVPStatus).toBeNull();
+    expect(store.getState().currentCheckedIn).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -832,12 +833,48 @@ func TestListApplications(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 
+	t.Run("should accept checked_in filter", func(t *testing.T) {
+		for _, checkedIn := range []bool{true, false} {
+			rsvpStatus := store.RSVPConfirmed
+			status := store.StatusAccepted
+			result := &store.ApplicationListResult{
+				Applications: []store.ApplicationListItem{},
+				HasMore:      false,
+			}
+
+			mockApps.On("List",
+				store.ApplicationListFilters{
+					Status:     &status,
+					RSVPStatus: &rsvpStatus,
+					CheckedIn:  &checkedIn,
+				},
+				(*store.ApplicationCursor)(nil),
+				store.DirectionForward,
+				50,
+			).Return(result, nil).Once()
+
+			req, err := http.NewRequest(
+				http.MethodGet,
+				"/?status=accepted&rsvp_status=confirmed&checked_in="+strconv.FormatBool(checkedIn),
+				nil,
+			)
+			require.NoError(t, err)
+			req = setUserContext(req, newAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+			checkResponseCode(t, http.StatusOK, rr.Code)
+		}
+
+		mockApps.AssertExpectations(t)
+	})
+
 	t.Run("should reject invalid form response filters", func(t *testing.T) {
 		for _, query := range []string{
 			"?rsvp_status=maybe",
 			"?travel_rsvp_status=maybe",
 			"?has_receipts=maybe",
 			"?travel_requested=maybe",
+			"?checked_in=maybe",
 		} {
 			req, err := http.NewRequest(http.MethodGet, "/"+query, nil)
 			require.NoError(t, err)
@@ -1183,7 +1220,7 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 			users := []store.UserEmailInfo{
 				{Email: "ada@test.com", FirstName: &firstName, LastName: &lastName},
 			}
-			mockApps.On("GetEmailsByStatus", status).Return(users, nil).Once()
+			mockApps.On("GetEmailsByStatus", status, (*store.RSVPStatus)(nil)).Return(users, nil).Once()
 
 			req, err := http.NewRequest(
 				http.MethodGet,
@@ -1219,7 +1256,7 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 
-		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything, mock.Anything)
 	})
 
 	t.Run("returns 400 for an unknown status", func(t *testing.T) {
@@ -1237,6 +1274,54 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 
-		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything, mock.Anything)
 	})
+
+	for _, rsvp := range []store.RSVPStatus{store.RSVPPending, store.RSVPConfirmed, store.RSVPDeclined} {
+		t.Run("narrows accepted emails by rsvp_status "+string(rsvp), func(t *testing.T) {
+			app := newTestApplication(t)
+			mockApps := app.store.Application.(*store.MockApplicationStore)
+
+			users := []store.UserEmailInfo{{Email: "grace@test.com"}}
+			mockApps.On("GetEmailsByStatus", store.StatusAccepted, &rsvp).Return(users, nil).Once()
+
+			req, err := http.NewRequest(
+				http.MethodGet,
+				"/superadmin/applications/emails?status=accepted&rsvp_status="+string(rsvp),
+				nil,
+			)
+			require.NoError(t, err)
+			req = setUserContext(req, newSuperAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+			checkResponseCode(t, http.StatusOK, rr.Code)
+
+			var body struct {
+				Data EmailListResponse `json:"data"`
+			}
+			require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+			assert.Equal(t, 1, body.Data.Count)
+
+			mockApps.AssertExpectations(t)
+		})
+	}
+
+	for name, query := range map[string]string{
+		"an unknown rsvp_status":            "?status=accepted&rsvp_status=maybe",
+		"rsvp_status on a non-accepted set": "?status=rejected&rsvp_status=pending",
+	} {
+		t.Run("returns 400 for "+name, func(t *testing.T) {
+			app := newTestApplication(t)
+			mockApps := app.store.Application.(*store.MockApplicationStore)
+
+			req, err := http.NewRequest(http.MethodGet, "/superadmin/applications/emails"+query, nil)
+			require.NoError(t, err)
+			req = setUserContext(req, newSuperAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+			checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+			mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything, mock.Anything)
+		})
+	}
 }

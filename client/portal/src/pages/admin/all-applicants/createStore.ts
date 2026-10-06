@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import type { RSVPStatus } from "@/types";
+
 import {
   fetchApplications as apiFetchApplications,
   fetchApplicationStats,
@@ -20,6 +22,8 @@ export interface ApplicationsState {
   prevCursor: string | null;
   hasMore: boolean;
   currentStatus: ApplicationStatus | null;
+  currentRSVPStatus: RSVPStatus | null;
+  currentCheckedIn: boolean | null;
   currentSearch: string;
   currentSortBy?: ApplicationSortBy;
   stats: ApplicationStats | null;
@@ -50,6 +54,8 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
     prevCursor: null,
     hasMore: false,
     currentStatus: config.defaultStatus,
+    currentRSVPStatus: null,
+    currentCheckedIn: null,
     currentSearch: "",
     currentSortBy: config.defaultSortBy,
     stats: null,
@@ -66,6 +72,17 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
       } else {
         status = get().currentStatus;
       }
+
+      // Like status: null clears the remembered filter, undefined keeps it, so
+      // paging and search keep an attendance view applied.
+      const rsvpStatus =
+        params?.rsvp_status !== undefined
+          ? params.rsvp_status
+          : get().currentRSVPStatus;
+      const checkedIn =
+        params?.checked_in !== undefined
+          ? params.checked_in
+          : get().currentCheckedIn;
 
       let search: string;
       if (params && "search" in params) {
@@ -85,6 +102,8 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
       // refreshes keep filters even while another fetch is pending.
       set({
         currentStatus: status,
+        currentRSVPStatus: rsvpStatus,
+        currentCheckedIn: checkedIn,
         currentSearch: search,
         currentSortBy: sortBy,
       });
@@ -92,6 +111,8 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
         {
           ...params,
           status,
+          rsvp_status: rsvpStatus,
+          checked_in: checkedIn,
           search: search || undefined,
           sort_by: sortBy,
         },
@@ -112,6 +133,8 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
           hasMore: res.data.has_more,
           loading: false,
           currentStatus: status,
+          currentRSVPStatus: rsvpStatus,
+          currentCheckedIn: checkedIn,
           currentSearch: search,
           currentSortBy: sortBy,
         });
@@ -164,6 +187,8 @@ export function createApplicationsStore(config: ApplicationsStoreConfig) {
         prevCursor: null,
         hasMore: false,
         currentStatus: config.defaultStatus,
+        currentRSVPStatus: null,
+        currentCheckedIn: null,
         currentSearch: "",
         currentSortBy: config.defaultSortBy,
       });

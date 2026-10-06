@@ -28,6 +28,19 @@ export interface RSVPFormStats {
   latest_response: string | null;
 }
 
+/**
+ * The RSVP funnel joined to check-in scans. checked_in_without_rsvp is
+ * promoted walk-ins plus anyone let in while the RSVP requirement was off.
+ */
+export interface AttendanceStats {
+  checked_in: number;
+  checked_in_confirmed: number;
+  checked_in_without_rsvp: number;
+  no_shows: number;
+  show_rate: number;
+  latest_check_in: string | null;
+}
+
 export interface TravelFormStats {
   requested: number;
   decision_pending: number;
@@ -52,6 +65,7 @@ export interface FormsOverviewData {
     applications: ApplicationFormStats;
     rsvp: RSVPFormStats;
     travel: TravelFormStats;
+    attendance: AttendanceStats;
   };
 }
 

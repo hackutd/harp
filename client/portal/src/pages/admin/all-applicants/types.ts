@@ -44,6 +44,8 @@ export interface ApplicationListItem {
   travel_rsvp_submitted_at: string | null;
   receipt_count: number;
   estimated_travel_cost_cents: number | null;
+  /** First check-in scan; null until the hacker arrives at the event. */
+  checked_in_at: string | null;
 }
 
 export interface ApplicationListResult {
@@ -61,6 +63,14 @@ export interface ApplicationStats {
   waitlisted: number;
   draft: number;
   acceptance_rate: number;
+  /** RSVP counts cover accepted applications only. */
+  rsvp_pending: number;
+  rsvp_confirmed: number;
+  rsvp_declined: number;
+  /** Everyone with a check-in scan, promoted walk-ins included. */
+  checked_in: number;
+  /** Accepted, RSVP confirmed, and never checked in. */
+  no_shows: number;
 }
 
 /** One calendar day of activity; days with none are omitted by the API. */
@@ -75,6 +85,23 @@ export interface ApplicationTimeline {
   timeline: ApplicationTimelinePoint[];
 }
 
+/**
+ * Which filter row the applicants page shows: application status (before the
+ * event) or RSVP and check-in (around it). Only one applies at a time.
+ */
+export type FilterMode = "status" | "event";
+
+/**
+ * Event-day presets, shown in the "event" filter mode. Each maps to a combination
+ * of the status, rsvp_status and checked_in list filters (see utils.ts).
+ */
+export type AttendanceView =
+  | "rsvp_pending"
+  | "rsvp_confirmed"
+  | "rsvp_declined"
+  | "checked_in"
+  | "no_show";
+
 export type ApplicationSortBy =
   | "created_at"
   | "accept_votes"
@@ -86,10 +113,13 @@ export interface FetchParams {
   cursor?: string;
   status?: ApplicationStatus | null;
   travel_status?: TravelStatus;
-  rsvp_status?: RSVPStatus;
+  /** null clears a remembered filter; undefined keeps it. */
+  rsvp_status?: RSVPStatus | null;
   travel_rsvp_status?: RSVPStatus;
   has_receipts?: boolean;
   travel_requested?: boolean;
+  /** null clears a remembered filter; undefined keeps it. */
+  checked_in?: boolean | null;
   direction?: "forward" | "backward";
   search?: string;
   sort_by?: ApplicationSortBy;

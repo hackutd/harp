@@ -76,6 +76,7 @@ type ApplicationListFilters struct {
 	TravelRSVPStatus *RSVPStatus
 	HasReceipts      *bool
 	TravelRequested  *bool
+	CheckedIn        *bool
 	Search           *string
 	SortBy           ApplicationSortBy
 }
@@ -120,6 +121,8 @@ type ApplicationListItem struct {
 	TravelRSVPSubmittedAt    *time.Time `json:"travel_rsvp_submitted_at"`
 	ReceiptCount             int        `json:"receipt_count"`
 	EstimatedTravelCostCents *int64     `json:"estimated_travel_cost_cents"`
+	// CheckedInAt is the first check-in scan, nil until the hacker arrives.
+	CheckedInAt *time.Time `json:"checked_in_at"`
 }
 
 // ApplicationListResult contains paginated results
@@ -139,6 +142,14 @@ type ApplicationStats struct {
 	Waitlisted        int64   `json:"waitlisted"`
 	Draft             int64   `json:"draft"`
 	AcceptanceRate    float64 `json:"acceptance_rate"`
+	// RSVP and attendance counts. RSVP counts cover accepted applications only;
+	// CheckedIn counts everyone with a check-in scan, walk-ins included, and
+	// NoShows is accepted + RSVP confirmed + never checked in.
+	RSVPPending   int64 `json:"rsvp_pending"`
+	RSVPConfirmed int64 `json:"rsvp_confirmed"`
+	RSVPDeclined  int64 `json:"rsvp_declined"`
+	CheckedIn     int64 `json:"checked_in"`
+	NoShows       int64 `json:"no_shows"`
 }
 
 // ApplicationTimelinePoint is one calendar day of application activity.
@@ -161,6 +172,7 @@ type FormOperationsStats struct {
 	Applications ApplicationFormStats `json:"applications"`
 	RSVP         RSVPFormStats        `json:"rsvp"`
 	Travel       TravelFormStats      `json:"travel"`
+	Attendance   AttendanceStats      `json:"attendance"`
 }
 
 type ApplicationFormStats struct {
@@ -182,6 +194,18 @@ type RSVPFormStats struct {
 	Declined       int64      `json:"declined"`
 	ResponseRate   float64    `json:"response_rate"`
 	LatestResponse *time.Time `json:"latest_response"`
+}
+
+// AttendanceStats joins the RSVP funnel to check-in scans: who said they would
+// come, who actually did, and who came in without an RSVP (promoted walk-ins,
+// or anyone let in while check_in_requires_rsvp was off).
+type AttendanceStats struct {
+	CheckedIn            int64      `json:"checked_in"`
+	CheckedInConfirmed   int64      `json:"checked_in_confirmed"`
+	CheckedInWithoutRSVP int64      `json:"checked_in_without_rsvp"`
+	NoShows              int64      `json:"no_shows"`
+	ShowRate             float64    `json:"show_rate"`
+	LatestCheckIn        *time.Time `json:"latest_check_in"`
 }
 
 type TravelFormStats struct {
@@ -274,6 +298,16 @@ type ApplicationsStore struct {
 }
 
 // applicationSelectCols is the standard SELECT for loading a full Application
+// checkInScanTypesSQL selects the names of every scan type in the check_in
+// category. Scan types are admin-configurable JSON in the scan_types setting,
+// so the set is resolved in SQL rather than hardcoding "check_in". Inactive
+// types still count: deactivating a type does not undo the scans it recorded,
+// and the scan handler's HasCheckIn gate counts them the same way.
+const checkInScanTypesSQL = `
+	SELECT st->>'name'
+	FROM settings, jsonb_array_elements(settings.value) AS st
+	WHERE settings.key = 'scan_types' AND st->>'category' = 'check_in'`
+
 const applicationSelectCols = `
 	id, user_id, status, responses, resume_path, ai_percent,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
@@ -573,7 +607,10 @@ func (s *ApplicationsStore) List(
 		       a.rsvp_status, a.travel_rsvp_status,
 		       a.rsvp_submitted_at, a.travel_rsvp_submitted_at,
 		       CARDINALITY(a.travel_receipt_paths) AS receipt_count,
-		       a.travel_estimated_cost_cents AS estimated_travel_cost_cents
+		       a.travel_estimated_cost_cents AS estimated_travel_cost_cents,
+		       (SELECT MIN(s.scanned_at) FROM scans s
+		        WHERE s.user_id = a.user_id
+		          AND s.scan_type IN (` + checkInScanTypesSQL + `)) AS checked_in_at
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -652,6 +689,16 @@ func (s *ApplicationsStore) List(
 			conds = append(conds, "a.travel_status = 'not_requested'")
 		}
 	}
+	if filters.CheckedIn != nil {
+		checkedIn := `EXISTS (SELECT 1 FROM scans s
+			WHERE s.user_id = a.user_id
+			  AND s.scan_type IN (` + checkInScanTypesSQL + `))`
+		if *filters.CheckedIn {
+			conds = append(conds, checkedIn)
+		} else {
+			conds = append(conds, "NOT "+checkedIn)
+		}
+	}
 
 	where := ""
 	if len(conds) > 0 {
@@ -694,6 +741,7 @@ func (s *ApplicationsStore) List(
 			&item.RSVPStatus, &item.TravelRSVPStatus,
 			&item.RSVPSubmittedAt, &item.TravelRSVPSubmittedAt,
 			&item.ReceiptCount, &item.EstimatedTravelCostCents,
+			&item.CheckedInAt,
 		); err != nil {
 			return nil, err
 		}
@@ -943,8 +991,17 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 			COUNT(*) FILTER (WHERE status = 'accepted') AS accepted,
 			COUNT(*) FILTER (WHERE status = 'rejected') AS rejected,
 			COUNT(*) FILTER (WHERE status = 'waitlisted') AS waitlisted,
-			COUNT(*) FILTER (WHERE status = 'draft') AS draft
-		FROM applications
+			COUNT(*) FILTER (WHERE status = 'draft') AS draft,
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'pending') AS rsvp_pending,
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed') AS rsvp_confirmed,
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'declined') AS rsvp_declined,
+			COUNT(c.user_id) AS checked_in,
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed' AND c.user_id IS NULL) AS no_shows
+		FROM applications a
+		LEFT JOIN (
+			SELECT DISTINCT user_id FROM scans
+			WHERE scan_type IN (` + checkInScanTypesSQL + `)
+		) c ON c.user_id = a.user_id
 	`
 
 	var stats ApplicationStats
@@ -955,6 +1012,11 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 		&stats.Rejected,
 		&stats.Waitlisted,
 		&stats.Draft,
+		&stats.RSVPPending,
+		&stats.RSVPConfirmed,
+		&stats.RSVPDeclined,
+		&stats.CheckedIn,
+		&stats.NoShows,
 	)
 	if err != nil {
 		return nil, err
@@ -1059,8 +1121,19 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 			COALESCE(SUM(CARDINALITY(travel_receipt_paths)), 0),
 			COALESCE(SUM(travel_estimated_cost_cents) FILTER (WHERE travel_status != 'not_requested'), 0),
 			COALESCE(SUM(travel_approved_amount_cents) FILTER (WHERE travel_status = 'approved'), 0),
-			MAX(travel_rsvp_submitted_at)
-		FROM applications`
+			MAX(travel_rsvp_submitted_at),
+
+			COUNT(c.user_id),
+			COUNT(c.user_id) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed'),
+			COUNT(c.user_id) FILTER (WHERE rsvp_status != 'confirmed'),
+			COUNT(*) FILTER (WHERE status = 'accepted' AND rsvp_status = 'confirmed' AND c.user_id IS NULL),
+			MAX(c.checked_in_at)
+		FROM applications a
+		LEFT JOIN (
+			SELECT user_id, MIN(scanned_at) AS checked_in_at FROM scans
+			WHERE scan_type IN (` + checkInScanTypesSQL + `)
+			GROUP BY user_id
+		) c ON c.user_id = a.user_id`
 
 	var stats FormOperationsStats
 	err := s.db.QueryRowContext(ctx, query).Scan(
@@ -1090,6 +1163,11 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 		&stats.Travel.RequestedEstimateCents,
 		&stats.Travel.ApprovedAmountCents,
 		&stats.Travel.LatestTravelFormSubmission,
+		&stats.Attendance.CheckedIn,
+		&stats.Attendance.CheckedInConfirmed,
+		&stats.Attendance.CheckedInWithoutRSVP,
+		&stats.Attendance.NoShows,
+		&stats.Attendance.LatestCheckIn,
 	)
 	if err != nil {
 		return nil, err
@@ -1100,6 +1178,9 @@ func (s *ApplicationsStore) GetFormOperationsStats(ctx context.Context) (*FormOp
 	}
 	if stats.RSVP.Eligible > 0 {
 		stats.RSVP.ResponseRate = float64(stats.RSVP.Confirmed+stats.RSVP.Declined) / float64(stats.RSVP.Eligible) * 100
+	}
+	if stats.RSVP.Confirmed > 0 {
+		stats.Attendance.ShowRate = float64(stats.Attendance.CheckedInConfirmed) / float64(stats.RSVP.Confirmed) * 100
 	}
 
 	return &stats, nil
@@ -1150,9 +1231,16 @@ func (s *ApplicationsStore) GetCheckInEligibility(ctx context.Context, userID st
 	return &eligibility, nil
 }
 
-func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
+func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus, rsvpStatus *RSVPStatus) ([]UserEmailInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
+
+	args := []any{status}
+	rsvpCond := ""
+	if rsvpStatus != nil {
+		args = append(args, *rsvpStatus)
+		rsvpCond = " AND a.rsvp_status = $2::rsvp_status"
+	}
 
 	query := `
 		SELECT a.user_id, u.email,
@@ -1160,10 +1248,10 @@ func (s *ApplicationsStore) GetEmailsByStatus(ctx context.Context, status Applic
 		       a.responses->>'last_name' AS last_name
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id
-		WHERE a.status = $1
+		WHERE a.status = $1` + rsvpCond + `
 		ORDER BY u.email`
 
-	rows, err := s.db.QueryContext(ctx, query, status)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
