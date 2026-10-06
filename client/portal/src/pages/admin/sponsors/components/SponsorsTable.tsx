@@ -59,7 +59,8 @@ const tierColors: Record<string, string> = {
   Gold: "bg-amber-100 text-amber-800",
   Silver: "bg-gray-100 text-gray-800",
   Bronze: "bg-orange-100 text-orange-800",
-  Standard: "bg-blue-100 text-blue-800",
+  "Other Sponsors": "bg-blue-100 text-blue-800",
+  "Also Thanking": "bg-emerald-100 text-emerald-800",
 };
 
 interface SponsorsTableProps {

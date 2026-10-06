@@ -306,6 +306,26 @@ func (m *MockSettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) er
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetDecisionsReleased(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetDecisionsReleased(ctx context.Context, released bool) error {
+	args := m.Called(released)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetTravelApplicationsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetTravelApplicationsEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetCheckInRequiresRSVP(ctx context.Context) (bool, error) {
 	args := m.Called()
 	return args.Bool(0), args.Error(1)

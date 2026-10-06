@@ -33,6 +33,29 @@ export async function setFormEnabled(
   );
 }
 
+const TRAVEL_REQUESTS_ENDPOINT =
+  "/superadmin/settings/travel-applications-enabled";
+
+export async function fetchTravelRequestsEnabled(
+  signal?: AbortSignal,
+): Promise<ApiResponse<{ enabled: boolean }>> {
+  return getRequest<{ enabled: boolean }>(
+    TRAVEL_REQUESTS_ENDPOINT,
+    "travel applications enabled",
+    signal,
+  );
+}
+
+export async function setTravelRequestsEnabled(
+  enabled: boolean,
+): Promise<ApiResponse<{ enabled: boolean }>> {
+  return putRequest<{ enabled: boolean }>(
+    TRAVEL_REQUESTS_ENDPOINT,
+    { enabled },
+    "travel applications enabled",
+  );
+}
+
 export async function fetchFormResponses(
   form: FormKey,
   params: FetchParams,

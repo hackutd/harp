@@ -1,8 +1,9 @@
 import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
-import { getRequest, postRequest } from "@/shared/lib/api";
+import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
 
 import type {
   DecisionEmailStatsResponse,
+  DecisionsReleasedResponse,
   SendDecisionEmailsPayload,
   SendDecisionEmailsResponse,
 } from "./types";
@@ -38,6 +39,22 @@ export async function sendDecisionEmails(payload: SendDecisionEmailsPayload) {
     "/superadmin/emails/decisions",
     payload,
     "send decision emails",
+  );
+}
+
+export async function fetchDecisionsReleased(signal?: AbortSignal) {
+  return getRequest<DecisionsReleasedResponse>(
+    "/superadmin/settings/decisions-released",
+    "decisions released",
+    signal,
+  );
+}
+
+export async function setDecisionsReleased(released: boolean) {
+  return putRequest<DecisionsReleasedResponse>(
+    "/superadmin/settings/decisions-released",
+    { released },
+    "decisions released",
   );
 }
 
