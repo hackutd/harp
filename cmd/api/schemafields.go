@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hackutd/harp/internal/store"
 )
@@ -124,6 +125,68 @@ func schemaContractFieldID(fields []store.ApplicationSchemaField, fieldID string
 		}
 	}
 	return ""
+}
+
+// conditionFieldID returns the field a show_if / required_if expression reads:
+// the checkbox id itself, or the id before "=" in a "field=value" expression.
+func conditionFieldID(expr string) string {
+	fieldID, _, _ := strings.Cut(expr, "=")
+	return fieldID
+}
+
+// travelQuestionIDs returns the travel opt-in checkbox and every field shown or
+// required only through it: the questions that exist only for an applicant
+// asking for travel reimbursement. They are found through the binding rather
+// than the section, so renaming the section in the editor changes nothing.
+func travelQuestionIDs(fields []store.ApplicationSchemaField) map[string]bool {
+	ids := map[string]bool{}
+	if schemaContractFieldID(fields, travelOptInFieldID) == "" {
+		return ids
+	}
+
+	ids[travelOptInFieldID] = true
+	for _, f := range fields {
+		for _, key := range []string{"show_if", "required_if"} {
+			if expr, ok := f.Validation[key].(string); ok && conditionFieldID(expr) == travelOptInFieldID {
+				ids[f.ID] = true
+			}
+		}
+	}
+	return ids
+}
+
+// applicantSchema returns the application schema as applicants see it, plus
+// the ids of any fields withheld from them. While travel applications are
+// closed the travel questions are withheld, so applicants are neither shown
+// nor required to answer them and the opt-in binding goes inactive. Admin
+// endpoints keep reading the full schema, so earlier applicants' travel
+// answers still render in review.
+func (app *application) applicantSchema(r *http.Request) ([]store.ApplicationSchemaField, map[string]bool, error) {
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	travelIDs := travelQuestionIDs(schema)
+	if len(travelIDs) == 0 {
+		return schema, nil, nil
+	}
+
+	open, err := app.store.Settings.GetTravelApplicationsEnabled(r.Context())
+	if err != nil {
+		return nil, nil, err
+	}
+	if open {
+		return schema, nil, nil
+	}
+
+	visible := make([]store.ApplicationSchemaField, 0, len(schema))
+	for _, f := range schema {
+		if !travelIDs[f.ID] {
+			visible = append(visible, f)
+		}
+	}
+	return visible, travelIDs, nil
 }
 
 func containsOption(options []string, want string) bool {

@@ -30,7 +30,9 @@ const TIER_OPTIONS = [
   "Gold",
   "Silver",
   "Bronze",
-  "Standard",
+  "Other Sponsors",
+  // In-kind sponsors: food, drinks, swag, or services rather than money.
+  "Also Thanking",
 ];
 
 interface SponsorFormDialogProps {
@@ -53,7 +55,7 @@ function SponsorForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(sponsor?.name ?? "");
-  const [tier, setTier] = useState(sponsor?.tier ?? "Standard");
+  const [tier, setTier] = useState(sponsor?.tier ?? "Other Sponsors");
   const [websiteUrl, setWebsiteUrl] = useState(sponsor?.website_url ?? "");
   const [description, setDescription] = useState(sponsor?.description ?? "");
   const [displayOrder, setDisplayOrder] = useState(sponsor?.display_order ?? 0);

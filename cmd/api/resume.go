@@ -212,7 +212,7 @@ func (app *application) deleteResumeHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	schema, _, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return

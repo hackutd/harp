@@ -241,6 +241,9 @@ func TestSubmitApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	// Travel applications stay open here; closing them is covered in
+	// travel_applications_test.go.
+	mockSettings.On("GetTravelApplicationsEnabled").Return(true, nil).Maybe()
 
 	t.Run("should submit a complete application", func(t *testing.T) {
 		user := newTestUser()

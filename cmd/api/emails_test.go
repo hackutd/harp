@@ -49,6 +49,13 @@ func stubDecisionMarker(mockApps *store.MockApplicationStore, kind store.Decisio
 		Return(nil).Maybe()
 }
 
+// stubDecisionsReleased sets whether decisions have been released to hackers.
+// It is optional so suites can share it across cases that never read it.
+func stubDecisionsReleased(app *application, released bool) {
+	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	mockSettings.On("GetDecisionsReleased").Return(released, nil).Maybe()
+}
+
 func sendDecisionEmailsRequest(body string) *http.Request {
 	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -59,6 +66,7 @@ func TestSendDecisionEmails(t *testing.T) {
 	t.Run("returns 200 and queues the selected statuses", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, true)
 		stubDecisionMailer(app)
 
 		pending := []store.DecisionEmailRecipient{
@@ -97,6 +105,7 @@ func TestSendDecisionEmails(t *testing.T) {
 	t.Run("announcement mode targets every decided applicant", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, true)
 		stubDecisionMailer(app)
 
 		pending := []store.DecisionEmailRecipient{
@@ -129,6 +138,7 @@ func TestSendDecisionEmails(t *testing.T) {
 	t.Run("resend_all includes applicants already emailed", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, true)
 		stubDecisionMailer(app)
 
 		all := []store.DecisionEmailRecipient{
@@ -160,6 +170,7 @@ func TestSendDecisionEmails(t *testing.T) {
 	t.Run("returns 200 and marks nothing when no one is pending", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, true)
 
 		statuses := []store.ApplicationStatus{store.StatusAccepted}
 		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, true).
@@ -188,6 +199,7 @@ func TestSendDecisionEmails(t *testing.T) {
 	t.Run("returns 409 while a previous run is still sending", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, true)
 		mockMailer := app.mailer.(*mailer.MockClient)
 
 		pending := []store.DecisionEmailRecipient{
@@ -265,6 +277,7 @@ func TestSendDecisionEmails(t *testing.T) {
 	t.Run("returns 500 when fetching recipients fails and releases the run lock", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, true)
 
 		statuses := []store.ApplicationStatus{store.StatusAccepted}
 		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, true).
@@ -276,6 +289,32 @@ func TestSendDecisionEmails(t *testing.T) {
 
 		assert.False(t, app.decisionEmailInFlight.Load())
 		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("returns 409 until decisions are released", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		stubDecisionsReleased(app, false)
+
+		req := sendDecisionEmailsRequest(`{"mode":"announcement"}`)
+		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
+		checkResponseCode(t, http.StatusConflict, rr.Code)
+
+		mockApps.AssertNotCalled(t, "GetDecisionEmailRecipients", mock.Anything, mock.Anything, mock.Anything)
+		assert.False(t, app.decisionEmailInFlight.Load())
+	})
+
+	t.Run("returns 500 when the release setting cannot be read", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockSettings.On("GetDecisionsReleased").Return(false, assert.AnError).Once()
+
+		req := sendDecisionEmailsRequest(`{"mode":"announcement"}`)
+		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+
+		mockApps.AssertNotCalled(t, "GetDecisionEmailRecipients", mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 

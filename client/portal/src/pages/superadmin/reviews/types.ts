@@ -63,3 +63,7 @@ export interface SendDecisionEmailsResponse {
   queued: number;
   skipped: number;
 }
+
+export interface DecisionsReleasedResponse {
+  released: boolean;
+}

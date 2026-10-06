@@ -55,6 +55,11 @@ func (app *application) getMyRSVPHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if err := app.hideUnreleasedDecision(r, application); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	if application.Status != store.StatusAccepted {
 		app.forbiddenResponse(w, r, errors.New("application is not accepted"))
 		return
@@ -114,6 +119,11 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 			app.notFoundResponse(w, r, errors.New("application not found"))
 			return
 		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.hideUnreleasedDecision(r, application); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}

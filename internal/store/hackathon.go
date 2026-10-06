@@ -76,6 +76,11 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 			return nil, err
 		}
 
+		// The decisions they gated are gone, so the next cycle's start hidden.
+		if err := hideDecisions(ctx, tx); err != nil {
+			return nil, err
+		}
+
 		// Do not leave the public form open against an empty application table.
 		// A full reset also closes it through resetHackathonConfig below, but the
 		// applications option is independently callable.

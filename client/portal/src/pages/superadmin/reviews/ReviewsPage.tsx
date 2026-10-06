@@ -53,6 +53,7 @@ import {
 import { useUserStore } from "@/shared/stores/user";
 
 import type { BatchAssignmentResult } from "./api";
+import { ReleaseDecisionsButton } from "./components/ReleaseDecisionsButton";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { ReviewStatusTabs } from "./components/ReviewStatusTabs";
 import { SendEmailsDialog } from "./components/SendEmailsDialog";
@@ -595,6 +596,7 @@ export default function ReviewsPage() {
                 </span>
               </CardDescription>
               <div className="flex items-center gap-2">
+                <ReleaseDecisionsButton stats={stats} />
                 <Button
                   variant="outline"
                   size="sm"
