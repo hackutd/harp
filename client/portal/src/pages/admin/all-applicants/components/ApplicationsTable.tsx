@@ -16,7 +16,7 @@ import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import type { ApplicationListItem } from "../types";
-import { formatName, getStatusColor } from "../utils";
+import { formatCheckIn, formatName, getStatusColor } from "../utils";
 
 interface ApplicationsTableProps {
   applications: ApplicationListItem[];
@@ -39,10 +39,12 @@ export const ApplicationsTable = memo(function ApplicationsTable({
       {loading && (
         <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse table-fixed min-w-[1500px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
+      <Table className="border-collapse table-fixed min-w-[1760px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-46">Status</TableHead>
+            <TableHead className="w-28">RSVP</TableHead>
+            <TableHead className="w-36">Checked in</TableHead>
             <TableHead className="w-28">Travel RSVP</TableHead>
             <TableHead className="w-48">
               {redact ? "Applicant" : "Name"}
@@ -66,7 +68,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={17} className="text-center text-gray-500">
+              <TableCell colSpan={19} className="text-center text-gray-500">
                 No applications found
               </TableCell>
             </TableRow>
@@ -97,6 +99,30 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                     <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
                       <Maximize2 className="h-4 w-4 text-muted-foreground" />
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {/* rsvp_status defaults to pending on every row, so it
+                        only means something once the hacker is accepted. */}
+                    {app.status === "accepted" ? (
+                      <Badge className={getStatusColor(app.rsvp_status)}>
+                        {app.rsvp_status}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell
+                    title={
+                      app.checked_in_at
+                        ? new Date(app.checked_in_at).toLocaleString()
+                        : undefined
+                    }
+                  >
+                    {app.checked_in_at ? (
+                      formatCheckIn(app.checked_in_at)
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {app.travel_status === "not_requested" ? (

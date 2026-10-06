@@ -596,7 +596,6 @@ export default function ReviewsPage() {
                 </span>
               </CardDescription>
               <div className="flex items-center gap-2">
-                <ReleaseDecisionsButton stats={stats} />
                 <Button
                   variant="outline"
                   size="sm"
@@ -621,6 +620,7 @@ export default function ReviewsPage() {
                   <Mail className="size-3.5" />
                   Emails
                 </Button>
+                <ReleaseDecisionsButton stats={stats} />
               </div>
             </div>
           </CardHeader>

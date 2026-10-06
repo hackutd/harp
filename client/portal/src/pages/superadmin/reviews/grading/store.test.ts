@@ -86,6 +86,7 @@ function app(id: string): ApplicationListItem {
     travel_rsvp_submitted_at: null,
     receipt_count: 0,
     estimated_travel_cost_cents: null,
+    checked_in_at: null,
   };
 }
 

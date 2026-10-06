@@ -1,5 +1,6 @@
 import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
 import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
+import type { RSVPStatus } from "@/types";
 
 import type {
   DecisionEmailStatsResponse,
@@ -19,9 +20,15 @@ interface EmailListResponse {
   count: number;
 }
 
-export async function fetchApplicantEmails(status: ApplicationStatus) {
+/** rsvpStatus narrows the list by RSVP state; the server requires status "accepted" with it. */
+export async function fetchApplicantEmails(
+  status: ApplicationStatus,
+  rsvpStatus?: RSVPStatus,
+) {
+  const query = new URLSearchParams({ status });
+  if (rsvpStatus) query.set("rsvp_status", rsvpStatus);
   return getRequest<EmailListResponse>(
-    `/superadmin/applications/emails?status=${status}`,
+    `/superadmin/applications/emails?${query}`,
     "applicant emails",
   );
 }
