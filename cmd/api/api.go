@@ -453,6 +453,10 @@ func (app *application) mount() http.Handler {
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
 						r.Patch("/{applicationID}/travel-status", app.setApplicationTravelStatus)
+						// Full edit access to any hacker's application
+						r.Patch("/{applicationID}", app.adminUpdateApplicationHandler)
+						r.Post("/{applicationID}/resume-upload-url", app.adminResumeUploadURLHandler)
+						r.Delete("/{applicationID}/resume", app.adminDeleteResumeHandler)
 						// Repair hatches for the one-shot hacker RSVPs
 						r.Post("/{applicationID}/rsvp/reset", app.resetApplicationRSVPHandler)
 						r.Post("/{applicationID}/travel-rsvp/reset", app.resetApplicationTravelRSVPHandler)

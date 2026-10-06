@@ -372,14 +372,19 @@ func (s *ApplicationsStore) Update(ctx context.Context, app *Application) error 
 // checkbox that opts the applicant into travel reimbursement review; it is
 // passed in rather than hard-coded because super admins can edit the schema.
 // An empty ID (no such field in the schema) means no one requests travel.
+//
+// A super admin can reopen a submitted application as a draft, so a submit can
+// be a resubmit: it keeps the original submitted_at (review order and priority
+// key off it) and any travel decision already made.
 func (s *ApplicationsStore) Submit(ctx context.Context, app *Application, travelOptInFieldID string) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		UPDATE applications
-		SET status = 'submitted', submitted_at = NOW(),
+		SET status = 'submitted', submitted_at = COALESCE(submitted_at, NOW()),
 		    travel_status = CASE
+		        WHEN travel_status IN ('approved', 'rejected') THEN travel_status
 		        WHEN $2::text != '' AND responses->($2::text) = 'true'::jsonb THEN 'pending'::travel_status
 		        ELSE 'not_requested'::travel_status
 		    END

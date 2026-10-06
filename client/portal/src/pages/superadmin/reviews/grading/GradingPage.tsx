@@ -26,11 +26,10 @@ import type {
 } from "@/pages/admin/all-applicants/types";
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
 
+import { EditApplicationDialog } from "./components/EditApplicationDialog";
 import { GradingPanel } from "./components/GradingPanel";
 import { TravelRSVPSection } from "./components/TravelRSVPSection";
 import { useGradingStore } from "./store";
-
-type GradeStatus = "accepted" | "rejected" | "waitlisted";
 
 export default function GradingPage() {
   const navigate = useNavigate();
@@ -44,6 +43,7 @@ export default function GradingPage() {
   const notes = useGradingStore((s) => s.notes);
   const notesLoading = useGradingStore((s) => s.notesLoading);
   const grading = useGradingStore((s) => s.grading);
+  const saving = useGradingStore((s) => s.saving);
   const nextCursor = useGradingStore((s) => s.nextCursor);
   const prevCursor = useGradingStore((s) => s.prevCursor);
   const fetchApplications = useGradingStore((s) => s.fetchApplications);
@@ -54,16 +54,22 @@ export default function GradingPage() {
   const gradeTravel = useGradingStore((s) => s.gradeTravel);
   const resetRSVP = useGradingStore((s) => s.resetRSVP);
   const resetTravelRSVP = useGradingStore((s) => s.resetTravelRSVP);
+  const saveResponses = useGradingStore((s) => s.saveResponses);
+  const replaceResume = useGradingStore((s) => s.replaceResume);
+  const removeResume = useGradingStore((s) => s.removeResume);
   const reset = useGradingStore((s) => s.reset);
 
   const currentApp = applications[currentIndex] ?? null;
 
-  // A draft was never submitted by the hacker, so grading one needs an explicit
-  // confirmation. The id is captured so the confirm can't land on another app.
-  const [draftGrade, setDraftGrade] = useState<{
+  // Moving an application into or out of draft changes what the hacker can
+  // do, so both need an explicit confirmation. The id is captured so the
+  // confirm can't land on another app.
+  const [pendingStatus, setPendingStatus] = useState<{
     id: string;
-    status: GradeStatus;
+    from: ApplicationStatus;
+    status: ApplicationStatus;
   } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   // Initialize from URL params and reset stale state
   useEffect(() => {
@@ -98,10 +104,14 @@ export default function GradingPage() {
   }, []);
 
   const handleGrade = useCallback(
-    (status: GradeStatus) => {
-      if (!currentApp) return;
-      if (currentApp.status === "draft") {
-        setDraftGrade({ id: currentApp.id, status });
+    (status: ApplicationStatus) => {
+      if (!currentApp || currentApp.status === status) return;
+      if (status === "draft" || currentApp.status === "draft") {
+        setPendingStatus({
+          id: currentApp.id,
+          from: currentApp.status,
+          status,
+        });
         return;
       }
       gradeApplication(currentApp.id, status);
@@ -109,12 +119,29 @@ export default function GradingPage() {
     [currentApp, gradeApplication],
   );
 
-  const confirmDraftGrade = useCallback(() => {
-    if (draftGrade) {
-      gradeApplication(draftGrade.id, draftGrade.status);
+  const confirmPendingStatus = useCallback(() => {
+    if (pendingStatus) {
+      gradeApplication(pendingStatus.id, pendingStatus.status);
     }
-    setDraftGrade(null);
-  }, [draftGrade, gradeApplication]);
+    setPendingStatus(null);
+  }, [pendingStatus, gradeApplication]);
+
+  const handleSaveResponses = useCallback(
+    (responses: Record<string, unknown>) =>
+      detail ? saveResponses(detail.id, responses) : Promise.resolve(false),
+    [detail, saveResponses],
+  );
+
+  const handleReplaceResume = useCallback(
+    (file: File) => {
+      if (detail) replaceResume(detail.id, file);
+    },
+    [detail, replaceResume],
+  );
+
+  const handleRemoveResume = useCallback(() => {
+    if (detail) removeResume(detail.id);
+  }, [detail, removeResume]);
 
   const handleGradeTravel = useCallback(
     (
@@ -142,7 +169,7 @@ export default function GradingPage() {
 
   useGradingKeyboardShortcuts({
     disabled: grading,
-    suspended: draftGrade !== null,
+    suspended: pendingStatus !== null || editOpen,
     canAct: !!currentApp?.id,
     escapeUrl: "/admin/sa/reviews",
     onNavigateNext: navigateNext,
@@ -239,6 +266,7 @@ export default function GradingPage() {
             notesLoading={notesLoading}
             grading={grading}
             onGrade={handleGrade}
+            onEdit={() => setEditOpen(true)}
             onGradeTravel={handleGradeTravel}
             onResetRSVP={handleResetRSVP}
             onResetTravelRSVP={handleResetTravelRSVP}
@@ -261,33 +289,64 @@ export default function GradingPage() {
         }
       />
 
+      <EditApplicationDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        application={detail}
+        saving={saving}
+        onSave={handleSaveResponses}
+        onReplaceResume={handleReplaceResume}
+        onRemoveResume={handleRemoveResume}
+      />
+
       <AlertDialog
-        open={draftGrade !== null}
+        open={pendingStatus !== null}
         onOpenChange={(open) => {
-          if (!open) setDraftGrade(null);
+          if (!open) setPendingStatus(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              This application is still a draft
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              The applicant never submitted it, so it may be incomplete. Marking
-              it <strong>{draftGrade?.status}</strong> moves it out of draft,
-              and the applicant can no longer edit or submit it. It will also be
-              included in decision emails for that status.
-            </AlertDialogDescription>
+            {pendingStatus?.status === "draft" ? (
+              <>
+                <AlertDialogTitle>
+                  Reopen this application as a draft?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  The hacker can edit their answers and resume again and has to
+                  resubmit. Until they do, it leaves the review queues. Its
+                  current status (<strong>{pendingStatus.from}</strong>) is
+                  replaced, so grade it again once it comes back. Reviews, RSVP,
+                  travel decision, and the original submission time are kept.
+                </AlertDialogDescription>
+              </>
+            ) : (
+              <>
+                <AlertDialogTitle>
+                  This application is still a draft
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  The applicant hasn&apos;t submitted it, so it may be
+                  incomplete. Marking it{" "}
+                  <strong>{pendingStatus?.status}</strong> moves it out of
+                  draft, and the applicant can no longer edit or submit it.
+                  {pendingStatus?.status !== "submitted" &&
+                    " It will also be included in decision emails for that status."}
+                </AlertDialogDescription>
+              </>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="cursor-pointer">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDraftGrade}
+              onClick={confirmPendingStatus}
               className="cursor-pointer"
             >
-              Mark as {draftGrade?.status}
+              {pendingStatus?.status === "draft"
+                ? "Reopen as draft"
+                : `Mark as ${pendingStatus?.status}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
