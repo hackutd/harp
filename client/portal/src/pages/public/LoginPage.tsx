@@ -11,6 +11,7 @@ import sky from "@/assets/sky.webp";
 import wordmark from "@/assets/zero-day-wordmark.webp";
 import { Button } from "@/components/ui/button";
 import { checkEmailAuthMethod } from "@/shared/lib/api";
+import { ZERODAY_URL } from "@/shared/lib/zeroday";
 
 import { fetchLegalConfig } from "./api";
 import type { LegalConfig } from "./types";
@@ -54,7 +55,7 @@ function ZeroDayShell({ children }: { children: ReactNode }) {
       </div>
 
       <a
-        href="https://zeroday.hackutd.co"
+        href={ZERODAY_URL}
         aria-label="Back to HackUTD Zero Day"
         className="group absolute top-6 left-5 flex size-11 items-center justify-center bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/25 focus-visible:shadow-[inset_0_0_0_2px_#fff] focus-visible:outline-none sm:left-8 lg:left-[9%]"
         style={{ clipPath: NOTCH_SM }}
