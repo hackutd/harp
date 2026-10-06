@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SECTION_TITLE } from "@/pages/admin/_shared/grading";
 
 import { setAIPercent } from "../api";
 
@@ -60,23 +60,25 @@ export const AIPercentField = memo(function AIPercentField({
   }
 
   return (
-    <div>
-      <Label className="text-xs text-muted-foreground">AI Percent</Label>
+    <div className="flex min-h-12 items-center justify-between gap-3 px-5 py-3">
+      <h3 className={SECTION_TITLE}>AI percent</h3>
       {editing ? (
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-1">
           <Input
             type="number"
             min={0}
             max={100}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            className="h-7 w-24 text-sm"
+            className="h-8 w-20 text-sm tabular-nums"
+            aria-label="AI percent"
             autoFocus
           />
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 cursor-pointer"
+            className="h-8 w-8 cursor-pointer"
+            aria-label="Save AI percent"
             onClick={saveEditing}
           >
             <Check className="h-3.5 w-3.5" />
@@ -84,26 +86,30 @@ export const AIPercentField = memo(function AIPercentField({
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 cursor-pointer"
+            className="h-8 w-8 cursor-pointer"
+            aria-label="Cancel"
             onClick={cancelEditing}
           >
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 mt-1">
-          <p
-            className={`text-sm ${aiPercent == null ? "text-muted-foreground italic" : ""}`}
-          >
-            {aiPercent != null ? `${aiPercent}%` : "Not set"}
-          </p>
+        <div className="flex items-center gap-1">
+          {aiPercent != null ? (
+            <span className="border px-2.5 py-1 text-sm tabular-nums">
+              AI {aiPercent}%
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not set</span>
+          )}
           <Button
             size="icon"
             variant="ghost"
-            className="h-6 w-6 cursor-pointer"
+            className="h-8 w-8 cursor-pointer text-muted-foreground"
+            aria-label="Edit AI percent"
             onClick={startEditing}
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}

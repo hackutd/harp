@@ -31,6 +31,9 @@ import {
 import {
   GradingActionButtons,
   ReviewerNotesList,
+  SECTION_TITLE,
+  SectionHeader,
+  SELECTED_BUTTON,
 } from "@/pages/admin/_shared/grading";
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
@@ -58,13 +61,6 @@ const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
   confirmed: "Spot claimed",
   declined: "Spot declined",
 };
-
-const SECTION_TITLE =
-  "text-[11px] font-normal uppercase tracking-wider text-foreground";
-
-/** A chosen decision reads as solid; everything else stays outlined. */
-const SELECTED_BUTTON =
-  "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background";
 
 /** Full-bleed row of figures, ruled above and below and between columns. */
 function StatStrip({
@@ -100,33 +96,6 @@ function StatStrip({
           </Tooltip>
         );
       })}
-    </div>
-  );
-}
-
-function SectionHeader({
-  title,
-  aside,
-  ruled = false,
-}: {
-  title: string;
-  aside?: ReactNode;
-  /** Draw a full-width line under the header. */
-  ruled?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 px-5 py-4",
-        ruled && "border-b",
-      )}
-    >
-      <h3 className={SECTION_TITLE}>{title}</h3>
-      {aside && (
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {aside}
-        </span>
-      )}
     </div>
   );
 }
