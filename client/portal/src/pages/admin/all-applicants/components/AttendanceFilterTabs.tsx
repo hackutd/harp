@@ -47,6 +47,11 @@ export const AttendanceFilterTabs = memo(function AttendanceFilterTabs({
           className="font-light cursor-pointer rounded-sm"
         >
           All
+          {stats && (
+            <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+              {stats.total_applications}
+            </Badge>
+          )}
         </TabsTrigger>
         {VIEWS.map((view) => (
           <TabsTrigger
