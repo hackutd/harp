@@ -28,10 +28,6 @@ export interface ReviewsState {
     reviewId: string,
     payload: SubmitVotePayload,
   ) => Promise<{ success: boolean; error?: string }>;
-  updateVote: (
-    reviewId: string,
-    payload: SubmitVotePayload,
-  ) => Promise<{ success: boolean; error?: string }>;
   claimMore: () => Promise<void>;
 }
 
@@ -116,28 +112,6 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     }
 
     return result;
-  },
-
-  updateVote: async (reviewId: string, payload: SubmitVotePayload) => {
-    set({ submitting: true });
-
-    const result = await submitReviewVote(reviewId, payload);
-
-    if (result.success && result.review) {
-      // The review stays in the completed list; merge the returned row so
-      // the badge, notes, and reviewed_at reflect the new decision.
-      const updated = result.review;
-      set((state) => ({
-        reviews: state.reviews.map((r) =>
-          r.id === reviewId ? { ...r, ...updated } : r,
-        ),
-        submitting: false,
-      }));
-    } else {
-      set({ submitting: false });
-    }
-
-    return { success: result.success, error: result.error };
   },
 
   claimMore: async () => {

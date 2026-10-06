@@ -359,10 +359,10 @@ func (app *application) explainRejectedVote(w http.ResponseWriter, r *http.Reque
 	app.conflictResponse(w, r, errors.New("vote could not be recorded, please retry"))
 }
 
-// setAIPercent records the AI-generated content percent for an assigned application review
+// setAIPercent records or updates the AI-generated content percent for an assigned application review
 //
 //	@Summary		Set AI percent on a review (Admin)
-//	@Description	Records the estimated AI-generated content percent for an application assigned to the current admin
+//	@Description	Records or updates the estimated AI-generated content percent for an application assigned to the current admin
 //	@Tags			admin/applications
 //	@Accept			json
 //	@Produce		json
@@ -403,7 +403,7 @@ func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, errors.New("application not found, not assigned to you, or AI percent already set"))
+			app.notFoundResponse(w, r, errors.New("application not found or not assigned to you"))
 		default:
 			app.internalServerError(w, r, err)
 		}

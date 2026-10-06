@@ -47,6 +47,7 @@ import {
 } from "../config";
 import type { FormDetailTab, FormKey, FormsOverviewData } from "../types";
 import { ResponsesTable } from "./ResponsesTable";
+import { TravelRequestsSetting } from "./TravelRequestsSetting";
 
 interface FormDetailProps {
   form: FormKey;
@@ -339,6 +340,7 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
                     )}
                   </div>
                 )}
+                {form === "application" && <TravelRequestsSetting />}
               </CardContent>
             </Card>
             <Card>

@@ -1,4 +1,5 @@
 import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
+import type { RSVPStatus } from "@/types";
 
 /** Statuses a decision email can be sent to. Draft and submitted have no decision. */
 export type DecidedStatus = Extract<
@@ -27,6 +28,34 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   accepted: "Accepted",
   waitlisted: "Waitlisted",
   rejected: "Rejected",
+};
+
+/**
+ * RSVP follow-up exports. Each is accepted applicants narrowed by RSVP state;
+ * the pending list is the one to send an RSVP reminder to.
+ */
+export const RSVP_EXPORT_STATUSES: RSVPStatus[] = [
+  "pending",
+  "confirmed",
+  "declined",
+];
+
+export const RSVP_EXPORT_OPTIONS: Record<
+  RSVPStatus,
+  { label: string; description: string }
+> = {
+  pending: {
+    label: "RSVP pending",
+    description: "Accepted but have not responded. Use for RSVP reminders.",
+  },
+  confirmed: {
+    label: "RSVP confirmed",
+    description: "Claimed their spot. Use for pre-event logistics.",
+  },
+  declined: {
+    label: "RSVP declined",
+    description: "Gave up their spot.",
+  },
 };
 
 /**
@@ -62,4 +91,8 @@ export interface SendDecisionEmailsResponse {
   mode: DecisionEmailMode;
   queued: number;
   skipped: number;
+}
+
+export interface DecisionsReleasedResponse {
+  released: boolean;
 }

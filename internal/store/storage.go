@@ -58,12 +58,13 @@ type Storage struct {
 		SubmitTravelRSVP(ctx context.Context, app *Application) error
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
+		GetTimeline(ctx context.Context, tz string) ([]ApplicationTimelinePoint, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		SetTravelStatus(ctx context.Context, id string, status TravelStatus, approvedAmountCents *int64) (*Application, error)
 		GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error)
 		ResetRSVP(ctx context.Context, id string) (*Application, []string, error)
 		ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error)
-		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		GetEmailsByStatus(ctx context.Context, status ApplicationStatus, rsvpStatus *RSVPStatus) ([]UserEmailInfo, error)
 		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
 		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
 		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)
@@ -80,6 +81,10 @@ type Storage struct {
 		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetRSVPEnabled(ctx context.Context) (bool, error)
 		SetRSVPEnabled(ctx context.Context, enabled bool) error
+		GetDecisionsReleased(ctx context.Context) (bool, error)
+		SetDecisionsReleased(ctx context.Context, released bool) error
+		GetTravelApplicationsEnabled(ctx context.Context) (bool, error)
+		SetTravelApplicationsEnabled(ctx context.Context, enabled bool) error
 		GetCheckInRequiresRSVP(ctx context.Context) (bool, error)
 		SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error
 		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)

@@ -15,12 +15,16 @@ import { formatApplicantLabel } from "@/shared/lib/redaction";
 
 import { VoteBadge } from "../components/VoteBadge";
 import type { ReviewVote } from "../types";
+import { CompletedReviewPanel } from "./components/CompletedReviewPanel";
 import { GradingVotingPanel } from "./components/GradingVotingPanel";
-import { useAdminGradingStore } from "./store";
+import type { GradingMode } from "./store";
+import { hasUnsavedChanges, useAdminGradingStore } from "./store";
 
 export default function GradingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const mode: GradingMode =
+    searchParams.get("mode") === "completed" ? "completed" : "pending";
 
   const reviews = useAdminGradingStore((s) => s.reviews);
   const loading = useAdminGradingStore((s) => s.loading);
@@ -34,13 +38,18 @@ export default function GradingPage() {
   const claiming = useAdminGradingStore((s) => s.claiming);
   const localNotes = useAdminGradingStore((s) => s.localNotes);
   const localTravelVote = useAdminGradingStore((s) => s.localTravelVote);
+  const localVote = useAdminGradingStore((s) => s.localVote);
+  const isDirty = useAdminGradingStore(hasUnsavedChanges);
   const fetchReviews = useAdminGradingStore((s) => s.fetchReviews);
   const navigateNext = useAdminGradingStore((s) => s.navigateNext);
   const navigatePrev = useAdminGradingStore((s) => s.navigatePrev);
   const submitVote = useAdminGradingStore((s) => s.submitVote);
+  const updateVote = useAdminGradingStore((s) => s.updateVote);
+  const discardChanges = useAdminGradingStore((s) => s.discardChanges);
   const claimMore = useAdminGradingStore((s) => s.claimMore);
   const setLocalNotes = useAdminGradingStore((s) => s.setLocalNotes);
   const setLocalTravelVote = useAdminGradingStore((s) => s.setLocalTravelVote);
+  const setLocalVote = useAdminGradingStore((s) => s.setLocalVote);
   const reset = useAdminGradingStore((s) => s.reset);
 
   const aiPercent = detail?.ai_percent ?? null;
@@ -55,20 +64,26 @@ export default function GradingPage() {
   const redact = useRedactApplicants();
 
   const currentReview = reviews[currentIndex] ?? null;
+  // A completed vote can change only while the application awaits a decision.
+  const canChangeVote = detail?.status === "submitted";
 
   const targetReviewId = searchParams.get("review") ?? undefined;
   useEffect(() => {
     const controller = new AbortController();
     reset();
-    void fetchReviews(targetReviewId, controller.signal);
+    void fetchReviews(targetReviewId, controller.signal, mode);
     return () => {
       controller.abort();
       reset();
     };
-  }, [fetchReviews, reset, targetReviewId]);
+  }, [fetchReviews, reset, targetReviewId, mode]);
 
   const handleVote = useCallback(
     (vote: ReviewVote) => {
+      if (mode === "completed") {
+        if (canChangeVote && !submitting) setLocalVote(vote);
+        return;
+      }
       if (
         currentReview &&
         !loading &&
@@ -86,12 +101,24 @@ export default function GradingPage() {
         submitVote(currentReview.id, vote);
       }
     },
-    [currentReview, loading, error, submitting, submitVote, localTravelVote],
+    [
+      mode,
+      canChangeVote,
+      setLocalVote,
+      currentReview,
+      loading,
+      error,
+      submitting,
+      submitVote,
+      localTravelVote,
+    ],
   );
 
   useGradingKeyboardShortcuts({
     disabled: submitting || loading || !!error,
-    canAct: !!currentReview?.id && !currentReview?.vote,
+    canAct:
+      !!currentReview?.id &&
+      (mode === "completed" ? canChangeVote : !currentReview.vote),
     escapeUrl: "/admin/reviews",
     onNavigateNext: navigateNext,
     onNavigatePrev: navigatePrev,
@@ -125,9 +152,15 @@ export default function GradingPage() {
       totalCount={reviews.length}
       onNavigateNext={navigateNext}
       onNavigatePrev={navigatePrev}
-      canNavigatePrev={!loading && !error && !submitting && currentIndex > 0}
+      canNavigatePrev={
+        !loading && !error && !submitting && !isDirty && currentIndex > 0
+      }
       canNavigateNext={
-        !loading && !error && !submitting && currentIndex < reviews.length - 1
+        !loading &&
+        !error &&
+        !submitting &&
+        !isDirty &&
+        currentIndex < reviews.length - 1
       }
       detailsPanel={
         <GradingDetailsPanel application={detail} loading={detailLoading}>
@@ -151,7 +184,29 @@ export default function GradingPage() {
         </GradingDetailsPanel>
       }
       actionPanel={
-        currentReview ? (
+        currentReview && mode === "completed" ? (
+          // Wait for the application so the decision status is known.
+          detailLoading ? null : (
+            <CompletedReviewPanel
+              review={currentReview}
+              canChange={canChangeVote}
+              isDirty={isDirty}
+              notes={localNotes}
+              travelVote={localTravelVote}
+              vote={localVote}
+              otherReviewerNotes={otherNotes}
+              notesLoading={notesLoading}
+              submitting={submitting}
+              aiPercent={aiPercent}
+              onAiPercentUpdate={setAiPercent}
+              onNotesChange={setLocalNotes}
+              onTravelVoteChange={setLocalTravelVote}
+              onVoteChange={setLocalVote}
+              onDiscard={discardChanges}
+              onSave={() => void updateVote(currentReview.id)}
+            />
+          )
+        ) : currentReview ? (
           <GradingVotingPanel
             review={currentReview}
             notes={localNotes}
@@ -173,13 +228,18 @@ export default function GradingPage() {
             className="text-muted-foreground"
             role={error ? "alert" : undefined}
           >
-            {error || "No pending reviews to grade."}
+            {error ||
+              (mode === "completed"
+                ? "No completed reviews to change."
+                : "No pending reviews to grade.")}
           </p>
           {error ? (
-            <Button onClick={() => void fetchReviews(targetReviewId)}>
+            <Button
+              onClick={() => void fetchReviews(targetReviewId, undefined, mode)}
+            >
               Retry
             </Button>
-          ) : (
+          ) : mode === "completed" ? null : (
             <Button
               className="cursor-pointer"
               loading={claiming}

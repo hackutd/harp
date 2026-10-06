@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,6 +24,47 @@ type ApplicationWithSchema struct {
 	ApplicationSchema []store.ApplicationSchemaField `json:"application_schema"`
 	// Points is the user's total scan points; populated on read endpoints only.
 	Points int `json:"points"`
+}
+
+// hasHackerVisibleDecision reports whether the application carries a decision
+// that must stay hidden from the hacker until results are released.
+func hasHackerVisibleDecision(a *store.Application) bool {
+	switch a.Status {
+	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
+		return true
+	}
+	return a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected
+}
+
+// hideUnreleasedDecision masks the application's final decision, travel
+// decision, and the review votes that would reveal them, until a super admin
+// releases decisions. It mutates the in-memory copy only: callers must not
+// persist an application after masking it. Status gates that run afterwards
+// (RSVP, travel RSVP) then see an undecided application and refuse.
+func (app *application) hideUnreleasedDecision(r *http.Request, a *store.Application) error {
+	if !hasHackerVisibleDecision(a) {
+		return nil
+	}
+
+	released, err := app.store.Settings.GetDecisionsReleased(r.Context())
+	if err != nil {
+		return err
+	}
+	if released {
+		return nil
+	}
+
+	switch a.Status {
+	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
+		a.Status = store.StatusSubmitted
+	}
+	if a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected {
+		a.TravelStatus = store.TravelPending
+	}
+	a.AcceptVotes, a.RejectVotes, a.WaitlistVotes = 0, 0, 0
+	a.TravelYesVotes, a.TravelNoVotes = 0, 0
+	a.TravelApprovedAmountCents = nil
+	return nil
 }
 
 // userPoints returns the user's total scan points. Points are cosmetic, so a
@@ -80,8 +122,13 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		}
 	}
 
-	// Fetch schema to embed in response
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err := app.hideUnreleasedDecision(r, application); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	// Fetch the schema the applicant sees to embed in response
+	schema, _, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -141,7 +188,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	schema, _, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -224,8 +271,8 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Fetch the application schema for validation
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	// Fetch the schema the applicant was shown, for validation
+	schema, withheld, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -249,8 +296,32 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Submit! The travel opt-in binding is resolved against the live schema, so
-	// an event that removed the checkbox simply requests no travel.
+	// A draft started while travel was open can still hold travel answers.
+	// Drop them so the submitted application only carries questions the
+	// applicant was asked when it went in.
+	stripped := false
+	for id := range withheld {
+		if _, ok := responses[id]; ok {
+			delete(responses, id)
+			stripped = true
+		}
+	}
+	if stripped {
+		cleaned, err := json.Marshal(responses)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		application.Responses = cleaned
+		if err := app.store.Application.Update(r.Context(), application); err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+	}
+
+	// Submit! The travel opt-in binding is resolved against the applicant's
+	// schema, so an event that removed the checkbox or closed travel
+	// applications simply requests no travel.
 	optInFieldID := schemaContractFieldID(schema, travelOptInFieldID)
 	if err := app.store.Application.Submit(r.Context(), application, optInFieldID); err != nil {
 		app.internalServerError(w, r, err)
@@ -481,6 +552,56 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 	}
 }
 
+// ApplicationTimelineResponse is the per-day application activity series.
+type ApplicationTimelineResponse struct {
+	TimeZone string                           `json:"time_zone"`
+	Timeline []store.ApplicationTimelinePoint `json:"timeline"`
+}
+
+// timezonePattern admits IANA names ("America/Chicago", "Etc/GMT+6") and
+// "UTC". It only screens out junk before the query; Postgres decides whether
+// the name actually exists.
+var timezonePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_+\-/]{0,63}$`)
+
+// getApplicationTimelineHandler returns started and submitted counts per day
+//
+//	@Summary		Get application timeline (Admin)
+//	@Description	Returns per-day counts of started and submitted applications, bucketed by calendar day in the given IANA time zone (default UTC). Days with no activity are omitted.
+//	@Tags			admin/applications
+//	@Produce		json
+//	@Param			tz	query		string	false	"IANA time zone, e.g. America/Chicago"
+//	@Success		200	{object}	ApplicationTimelineResponse
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/stats/timeline [get]
+func (app *application) getApplicationTimelineHandler(w http.ResponseWriter, r *http.Request) {
+	tz := r.URL.Query().Get("tz")
+	if tz == "" {
+		tz = "UTC"
+	}
+	if !timezonePattern.MatchString(tz) {
+		app.badRequestResponse(w, r, store.ErrInvalidTimezone)
+		return
+	}
+
+	timeline, err := app.store.Application.GetTimeline(r.Context(), tz)
+	if err != nil {
+		if errors.Is(err, store.ErrInvalidTimezone) {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, ApplicationTimelineResponse{TimeZone: tz, Timeline: timeline}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // listApplicationsHandler lists all applications with cursor-based pagination
 //
 //	@Summary		List applications (Admin)
@@ -494,6 +615,7 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 //	@Param			travel_rsvp_status	query		string	false	"Filter by travel form status (pending, confirmed, declined)"
 //	@Param			has_receipts		query		boolean	false	"Filter by whether at least one receipt was submitted"
 //	@Param			travel_requested	query		boolean	false	"Filter by whether travel reimbursement was requested"
+//	@Param			checked_in			query		boolean	false	"Filter by whether the hacker has a check-in scan"
 //	@Param			limit				query		int		false	"Page size (default 50, max 100)"
 //	@Param			direction			query		string	false	"Pagination direction: forward (default) or backward"
 //	@Param			sort_by				query		string	false	"Sort column: created_at (default), accept_votes, reject_votes, waitlist_votes, travel_yes_votes"
@@ -586,6 +708,14 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 		}
 		filters.TravelRequested = &travelRequested
 	}
+	if value := query.Get("checked_in"); value != "" {
+		checkedIn, err := strconv.ParseBool(value)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("checked_in must be true or false"))
+			return
+		}
+		filters.CheckedIn = &checkedIn
+	}
 
 	// Parse search
 	if searchStr := query.Get("search"); searchStr != "" {
@@ -648,7 +778,7 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 }
 
 type SetStatusPayload struct {
-	Status store.ApplicationStatus `json:"status" validate:"required,oneof=accepted rejected waitlisted"`
+	Status store.ApplicationStatus `json:"status" validate:"required,oneof=draft submitted accepted rejected waitlisted"`
 }
 
 type SetTravelStatusPayload struct {
@@ -674,7 +804,7 @@ type EmailListResponse struct {
 // setApplicationStatus sets the final status on an application
 //
 //	@Summary		Set application status (Super Admin)
-//	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
+//	@Description	Sets any status on an application. Besides the final decisions (accepted, rejected, waitlisted), a super admin can move it back to submitted, or to draft to reopen it so the hacker can edit and resubmit.
 //	@Tags			superadmin/applications
 //	@Accept			json
 //	@Produce		json
@@ -841,15 +971,16 @@ func (app *application) getApplication(w http.ResponseWriter, r *http.Request) {
 // getApplicantEmailsByStatusHandler returns applicant emails filtered by status
 //
 //	@Summary		Get applicant emails by status (Super Admin)
-//	@Description	Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)
+//	@Description	Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected), optionally narrowed by RSVP status. The RSVP filter only applies to accepted applications, so it requires status=accepted.
 //	@Tags			superadmin/applications
 //	@Produce		json
-//	@Param			status	query		string	true	"Application status (draft, submitted, accepted, waitlisted, or rejected)"
-//	@Success		200		{object}	EmailListResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
+//	@Param			status		query		string	true	"Application status (draft, submitted, accepted, waitlisted, or rejected)"
+//	@Param			rsvp_status	query		string	false	"RSVP status (pending, confirmed, declined); requires status=accepted"
+//	@Success		200			{object}	EmailListResponse
+//	@Failure		400			{object}	object{error=string}
+//	@Failure		401			{object}	object{error=string}
+//	@Failure		403			{object}	object{error=string}
+//	@Failure		500			{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/superadmin/applications/emails [get]
 func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -867,7 +998,26 @@ func (app *application) getApplicantEmailsByStatusHandler(w http.ResponseWriter,
 		return
 	}
 
-	users, err := app.store.Application.GetEmailsByStatus(r.Context(), status)
+	// Every application row defaults to rsvp_status 'pending', so the filter is
+	// only meaningful for accepted hackers. Refuse it elsewhere rather than
+	// hand back, say, every rejected applicant as "RSVP pending".
+	var rsvpStatus *store.RSVPStatus
+	if value := r.URL.Query().Get("rsvp_status"); value != "" {
+		parsed := store.RSVPStatus(value)
+		switch parsed {
+		case store.RSVPPending, store.RSVPConfirmed, store.RSVPDeclined:
+		default:
+			app.badRequestResponse(w, r, errors.New("rsvp_status must be one of pending, confirmed, or declined"))
+			return
+		}
+		if status != store.StatusAccepted {
+			app.badRequestResponse(w, r, errors.New("rsvp_status requires status=accepted"))
+			return
+		}
+		rsvpStatus = &parsed
+	}
+
+	users, err := app.store.Application.GetEmailsByStatus(r.Context(), status, rsvpStatus)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return

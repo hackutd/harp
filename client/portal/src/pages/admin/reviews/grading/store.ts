@@ -6,13 +6,18 @@ import type { Application } from "@/types";
 
 import {
   claimMoreReviews,
+  fetchCompletedReviews,
   fetchPendingReviews,
   fetchReviewNotes,
   submitReviewVote,
 } from "../api";
 import type { Review, ReviewNote, ReviewVote } from "../types";
 
+/** "pending" grades the admin's queue; "completed" changes votes already cast. */
+export type GradingMode = "pending" | "completed";
+
 interface GradingState {
+  mode: GradingMode;
   reviews: Review[];
   loading: boolean;
   error: string | null;
@@ -24,22 +29,29 @@ interface GradingState {
   submitting: boolean;
   localNotes: string;
   localTravelVote: boolean | null;
+  /** Draft vote while changing a completed review. */
+  localVote: ReviewVote | null;
   claiming: boolean;
   fetchReviews: (
     targetReviewId?: string,
     signal?: AbortSignal,
+    mode?: GradingMode,
   ) => Promise<void>;
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
   navigatePrev: () => void;
   submitVote: (reviewId: string, vote: ReviewVote) => Promise<void>;
+  updateVote: (reviewId: string) => Promise<void>;
+  discardChanges: () => void;
   claimMore: () => Promise<void>;
   setLocalNotes: (notes: string) => void;
   setLocalTravelVote: (vote: boolean) => void;
+  setLocalVote: (vote: ReviewVote) => void;
   reset: () => void;
 }
 
 const initialState = {
+  mode: "pending" as GradingMode,
   reviews: [] as Review[],
   loading: false,
   error: null as string | null,
@@ -51,20 +63,58 @@ const initialState = {
   submitting: false,
   localNotes: "",
   localTravelVote: null as boolean | null,
+  localVote: null as ReviewVote | null,
   claiming: false,
 };
 
 let loadDetailSeq = 0;
 let fetchSequence = 0;
 
+/** Drafts start from the saved review in completed mode and empty otherwise. */
+function draftsFor(mode: GradingMode, review: Review | undefined) {
+  if (mode === "completed" && review) {
+    return {
+      localNotes: review.notes ?? "",
+      localTravelVote: review.travel_vote,
+      localVote: review.vote,
+    };
+  }
+  return { localNotes: "", localTravelVote: null, localVote: null };
+}
+
+/** True when a completed review's drafts differ from what was saved. */
+export function hasUnsavedChanges(
+  state: Pick<
+    GradingState,
+    | "mode"
+    | "reviews"
+    | "currentIndex"
+    | "localNotes"
+    | "localTravelVote"
+    | "localVote"
+  >,
+): boolean {
+  const review = state.reviews[state.currentIndex];
+  if (state.mode !== "completed" || !review) return false;
+  const travelRequested = review.travel_status !== "not_requested";
+  return (
+    state.localVote !== review.vote ||
+    (travelRequested && state.localTravelVote !== review.travel_vote) ||
+    state.localNotes !== (review.notes ?? "")
+  );
+}
+
 export const useAdminGradingStore = create<GradingState>((set, get) => ({
   ...initialState,
 
-  fetchReviews: async (targetReviewId, signal) => {
+  fetchReviews: async (targetReviewId, signal, mode = "pending") => {
     const requestId = ++fetchSequence;
     ++loadDetailSeq;
-    set({ ...initialState, loading: true });
-    const res = await fetchPendingReviews(signal);
+    set({ ...initialState, mode, loading: true });
+    const res =
+      mode === "completed"
+        ? await fetchCompletedReviews(signal)
+        : await fetchPendingReviews(signal);
 
     if (requestId !== fetchSequence) return;
     if (signal?.aborted) {
@@ -89,13 +139,13 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
 
   loadDetail: async (applicationId: string) => {
     const requestId = ++loadDetailSeq;
+    const { mode, reviews, currentIndex } = get();
     set({
       detailLoading: true,
       notesLoading: true,
       detail: null,
       notes: [],
-      localNotes: "",
-      localTravelVote: null,
+      ...draftsFor(mode, reviews[currentIndex]),
     });
 
     const [detailRes, notesRes] = await Promise.all([
@@ -121,7 +171,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
 
   navigateNext: () => {
     const { reviews, currentIndex, loading, error, submitting } = get();
-    if (loading || error || submitting) return;
+    if (loading || error || submitting || hasUnsavedChanges(get())) return;
     if (currentIndex < reviews.length - 1) {
       const newIndex = currentIndex + 1;
       set({ currentIndex: newIndex });
@@ -131,7 +181,7 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
 
   navigatePrev: () => {
     const { reviews, currentIndex, loading, error, submitting } = get();
-    if (loading || error || submitting) return;
+    if (loading || error || submitting || hasUnsavedChanges(get())) return;
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       set({ currentIndex: newIndex });
@@ -197,6 +247,51 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
     }
   },
 
+  updateVote: async (reviewId: string) => {
+    const { loading, error, submitting, localVote } = get();
+    if (loading || error || submitting || !localVote) return;
+    const queueVersion = fetchSequence;
+    set({ submitting: true });
+
+    const { localNotes, localTravelVote, reviews } = get();
+    const review = reviews.find((r) => r.id === reviewId);
+    const travelRequested =
+      !!review && review.travel_status !== "not_requested";
+    const result = await submitReviewVote(reviewId, {
+      vote: localVote,
+      travel_vote:
+        travelRequested && localTravelVote !== null
+          ? localTravelVote
+          : undefined,
+      notes: localNotes || undefined,
+    });
+
+    if (queueVersion !== fetchSequence) return;
+    if (result.success && result.review) {
+      // The review stays in the completed list; merge the returned row so
+      // the badge, notes, and reviewed_at reflect the new decision.
+      const updated = result.review;
+      set((state) => ({
+        reviews: state.reviews.map((r) =>
+          r.id === reviewId ? { ...r, ...updated } : r,
+        ),
+        submitting: false,
+        localNotes: updated.notes ?? "",
+        localTravelVote: updated.travel_vote,
+        localVote: updated.vote,
+      }));
+      toast.success(`Vote updated: ${localVote}`);
+    } else {
+      set({ submitting: false });
+      toast.error(result.error ?? "Failed to update vote");
+    }
+  },
+
+  discardChanges: () => {
+    const { mode, reviews, currentIndex } = get();
+    set(draftsFor(mode, reviews[currentIndex]));
+  },
+
   claimMore: async () => {
     const { loading, submitting, claiming } = get();
     if (loading || submitting || claiming) return;
@@ -234,6 +329,10 @@ export const useAdminGradingStore = create<GradingState>((set, get) => ({
 
   setLocalTravelVote: (vote: boolean) => {
     set({ localTravelVote: vote });
+  },
+
+  setLocalVote: (vote: ReviewVote) => {
+    set({ localVote: vote });
   },
 
   reset: () => {

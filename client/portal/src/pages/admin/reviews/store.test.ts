@@ -206,51 +206,6 @@ describe("fetchReviews error and staleness handling", () => {
   });
 });
 
-describe("updateVote", () => {
-  it("keeps the review and merges the returned row", async () => {
-    useReviewsStore.setState({
-      tab: "completed",
-      reviews: [makeReview("r1", { vote: "accept", notes: "old" })],
-    });
-    reviewsApi.submitReviewVote.mockResolvedValue({
-      success: true,
-      status: 200,
-      review: { id: "r1", vote: "reject", notes: "changed my mind" },
-    });
-
-    const result = await useReviewsStore
-      .getState()
-      .updateVote("r1", { vote: "reject" });
-
-    expect(result).toEqual({ success: true, error: undefined });
-    const [review] = useReviewsStore.getState().reviews;
-    expect(review.vote).toBe("reject");
-    expect(review.notes).toBe("changed my mind");
-    expect(review.first_name).toBe("Ada"); // applicant details survive
-    expect(useReviewsStore.getState().submitting).toBe(false);
-  });
-
-  it("leaves the review untouched when the update fails", async () => {
-    useReviewsStore.setState({
-      tab: "completed",
-      reviews: [makeReview("r1", { vote: "accept" })],
-    });
-    reviewsApi.submitReviewVote.mockResolvedValue({
-      success: false,
-      status: 500,
-      error: "nope",
-    });
-
-    const result = await useReviewsStore
-      .getState()
-      .updateVote("r1", { vote: "reject" });
-
-    expect(result).toEqual({ success: false, error: "nope" });
-    expect(useReviewsStore.getState().reviews[0].vote).toBe("accept");
-    expect(useReviewsStore.getState().submitting).toBe(false);
-  });
-});
-
 describe("claimMore", () => {
   it("replaces the assigned queue and reports how many were claimed", async () => {
     reviewsApi.claimMoreReviews.mockResolvedValue({

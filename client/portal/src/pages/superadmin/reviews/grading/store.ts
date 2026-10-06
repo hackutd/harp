@@ -13,14 +13,27 @@ import type {
 } from "@/pages/admin/all-applicants/types";
 import { fetchReviewNotes } from "@/pages/admin/reviews/api";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
-import type { Application } from "@/types";
+import { uploadResumeToSignedURL } from "@/pages/hacker/apply/api";
+import type { Application, ApplicationStatus as AnyStatus } from "@/types";
 
 import {
+  deleteApplicationResume,
+  requestApplicationResumeUploadURL,
   resetApplicationRSVP,
   resetApplicationTravelRSVP,
   setApplicationStatus,
   setApplicationTravelStatus,
+  updateApplicationAsAdmin,
 } from "./api";
+import { syncListItem } from "./utils";
+
+const STATUS_TOASTS: Record<AnyStatus, string> = {
+  draft: "Application reopened — the hacker can edit and resubmit it",
+  submitted: "Application moved back to submitted",
+  accepted: "Application accepted",
+  rejected: "Application rejected",
+  waitlisted: "Application waitlisted",
+};
 
 interface FilterParams {
   status?: ApplicationStatus;
@@ -37,6 +50,8 @@ interface GradingState {
   notes: ReviewNote[];
   notesLoading: boolean;
   grading: boolean;
+  /** An edit to the application's answers or resume is in flight. */
+  saving: boolean;
   nextCursor: string | null;
   prevCursor: string | null;
   filterParams: FilterParams;
@@ -44,10 +59,7 @@ interface GradingState {
   loadDetail: (applicationId: string) => Promise<void>;
   navigateNext: () => void;
   navigatePrev: () => void;
-  gradeApplication: (
-    applicationId: string,
-    status: "accepted" | "rejected" | "waitlisted",
-  ) => Promise<void>;
+  gradeApplication: (applicationId: string, status: AnyStatus) => Promise<void>;
   gradeTravel: (
     applicationId: string,
     travelStatus: "approved" | "rejected" | "pending",
@@ -55,6 +67,12 @@ interface GradingState {
   ) => Promise<void>;
   resetRSVP: (applicationId: string) => Promise<void>;
   resetTravelRSVP: (applicationId: string) => Promise<void>;
+  saveResponses: (
+    applicationId: string,
+    responses: Record<string, unknown>,
+  ) => Promise<boolean>;
+  replaceResume: (applicationId: string, file: File) => Promise<boolean>;
+  removeResume: (applicationId: string) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -67,12 +85,37 @@ const initialState = {
   notes: [] as ReviewNote[],
   notesLoading: false,
   grading: false,
+  saving: false,
   nextCursor: null as string | null,
   prevCursor: null as string | null,
   filterParams: {} as FilterParams,
 };
 
 let loadDetailSeq = 0;
+
+/** Puts an edited application into the open detail and its queue row. */
+function applyEdited(application: Application) {
+  const { applications, detail } = useGradingStore.getState();
+  useGradingStore.setState({
+    applications: applications.map((app) =>
+      app.id === application.id ? syncListItem(app, application) : app,
+    ),
+    detail: detail?.id === application.id ? application : detail,
+  });
+}
+
+/**
+ * Status and RSVP endpoints return the bare application; keep the schema and
+ * points the detail was loaded with so the answers stay rendered (and
+ * editable) after the change.
+ */
+function keepEmbedded(detail: Application, updated: Application): Application {
+  return {
+    ...updated,
+    application_schema: updated.application_schema ?? detail.application_schema,
+    points: updated.points ?? detail.points,
+  };
+}
 
 export const useGradingStore = create<GradingState>((set, get) => ({
   ...initialState,
@@ -183,10 +226,7 @@ export const useGradingStore = create<GradingState>((set, get) => ({
     }
   },
 
-  gradeApplication: async (
-    applicationId: string,
-    status: "accepted" | "rejected" | "waitlisted",
-  ) => {
+  gradeApplication: async (applicationId: string, status: AnyStatus) => {
     set({ grading: true });
 
     const res = await setApplicationStatus(applicationId, status);
@@ -201,11 +241,11 @@ export const useGradingStore = create<GradingState>((set, get) => ({
         grading: false,
         detail:
           detail?.id === applicationId && res.data
-            ? res.data.application
+            ? keepEmbedded(detail, res.data.application)
             : detail,
       });
 
-      toast.success(`Application ${status}`);
+      toast.success(STATUS_TOASTS[status]);
     } else {
       set({ grading: false });
       toast.error(res.error ?? "Failed to update application status");
@@ -274,7 +314,7 @@ export const useGradingStore = create<GradingState>((set, get) => ({
         grading: false,
         detail:
           detail?.id === applicationId && res.data
-            ? res.data.application
+            ? keepEmbedded(detail, res.data.application)
             : detail,
       });
 
@@ -302,7 +342,7 @@ export const useGradingStore = create<GradingState>((set, get) => ({
         grading: false,
         detail:
           detail?.id === applicationId && res.data
-            ? res.data.application
+            ? keepEmbedded(detail, res.data.application)
             : detail,
       });
 
@@ -311,6 +351,72 @@ export const useGradingStore = create<GradingState>((set, get) => ({
       set({ grading: false });
       toast.error(res.error ?? "Failed to reset travel form");
     }
+  },
+
+  saveResponses: async (applicationId, responses) => {
+    set({ saving: true });
+
+    const res = await updateApplicationAsAdmin(applicationId, { responses });
+
+    set({ saving: false });
+    if (res.status === 200 && res.data) {
+      applyEdited(res.data);
+      toast.success("Application updated");
+      return true;
+    }
+    toast.error(res.error ?? "Failed to update application");
+    return false;
+  },
+
+  // Same three steps as the hacker's own upload: sign, PUT to GCS, then
+  // point the application at the new file (the backend deletes the old one).
+  replaceResume: async (applicationId, file) => {
+    set({ saving: true });
+
+    const urlRes = await requestApplicationResumeUploadURL(applicationId);
+    if (urlRes.status !== 200 || !urlRes.data) {
+      set({ saving: false });
+      toast.error(urlRes.error ?? "Failed to start resume upload");
+      return false;
+    }
+
+    const uploadRes = await uploadResumeToSignedURL(
+      urlRes.data.upload_url,
+      file,
+    );
+    if (uploadRes.status < 200 || uploadRes.status >= 300) {
+      set({ saving: false });
+      toast.error(uploadRes.error ?? "Failed to upload resume");
+      return false;
+    }
+
+    const res = await updateApplicationAsAdmin(applicationId, {
+      resume_path: urlRes.data.resume_path,
+    });
+
+    set({ saving: false });
+    if (res.status === 200 && res.data) {
+      applyEdited(res.data);
+      toast.success("Resume replaced");
+      return true;
+    }
+    toast.error(res.error ?? "Failed to save resume");
+    return false;
+  },
+
+  removeResume: async (applicationId) => {
+    set({ saving: true });
+
+    const res = await deleteApplicationResume(applicationId);
+
+    set({ saving: false });
+    if (res.status === 200 && res.data) {
+      applyEdited(res.data);
+      toast.success("Resume removed");
+      return true;
+    }
+    toast.error(res.error ?? "Failed to remove resume");
+    return false;
   },
 
   reset: () => {

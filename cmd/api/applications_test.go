@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -241,6 +243,9 @@ func TestSubmitApplication(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
+	// Travel applications stay open here; closing them is covered in
+	// travel_applications_test.go.
+	mockSettings.On("GetTravelApplicationsEnabled").Return(true, nil).Maybe()
 
 	t.Run("should submit a complete application", func(t *testing.T) {
 		user := newTestUser()
@@ -613,6 +618,72 @@ func TestGetApplicationStats(t *testing.T) {
 	})
 }
 
+func TestGetApplicationTimeline(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+
+	getTimeline := func(t *testing.T, query string) *httptest.ResponseRecorder {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, "/"+query, nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+		return executeRequest(req, http.HandlerFunc(app.getApplicationTimelineHandler))
+	}
+
+	t.Run("should return the timeline in the requested time zone", func(t *testing.T) {
+		points := []store.ApplicationTimelinePoint{
+			{Date: "2026-09-01", Started: 12, Submitted: 3},
+			{Date: "2026-09-03", Started: 4, Submitted: 9},
+		}
+		mockApps.On("GetTimeline", "America/Chicago").Return(points, nil).Once()
+
+		rr := getTimeline(t, "?tz=America/Chicago")
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ApplicationTimelineResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, "America/Chicago", body.Data.TimeZone)
+		assert.Equal(t, points, body.Data.Timeline)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should default to UTC", func(t *testing.T) {
+		mockApps.On("GetTimeline", "UTC").Return([]store.ApplicationTimelinePoint{}, nil).Once()
+
+		rr := getTimeline(t, "")
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should reject a malformed time zone without querying", func(t *testing.T) {
+		// No expectation is registered, so a store call would fail the mock.
+		rr := getTimeline(t, "?tz=America%2FChicago%27%3B")
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should return 400 for an unknown time zone", func(t *testing.T) {
+		mockApps.On("GetTimeline", "Mars/Olympus").Return(nil, store.ErrInvalidTimezone).Once()
+
+		rr := getTimeline(t, "?tz=Mars/Olympus")
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should return 500 on store error", func(t *testing.T) {
+		mockApps.On("GetTimeline", "UTC").Return(nil, errors.New("db down")).Once()
+
+		rr := getTimeline(t, "")
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
 func TestListApplications(t *testing.T) {
 	app := newTestApplication(t)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
@@ -762,12 +833,48 @@ func TestListApplications(t *testing.T) {
 		mockApps.AssertExpectations(t)
 	})
 
+	t.Run("should accept checked_in filter", func(t *testing.T) {
+		for _, checkedIn := range []bool{true, false} {
+			rsvpStatus := store.RSVPConfirmed
+			status := store.StatusAccepted
+			result := &store.ApplicationListResult{
+				Applications: []store.ApplicationListItem{},
+				HasMore:      false,
+			}
+
+			mockApps.On("List",
+				store.ApplicationListFilters{
+					Status:     &status,
+					RSVPStatus: &rsvpStatus,
+					CheckedIn:  &checkedIn,
+				},
+				(*store.ApplicationCursor)(nil),
+				store.DirectionForward,
+				50,
+			).Return(result, nil).Once()
+
+			req, err := http.NewRequest(
+				http.MethodGet,
+				"/?status=accepted&rsvp_status=confirmed&checked_in="+strconv.FormatBool(checkedIn),
+				nil,
+			)
+			require.NoError(t, err)
+			req = setUserContext(req, newAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.listApplicationsHandler))
+			checkResponseCode(t, http.StatusOK, rr.Code)
+		}
+
+		mockApps.AssertExpectations(t)
+	})
+
 	t.Run("should reject invalid form response filters", func(t *testing.T) {
 		for _, query := range []string{
 			"?rsvp_status=maybe",
 			"?travel_rsvp_status=maybe",
 			"?has_receipts=maybe",
 			"?travel_requested=maybe",
+			"?checked_in=maybe",
 		} {
 			req, err := http.NewRequest(http.MethodGet, "/"+query, nil)
 			require.NoError(t, err)
@@ -1113,7 +1220,7 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 			users := []store.UserEmailInfo{
 				{Email: "ada@test.com", FirstName: &firstName, LastName: &lastName},
 			}
-			mockApps.On("GetEmailsByStatus", status).Return(users, nil).Once()
+			mockApps.On("GetEmailsByStatus", status, (*store.RSVPStatus)(nil)).Return(users, nil).Once()
 
 			req, err := http.NewRequest(
 				http.MethodGet,
@@ -1149,7 +1256,7 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 
-		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything, mock.Anything)
 	})
 
 	t.Run("returns 400 for an unknown status", func(t *testing.T) {
@@ -1167,6 +1274,54 @@ func TestGetApplicantEmailsByStatus(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 
-		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything)
+		mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything, mock.Anything)
 	})
+
+	for _, rsvp := range []store.RSVPStatus{store.RSVPPending, store.RSVPConfirmed, store.RSVPDeclined} {
+		t.Run("narrows accepted emails by rsvp_status "+string(rsvp), func(t *testing.T) {
+			app := newTestApplication(t)
+			mockApps := app.store.Application.(*store.MockApplicationStore)
+
+			users := []store.UserEmailInfo{{Email: "grace@test.com"}}
+			mockApps.On("GetEmailsByStatus", store.StatusAccepted, &rsvp).Return(users, nil).Once()
+
+			req, err := http.NewRequest(
+				http.MethodGet,
+				"/superadmin/applications/emails?status=accepted&rsvp_status="+string(rsvp),
+				nil,
+			)
+			require.NoError(t, err)
+			req = setUserContext(req, newSuperAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+			checkResponseCode(t, http.StatusOK, rr.Code)
+
+			var body struct {
+				Data EmailListResponse `json:"data"`
+			}
+			require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+			assert.Equal(t, 1, body.Data.Count)
+
+			mockApps.AssertExpectations(t)
+		})
+	}
+
+	for name, query := range map[string]string{
+		"an unknown rsvp_status":            "?status=accepted&rsvp_status=maybe",
+		"rsvp_status on a non-accepted set": "?status=rejected&rsvp_status=pending",
+	} {
+		t.Run("returns 400 for "+name, func(t *testing.T) {
+			app := newTestApplication(t)
+			mockApps := app.store.Application.(*store.MockApplicationStore)
+
+			req, err := http.NewRequest(http.MethodGet, "/superadmin/applications/emails"+query, nil)
+			require.NoError(t, err)
+			req = setUserContext(req, newSuperAdminUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.getApplicantEmailsByStatusHandler))
+			checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+			mockApps.AssertNotCalled(t, "GetEmailsByStatus", mock.Anything, mock.Anything)
+		})
+	}
 }

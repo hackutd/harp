@@ -1,12 +1,5 @@
-import {
-  Check,
-  Minus,
-  Plane,
-  RotateCcw,
-  ThumbsDown,
-  ThumbsUp,
-} from "lucide-react";
-import { memo, useState } from "react";
+import { Pencil, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
+import { memo, type ReactNode, useState } from "react";
 
 import {
   AlertDialog,
@@ -24,39 +17,119 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   GradingActionButtons,
   ReviewerNotesList,
 } from "@/pages/admin/_shared/grading";
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
-import type { RSVPStatus, TravelStatus } from "@/types";
+import { cn } from "@/shared/lib/utils";
+import type { ApplicationStatus, RSVPStatus, TravelStatus } from "@/types";
 
-const TRAVEL_STATUS_COLORS: Record<TravelStatus, string> = {
-  not_requested: "bg-gray-100 text-gray-800",
-  pending: "bg-blue-100 text-blue-800",
-  approved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-};
+const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
+  { value: "draft", label: "Draft (editable)" },
+  { value: "submitted", label: "Submitted" },
+  { value: "accepted", label: "Accepted" },
+  { value: "waitlisted", label: "Waitlisted" },
+  { value: "rejected", label: "Rejected" },
+];
 
 const TRAVEL_STATUS_LABELS: Record<TravelStatus, string> = {
   not_requested: "Not requested",
-  pending: "Pending decision",
+  pending: "Pending",
   approved: "Approved",
   rejected: "Rejected",
 };
 
-const RSVP_STATUS_COLORS: Record<RSVPStatus, string> = {
-  pending: "bg-gray-100 text-gray-800",
-  confirmed: "bg-green-100 text-green-800",
-  declined: "bg-yellow-100 text-yellow-800",
+const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
+  pending: "Not answered",
+  confirmed: "Spot claimed",
+  declined: "Spot declined",
 };
 
-const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
-  pending: "not answered",
-  confirmed: "spot claimed",
-  declined: "spot declined",
-};
+const SECTION_TITLE =
+  "text-[11px] font-normal uppercase tracking-wider text-foreground";
+
+/** A chosen decision reads as solid; everything else stays outlined. */
+const SELECTED_BUTTON =
+  "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background";
+
+/** Full-bleed row of figures, ruled above and below and between columns. */
+function StatStrip({
+  items,
+  className,
+}: {
+  items: { label: string; value: ReactNode; hint?: string }[];
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid divide-x border-y",
+        items.length === 3 ? "grid-cols-3" : "grid-cols-2",
+        className,
+      )}
+    >
+      {items.map((item) => {
+        const cell = (
+          <div
+            key={item.label}
+            className={cn("px-3 py-4 text-center", item.hint && "cursor-help")}
+          >
+            <p className="text-lg font-light tabular-nums">{item.value}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{item.label}</p>
+          </div>
+        );
+        if (!item.hint) return cell;
+        return (
+          <Tooltip key={item.label}>
+            <TooltipTrigger asChild>{cell}</TooltipTrigger>
+            <TooltipContent>{item.hint}</TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  aside,
+  ruled = false,
+}: {
+  title: string;
+  aside?: ReactNode;
+  /** Draw a full-width line under the header. */
+  ruled?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 px-5 py-4",
+        ruled && "border-b",
+      )}
+    >
+      <h3 className={SECTION_TITLE}>{title}</h3>
+      {aside && (
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {aside}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function formatTravelAmount(
   cents: number | null | undefined,
@@ -94,10 +167,10 @@ function ConfirmResetButton({
         <Button
           size="sm"
           variant="ghost"
-          className="w-full mt-1.5 cursor-pointer text-muted-foreground"
+          className="-ml-2 cursor-pointer font-normal text-muted-foreground"
           disabled={disabled}
         >
-          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+          <RotateCcw className="h-3.5 w-3.5" />
           {label}
         </Button>
       </AlertDialogTrigger>
@@ -124,7 +197,8 @@ interface GradingPanelProps {
   notes: ReviewNote[];
   notesLoading: boolean;
   grading: boolean;
-  onGrade: (status: "accepted" | "rejected" | "waitlisted") => void;
+  onGrade: (status: ApplicationStatus) => void;
+  onEdit: () => void;
   onGradeTravel: (
     travelStatus: "approved" | "rejected" | "pending",
     approvedAmountCents?: number,
@@ -139,6 +213,7 @@ export const GradingPanel = memo(function GradingPanel({
   notesLoading,
   grading,
   onGrade,
+  onEdit,
   onGradeTravel,
   onResetRSVP,
   onResetTravelRSVP,
@@ -185,74 +260,89 @@ export const GradingPanel = memo(function GradingPanel({
     listItem.travel_status === "approved" && listItem.status !== "rejected";
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Application decision */}
-      <section aria-label="Application" className="border-b pb-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Application
-            </p>
-          </div>
-          <Badge className={getStatusColor(listItem.status)}>
-            {listItem.status}
-          </Badge>
-        </div>
-
-        <div className="mt-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium">Application reviewer votes</p>
-            <p className="text-xs text-muted-foreground">
+    <div className="divide-y">
+      {/* Reviewer votes — application and travel together */}
+      <section aria-label="Reviewer votes">
+        <SectionHeader
+          title="Reviewer votes"
+          aside={
+            <>
               {listItem.reviews_completed} of {listItem.reviews_assigned}{" "}
               complete
-            </p>
-          </div>
-          <div className="mt-3 grid grid-cols-3 divide-x">
-            <div className="flex items-center justify-center gap-2 px-1">
-              <ThumbsDown className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-semibold tabular-nums">
-                  {listItem.reject_votes}
-                </p>
-                <p className="text-[11px] text-muted-foreground">Reject</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-center gap-2 px-1">
-              <Minus className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-semibold tabular-nums">
-                  {listItem.waitlist_votes}
-                </p>
-                <p className="text-[11px] text-muted-foreground">Waitlist</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-center gap-2 px-1">
-              <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-semibold tabular-nums">
-                  {listItem.accept_votes}
-                </p>
-                <p className="text-[11px] text-muted-foreground">Accept</p>
-              </div>
-            </div>
-          </div>
-          {listItem.ai_percent != null && (
-            <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
-              <span className="text-muted-foreground">AI indicator</span>
-              <span className="font-medium tabular-nums">
-                {listItem.ai_percent}%
-              </span>
-            </div>
+              {listItem.ai_percent != null && (
+                <span className="ml-3 border px-3.5 py-1.5 text-base text-foreground">
+                  AI {listItem.ai_percent}%
+                </span>
+              )}
+            </>
+          }
+        />
+        <StatStrip
+          className={cn(
+            listItem.travel_status === "not_requested" && "border-b-0",
           )}
-        </div>
+          items={[
+            {
+              label: "Reject",
+              value: listItem.reject_votes,
+              hint: "Reviewer votes",
+            },
+            {
+              label: "Waitlist",
+              value: listItem.waitlist_votes,
+              hint: "Reviewer votes",
+            },
+            {
+              label: "Accept",
+              value: listItem.accept_votes,
+              hint: "Reviewer votes",
+            },
+          ]}
+        />
+        {listItem.travel_status !== "not_requested" && (
+          <StatStrip
+            className="border-y-0"
+            items={[
+              {
+                label: "Travel no",
+                value: listItem.travel_no_votes,
+                hint: "Reviewer travel votes",
+              },
+              {
+                label: "Travel yes",
+                value: listItem.travel_yes_votes,
+                hint: "Reviewer travel votes",
+              },
+            ]}
+          />
+        )}
+      </section>
 
-        <div className="mt-4">
+      {/* Application decision — the super admin's call, not a vote */}
+      <section aria-label="Decision">
+        <SectionHeader
+          title="Application decision"
+          aside={
+            <Badge
+              className={cn(
+                "px-2.5 py-0.5 text-xs font-normal capitalize",
+                getStatusColor(listItem.status),
+              )}
+            >
+              {listItem.status}
+            </Badge>
+          }
+          ruled
+        />
+        <div className="space-y-4 px-5 py-5">
           <GradingActionButtons
+            layout="row"
+            intent="decision"
+            label={null}
             disabled={grading}
             onReject={() => onGrade("rejected")}
             onWaitlist={() => onGrade("waitlisted")}
             onAccept={() => onGrade("accepted")}
-            label={null}
             selected={
               listItem.status === "rejected"
                 ? "reject"
@@ -263,112 +353,102 @@ export const GradingPanel = memo(function GradingPanel({
                     : null
             }
           />
+
+          <div className="space-y-2">
+            {/* Full override: any status, including reopening as a draft */}
+            <div className="flex items-center justify-between gap-3">
+              <Label
+                htmlFor="grading-status-override"
+                className="text-sm font-normal text-muted-foreground"
+              >
+                Status
+              </Label>
+              <Select
+                value={listItem.status}
+                disabled={grading}
+                onValueChange={(value) => {
+                  if (value !== listItem.status) {
+                    onGrade(value as ApplicationStatus);
+                  }
+                }}
+              >
+                <SelectTrigger
+                  id="grading-status-override"
+                  size="sm"
+                  className="w-40 cursor-pointer shadow-none"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">
+                Answers & resume
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-40 cursor-pointer justify-start font-normal shadow-none"
+                disabled={grading}
+                onClick={onEdit}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* RSVP — one-shot, so a mistaken decline needs a reset to undo */}
-      {(listItem.status === "accepted" ||
-        listItem.rsvp_status !== "pending") && (
-        <div>
-          <Label className="text-xs text-muted-foreground">RSVP</Label>
-          <div className="mt-1.5">
-            <Badge
-              className={`${RSVP_STATUS_COLORS[listItem.rsvp_status]} text-sm px-2.5 py-1`}
-            >
-              {RSVP_STATUS_LABELS[listItem.rsvp_status]}
-            </Badge>
-          </div>
-          {listItem.rsvp_status !== "pending" && (
-            <ConfirmResetButton
-              label="Reset RSVP"
-              title="Reset this hacker's RSVP?"
-              description="They will be able to claim or decline their spot again. Their travel form answers and uploaded receipts are cleared with it, since those only exist under a claimed spot. This cannot be undone."
-              disabled={grading}
-              onConfirm={onResetRSVP}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Travel Reimbursement — only when the applicant requested it */}
+      {/* Travel decision — only when the applicant requested it */}
       {listItem.travel_status !== "not_requested" && (
-        <section aria-label="Travel reimbursement" className="border-b pb-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                Travel · Separate decision
-              </p>
-            </div>
-            <Badge
-              className={`${TRAVEL_STATUS_COLORS[listItem.travel_status]} shrink-0 px-2.5 py-1 text-xs`}
-            >
-              <Plane className="mr-1 h-3.5 w-3.5" />
-              {TRAVEL_STATUS_LABELS[listItem.travel_status]}
-            </Badge>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 divide-x border-y py-3">
-            <div className="pr-3">
-              <p className="text-xs text-muted-foreground">
-                Requested estimate
-              </p>
-              <p className="mt-0.5 text-base font-semibold tabular-nums">
-                {formatTravelAmount(
+        <section aria-label="Travel decision">
+          <SectionHeader
+            title="Travel decision"
+            aside={TRAVEL_STATUS_LABELS[listItem.travel_status]}
+          />
+          <StatStrip
+            items={[
+              {
+                label: "Requested",
+                value: formatTravelAmount(
                   listItem.estimated_travel_cost_cents,
-                  "Not provided",
-                )}
-              </p>
-            </div>
-            <div className="pl-3">
-              <p className="text-xs text-muted-foreground">Approved amount</p>
-              <p className="mt-0.5 text-base font-semibold tabular-nums">
-                {formatTravelAmount(
+                  "—",
+                ),
+                hint: "Hacker's estimate",
+              },
+              {
+                label: "Approved",
+                value: formatTravelAmount(
                   listItem.travel_approved_amount_cents,
-                  "Not set",
-                )}
+                  "—",
+                ),
+                hint: "Max reimbursement",
+              },
+            ]}
+          />
+
+          <div className="space-y-3 px-5 py-5">
+            {travelDecisionBlocker && (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {travelDecisionBlocker}
               </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <p className="text-xs font-medium">Travel reviewer votes</p>
-            <div className="mt-3 grid grid-cols-2 divide-x">
-              <div className="flex items-center justify-center gap-2 px-1">
-                <ThumbsDown className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-semibold tabular-nums">
-                    {listItem.travel_no_votes}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">No</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-center gap-2 px-1">
-                <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-semibold tabular-nums">
-                    {listItem.travel_yes_votes}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">Yes</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {travelDecisionBlocker && (
-            <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              {travelDecisionBlocker}
-            </p>
-          )}
-          <div className="mt-4">
-            <div className="grid gap-2 sm:grid-cols-2">
+            )}
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 aria-pressed={listItem.travel_status === "rejected"}
-                className={`w-full cursor-pointer disabled:cursor-not-allowed ${
-                  listItem.travel_status === "rejected"
-                    ? "border-foreground/40 bg-accent text-accent-foreground shadow-xs"
-                    : ""
-                }`}
+                className={cn(
+                  "w-full cursor-pointer font-normal shadow-none disabled:cursor-not-allowed",
+                  listItem.travel_status === "rejected" && SELECTED_BUTTON,
+                )}
                 disabled={
                   grading ||
                   travelDecisionLocked ||
@@ -378,182 +458,209 @@ export const GradingPanel = memo(function GradingPanel({
               >
                 <ThumbsDown className="h-4 w-4" />
                 Reject
-                {listItem.travel_status === "rejected" && (
-                  <Check className="ml-auto h-4 w-4" aria-label="Selected" />
-                )}
               </Button>
               <Button
                 variant="outline"
                 aria-pressed={listItem.travel_status === "approved"}
-                className={`w-full cursor-pointer disabled:cursor-not-allowed ${
-                  listItem.travel_status === "approved"
-                    ? "border-foreground/40 bg-accent text-accent-foreground shadow-xs"
-                    : ""
-                }`}
+                className={cn(
+                  "w-full cursor-pointer font-normal shadow-none disabled:cursor-not-allowed",
+                  listItem.travel_status === "approved" && SELECTED_BUTTON,
+                )}
                 disabled={
                   grading || (travelDecisionLocked && !canEditCurrentApproval)
                 }
                 onClick={openApproval}
               >
                 <ThumbsUp className="h-4 w-4" />
-                Approve
-                {listItem.travel_status === "approved" && (
-                  <Check className="ml-auto h-4 w-4" aria-label="Selected" />
-                )}
+                {listItem.travel_status === "approved"
+                  ? "Edit amount"
+                  : "Approve"}
               </Button>
             </div>
-          </div>
-          {listItem.travel_status !== "pending" && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="w-full mt-1.5 cursor-pointer text-muted-foreground"
-              disabled={grading || travelDecisionLocked}
-              onClick={() => onGradeTravel("pending")}
-            >
-              Reset to pending
-            </Button>
-          )}
+            {(listItem.travel_status !== "pending" ||
+              listItem.travel_rsvp_status !== "pending") && (
+              <div className="flex flex-wrap gap-x-2">
+                {listItem.travel_status !== "pending" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="-ml-2 cursor-pointer font-normal text-muted-foreground"
+                    disabled={grading || travelDecisionLocked}
+                    onClick={() => onGradeTravel("pending")}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset to pending
+                  </Button>
+                )}
+                {listItem.travel_rsvp_status !== "pending" && (
+                  <ConfirmResetButton
+                    label="Reset travel form"
+                    title="Reset this hacker's travel form?"
+                    description="Their submitted travel details are cleared and their uploaded receipts are deleted, so they can fill the form in again — and the travel decision becomes editable. This cannot be undone."
+                    disabled={grading}
+                    onConfirm={onResetTravelRSVP}
+                  />
+                )}
+              </div>
+            )}
 
-          <AlertDialog open={approvalOpen} onOpenChange={setApprovalOpen}>
-            <AlertDialogContent className="gap-5">
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {listItem.travel_status === "approved"
-                    ? "Edit approved travel amount"
-                    : "Set approved travel amount"}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Set the most the organization will reimburse this person. The
-                  requested estimate will stay unchanged.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/50 p-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Requested</p>
-                    <p className="mt-1 font-medium tabular-nums">
-                      {formatTravelAmount(
-                        listItem.estimated_travel_cost_cents,
-                        "Not provided",
-                      )}
-                    </p>
+            <AlertDialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+              <AlertDialogContent className="gap-5">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {listItem.travel_status === "approved"
+                      ? "Edit approved travel amount"
+                      : "Set approved travel amount"}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Set the most the organization will reimburse this person.
+                    The requested estimate will stay unchanged.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/50 p-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Requested</p>
+                      <p className="mt-1 font-medium tabular-nums">
+                        {formatTravelAmount(
+                          listItem.estimated_travel_cost_cents,
+                          "Not provided",
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Currently approved
+                      </p>
+                      <p className="mt-1 font-medium tabular-nums">
+                        {formatTravelAmount(
+                          listItem.travel_approved_amount_cents,
+                          "Not set",
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Currently approved
-                    </p>
-                    <p className="mt-1 font-medium tabular-nums">
-                      {formatTravelAmount(
-                        listItem.travel_approved_amount_cents,
-                        "Not set",
-                      )}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="travel-approved-amount">
-                      Approved amount
-                    </Label>
-                    {(listItem.estimated_travel_cost_cents ?? 0) > 0 && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto px-0 text-xs font-normal"
-                        onClick={() => {
-                          setApprovalAmount(
-                            (
-                              listItem.estimated_travel_cost_cents! / 100
-                            ).toFixed(2),
-                          );
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="travel-approved-amount">
+                        Approved amount
+                      </Label>
+                      {(listItem.estimated_travel_cost_cents ?? 0) > 0 && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto px-0 text-xs font-normal"
+                          onClick={() => {
+                            setApprovalAmount(
+                              (
+                                listItem.estimated_travel_cost_cents! / 100
+                              ).toFixed(2),
+                            );
+                            setApprovalError(null);
+                          }}
+                        >
+                          Use requested amount
+                        </Button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id="travel-approved-amount"
+                        aria-describedby={
+                          approvalError
+                            ? "travel-approved-amount-help travel-approved-amount-error"
+                            : "travel-approved-amount-help"
+                        }
+                        aria-invalid={!!approvalError}
+                        autoFocus
+                        type="number"
+                        inputMode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        value={approvalAmount}
+                        onChange={(event) => {
+                          setApprovalAmount(event.target.value);
                           setApprovalError(null);
                         }}
+                        className="h-11 pl-7 pr-14 text-base tabular-nums"
+                        placeholder="0.00"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                        USD
+                      </span>
+                    </div>
+                    <p
+                      id="travel-approved-amount-help"
+                      className="text-xs text-muted-foreground"
+                    >
+                      You can approve less than the requested estimate.
+                    </p>
+                    {approvalError && (
+                      <p
+                        id="travel-approved-amount-error"
+                        className="text-sm text-destructive"
+                        role="alert"
                       >
-                        Use requested amount
-                      </Button>
+                        {approvalError}
+                      </p>
                     )}
                   </div>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      id="travel-approved-amount"
-                      aria-describedby={
-                        approvalError
-                          ? "travel-approved-amount-help travel-approved-amount-error"
-                          : "travel-approved-amount-help"
-                      }
-                      aria-invalid={!!approvalError}
-                      autoFocus
-                      type="number"
-                      inputMode="decimal"
-                      min="0.01"
-                      step="0.01"
-                      value={approvalAmount}
-                      onChange={(event) => {
-                        setApprovalAmount(event.target.value);
-                        setApprovalError(null);
-                      }}
-                      className="h-11 pl-7 pr-14 text-base tabular-nums"
-                      placeholder="0.00"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-                      USD
-                    </span>
-                  </div>
-                  <p
-                    id="travel-approved-amount-help"
-                    className="text-xs text-muted-foreground"
-                  >
-                    You can approve less than the requested estimate.
-                  </p>
-                  {approvalError && (
-                    <p
-                      id="travel-approved-amount-error"
-                      className="text-sm text-destructive"
-                      role="alert"
-                    >
-                      {approvalError}
-                    </p>
-                  )}
                 </div>
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="cursor-pointer">
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  className="cursor-pointer bg-green-700 hover:bg-green-800"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    confirmApproval();
-                  }}
-                >
-                  {listItem.travel_status === "approved"
-                    ? "Save approved amount"
-                    : "Approve & save amount"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          {listItem.travel_rsvp_status !== "pending" && (
-            <ConfirmResetButton
-              label="Reset travel form"
-              title="Reset this hacker's travel form?"
-              description="Their submitted travel details are cleared and their uploaded receipts are deleted, so they can fill the form in again — and the travel decision becomes editable. This cannot be undone."
-              disabled={grading}
-              onConfirm={onResetTravelRSVP}
-            />
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="cursor-pointer">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    className="cursor-pointer bg-green-700 hover:bg-green-800"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      confirmApproval();
+                    }}
+                  >
+                    {listItem.travel_status === "approved"
+                      ? "Save approved amount"
+                      : "Approve & save amount"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </section>
+      )}
+
+      {/* RSVP — one-shot, so a mistaken decline needs a reset to undo */}
+      {(listItem.status === "accepted" ||
+        listItem.rsvp_status !== "pending") && (
+        <section aria-label="RSVP" className="px-5 py-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className={SECTION_TITLE}>RSVP</h3>
+            <span className="text-sm">
+              {RSVP_STATUS_LABELS[listItem.rsvp_status]}
+            </span>
+          </div>
+          {listItem.rsvp_status !== "pending" && (
+            <div className="mt-2">
+              <ConfirmResetButton
+                label="Reset RSVP"
+                title="Reset this hacker's RSVP?"
+                description="They will be able to claim or decline their spot again. Their travel form answers and uploaded receipts are cleared with it, since those only exist under a claimed spot. This cannot be undone."
+                disabled={grading}
+                onConfirm={onResetRSVP}
+              />
+            </div>
           )}
         </section>
       )}
 
       {/* Reviewer Notes */}
-      <ReviewerNotesList notes={notes} loading={notesLoading} />
+      <section aria-label="Reviewer notes">
+        <ReviewerNotesList flush notes={notes} loading={notesLoading} />
+      </section>
     </div>
   );
 });

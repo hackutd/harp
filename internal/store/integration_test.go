@@ -199,6 +199,54 @@ func TestIntegrationFormOperationsStats(t *testing.T) {
 	}
 }
 
+func TestIntegrationTimeline(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	s := &ApplicationsStore{db: db}
+	ctx := context.Background()
+
+	// Times straddle UTC midnight so the two zones bucket them differently.
+	stmts := []string{
+		`UPDATE applications SET created_at = '2026-09-01 03:00Z', submitted_at = '2026-09-02 15:00Z' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000001'`,
+		`UPDATE applications SET created_at = '2026-09-01 15:00Z', submitted_at = '2026-09-01 20:00Z' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000002'`,
+		`UPDATE applications SET created_at = '2026-09-02 01:00Z' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000003'`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("update failed: %v\n%s", err, stmt)
+		}
+	}
+
+	cases := []struct {
+		tz   string
+		want []ApplicationTimelinePoint
+	}{
+		{"UTC", []ApplicationTimelinePoint{
+			{Date: "2026-09-01", Started: 2, Submitted: 1},
+			{Date: "2026-09-02", Started: 1, Submitted: 1},
+		}},
+		{"America/Chicago", []ApplicationTimelinePoint{
+			{Date: "2026-08-31", Started: 1, Submitted: 0},
+			{Date: "2026-09-01", Started: 2, Submitted: 1},
+			{Date: "2026-09-02", Started: 0, Submitted: 1},
+		}},
+	}
+	for _, tc := range cases {
+		got, err := s.GetTimeline(ctx, tc.tz)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.tz, err)
+		}
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: got %+v, want %+v", tc.tz, got, tc.want)
+		}
+	}
+
+	if _, err := s.GetTimeline(ctx, "Mars/Olympus"); !errors.Is(err, ErrInvalidTimezone) {
+		t.Errorf("unknown zone: err = %v, want ErrInvalidTimezone", err)
+	}
+}
+
 func TestIntegrationSubmitVote(t *testing.T) {
 	db := integrationDB(t)
 	defer db.Close()
@@ -799,5 +847,142 @@ func TestIntegrationGetCheckInEligibility(t *testing.T) {
 	_, err := s.GetCheckInEligibility(ctx, "99999999-9999-9999-9999-999999999999")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("unknown user: got %v, want ErrNotFound", err)
+	}
+}
+
+// seedCheckIns layers attendance on top of seedIntegration. Bob becomes a
+// second accepted, RSVP-confirmed hacker so there is someone to be a no-show.
+// Alice checks in through "door", a renamed check-in type, to prove the
+// check-in set comes from the scan_types setting rather than a hardcoded name;
+// Carol is the promoted walk-in who checks in without an RSVP; Bob only has a
+// meal scan, which must not count as attendance.
+func seedCheckIns(t *testing.T, db *sql.DB) {
+	t.Helper()
+	ctx := context.Background()
+	stmts := []string{
+		`INSERT INTO settings (key, value) VALUES ('scan_types', '[
+		    {"name":"door","display_name":"Door","category":"check_in","is_active":true},
+		    {"name":"check_in","display_name":"Check In","category":"check_in","is_active":false},
+		    {"name":"lunch","display_name":"Lunch","category":"meal","is_active":true}
+		  ]'::jsonb)
+		 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+		`UPDATE applications SET status = 'accepted', rsvp_status = 'confirmed'
+		 WHERE id = 'aaaaaaaa-0000-0000-0000-000000000002'`,
+		`INSERT INTO scans (user_id, scan_type, scanned_by, scanned_at) VALUES
+		  ('11111111-1111-1111-1111-111111111111','door',NULL,'2026-01-01T10:00:00Z'),
+		  ('11111111-1111-1111-1111-111111111111','check_in',NULL,'2026-01-01T11:00:00Z'),
+		  ('33333333-3333-3333-3333-333333333333','check_in',NULL,'2026-01-01T12:00:00Z'),
+		  ('22222222-2222-2222-2222-222222222222','lunch',NULL,'2026-01-01T13:00:00Z')`,
+	}
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
+			t.Fatalf("check-in seed failed: %v\n%s", err, s)
+		}
+	}
+}
+
+func TestIntegrationAttendance(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	seedCheckIns(t, db)
+	s := &ApplicationsStore{db: db}
+	ctx := context.Background()
+
+	yes, no := true, false
+	for _, tc := range []struct {
+		name    string
+		filters ApplicationListFilters
+		want    int
+	}{
+		{"checked in", ApplicationListFilters{CheckedIn: &yes}, 2},
+		{"not checked in", ApplicationListFilters{CheckedIn: &no}, 1},
+	} {
+		res, err := s.List(ctx, tc.filters, nil, DirectionForward, 50)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if len(res.Applications) != tc.want {
+			t.Errorf("%s: got %d rows, want %d", tc.name, len(res.Applications), tc.want)
+		}
+	}
+
+	res, err := s.List(ctx, ApplicationListFilters{}, nil, DirectionForward, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstDoor := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	for _, item := range res.Applications {
+		switch *item.FirstName {
+		case "Alice":
+			// The earliest of her two check-in scans, across both check-in types.
+			if item.CheckedInAt == nil || !item.CheckedInAt.Equal(firstDoor) {
+				t.Errorf("Alice checked_in_at = %v, want %v", item.CheckedInAt, firstDoor)
+			}
+		case "Bob":
+			if item.CheckedInAt != nil {
+				t.Errorf("Bob checked_in_at = %v, want nil (meal scans are not check-ins)", *item.CheckedInAt)
+			}
+		case "Carol":
+			if item.CheckedInAt == nil {
+				t.Error("Carol checked_in_at = nil, want her walk-in check-in")
+			}
+		}
+	}
+
+	stats, err := s.GetStats(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.RSVPConfirmed != 2 || stats.RSVPPending != 0 || stats.RSVPDeclined != 0 {
+		t.Errorf("rsvp = %d confirmed / %d pending / %d declined, want 2/0/0",
+			stats.RSVPConfirmed, stats.RSVPPending, stats.RSVPDeclined)
+	}
+	if stats.CheckedIn != 2 || stats.NoShows != 1 {
+		t.Errorf("attendance = %d checked in / %d no-shows, want 2/1", stats.CheckedIn, stats.NoShows)
+	}
+
+	ops, err := s.GetFormOperationsStats(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := ops.Attendance
+	if a.CheckedIn != 2 || a.CheckedInConfirmed != 1 || a.CheckedInWithoutRSVP != 1 || a.NoShows != 1 {
+		t.Errorf("attendance = %+v, want 2 checked in, 1 confirmed, 1 without RSVP, 1 no-show", a)
+	}
+	if a.ShowRate != 50 {
+		t.Errorf("show rate = %v, want 50", a.ShowRate)
+	}
+	carolIn := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	if a.LatestCheckIn == nil || !a.LatestCheckIn.Equal(carolIn) {
+		t.Errorf("latest check-in = %v, want %v", a.LatestCheckIn, carolIn)
+	}
+}
+
+func TestIntegrationGetEmailsByStatusRSVP(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	seedCheckIns(t, db)
+	s := &ApplicationsStore{db: db}
+	ctx := context.Background()
+
+	confirmed, pending := RSVPConfirmed, RSVPPending
+	for _, tc := range []struct {
+		name string
+		rsvp *RSVPStatus
+		want int
+	}{
+		{"all accepted", nil, 2},
+		{"rsvp confirmed", &confirmed, 2},
+		{"rsvp pending", &pending, 0},
+	} {
+		users, err := s.GetEmailsByStatus(ctx, StatusAccepted, tc.rsvp)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if len(users) != tc.want {
+			t.Errorf("%s: got %d emails, want %d", tc.name, len(users), tc.want)
+		}
 	}
 }

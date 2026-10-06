@@ -8,13 +8,18 @@ import { PushPromptHost } from "@/components/PushPromptHost";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavSection, NavUser } from "@/pages/admin/_shared";
 import { cn } from "@/shared/lib/utils";
+import { ZERODAY_LOGO, ZERODAY_URL } from "@/shared/lib/zeroday";
 import { useUserStore } from "@/shared/stores";
 
 interface NavItem {
@@ -77,6 +82,28 @@ function HackerSidebar() {
           currentPath={location.pathname}
         />
       </SidebarContent>
+      <SidebarFooter className="border-t border-white/8">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild size="lg" tooltip="Back to Zero Day">
+              <a href={ZERODAY_URL}>
+                <img
+                  src={ZERODAY_LOGO}
+                  alt=""
+                  aria-hidden
+                  className="size-8 shrink-0 object-contain"
+                />
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-light">Back to Zero Day</span>
+                  <span className="truncate text-xs text-white/45">
+                    zeroday.hackutd.co
+                  </span>
+                </div>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
@@ -112,7 +139,9 @@ export default function HackerLayout() {
       <SidebarInset
         className={cn(
           "zero-hacker-surface bg-[#030409]",
-          hideMobileNav ? "pb-0" : "pb-24 md:pb-0",
+          hideMobileNav
+            ? "pb-0"
+            : "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0",
         )}
       >
         <div key={location.pathname} className="animate-page-enter">
@@ -120,48 +149,56 @@ export default function HackerLayout() {
         </div>
       </SidebarInset>
 
-      {/* Mobile bottom tab bar */}
-      <div
-        className={cn(
-          "fixed inset-x-4 bottom-4 z-40 md:hidden",
-          hideMobileNav && "hidden",
-        )}
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      >
-        <nav
-          className="relative flex rounded-full bg-black/80 shadow-[0_2px_16px_rgba(0,0,0,0.18)] backdrop-blur-sm"
-          style={{ padding: `${BOTTOM_NAV_PAD}rem` }}
-        >
-          {hasActive && (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute rounded-full bg-white/15 transition-all duration-300 ease-out"
-              style={{
-                top: `${BOTTOM_NAV_PAD}rem`,
-                bottom: `${BOTTOM_NAV_PAD}rem`,
-                left: `calc(${BOTTOM_NAV_PAD}rem + ${index} * (100% - ${2 * BOTTOM_NAV_PAD}rem) / ${NAV_ITEMS.length})`,
-                width: `calc((100% - ${2 * BOTTOM_NAV_PAD}rem) / ${NAV_ITEMS.length})`,
-              }}
-            />
-          )}
-          {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  "relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 transition-colors active:scale-[0.98]",
-                  isActive ? "text-white" : "text-white/60",
-                )
-              }
+      {/* Mobile bottom tab bar: a floating glass capsule, with a scroll-edge
+          blur behind it so content dissolves under the bar. */}
+      {!hideMobileNav && (
+        <div className="md:hidden">
+          <div aria-hidden className="zero-tabbar-edge z-30" />
+          <div
+            className="fixed inset-x-3 z-40"
+            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          >
+            <nav
+              aria-label="Primary"
+              className="zero-tabbar"
+              style={{ padding: `${BOTTOM_NAV_PAD}rem` }}
             >
-              <Icon className="size-5" strokeWidth={1.5} />
-              <span className="text-[10px] font-light">{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-      </div>
+              {/* Always mounted so it slides between tabs rather than
+                  remounting; it fades out on routes outside the tab set. */}
+              <span
+                aria-hidden
+                className="zero-tabbar-pill"
+                style={{
+                  top: `${BOTTOM_NAV_PAD}rem`,
+                  bottom: `${BOTTOM_NAV_PAD}rem`,
+                  left: `${BOTTOM_NAV_PAD}rem`,
+                  width: `calc((100% - ${2 * BOTTOM_NAV_PAD}rem) / ${NAV_ITEMS.length})`,
+                  transform: `translateX(${Math.max(index, 0) * 100}%)`,
+                  opacity: hasActive ? 1 : 0,
+                }}
+              />
+              {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className="zero-tabbar-item"
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon
+                        className="size-[1.375rem]"
+                        strokeWidth={isActive ? 2 : 1.75}
+                      />
+                      <span className="zero-tabbar-label">{label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
     </SidebarProvider>
   );
 }

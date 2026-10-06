@@ -1,8 +1,10 @@
 import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
-import { getRequest, postRequest } from "@/shared/lib/api";
+import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
+import type { RSVPStatus } from "@/types";
 
 import type {
   DecisionEmailStatsResponse,
+  DecisionsReleasedResponse,
   SendDecisionEmailsPayload,
   SendDecisionEmailsResponse,
 } from "./types";
@@ -18,9 +20,15 @@ interface EmailListResponse {
   count: number;
 }
 
-export async function fetchApplicantEmails(status: ApplicationStatus) {
+/** rsvpStatus narrows the list by RSVP state; the server requires status "accepted" with it. */
+export async function fetchApplicantEmails(
+  status: ApplicationStatus,
+  rsvpStatus?: RSVPStatus,
+) {
+  const query = new URLSearchParams({ status });
+  if (rsvpStatus) query.set("rsvp_status", rsvpStatus);
   return getRequest<EmailListResponse>(
-    `/superadmin/applications/emails?status=${status}`,
+    `/superadmin/applications/emails?${query}`,
     "applicant emails",
   );
 }
@@ -38,6 +46,22 @@ export async function sendDecisionEmails(payload: SendDecisionEmailsPayload) {
     "/superadmin/emails/decisions",
     payload,
     "send decision emails",
+  );
+}
+
+export async function fetchDecisionsReleased(signal?: AbortSignal) {
+  return getRequest<DecisionsReleasedResponse>(
+    "/superadmin/settings/decisions-released",
+    "decisions released",
+    signal,
+  );
+}
+
+export async function setDecisionsReleased(released: boolean) {
+  return putRequest<DecisionsReleasedResponse>(
+    "/superadmin/settings/decisions-released",
+    { released },
+    "decisions released",
   );
 }
 

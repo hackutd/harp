@@ -53,6 +53,7 @@ import {
 import { useUserStore } from "@/shared/stores/user";
 
 import type { BatchAssignmentResult } from "./api";
+import { ReleaseDecisionsButton } from "./components/ReleaseDecisionsButton";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { ReviewStatusTabs } from "./components/ReviewStatusTabs";
 import { SendEmailsDialog } from "./components/SendEmailsDialog";
@@ -619,6 +620,7 @@ export default function ReviewsPage() {
                   <Mail className="size-3.5" />
                   Emails
                 </Button>
+                <ReleaseDecisionsButton stats={stats} />
               </div>
             </div>
           </CardHeader>

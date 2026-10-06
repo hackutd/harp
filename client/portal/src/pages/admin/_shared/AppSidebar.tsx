@@ -18,7 +18,6 @@ import {
 import * as React from "react";
 import { useLocation } from "react-router";
 
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -122,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-b border-sidebar-border">
         <NavUser user={userData} />
       </SidebarHeader>
       <SidebarContent>
@@ -145,28 +144,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           />
         )}
       </SidebarContent>
-      <SidebarFooter>
-        {user?.role === "super_admin" && (
-          <>
-            <Separator />
-            <SettingsDialog
-              trigger={
-                <button className="flex cursor-pointer items-center justify-between px-2 py-2 hover:bg-sidebar-accent rounded-md transition-colors w-full">
-                  {state === "expanded" && (
-                    <div className="flex flex-col text-left">
-                      <span className="font-semibold text-sm">Settings</span>
-                      <span className="text-xs text-muted-foreground">
-                        Super Admins ONLY
-                      </span>
-                    </div>
-                  )}
-                  <Settings className="size-5" />
-                </button>
-              }
-            />
-          </>
-        )}
-      </SidebarFooter>
+      {user?.role === "super_admin" && (
+        <SidebarFooter className="border-t border-sidebar-border">
+          <SettingsDialog
+            trigger={
+              <button className="flex cursor-pointer items-center justify-between px-2 py-2 hover:bg-sidebar-accent rounded-md transition-colors w-full">
+                {state === "expanded" && (
+                  <span className="text-sm font-normal">Settings</span>
+                )}
+                <Settings className="size-5" />
+              </button>
+            }
+          />
+        </SidebarFooter>
+      )}
       <SidebarRail />
     </Sidebar>
   );

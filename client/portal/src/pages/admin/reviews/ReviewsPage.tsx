@@ -41,7 +41,7 @@ import { useUserStore } from "@/shared/stores";
 
 import { fetchReviewNotes as apiFetchReviewNotes } from "./api";
 import { ApplicationDetailsPanel } from "./components/ApplicationDetailsPanel";
-import { CompletedReviewEditor } from "./components/CompletedReviewEditor";
+import { CompletedReviewSummary } from "./components/CompletedReviewSummary";
 import { ReviewLeaderboard } from "./components/ReviewLeaderboard";
 import { ReviewsTable } from "./components/ReviewsTable";
 import { ReviewsTabToggle } from "./components/ReviewsTabToggle";
@@ -59,11 +59,9 @@ export default function ReviewsPage() {
     leaderboard,
     loading,
     error,
-    submitting,
     claiming,
     setTab,
     fetchReviews,
-    updateVote,
     claimMore,
   } = useReviewsStore();
   const refreshKey = refreshAssignedPage((state) => state.refreshKey);
@@ -71,9 +69,6 @@ export default function ReviewsPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  // True while the completed-tab editor has unsaved changes open; blocks
-  // moving to another applicant so a stray arrow key can't discard them.
-  const [editingVote, setEditingVote] = useState(false);
   const redact = useRedactApplicants();
 
   const filteredReviews = (() => {
@@ -108,11 +103,9 @@ export default function ReviewsPage() {
   const selectedApplicationId = selectedReview?.application_id ?? null;
 
   const selectedIndex = filteredReviews.findIndex((r) => r.id === selectedId);
-  const canPrevious = selectedIndex > 0 && !editingVote;
+  const canPrevious = selectedIndex > 0;
   const canNext =
-    selectedIndex !== -1 &&
-    selectedIndex < filteredReviews.length - 1 &&
-    !editingVote;
+    selectedIndex !== -1 && selectedIndex < filteredReviews.length - 1;
 
   const handlePreviousReview = useCallback(() => {
     if (canPrevious) {
@@ -158,7 +151,6 @@ export default function ReviewsPage() {
   // Clear selection on tab switch
   const clearSelection = useCallback(() => {
     setSelectedId(null);
-    setEditingVote(false);
     clearAssignedDetail();
     setCompletedAppDetail(null);
     setCompletedDetailLoading(false);
@@ -214,7 +206,7 @@ export default function ReviewsPage() {
   }, [reviews]);
 
   useEffect(() => {
-    if (tab !== "completed" || editingVote) return;
+    if (tab !== "completed") return;
 
     function handleKeyDown(e: KeyboardEvent) {
       if (
@@ -248,7 +240,7 @@ export default function ReviewsPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tab, selectedId, editingVote]);
+  }, [tab, selectedId]);
 
   // --- Descriptions ---
   const leaders = leaderboard.filter((r) => r.rank === 1 && r.completed > 0);
@@ -444,15 +436,15 @@ export default function ReviewsPage() {
                 selectedReview && (
                   <>
                     <div className="mb-6">
-                      <CompletedReviewEditor
-                        key={selectedReview.id}
+                      <CompletedReviewSummary
                         review={selectedReview}
                         applicationStatus={completedAppDetail.status}
-                        submitting={submitting}
-                        onSave={(payload) =>
-                          updateVote(selectedReview.id, payload)
+                        aiPercent={completedAppDetail.ai_percent}
+                        onChangeVote={() =>
+                          navigate(
+                            `/admin/reviews/grade?mode=completed&review=${selectedReview.id}`,
+                          )
                         }
-                        onEditingChange={setEditingVote}
                       />
                     </div>
 

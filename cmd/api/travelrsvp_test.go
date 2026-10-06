@@ -56,6 +56,7 @@ func validTestReceiptPath(userID string) string {
 
 func TestGetMyTravelRSVP(t *testing.T) {
 	app := newTestApplication(t)
+	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
@@ -157,6 +158,7 @@ func TestGetMyTravelRSVP(t *testing.T) {
 
 func TestSubmitMyTravelRSVP(t *testing.T) {
 	app := newTestApplication(t)
+	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
@@ -377,6 +379,7 @@ func TestSubmitMyTravelRSVP(t *testing.T) {
 
 func TestGenerateTravelReceiptUploadURL(t *testing.T) {
 	app := newTestApplication(t)
+	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 	mockGCS := app.gcsClient.(*gcs.MockClient)

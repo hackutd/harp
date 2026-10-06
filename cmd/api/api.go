@@ -289,6 +289,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/applications", func(r chi.Router) {
 						r.Get("/", app.listApplicationsHandler)
 						r.Get("/stats", app.getApplicationStatsHandler)
+						r.Get("/stats/timeline", app.getApplicationTimelineHandler)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
 						r.Get("/{applicationID}/travel-receipt-urls", app.getTravelReceiptURLsHandler)
@@ -395,6 +396,10 @@ func (app *application) mount() http.Handler {
 						r.Put("/rsvp-schema", app.updateRSVPSchema)
 						r.Get("/rsvp-enabled", app.getRSVPEnabled)
 						r.Put("/rsvp-enabled", app.setRSVPEnabled)
+						r.Get("/decisions-released", app.getDecisionsReleased)
+						r.Put("/decisions-released", app.setDecisionsReleased)
+						r.Get("/travel-applications-enabled", app.getTravelApplicationsEnabled)
+						r.Put("/travel-applications-enabled", app.setTravelApplicationsEnabled)
 						r.Get("/check-in-requires-rsvp", app.getCheckInRequiresRSVP)
 						r.Put("/check-in-requires-rsvp", app.setCheckInRequiresRSVP)
 						r.Get("/travel-rsvp-schema", app.getTravelRSVPSchema)
@@ -449,6 +454,10 @@ func (app *application) mount() http.Handler {
 						r.Get("/emails", app.getApplicantEmailsByStatusHandler)
 						r.Patch("/{applicationID}/status", app.setApplicationStatus)
 						r.Patch("/{applicationID}/travel-status", app.setApplicationTravelStatus)
+						// Full edit access to any hacker's application
+						r.Patch("/{applicationID}", app.adminUpdateApplicationHandler)
+						r.Post("/{applicationID}/resume-upload-url", app.adminResumeUploadURLHandler)
+						r.Delete("/{applicationID}/resume", app.adminDeleteResumeHandler)
 						// Repair hatches for the one-shot hacker RSVPs
 						r.Post("/{applicationID}/rsvp/reset", app.resetApplicationRSVPHandler)
 						r.Post("/{applicationID}/travel-rsvp/reset", app.resetApplicationTravelRSVPHandler)

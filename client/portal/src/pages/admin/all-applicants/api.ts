@@ -5,6 +5,7 @@ import type {
   ApplicationListResult,
   ApplicationStats,
   ApplicationStatus,
+  ApplicationTimeline,
   FetchParams,
 } from "./types";
 
@@ -45,6 +46,10 @@ export async function fetchApplications(
     queryParams.set("travel_requested", String(params.travel_requested));
   }
 
+  if (params?.checked_in != null) {
+    queryParams.set("checked_in", String(params.checked_in));
+  }
+
   if (params?.cursor) {
     queryParams.set("cursor", params.cursor);
   }
@@ -76,6 +81,21 @@ export async function fetchApplicationStats(
   return getRequest<ApplicationStats>(
     "/admin/applications/stats",
     "stats",
+    signal,
+  );
+}
+
+/**
+ * Fetch per-day started/submitted counts, bucketed by day in timeZone
+ */
+export async function fetchApplicationTimeline(
+  timeZone: string,
+  signal?: AbortSignal,
+): Promise<ApiResponse<ApplicationTimeline>> {
+  const qs = new URLSearchParams({ tz: timeZone }).toString();
+  return getRequest<ApplicationTimeline>(
+    `/admin/applications/stats/timeline?${qs}`,
+    "application timeline",
     signal,
   );
 }

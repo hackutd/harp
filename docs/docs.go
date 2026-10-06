@@ -81,6 +81,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Filter by whether the hacker has a check-in scan",
+                        "name": "checked_in",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page size (default 50, max 100)",
                         "name": "limit",
@@ -211,6 +217,83 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/stats/timeline": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns per-day counts of started and submitted applications, bucketed by calendar day in the given IANA time zone (default UTC). Days with no activity are omitted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/applications"
+                ],
+                "summary": "Get application timeline (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IANA time zone, e.g. America/Chicago",
+                        "name": "tz",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationTimelineResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/applications/{applicationID}": {
             "get": {
                 "security": [
@@ -296,7 +379,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records the estimated AI-generated content percent for an application assigned to the current admin",
+                "description": "Records or updates the estimated AI-generated content percent for an application assigned to the current admin",
                 "consumes": [
                     "application/json"
                 ],
@@ -5035,7 +5118,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)",
+                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected), optionally narrowed by RSVP status. The RSVP filter only applies to accepted applications, so it requires status=accepted.",
                 "produces": [
                     "application/json"
                 ],
@@ -5050,6 +5133,12 @@ const docTemplate = `{
                         "name": "status",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "RSVP status (pending, confirmed, declined); requires status=accepted",
+                        "name": "rsvp_status",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5094,6 +5183,296 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/applications/{applicationID}": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Edits a hacker's application answers and/or resume in any status. Responses are merged into the stored answers (null removes one) and type-checked against the schema; required answers are not enforced. resume_path must come from the super admin resume upload URL for this application.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/applications"
+                ],
+                "summary": "Update an application (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "application",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.AdminUpdateApplicationPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationWithSchema"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/applications/{applicationID}/resume": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Clears the resume on any application and best-effort deletes the file from GCS.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/applications"
+                ],
+                "summary": "Delete an application's resume (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationWithSchema"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/applications/{applicationID}/resume-upload-url": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS upload URL for a resume owned by the application's hacker. Upload the PDF, then PATCH the application with the returned resume_path.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/applications"
+                ],
+                "summary": "Generate resume upload URL for an application (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResumeUploadURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -5202,7 +5581,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Sets the final status (accepted, rejected, or waitlisted) on an application",
+                "description": "Sets any status on an application. Besides the final decisions (accepted, rejected, waitlisted), a super admin can move it back to submitted, or to draft to reopen it so the hacker can edit and resubmit.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5504,7 +5883,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 while a previous run is still sending.",
+                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 until decisions are released, or while a previous run is still sending.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7698,6 +8077,145 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/decisions-released": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether hackers can currently see their final application decision. While unreleased, decided applications read as submitted on every hacker endpoint.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get decisions released status (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DecisionsReleasedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Releases final application decisions to hackers, or hides them again. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set decisions released status (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Release or hide decisions",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetDecisionsReleasedPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DecisionsReleasedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/from-email": {
             "get": {
                 "security": [
@@ -9639,6 +10157,145 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/settings/travel-applications-enabled": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns whether applicants are currently asked the travel reimbursement questions on the application.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get travel applications enabled status (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelApplicationsEnabledResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Opens or closes the travel reimbursement questions on the application. While closed, applicants are not shown the travel opt-in or its follow-up questions, and new submissions do not enter travel review. Admins still see answers already given. Requires SuperAdmin privileges.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set travel applications enabled status (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Open or close travel applications",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetTravelApplicationsEnabledPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.TravelApplicationsEnabledResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/settings/travel-rsvp-enabled": {
             "get": {
                 "security": [
@@ -10484,6 +11141,17 @@ const docTemplate = `{
                 }
             }
         },
+        "main.AdminUpdateApplicationPayload": {
+            "type": "object",
+            "properties": {
+                "responses": {
+                    "type": "object"
+                },
+                "resume_path": {
+                    "type": "string"
+                }
+            }
+        },
         "main.ApplicantInfo": {
             "type": "object",
             "properties": {
@@ -10520,6 +11188,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                }
+            }
+        },
+        "main.ApplicationTimelineResponse": {
+            "type": "object",
+            "properties": {
+                "time_zone": {
+                    "type": "string"
+                },
+                "timeline": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationTimelinePoint"
                     }
                 }
             }
@@ -10773,6 +11455,14 @@ const docTemplate = `{
             "properties": {
                 "stats": {
                     "$ref": "#/definitions/store.DecisionEmailStats"
+                }
+            }
+        },
+        "main.DecisionsReleasedResponse": {
+            "type": "object",
+            "properties": {
+                "released": {
+                    "type": "boolean"
                 }
             }
         },
@@ -11657,6 +12347,14 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SetDecisionsReleasedPayload": {
+            "type": "object",
+            "properties": {
+                "released": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.SetEmailSettingPayload": {
             "type": "object",
             "required": [
@@ -11773,6 +12471,8 @@ const docTemplate = `{
             "properties": {
                 "status": {
                     "enum": [
+                        "draft",
+                        "submitted",
                         "accepted",
                         "rejected",
                         "waitlisted"
@@ -11782,6 +12482,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/store.ApplicationStatus"
                         }
                     ]
+                }
+            }
+        },
+        "main.SetTravelApplicationsEnabledPayload": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -12031,6 +12739,14 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 200,
                     "minLength": 1
+                }
+            }
+        },
+        "main.TravelApplicationsEnabledResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -12498,6 +13214,10 @@ const docTemplate = `{
                 "ai_percent": {
                     "type": "integer"
                 },
+                "checked_in_at": {
+                    "description": "CheckedInAt is the first check-in scan, nil until the hacker arrives.",
+                    "type": "string"
+                },
                 "country_of_residence": {
                     "type": "string"
                 },
@@ -12770,10 +13490,26 @@ const docTemplate = `{
                 "accepted": {
                     "type": "integer"
                 },
+                "checked_in": {
+                    "type": "integer"
+                },
                 "draft": {
                     "type": "integer"
                 },
+                "no_shows": {
+                    "type": "integer"
+                },
                 "rejected": {
+                    "type": "integer"
+                },
+                "rsvp_confirmed": {
+                    "type": "integer"
+                },
+                "rsvp_declined": {
+                    "type": "integer"
+                },
+                "rsvp_pending": {
+                    "description": "RSVP and attendance counts. RSVP counts cover accepted applications only;\nCheckedIn counts everyone with a check-in scan, walk-ins included, and\nNoShows is accepted + RSVP confirmed + never checked in.",
                     "type": "integer"
                 },
                 "submitted": {
@@ -12803,6 +13539,44 @@ const docTemplate = `{
                 "StatusRejected",
                 "StatusWaitlisted"
             ]
+        },
+        "store.ApplicationTimelinePoint": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "description": "YYYY-MM-DD in the requested time zone",
+                    "type": "string"
+                },
+                "started": {
+                    "type": "integer"
+                },
+                "submitted": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.AttendanceStats": {
+            "type": "object",
+            "properties": {
+                "checked_in": {
+                    "type": "integer"
+                },
+                "checked_in_confirmed": {
+                    "type": "integer"
+                },
+                "checked_in_without_rsvp": {
+                    "type": "integer"
+                },
+                "latest_check_in": {
+                    "type": "string"
+                },
+                "no_shows": {
+                    "type": "integer"
+                },
+                "show_rate": {
+                    "type": "number"
+                }
+            }
         },
         "store.AuthMethod": {
             "type": "string",
@@ -12894,6 +13668,9 @@ const docTemplate = `{
             "properties": {
                 "applications": {
                     "$ref": "#/definitions/store.ApplicationFormStats"
+                },
+                "attendance": {
+                    "$ref": "#/definitions/store.AttendanceStats"
                 },
                 "rsvp": {
                     "$ref": "#/definitions/store.RSVPFormStats"

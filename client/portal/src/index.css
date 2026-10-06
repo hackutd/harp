@@ -846,16 +846,6 @@ body.hacker-zero-portals {
      (not hidden) keeps sticky positioning working inside the page. */
   overflow-x: clip;
   background-color: #030409;
-  background-image:
-    radial-gradient(circle at 88% 4%, rgb(246 43 232 / 8%), transparent 24%),
-    radial-gradient(circle at 12% 80%, rgb(89 0 255 / 10%), transparent 30%),
-    linear-gradient(rgb(33 255 240 / 2.5%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(33 255 240 / 2.5%) 1px, transparent 1px);
-  background-size:
-    auto,
-    auto,
-    64px 64px,
-    64px 64px;
 }
 
 /* Translate the hacker pages' legacy hard-coded light utilities at the theme
@@ -1008,11 +998,6 @@ body.hacker-zero-portals
 }
 
 .hacker-zero-sidebar [data-sidebar="sidebar"] {
-  background-image: radial-gradient(
-    circle at 0 100%,
-    rgb(89 0 255 / 18%),
-    transparent 42%
-  );
   box-shadow: inset -1px 0 rgb(33 255 240 / 8%);
 }
 
@@ -1312,4 +1297,138 @@ body.hacker-zero-portals
     image-set(url("/cursors/cp-beam.png") 1x, url("/cursors/cp-beam@2x.png") 2x)
       17 15,
     text;
+}
+
+/* ---------------------------------------------------------------------------
+ * Hacker mobile tab bar - a floating dark glass capsule.
+ *
+ * The bar is a translucent material over the page, not an opaque strip: blur
+ * plus saturation lets the page colour bleed through, a bright inset top edge
+ * reads as light catching the glass, and a deep soft shadow lifts it off the
+ * content. The selection pill is a lighter glass layer inside the bar that
+ * slides between tabs on transform only. Beneath the bar, a masked blur
+ * dissolves content into the screen edge instead of a hard cut-off.
+ * ------------------------------------------------------------------------ */
+
+.zero-tabbar-edge {
+  pointer-events: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  height: calc(6.5rem + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgb(3 4 9 / 72%), transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to top, #000 35%, transparent);
+  mask-image: linear-gradient(to top, #000 35%, transparent);
+}
+
+.zero-tabbar {
+  position: relative;
+  display: flex;
+  border-radius: 9999px;
+  background: rgb(22 23 34 / 58%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 14%),
+    inset 0 -1px 0 rgb(255 255 255 / 4%),
+    inset 0 0 0 0.5px rgb(255 255 255 / 10%),
+    0 10px 30px rgb(0 0 0 / 45%),
+    0 2px 6px rgb(0 0 0 / 30%);
+}
+
+.zero-tabbar-pill {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 11%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 16%),
+    inset 0 0 0 0.5px rgb(255 255 255 / 8%);
+  /* Critically damped feel: fast out of the gate, settles with no overshoot. */
+  transition:
+    transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease;
+  will-change: transform;
+}
+
+.zero-tabbar-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-height: 3.25rem;
+  border-radius: 9999px;
+  color: rgb(255 255 255 / 62%);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    color 200ms ease,
+    transform 160ms ease-out;
+}
+
+/* Feedback lands on the press, not the release. */
+.zero-tabbar-item:active {
+  transform: scale(0.92);
+  transition-duration: 80ms;
+}
+
+.zero-tabbar-item[aria-current="page"] {
+  color: #ffffff;
+}
+
+.zero-tabbar-item:focus-visible {
+  outline: 2px solid rgb(33 255 240 / 65%);
+  outline-offset: -2px;
+}
+
+.zero-tabbar-label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zero-tabbar-pill {
+    transition: opacity 200ms ease;
+  }
+
+  .zero-tabbar-item:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .zero-tabbar,
+  .zero-tabbar-edge {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .zero-tabbar {
+    background: #11121e;
+  }
+
+  .zero-tabbar-edge {
+    background: linear-gradient(to top, #030409 40%, transparent);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .zero-tabbar {
+    background: #0b0c15;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 45%),
+      0 10px 30px rgb(0 0 0 / 45%);
+  }
+
+  .zero-tabbar-item {
+    color: rgb(255 255 255 / 85%);
+  }
 }

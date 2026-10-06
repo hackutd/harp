@@ -45,7 +45,7 @@ type DecisionEmailStatsResponse struct {
 // "decisions are out" announcement.
 //
 //	@Summary		Send decision emails (Super Admin)
-//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 while a previous run is still sending.
+//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 until decisions are released, or while a previous run is still sending.
 //	@Tags			superadmin/emails
 //	@Accept			json
 //	@Produce		json
@@ -93,6 +93,18 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		}
 		kind = store.DecisionEmailKindDecision
 		statuses = payload.Statuses
+	}
+
+	// Both modes send applicants to the portal, which shows no decision until
+	// results are released, so an email sent first would point at nothing.
+	released, err := app.store.Settings.GetDecisionsReleased(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	if !released {
+		app.conflictResponse(w, r, errors.New("release decisions before emailing applicants"))
+		return
 	}
 
 	// The send runs in the background and can take minutes. Recipients are

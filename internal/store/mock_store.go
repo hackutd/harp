@@ -157,6 +157,14 @@ func (m *MockApplicationStore) GetStats(ctx context.Context) (*ApplicationStats,
 	return args.Get(0).(*ApplicationStats), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetTimeline(ctx context.Context, tz string) ([]ApplicationTimelinePoint, error) {
+	args := m.Called(tz)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ApplicationTimelinePoint), args.Error(1)
+}
+
 func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
 	args := m.Called(id, status)
 	if args.Get(0) == nil {
@@ -207,8 +215,8 @@ func (m *MockApplicationStore) GetCheckInEligibility(ctx context.Context, userID
 	return args.Get(0).(*CheckInEligibility), args.Error(1)
 }
 
-func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
-	args := m.Called(status)
+func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus, rsvpStatus *RSVPStatus) ([]UserEmailInfo, error) {
+	args := m.Called(status, rsvpStatus)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -302,6 +310,26 @@ func (m *MockSettingsStore) GetRSVPEnabled(ctx context.Context) (bool, error) {
 }
 
 func (m *MockSettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(enabled)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetDecisionsReleased(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetDecisionsReleased(ctx context.Context, released bool) error {
+	args := m.Called(released)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetTravelApplicationsEnabled(ctx context.Context) (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetTravelApplicationsEnabled(ctx context.Context, enabled bool) error {
 	args := m.Called(enabled)
 	return args.Error(0)
 }

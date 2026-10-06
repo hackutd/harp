@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { signOutExplicitly } from "@/shared/auth";
 import { useInstallPrompt } from "@/shared/install";
 import { errorAlert, getRequest } from "@/shared/lib/api";
+import { ZERODAY_LOGO, ZERODAY_URL } from "@/shared/lib/zeroday";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
 import { usePointsConfigStore, useUserStore } from "@/shared/stores";
 import type { Application } from "@/types";
@@ -394,6 +395,21 @@ export default function ProfilePage() {
           Account
         </h2>
         <div className="divide-y divide-[#F0F0F0] rounded-xl border border-[#E5E5E5]">
+          <a
+            href={ZERODAY_URL}
+            className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+          >
+            <img
+              src={ZERODAY_LOGO}
+              alt=""
+              aria-hidden
+              className="size-4.5 shrink-0 object-contain"
+            />
+            <span className="text-sm font-normal text-black">
+              Back to Zero Day
+            </span>
+          </a>
+
           <button
             type="button"
             onClick={handleLogout}
