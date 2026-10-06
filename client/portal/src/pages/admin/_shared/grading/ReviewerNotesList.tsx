@@ -1,6 +1,3 @@
-import { MessageSquare } from "lucide-react";
-
-import { Label } from "@/components/ui/label";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
 
 interface ReviewerNotesListProps {
@@ -11,39 +8,38 @@ interface ReviewerNotesListProps {
 export function ReviewerNotesList({ notes, loading }: ReviewerNotesListProps) {
   return (
     <div>
-      <div className="flex items-center gap-1.5 mb-2.5">
-        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-        <Label className="text-sm text-muted-foreground">
-          Reviewer Notes ({notes.length})
-        </Label>
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-[11px] font-normal uppercase tracking-wider text-foreground">
+          Reviewer notes
+        </h3>
+        {!loading && notes.length > 0 && (
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {notes.length}
+          </span>
+        )}
       </div>
       {loading ? (
-        <div className="text-xs text-muted-foreground">Loading notes...</div>
+        <p className="mt-3 text-xs text-muted-foreground">Loading notes...</p>
       ) : notes.length > 0 ? (
-        <div className="space-y-2.5">
+        <ul className="mt-1 divide-y">
           {notes.map((note, idx) => (
-            <div
-              key={`${note.admin_id}-${idx}`}
-              className="bg-white border rounded-md p-3 text-sm"
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-medium text-muted-foreground">
+            <li key={`${note.admin_id}-${idx}`} className="py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-xs text-muted-foreground">
                   {note.admin_email}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {new Date(note.created_at).toLocaleDateString()}
                 </span>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
                 {note.notes}
               </p>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
-        <p className="text-xs text-muted-foreground italic">
-          No reviewer notes
-        </p>
+        <p className="mt-3 text-xs text-muted-foreground">No reviewer notes</p>
       )}
     </div>
   );

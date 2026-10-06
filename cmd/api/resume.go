@@ -71,6 +71,12 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 		return
 	}
 
+	app.writeResumeUploadURL(w, r, user.ID)
+}
+
+// writeResumeUploadURL mints a fresh resume object path owned by userID and
+// responds with a signed upload URL for it. Callers check GCS is configured.
+func (app *application) writeResumeUploadURL(w http.ResponseWriter, r *http.Request, userID string) {
 	randomID, err := randomHex(randomResumeObjectIDBytes)
 	if err != nil {
 		app.internalServerError(w, r, err)
@@ -87,7 +93,7 @@ func (app *application) generateResumeUploadURLHandler(w http.ResponseWriter, r 
 	// make each event's files easy to browse, export, and apply lifecycle rules
 	// to. The database stores the complete path, so legacy resumes under
 	// resumes/... remain readable and resettable.
-	objectPath := fmt.Sprintf("%s%s/%s.pdf", resumeStoragePrefix(hackathonName), user.ID, randomID)
+	objectPath := fmt.Sprintf("%s%s/%s.pdf", resumeStoragePrefix(hackathonName), userID, randomID)
 
 	uploadURL, err := app.gcsClient.GenerateUploadURL(r.Context(), objectPath)
 	if err != nil {

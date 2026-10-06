@@ -8,13 +8,18 @@ import { PushPromptHost } from "@/components/PushPromptHost";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavSection, NavUser } from "@/pages/admin/_shared";
 import { cn } from "@/shared/lib/utils";
+import { ZERODAY_LOGO, ZERODAY_URL } from "@/shared/lib/zeroday";
 import { useUserStore } from "@/shared/stores";
 
 interface NavItem {
@@ -77,6 +82,28 @@ function HackerSidebar() {
           currentPath={location.pathname}
         />
       </SidebarContent>
+      <SidebarFooter className="border-t border-white/8">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild size="lg" tooltip="Back to Zero Day">
+              <a href={ZERODAY_URL}>
+                <img
+                  src={ZERODAY_LOGO}
+                  alt=""
+                  aria-hidden
+                  className="size-8 shrink-0 object-contain"
+                />
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-light">Back to Zero Day</span>
+                  <span className="truncate text-xs text-white/45">
+                    zeroday.hackutd.co
+                  </span>
+                </div>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

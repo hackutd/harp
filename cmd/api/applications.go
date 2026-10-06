@@ -718,7 +718,7 @@ func (app *application) listApplicationsHandler(w http.ResponseWriter, r *http.R
 }
 
 type SetStatusPayload struct {
-	Status store.ApplicationStatus `json:"status" validate:"required,oneof=accepted rejected waitlisted"`
+	Status store.ApplicationStatus `json:"status" validate:"required,oneof=draft submitted accepted rejected waitlisted"`
 }
 
 type SetTravelStatusPayload struct {
@@ -744,7 +744,7 @@ type EmailListResponse struct {
 // setApplicationStatus sets the final status on an application
 //
 //	@Summary		Set application status (Super Admin)
-//	@Description	Sets the final status (accepted, rejected, or waitlisted) on an application
+//	@Description	Sets any status on an application. Besides the final decisions (accepted, rejected, waitlisted), a super admin can move it back to submitted, or to draft to reopen it so the hacker can edit and resubmit.
 //	@Tags			superadmin/applications
 //	@Accept			json
 //	@Produce		json

@@ -1,9 +1,21 @@
-import { getRequest, patchRequest, postRequest } from "@/shared/lib/api";
-import type { ApiResponse, Application, ApplicationSchemaField } from "@/types";
+import type { ResumeUploadURLResponse } from "@/pages/hacker/apply/api";
+import {
+  deleteRequest,
+  getRequest,
+  patchRequest,
+  postRequest,
+} from "@/shared/lib/api";
+import type {
+  ApiResponse,
+  Application,
+  ApplicationSchemaField,
+  ApplicationStatus,
+} from "@/types";
 
+/** Any status, including "draft" to reopen the application for the hacker. */
 export async function setApplicationStatus(
   id: string,
-  status: "accepted" | "rejected" | "waitlisted",
+  status: ApplicationStatus,
 ): Promise<ApiResponse<{ application: Application }>> {
   return patchRequest<{ application: Application }>(
     `/superadmin/applications/${id}/status`,
@@ -80,5 +92,43 @@ export async function fetchTravelReceiptURLs(
     `/admin/applications/${applicationId}/travel-receipt-urls`,
     "travel receipts",
     signal,
+  );
+}
+
+export interface AdminUpdateApplicationPayload {
+  /** Merged into the stored answers; null removes an answer. */
+  responses?: Record<string, unknown>;
+  resume_path?: string;
+}
+
+/** Edits a hacker's application in any status. Returns it with its schema. */
+export async function updateApplicationAsAdmin(
+  id: string,
+  payload: AdminUpdateApplicationPayload,
+): Promise<ApiResponse<Application>> {
+  return patchRequest<Application>(
+    `/superadmin/applications/${id}`,
+    payload,
+    "application",
+  );
+}
+
+/** Signed URL for a resume owned by the application's hacker. */
+export async function requestApplicationResumeUploadURL(
+  id: string,
+): Promise<ApiResponse<ResumeUploadURLResponse>> {
+  return postRequest<ResumeUploadURLResponse>(
+    `/superadmin/applications/${id}/resume-upload-url`,
+    {},
+    "resume upload url",
+  );
+}
+
+export async function deleteApplicationResume(
+  id: string,
+): Promise<ApiResponse<Application>> {
+  return deleteRequest<Application>(
+    `/superadmin/applications/${id}/resume`,
+    "resume",
   );
 }

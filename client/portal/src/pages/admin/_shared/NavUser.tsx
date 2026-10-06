@@ -19,6 +19,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { signOutExplicitly } from "@/shared/auth";
+import { ZERODAY_LOGO, ZERODAY_URL } from "@/shared/lib/zeroday";
 import { useUserStore } from "@/shared/stores";
 
 export function NavUser({
@@ -117,6 +118,18 @@ export function NavUser({
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <a href={ZERODAY_URL}>
+                <img
+                  src={ZERODAY_LOGO}
+                  alt=""
+                  aria-hidden
+                  className="size-4 shrink-0 object-contain"
+                />
+                Back to Zero Day
+              </a>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut />
