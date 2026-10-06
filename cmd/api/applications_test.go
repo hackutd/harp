@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -611,6 +612,72 @@ func TestGetApplicationStats(t *testing.T) {
 		err = json.NewDecoder(rr.Body).Decode(&body)
 		require.NoError(t, err)
 		assert.Equal(t, int64(100), body.Data.TotalApplications)
+
+		mockApps.AssertExpectations(t)
+	})
+}
+
+func TestGetApplicationTimeline(t *testing.T) {
+	app := newTestApplication(t)
+	mockApps := app.store.Application.(*store.MockApplicationStore)
+
+	getTimeline := func(t *testing.T, query string) *httptest.ResponseRecorder {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, "/"+query, nil)
+		require.NoError(t, err)
+		req = setUserContext(req, newAdminUser())
+		return executeRequest(req, http.HandlerFunc(app.getApplicationTimelineHandler))
+	}
+
+	t.Run("should return the timeline in the requested time zone", func(t *testing.T) {
+		points := []store.ApplicationTimelinePoint{
+			{Date: "2026-09-01", Started: 12, Submitted: 3},
+			{Date: "2026-09-03", Started: 4, Submitted: 9},
+		}
+		mockApps.On("GetTimeline", "America/Chicago").Return(points, nil).Once()
+
+		rr := getTimeline(t, "?tz=America/Chicago")
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data ApplicationTimelineResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, "America/Chicago", body.Data.TimeZone)
+		assert.Equal(t, points, body.Data.Timeline)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should default to UTC", func(t *testing.T) {
+		mockApps.On("GetTimeline", "UTC").Return([]store.ApplicationTimelinePoint{}, nil).Once()
+
+		rr := getTimeline(t, "")
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should reject a malformed time zone without querying", func(t *testing.T) {
+		// No expectation is registered, so a store call would fail the mock.
+		rr := getTimeline(t, "?tz=America%2FChicago%27%3B")
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should return 400 for an unknown time zone", func(t *testing.T) {
+		mockApps.On("GetTimeline", "Mars/Olympus").Return(nil, store.ErrInvalidTimezone).Once()
+
+		rr := getTimeline(t, "?tz=Mars/Olympus")
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("should return 500 on store error", func(t *testing.T) {
+		mockApps.On("GetTimeline", "UTC").Return(nil, errors.New("db down")).Once()
+
+		rr := getTimeline(t, "")
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 
 		mockApps.AssertExpectations(t)
 	})

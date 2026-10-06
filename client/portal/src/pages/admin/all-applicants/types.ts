@@ -63,6 +63,18 @@ export interface ApplicationStats {
   acceptance_rate: number;
 }
 
+/** One calendar day of activity; days with none are omitted by the API. */
+export interface ApplicationTimelinePoint {
+  date: string; // YYYY-MM-DD in time_zone
+  started: number;
+  submitted: number;
+}
+
+export interface ApplicationTimeline {
+  time_zone: string;
+  timeline: ApplicationTimelinePoint[];
+}
+
 export type ApplicationSortBy =
   | "created_at"
   | "accept_votes"

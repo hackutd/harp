@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -547,6 +548,56 @@ func (app *application) getApplicationStatsHandler(w http.ResponseWriter, r *htt
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, stats); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// ApplicationTimelineResponse is the per-day application activity series.
+type ApplicationTimelineResponse struct {
+	TimeZone string                           `json:"time_zone"`
+	Timeline []store.ApplicationTimelinePoint `json:"timeline"`
+}
+
+// timezonePattern admits IANA names ("America/Chicago", "Etc/GMT+6") and
+// "UTC". It only screens out junk before the query; Postgres decides whether
+// the name actually exists.
+var timezonePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_+\-/]{0,63}$`)
+
+// getApplicationTimelineHandler returns started and submitted counts per day
+//
+//	@Summary		Get application timeline (Admin)
+//	@Description	Returns per-day counts of started and submitted applications, bucketed by calendar day in the given IANA time zone (default UTC). Days with no activity are omitted.
+//	@Tags			admin/applications
+//	@Produce		json
+//	@Param			tz	query		string	false	"IANA time zone, e.g. America/Chicago"
+//	@Success		200	{object}	ApplicationTimelineResponse
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/stats/timeline [get]
+func (app *application) getApplicationTimelineHandler(w http.ResponseWriter, r *http.Request) {
+	tz := r.URL.Query().Get("tz")
+	if tz == "" {
+		tz = "UTC"
+	}
+	if !timezonePattern.MatchString(tz) {
+		app.badRequestResponse(w, r, store.ErrInvalidTimezone)
+		return
+	}
+
+	timeline, err := app.store.Application.GetTimeline(r.Context(), tz)
+	if err != nil {
+		if errors.Is(err, store.ErrInvalidTimezone) {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, ApplicationTimelineResponse{TimeZone: tz, Timeline: timeline}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

@@ -289,6 +289,7 @@ func (app *application) mount() http.Handler {
 					r.Route("/applications", func(r chi.Router) {
 						r.Get("/", app.listApplicationsHandler)
 						r.Get("/stats", app.getApplicationStatsHandler)
+						r.Get("/stats/timeline", app.getApplicationTimelineHandler)
 						r.Get("/{applicationID}", app.getApplication)
 						r.Get("/{applicationID}/resume-url", app.getResumeDownloadURLHandler)
 						r.Get("/{applicationID}/travel-receipt-urls", app.getTravelReceiptURLsHandler)

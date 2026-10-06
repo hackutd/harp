@@ -199,6 +199,54 @@ func TestIntegrationFormOperationsStats(t *testing.T) {
 	}
 }
 
+func TestIntegrationTimeline(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	s := &ApplicationsStore{db: db}
+	ctx := context.Background()
+
+	// Times straddle UTC midnight so the two zones bucket them differently.
+	stmts := []string{
+		`UPDATE applications SET created_at = '2026-09-01 03:00Z', submitted_at = '2026-09-02 15:00Z' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000001'`,
+		`UPDATE applications SET created_at = '2026-09-01 15:00Z', submitted_at = '2026-09-01 20:00Z' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000002'`,
+		`UPDATE applications SET created_at = '2026-09-02 01:00Z' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000003'`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("update failed: %v\n%s", err, stmt)
+		}
+	}
+
+	cases := []struct {
+		tz   string
+		want []ApplicationTimelinePoint
+	}{
+		{"UTC", []ApplicationTimelinePoint{
+			{Date: "2026-09-01", Started: 2, Submitted: 1},
+			{Date: "2026-09-02", Started: 1, Submitted: 1},
+		}},
+		{"America/Chicago", []ApplicationTimelinePoint{
+			{Date: "2026-08-31", Started: 1, Submitted: 0},
+			{Date: "2026-09-01", Started: 2, Submitted: 1},
+			{Date: "2026-09-02", Started: 0, Submitted: 1},
+		}},
+	}
+	for _, tc := range cases {
+		got, err := s.GetTimeline(ctx, tc.tz)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.tz, err)
+		}
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: got %+v, want %+v", tc.tz, got, tc.want)
+		}
+	}
+
+	if _, err := s.GetTimeline(ctx, "Mars/Olympus"); !errors.Is(err, ErrInvalidTimezone) {
+		t.Errorf("unknown zone: err = %v, want ErrInvalidTimezone", err)
+	}
+}
+
 func TestIntegrationSubmitVote(t *testing.T) {
 	db := integrationDB(t)
 	defer db.Close()
