@@ -57,12 +57,12 @@ describe("ApplicationsOverview", () => {
     expect(screen.getByText("33.3%")).toBeInTheDocument();
   });
 
-  it("defaults to the last 3 months", () => {
+  it("defaults to the last 30 days", () => {
     renderOverview();
 
     expect(
       screen.getByRole("combobox", { name: "Select a time range" }),
-    ).toHaveTextContent("Last 3 months");
+    ).toHaveTextContent("Last 30 days");
   });
 
   it("shows an empty state before anyone applies", () => {

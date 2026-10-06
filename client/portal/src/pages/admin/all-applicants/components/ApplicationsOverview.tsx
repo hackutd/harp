@@ -57,7 +57,7 @@ export const ApplicationsOverview = memo(function ApplicationsOverview({
   stats,
   statsLoading,
 }: ApplicationsOverviewProps) {
-  const [timeRange, setTimeRange] = useState<TimelineRange>("90d");
+  const [timeRange, setTimeRange] = useState<TimelineRange>("30d");
 
   const today = todayKey(timeZone);
   const series = useMemo(
@@ -116,7 +116,7 @@ export const ApplicationsOverview = memo(function ApplicationsOverview({
             className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex"
             aria-label="Select a time range"
           >
-            <SelectValue placeholder="Last 3 months" />
+            <SelectValue placeholder="Last 30 days" />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
             {RANGE_OPTIONS.map((option) => (
