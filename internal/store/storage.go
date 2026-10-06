@@ -63,7 +63,7 @@ type Storage struct {
 		GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error)
 		ResetRSVP(ctx context.Context, id string) (*Application, []string, error)
 		ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error)
-		GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error)
+		GetEmailsByStatus(ctx context.Context, status ApplicationStatus, rsvpStatus *RSVPStatus) ([]UserEmailInfo, error)
 		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
 		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
 		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)

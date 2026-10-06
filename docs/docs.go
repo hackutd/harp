@@ -81,6 +81,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Filter by whether the hacker has a check-in scan",
+                        "name": "checked_in",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page size (default 50, max 100)",
                         "name": "limit",
@@ -5035,7 +5041,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected)",
+                "description": "Returns a list of applicant emails filtered by application status (draft, submitted, accepted, waitlisted, or rejected), optionally narrowed by RSVP status. The RSVP filter only applies to accepted applications, so it requires status=accepted.",
                 "produces": [
                     "application/json"
                 ],
@@ -5050,6 +5056,12 @@ const docTemplate = `{
                         "name": "status",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "RSVP status (pending, confirmed, declined); requires status=accepted",
+                        "name": "rsvp_status",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -13111,6 +13123,10 @@ const docTemplate = `{
                 "ai_percent": {
                     "type": "integer"
                 },
+                "checked_in_at": {
+                    "description": "CheckedInAt is the first check-in scan, nil until the hacker arrives.",
+                    "type": "string"
+                },
                 "country_of_residence": {
                     "type": "string"
                 },
@@ -13383,10 +13399,26 @@ const docTemplate = `{
                 "accepted": {
                     "type": "integer"
                 },
+                "checked_in": {
+                    "type": "integer"
+                },
                 "draft": {
                     "type": "integer"
                 },
+                "no_shows": {
+                    "type": "integer"
+                },
                 "rejected": {
+                    "type": "integer"
+                },
+                "rsvp_confirmed": {
+                    "type": "integer"
+                },
+                "rsvp_declined": {
+                    "type": "integer"
+                },
+                "rsvp_pending": {
+                    "description": "RSVP and attendance counts. RSVP counts cover accepted applications only;\nCheckedIn counts everyone with a check-in scan, walk-ins included, and\nNoShows is accepted + RSVP confirmed + never checked in.",
                     "type": "integer"
                 },
                 "submitted": {
@@ -13416,6 +13448,29 @@ const docTemplate = `{
                 "StatusRejected",
                 "StatusWaitlisted"
             ]
+        },
+        "store.AttendanceStats": {
+            "type": "object",
+            "properties": {
+                "checked_in": {
+                    "type": "integer"
+                },
+                "checked_in_confirmed": {
+                    "type": "integer"
+                },
+                "checked_in_without_rsvp": {
+                    "type": "integer"
+                },
+                "latest_check_in": {
+                    "type": "string"
+                },
+                "no_shows": {
+                    "type": "integer"
+                },
+                "show_rate": {
+                    "type": "number"
+                }
+            }
         },
         "store.AuthMethod": {
             "type": "string",
@@ -13507,6 +13562,9 @@ const docTemplate = `{
             "properties": {
                 "applications": {
                     "$ref": "#/definitions/store.ApplicationFormStats"
+                },
+                "attendance": {
+                    "$ref": "#/definitions/store.AttendanceStats"
                 },
                 "rsvp": {
                     "$ref": "#/definitions/store.RSVPFormStats"

@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   CircleDollarSign,
+  DoorOpen,
   FileCheck2,
   FileClock,
   ReceiptText,
@@ -143,6 +144,81 @@ function FormCard({ form, data }: { form: FormKey; data: FormsOverviewData }) {
   );
 }
 
+function AttendanceCard({ data }: { data: FormsOverviewData }) {
+  const { attendance, rsvp } = data.stats;
+  const metrics = [
+    {
+      label: "Checked in",
+      value: attendance.checked_in,
+      note: "Everyone scanned in at the door",
+      to: "/admin/all-applicants?view=checked_in",
+    },
+    {
+      label: "RSVP'd and showed up",
+      value: attendance.checked_in_confirmed,
+      note: `${attendance.show_rate.toFixed(1)}% of ${rsvp.confirmed} confirmed`,
+      to: null,
+    },
+    {
+      label: "No-shows",
+      value: attendance.no_shows,
+      note: "Confirmed, never checked in",
+      to: "/admin/all-applicants?view=no_show",
+    },
+    {
+      label: "Checked in without RSVP",
+      value: attendance.checked_in_without_rsvp,
+      note: "Promoted walk-ins and RSVP-exempt check-ins",
+      to: null,
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <DoorOpen className="size-5 text-muted-foreground" />
+          <CardTitle className="text-base font-medium">
+            Event attendance
+          </CardTitle>
+        </div>
+        <CardDescription>
+          Who said they would come against who actually scanned in. Latest
+          check-in: {formatDateTime(attendance.latest_check_in)}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => {
+          const body = (
+            <>
+              <p className="text-sm text-muted-foreground">{metric.label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {metric.value}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {metric.note}
+              </p>
+            </>
+          );
+          return metric.to ? (
+            <Link
+              key={metric.label}
+              to={metric.to}
+              className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
+              {body}
+            </Link>
+          ) : (
+            <div key={metric.label} className="rounded-lg border p-4">
+              {body}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function FormsOverview({
   data,
   refreshing,
@@ -266,6 +342,8 @@ export function FormsOverview({
           </CardContent>
         </Card>
       </div>
+
+      <AttendanceCard data={data} />
 
       <Card>
         <CardHeader>

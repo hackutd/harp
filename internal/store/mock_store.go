@@ -207,8 +207,8 @@ func (m *MockApplicationStore) GetCheckInEligibility(ctx context.Context, userID
 	return args.Get(0).(*CheckInEligibility), args.Error(1)
 }
 
-func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus) ([]UserEmailInfo, error) {
-	args := m.Called(status)
+func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status ApplicationStatus, rsvpStatus *RSVPStatus) ([]UserEmailInfo, error) {
+	args := m.Called(status, rsvpStatus)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

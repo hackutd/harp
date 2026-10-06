@@ -28,6 +28,11 @@ function stats(overrides: Partial<ApplicationStats> = {}): ApplicationStats {
     waitlisted: 2,
     draft: 1,
     acceptance_rate: 0.5,
+    rsvp_pending: 4,
+    rsvp_confirmed: 5,
+    rsvp_declined: 1,
+    checked_in: 0,
+    no_shows: 5,
     ...overrides,
   };
 }
