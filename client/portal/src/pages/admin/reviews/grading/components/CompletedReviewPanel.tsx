@@ -1,16 +1,17 @@
-import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { memo } from "react";
+import { memo, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   GradingActionButtons,
   ReviewerNotesList,
+  SectionHeader,
 } from "@/pages/admin/_shared/grading";
 
 import { AIPercentField } from "../../components/AIPercentField";
 import { NotesTextarea } from "../../components/NotesTextarea";
+import { TravelVoteButtons } from "../../components/TravelVoteButtons";
 import { VoteBadge } from "../../components/VoteBadge";
+import { useTabToFocusNotes } from "../../hooks/useTabToFocusNotes";
 import type { Review, ReviewNote, ReviewVote } from "../../types";
 
 interface CompletedReviewPanelProps {
@@ -59,141 +60,129 @@ export const CompletedReviewPanel = memo(function CompletedReviewPanel({
   const travelVoteMissing = travelRequested && travelVote == null;
   const canSave = isDirty && !!vote && !travelVoteMissing && !submitting;
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+  useTabToFocusNotes(panelRef, notesTextareaRef, canChange && !submitting);
+
   return (
-    <div className="space-y-4 p-4">
-      <ReviewerNotesList notes={otherReviewerNotes} loading={notesLoading} />
+    <div ref={panelRef} className="divide-y">
+      <section aria-label="AI percent">
+        <AIPercentField
+          key={review.application_id}
+          applicationId={review.application_id}
+          aiPercent={aiPercent}
+          onUpdate={onAiPercentUpdate}
+        />
+      </section>
 
-      <AIPercentField
-        key={review.application_id}
-        applicationId={review.application_id}
-        aiPercent={aiPercent}
-        onUpdate={onAiPercentUpdate}
-      />
-
-      {!canChange ? (
-        <div className="space-y-3 text-sm">
-          <p className="text-xs text-muted-foreground italic">
-            Decision finalized — this vote can no longer be changed
-          </p>
-          <div>
-            <Label className="text-xs text-muted-foreground">Your Vote</Label>
-            <div className="mt-1">
-              <VoteBadge vote={review.vote} />
-            </div>
+      {travelRequested && (
+        <section aria-label="Travel reimbursement">
+          <SectionHeader
+            title="Travel reimbursement"
+            aside={canChange ? "Requested" : undefined}
+            ruled
+          />
+          <div className="space-y-3 px-5 py-5">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              This applicant requested travel reimbursement. Should they receive
+              it?
+            </p>
+            <TravelVoteButtons
+              value={canChange ? travelVote : review.travel_vote}
+              disabled={submitting || !canChange}
+              onChange={onTravelVoteChange}
+            />
           </div>
-          {travelRequested && (
-            <div>
-              <Label className="text-xs text-muted-foreground">
-                Travel Reimbursement
-              </Label>
-              <p className="mt-1">
-                {review.travel_vote == null
-                  ? "—"
-                  : review.travel_vote
-                    ? "Yes"
-                    : "No"}
-              </p>
-            </div>
+        </section>
+      )}
+
+      <section aria-label="Your vote">
+        <SectionHeader
+          title="Your vote"
+          aside={!canChange ? <VoteBadge vote={review.vote} /> : undefined}
+          ruled
+        />
+        <div className="space-y-4 px-5 py-5">
+          {!canChange ? (
+            <p className="text-xs text-muted-foreground">
+              Decision finalized — this vote can no longer be changed
+            </p>
+          ) : (
+            <>
+              <GradingActionButtons
+                layout="row"
+                label={null}
+                selected={vote}
+                disabled={submitting}
+                onReject={() => onVoteChange("reject")}
+                onWaitlist={() => onVoteChange("waitlist")}
+                onAccept={() => onVoteChange("accept")}
+              />
+              {travelVoteMissing && (
+                <p className="text-xs text-muted-foreground">
+                  Cast a travel reimbursement vote before saving
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2">
+                {isDirty && (
+                  <span className="mr-auto text-xs text-muted-foreground">
+                    Save or discard to move to another applicant
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="cursor-pointer"
+                  disabled={!isDirty || submitting}
+                  onClick={onDiscard}
+                >
+                  Discard
+                </Button>
+                <Button
+                  size="sm"
+                  className="cursor-pointer"
+                  disabled={!canSave}
+                  loading={submitting}
+                  onClick={onSave}
+                >
+                  Save changes
+                </Button>
+              </div>
+            </>
           )}
-          <div>
-            <Label className="text-xs text-muted-foreground">Your Notes</Label>
-            {review.notes ? (
-              <p className="mt-1 whitespace-pre-wrap leading-relaxed">
-                {review.notes}
-              </p>
-            ) : (
-              <p className="mt-1 text-muted-foreground italic">No notes</p>
-            )}
-          </div>
         </div>
-      ) : (
-        <>
-          <div>
-            <Label className="text-xs text-muted-foreground">Your Notes</Label>
+      </section>
+
+      <section aria-label="Your notes">
+        <SectionHeader title="Your notes" ruled />
+        <div className="px-5 py-5">
+          {canChange ? (
             <NotesTextarea
+              ref={notesTextareaRef}
               reviewId={review.id}
               initialValue={notes}
               disabled={submitting}
               rows={4}
               onNotesChange={(_id, value) => onNotesChange(value)}
             />
-          </div>
-
-          {travelRequested && (
-            <div>
-              <Label className="text-xs text-muted-foreground">
-                Travel Reimbursement
-              </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                This applicant requested travel reimbursement. Should they
-                receive it?
-              </p>
-              <div className="flex gap-2 mt-1.5">
-                <Button
-                  size="sm"
-                  variant={travelVote === true ? "default" : "outline"}
-                  className="flex-1 cursor-pointer"
-                  disabled={submitting}
-                  onClick={() => onTravelVoteChange(true)}
-                >
-                  <ThumbsUp className="h-3.5 w-3.5 mr-1" />
-                  Yes
-                </Button>
-                <Button
-                  size="sm"
-                  variant={travelVote === false ? "default" : "outline"}
-                  className="flex-1 cursor-pointer"
-                  disabled={submitting}
-                  onClick={() => onTravelVoteChange(false)}
-                >
-                  <ThumbsDown className="h-3.5 w-3.5 mr-1" />
-                  No
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <GradingActionButtons
-            label="Your vote"
-            selected={vote}
-            disabled={submitting}
-            onReject={() => onVoteChange("reject")}
-            onWaitlist={() => onVoteChange("waitlist")}
-            onAccept={() => onVoteChange("accept")}
-          />
-          {travelVoteMissing && (
-            <p className="text-xs text-muted-foreground text-center">
-              Cast a travel reimbursement vote before saving
+          ) : review.notes ? (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">
+              {review.notes}
             </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No notes</p>
           )}
+        </div>
+      </section>
 
-          <div className="flex items-center justify-end gap-2 border-t pt-3">
-            {isDirty && (
-              <span className="mr-auto text-xs text-muted-foreground italic">
-                Save or discard to move to another applicant
-              </span>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="cursor-pointer"
-              disabled={!isDirty || submitting}
-              onClick={onDiscard}
-            >
-              Discard
-            </Button>
-            <Button
-              size="sm"
-              className="cursor-pointer"
-              disabled={!canSave}
-              loading={submitting}
-              onClick={onSave}
-            >
-              Save changes
-            </Button>
-          </div>
-        </>
-      )}
+      <section aria-label="Reviewer notes">
+        <ReviewerNotesList
+          flush
+          notes={otherReviewerNotes}
+          loading={notesLoading}
+        />
+      </section>
     </div>
   );
 });

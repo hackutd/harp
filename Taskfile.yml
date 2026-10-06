@@ -27,6 +27,11 @@ tasks:
     cmds:
       - migrate -path="{{.MIGRATIONS_PATH}}" -database="{{.DB_ADDR}}" down
 
+  scrub-staging-pii:
+    desc: Scrub hacker PII from staging (task scrub-staging-pii -- --yes)
+    cmds:
+      - ./scripts/scrub-staging-pii.sh {{.CLI_ARGS}}
+
   seed:
     desc: Run seed script
     cmds:

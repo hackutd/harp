@@ -1,16 +1,16 @@
-import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { memo, useRef } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   GradingActionButtons,
   ReviewerNotesList,
+  SectionHeader,
 } from "@/pages/admin/_shared/grading";
 
 import { AIPercentField } from "../../components/AIPercentField";
 import { NotesTextarea } from "../../components/NotesTextarea";
+import { TravelVoteButtons } from "../../components/TravelVoteButtons";
 import { VoteBadge } from "../../components/VoteBadge";
+import { useTabToFocusNotes } from "../../hooks/useTabToFocusNotes";
 import type { Review, ReviewNote, ReviewVote } from "../../types";
 
 interface GradingVotingPanelProps {
@@ -40,124 +40,120 @@ export const GradingVotingPanel = memo(function GradingVotingPanel({
   onTravelVoteChange,
   onVote,
 }: GradingVotingPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+  useTabToFocusNotes(panelRef, notesTextareaRef, !review.vote && !submitting);
 
   const travelRequested = review.travel_status !== "not_requested";
   const travelVoteMissing =
     travelRequested && !review.vote && travelVote == null;
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Other Reviewers' Notes */}
-      <ReviewerNotesList notes={otherReviewerNotes} loading={notesLoading} />
-
-      {/* Your Notes */}
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Your Notes</Label>
-          {!review.vote && (
-            <span className="text-xs text-muted-foreground italic">
-              Write notes before casting your vote
-            </span>
-          )}
-        </div>
-        <NotesTextarea
-          ref={notesTextareaRef}
-          reviewId={review.id}
-          initialValue={notes}
-          disabled={submitting || !!review.vote}
-          rows={4}
-          onNotesChange={(_id, value) => onNotesChange(value)}
+    <div ref={panelRef} className="divide-y">
+      <section aria-label="AI percent">
+        <AIPercentField
+          key={review.application_id}
+          applicationId={review.application_id}
+          aiPercent={aiPercent}
+          onUpdate={onAiPercentUpdate}
         />
-      </div>
+      </section>
 
-      <AIPercentField
-        key={review.application_id}
-        applicationId={review.application_id}
-        aiPercent={aiPercent}
-        onUpdate={onAiPercentUpdate}
-      />
-
-      {/* Travel Reimbursement Vote — only when the applicant requested travel */}
+      {/* Travel vote — only when the applicant requested travel */}
       {travelRequested && (
-        <div>
-          <Label className="text-xs text-muted-foreground">
-            Travel Reimbursement
-          </Label>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            This applicant requested travel reimbursement. Should they receive
-            it?
-          </p>
-          {review.vote ? (
-            <p className="text-sm mt-1.5">
-              You voted:{" "}
-              <span className="font-medium">
-                {review.travel_vote == null
+        <section aria-label="Travel reimbursement">
+          <SectionHeader
+            title="Travel reimbursement"
+            aside={
+              review.vote
+                ? review.travel_vote == null
                   ? "—"
                   : review.travel_vote
-                    ? "Yes"
-                    : "No"}
-              </span>
+                    ? "You voted yes"
+                    : "You voted no"
+                : "Requested"
+            }
+            ruled
+          />
+          <div className="space-y-3 px-5 py-5">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              This applicant requested travel reimbursement. Should they receive
+              it?
             </p>
-          ) : (
-            <div className="flex gap-2 mt-1.5">
-              <Button
-                size="sm"
-                variant={travelVote === true ? "default" : "outline"}
-                className="flex-1 cursor-pointer"
-                disabled={submitting}
-                onClick={() => onTravelVoteChange(true)}
-              >
-                <ThumbsUp className="h-3.5 w-3.5 mr-1" />
-                Yes
-              </Button>
-              <Button
-                size="sm"
-                variant={travelVote === false ? "default" : "outline"}
-                className="flex-1 cursor-pointer"
-                disabled={submitting}
-                onClick={() => onTravelVoteChange(false)}
-              >
-                <ThumbsDown className="h-3.5 w-3.5 mr-1" />
-                No
-              </Button>
-            </div>
-          )}
-        </div>
+            <TravelVoteButtons
+              value={review.vote ? review.travel_vote : travelVote}
+              disabled={submitting || !!review.vote}
+              onChange={onTravelVoteChange}
+            />
+          </div>
+        </section>
       )}
 
-      {/* Vote Section */}
-      {review.vote ? (
-        <div className="text-center py-2">
-          <p className="text-sm text-muted-foreground">
-            You voted: <VoteBadge vote={review.vote} />
-          </p>
-          {review.reviewed_at && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {new Date(review.reviewed_at).toLocaleString()}
-            </p>
+      <section aria-label="Your vote">
+        <SectionHeader
+          title="Your vote"
+          aside={review.vote ? <VoteBadge vote={review.vote} /> : undefined}
+          ruled
+        />
+        <div className="space-y-4 px-5 py-5">
+          {review.vote ? (
+            review.reviewed_at && (
+              <p className="text-xs text-muted-foreground">
+                Voted {new Date(review.reviewed_at).toLocaleString()}
+              </p>
+            )
+          ) : (
+            <>
+              <GradingActionButtons
+                layout="row"
+                label={null}
+                disabled={submitting || travelVoteMissing}
+                onReject={() => onVote("reject")}
+                onWaitlist={() => onVote("waitlist")}
+                onAccept={() => onVote("accept")}
+              />
+              {travelVoteMissing && (
+                <p className="text-xs text-muted-foreground">
+                  Cast a travel reimbursement vote before submitting
+                </p>
+              )}
+              {submitting && (
+                <p className="text-xs text-muted-foreground">
+                  Submitting vote...
+                </p>
+              )}
+            </>
           )}
         </div>
-      ) : (
-        <>
-          <GradingActionButtons
-            disabled={submitting || travelVoteMissing}
-            onReject={() => onVote("reject")}
-            onWaitlist={() => onVote("waitlist")}
-            onAccept={() => onVote("accept")}
+      </section>
+
+      <section aria-label="Your notes">
+        <SectionHeader
+          title="Your notes"
+          aside={
+            review.vote ? undefined : "Write notes before casting your vote"
+          }
+          ruled
+        />
+        <div className="px-5 py-5">
+          <NotesTextarea
+            ref={notesTextareaRef}
+            reviewId={review.id}
+            initialValue={notes}
+            disabled={submitting || !!review.vote}
+            rows={4}
+            onNotesChange={(_id, value) => onNotesChange(value)}
           />
-          {travelVoteMissing && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Cast a travel reimbursement vote before submitting
-            </p>
-          )}
-          {submitting && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Submitting vote...
-            </p>
-          )}
-        </>
-      )}
+        </div>
+      </section>
+
+      <section aria-label="Reviewer notes">
+        <ReviewerNotesList
+          flush
+          notes={otherReviewerNotes}
+          loading={notesLoading}
+        />
+      </section>
     </div>
   );
 });
