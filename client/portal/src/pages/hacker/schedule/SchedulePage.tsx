@@ -399,7 +399,7 @@ export default function SchedulePage() {
           {/* Calendar grid */}
           <div className="relative mt-3">
             {/* Sticky header — day strip + column labels stay pinned on scroll */}
-            <div className="sticky top-0 z-30 bg-[#070811]/95 pt-2 backdrop-blur-md">
+            <div className="sticky top-0 z-30 bg-[#030409]/95 pt-2 backdrop-blur-md">
               {/* Day strip — one cell per hackathon day, today circled. Offset by
                   the hour-gutter width so it lines up with the columns below. */}
               <div className="flex">

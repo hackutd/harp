@@ -296,7 +296,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records the estimated AI-generated content percent for an application assigned to the current admin",
+                "description": "Records or updates the estimated AI-generated content percent for an application assigned to the current admin",
                 "consumes": [
                     "application/json"
                 ],
