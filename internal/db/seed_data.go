@@ -156,7 +156,8 @@ var sponsorTemplate = []seedSponsor{
 	{"Foxglove Design", "Silver", "slate", "https://example.com/foxglove", "Design mentorship desk, open all weekend."},
 	{"Tidewater Logistics", "Bronze", "orange", "https://example.com/tidewater", "Sponsoring the Friday night snack table."},
 	{"Halcyon Security", "Bronze", "orange", "https://example.com/halcyon", "Capture-the-flag side event and swag."},
-	{"Rowan Coffee Co.", "Standard", "blue", "https://example.com/rowan", "Cold brew, continuously, from Friday 6pm."},
+	{"Juniper Labs", "Other Sponsors", "blue", "https://example.com/juniper", "Covering the Saturday midnight pizza run."},
+	{"Rowan Coffee Co.", "Also Thanking", "blue", "https://example.com/rowan", "Cold brew, continuously, from Friday 6pm."},
 }
 
 type seedFAQ struct {

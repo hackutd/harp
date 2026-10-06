@@ -66,6 +66,8 @@ export default function PermissionsTab() {
   const [applicationsEnabled, setApplicationsEnabled] = useState<boolean>(
     DEFAULT_FEATURE_FLAGS.applicationsEnabled,
   );
+  const [travelApplicationsEnabled, setTravelApplicationsEnabled] =
+    useState(true);
   const [rsvpEnabled, setRSVPEnabled] = useState(true);
   const [travelRSVPEnabled, setTravelRSVPEnabled] = useState(true);
   const [checkInRequiresRSVP, setCheckInRequiresRSVP] = useState(true);
@@ -77,6 +79,8 @@ export default function PermissionsTab() {
 
   const [loading, setLoading] = useState(true);
   const [applicationsSaving, setApplicationsSaving] = useState(false);
+  const [travelApplicationsSaving, setTravelApplicationsSaving] =
+    useState(false);
   const [rsvpSaving, setRSVPSaving] = useState(false);
   const [travelRSVPSaving, setTravelRSVPSaving] = useState(false);
   const [checkInRSVPSaving, setCheckInRSVPSaving] = useState(false);
@@ -90,6 +94,7 @@ export default function PermissionsTab() {
     async function fetchSettings() {
       const [
         applicationsRes,
+        travelApplicationsRes,
         rsvpRes,
         travelRSVPRes,
         checkInRSVPRes,
@@ -101,6 +106,10 @@ export default function PermissionsTab() {
         getRequest<{ enabled: boolean }>(
           "/applications/enabled",
           "applications enabled",
+        ),
+        getRequest<{ enabled: boolean }>(
+          "/superadmin/settings/travel-applications-enabled",
+          "travel applications enabled",
         ),
         getRequest<{ enabled: boolean }>(
           "/superadmin/settings/rsvp-enabled",
@@ -136,6 +145,12 @@ export default function PermissionsTab() {
         setApplicationsEnabled(applicationsRes.data.enabled);
       } else {
         errorAlert(applicationsRes);
+      }
+
+      if (travelApplicationsRes.status === 200 && travelApplicationsRes.data) {
+        setTravelApplicationsEnabled(travelApplicationsRes.data.enabled);
+      } else {
+        errorAlert(travelApplicationsRes);
       }
 
       if (rsvpRes.status === 200 && rsvpRes.data) {
@@ -214,6 +229,28 @@ export default function PermissionsTab() {
     }
 
     setApplicationsSaving(false);
+  }
+
+  async function handleTravelApplicationsToggle(nextValue: boolean) {
+    setTravelApplicationsSaving(true);
+    const res = await putRequest<{ enabled: boolean }>(
+      "/superadmin/settings/travel-applications-enabled",
+      { enabled: nextValue },
+      "travel applications enabled",
+    );
+
+    if (res.status === 200 && res.data) {
+      setTravelApplicationsEnabled(res.data.enabled);
+      toast.success(
+        res.data.enabled
+          ? "Applicants can now request travel reimbursement."
+          : "Travel reimbursement questions are now hidden from applicants.",
+      );
+    } else {
+      errorAlert(res);
+    }
+
+    setTravelApplicationsSaving(false);
   }
 
   async function handleRSVPToggle(nextValue: boolean) {
@@ -382,6 +419,15 @@ export default function PermissionsTab() {
         checked={applicationsEnabled}
         disabled={loading || applicationsSaving}
         onCheckedChange={handleApplicationsToggle}
+      />
+
+      <PermissionToggle
+        id="travel-applications-toggle"
+        label="Travel Reimbursement Requests"
+        description="When enabled, applicants are asked whether they want travel reimbursement. Turn this off after the travel deadline: the travel questions disappear from the application and new submissions skip travel review. Admins still see travel answers already submitted."
+        checked={travelApplicationsEnabled}
+        disabled={loading || travelApplicationsSaving}
+        onCheckedChange={handleTravelApplicationsToggle}
       />
 
       <PermissionToggle

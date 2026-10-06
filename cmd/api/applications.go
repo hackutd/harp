@@ -25,6 +25,47 @@ type ApplicationWithSchema struct {
 	Points int `json:"points"`
 }
 
+// hasHackerVisibleDecision reports whether the application carries a decision
+// that must stay hidden from the hacker until results are released.
+func hasHackerVisibleDecision(a *store.Application) bool {
+	switch a.Status {
+	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
+		return true
+	}
+	return a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected
+}
+
+// hideUnreleasedDecision masks the application's final decision, travel
+// decision, and the review votes that would reveal them, until a super admin
+// releases decisions. It mutates the in-memory copy only: callers must not
+// persist an application after masking it. Status gates that run afterwards
+// (RSVP, travel RSVP) then see an undecided application and refuse.
+func (app *application) hideUnreleasedDecision(r *http.Request, a *store.Application) error {
+	if !hasHackerVisibleDecision(a) {
+		return nil
+	}
+
+	released, err := app.store.Settings.GetDecisionsReleased(r.Context())
+	if err != nil {
+		return err
+	}
+	if released {
+		return nil
+	}
+
+	switch a.Status {
+	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
+		a.Status = store.StatusSubmitted
+	}
+	if a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected {
+		a.TravelStatus = store.TravelPending
+	}
+	a.AcceptVotes, a.RejectVotes, a.WaitlistVotes = 0, 0, 0
+	a.TravelYesVotes, a.TravelNoVotes = 0, 0
+	a.TravelApprovedAmountCents = nil
+	return nil
+}
+
 // userPoints returns the user's total scan points. Points are cosmetic, so a
 // lookup failure is logged and reported as 0 rather than failing the request.
 func (app *application) userPoints(r *http.Request, userID string) int {
@@ -80,8 +121,13 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		}
 	}
 
-	// Fetch schema to embed in response
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err := app.hideUnreleasedDecision(r, application); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	// Fetch the schema the applicant sees to embed in response
+	schema, _, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -141,7 +187,7 @@ func (app *application) updateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	schema, _, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -224,8 +270,8 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Fetch the application schema for validation
-	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	// Fetch the schema the applicant was shown, for validation
+	schema, withheld, err := app.applicantSchema(r)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -249,8 +295,32 @@ func (app *application) submitApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Submit! The travel opt-in binding is resolved against the live schema, so
-	// an event that removed the checkbox simply requests no travel.
+	// A draft started while travel was open can still hold travel answers.
+	// Drop them so the submitted application only carries questions the
+	// applicant was asked when it went in.
+	stripped := false
+	for id := range withheld {
+		if _, ok := responses[id]; ok {
+			delete(responses, id)
+			stripped = true
+		}
+	}
+	if stripped {
+		cleaned, err := json.Marshal(responses)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		application.Responses = cleaned
+		if err := app.store.Application.Update(r.Context(), application); err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+	}
+
+	// Submit! The travel opt-in binding is resolved against the applicant's
+	// schema, so an event that removed the checkbox or closed travel
+	// applications simply requests no travel.
 	optInFieldID := schemaContractFieldID(schema, travelOptInFieldID)
 	if err := app.store.Application.Submit(r.Context(), application, optInFieldID); err != nil {
 		app.internalServerError(w, r, err)

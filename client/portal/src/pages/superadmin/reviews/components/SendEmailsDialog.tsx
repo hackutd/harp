@@ -44,6 +44,7 @@ import {
   fetchDecisionEmailStats,
   sendDecisionEmails,
 } from "../api";
+import { useDecisionReleaseStore } from "../releaseStore";
 import type {
   DecidedStatus,
   DecisionEmailMode,
@@ -154,8 +155,14 @@ function SendEmailsDialogBody({
           return sum + (resendAll ? counts.total : counts.pending);
         }, 0);
 
+  // The server refuses to email anyone before decisions are released, since
+  // the portal would still show their application as under review.
+  const decisionsReleased = useDecisionReleaseStore((s) => s.released);
+  const releaseBlocked = decisionsReleased === false;
+
   const canSend =
     !statsLoading &&
+    !releaseBlocked &&
     recipientCount > 0 &&
     (mode === "announcement" || selected.length > 0);
 
@@ -451,6 +458,20 @@ function SendEmailsDialogBody({
                 className="mt-0.5 cursor-pointer"
               />
             </div>
+
+            {releaseBlocked && (
+              <div
+                className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800"
+                role="alert"
+              >
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                <p className="text-xs">
+                  Decisions have not been released. Release them from the
+                  reviews page before emailing applicants, or the portal will
+                  still show their application as under review.
+                </p>
+              </div>
+            )}
 
             {resendAll && (
               <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">

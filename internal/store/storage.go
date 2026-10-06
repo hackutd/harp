@@ -80,6 +80,10 @@ type Storage struct {
 		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetRSVPEnabled(ctx context.Context) (bool, error)
 		SetRSVPEnabled(ctx context.Context, enabled bool) error
+		GetDecisionsReleased(ctx context.Context) (bool, error)
+		SetDecisionsReleased(ctx context.Context, released bool) error
+		GetTravelApplicationsEnabled(ctx context.Context) (bool, error)
+		SetTravelApplicationsEnabled(ctx context.Context, enabled bool) error
 		GetCheckInRequiresRSVP(ctx context.Context) (bool, error)
 		SetCheckInRequiresRSVP(ctx context.Context, enabled bool) error
 		GetTravelRSVPSchema(ctx context.Context) ([]ApplicationSchemaField, error)

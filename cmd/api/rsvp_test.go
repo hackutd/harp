@@ -39,6 +39,7 @@ func newRSVPSchema() []store.ApplicationSchemaField {
 
 func TestGetMyRSVP(t *testing.T) {
 	app := newTestApplication(t)
+	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
@@ -103,6 +104,7 @@ func TestGetMyRSVP(t *testing.T) {
 
 func TestSubmitMyRSVP(t *testing.T) {
 	app := newTestApplication(t)
+	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 

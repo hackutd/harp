@@ -397,6 +397,146 @@ func (app *application) updateTravelRSVPSchema(w http.ResponseWriter, r *http.Re
 	}
 }
 
+type SetTravelApplicationsEnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+type TravelApplicationsEnabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
+// getTravelApplicationsEnabled returns whether applicants are asked the travel questions
+//
+//	@Summary		Get travel applications enabled status (Super Admin)
+//	@Description	Returns whether applicants are currently asked the travel reimbursement questions on the application.
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	TravelApplicationsEnabledResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/travel-applications-enabled [get]
+func (app *application) getTravelApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	enabled, err := app.store.Settings.GetTravelApplicationsEnabled(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := TravelApplicationsEnabledResponse{
+		Enabled: enabled,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setTravelApplicationsEnabled opens or closes the travel questions on the application
+//
+//	@Summary		Set travel applications enabled status (Super Admin)
+//	@Description	Opens or closes the travel reimbursement questions on the application. While closed, applicants are not shown the travel opt-in or its follow-up questions, and new submissions do not enter travel review. Admins still see answers already given. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetTravelApplicationsEnabledPayload	true	"Open or close travel applications"
+//	@Success		200		{object}	TravelApplicationsEnabledResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/travel-applications-enabled [put]
+func (app *application) setTravelApplicationsEnabled(w http.ResponseWriter, r *http.Request) {
+	var req SetTravelApplicationsEnabledPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetTravelApplicationsEnabled(r.Context(), req.Enabled); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := TravelApplicationsEnabledResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+type SetDecisionsReleasedPayload struct {
+	Released bool `json:"released"`
+}
+
+type DecisionsReleasedResponse struct {
+	Released bool `json:"released"`
+}
+
+// getDecisionsReleased returns whether hackers can see their final decisions
+//
+//	@Summary		Get decisions released status (Super Admin)
+//	@Description	Returns whether hackers can currently see their final application decision. While unreleased, decided applications read as submitted on every hacker endpoint.
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	DecisionsReleasedResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/decisions-released [get]
+func (app *application) getDecisionsReleased(w http.ResponseWriter, r *http.Request) {
+	released, err := app.store.Settings.GetDecisionsReleased(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := DecisionsReleasedResponse{
+		Released: released,
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// setDecisionsReleased releases final decisions to hackers, or hides them again
+//
+//	@Summary		Set decisions released status (Super Admin)
+//	@Description	Releases final application decisions to hackers, or hides them again. Requires SuperAdmin privileges.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		SetDecisionsReleasedPayload	true	"Release or hide decisions"
+//	@Success		200		{object}	DecisionsReleasedResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/decisions-released [put]
+func (app *application) setDecisionsReleased(w http.ResponseWriter, r *http.Request) {
+	var req SetDecisionsReleasedPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Settings.SetDecisionsReleased(r.Context(), req.Released); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	response := DecisionsReleasedResponse(req)
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 type SetTravelRSVPEnabledPayload struct {
 	Enabled bool `json:"enabled"`
 }
