@@ -118,7 +118,7 @@ export default function AllApplicantsPage() {
       </div>
 
       <div className="shrink-0 flex flex-wrap items-center gap-3">
-        <div className="w-full lg:w-auto">
+        <div>
           {isInitialLoad ? (
             <div className="flex gap-2">
               {[...Array(4)].map((_, i) => (
@@ -134,14 +134,12 @@ export default function AllApplicantsPage() {
             />
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {!redact && (
-            <>
-              <div className="h-5 w-px bg-border shrink-0" />
-              <SearchBar value={searchInput} onChange={setSearchInput} />
-            </>
-          )}
-        </div>
+        {!redact && (
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-px bg-border shrink-0" />
+            <SearchBar value={searchInput} onChange={setSearchInput} />
+          </div>
+        )}
         <div className="ml-auto flex">
           <PaginationControls
             prevCursor={prevCursor}

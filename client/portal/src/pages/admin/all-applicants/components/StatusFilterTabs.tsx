@@ -29,7 +29,7 @@ export const StatusFilterTabs = memo(function StatusFilterTabs({
       onValueChange={handleValueChange}
       className="min-w-0"
     >
-      <TabsList className="h-auto grid grid-cols-3 justify-items-stretch gap-1 rounded-md border p-1 w-full lg:h-9 lg:inline-flex lg:w-auto lg:flex-nowrap lg:justify-start lg:gap-0 lg:p-0.5">
+      <TabsList className="h-auto w-auto inline-flex flex-wrap rounded-md border justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5">
         <TabsTrigger
           value="all"
           disabled={loading}

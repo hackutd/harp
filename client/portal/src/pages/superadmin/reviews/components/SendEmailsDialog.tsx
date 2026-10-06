@@ -33,7 +33,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ApplicationStats } from "@/pages/admin/all-applicants/types";
+import type {
+  ApplicationStats,
+  ApplicationStatus,
+} from "@/pages/admin/all-applicants/types";
 import { errorAlert } from "@/shared/lib/api";
 
 import {
@@ -47,13 +50,13 @@ import type {
   DecisionEmailStats,
   ExportStatus,
 } from "../types";
-import { DECIDED_STATUSES, EXPORT_STATUSES } from "../types";
+import {
+  APPLICATION_STATUS_LABELS,
+  APPLICATION_STATUSES,
+  DECIDED_STATUSES,
+} from "../types";
 
-const STATUS_LABELS: Record<DecidedStatus, string> = {
-  accepted: "Accepted",
-  waitlisted: "Waitlisted",
-  rejected: "Rejected",
-};
+type EmailsTab = DecisionEmailMode | "export";
 
 const STATUS_DESCRIPTIONS: Record<DecidedStatus, string> = {
   accepted: "Congratulations email with a link to the portal.",
@@ -104,12 +107,12 @@ function SendEmailsDialogBody({
   onOpenChange,
   stats,
 }: Omit<SendEmailsDialogProps, "open">) {
-  const [mode, setMode] = useState<DecisionEmailMode>("decision");
-  const [tab, setTab] = useState<"decision" | "announcement" | "export">(
-    "decision",
-  );
+  const [tab, setTab] = useState<EmailsTab>("decision");
+  // The send path only knows decision/announcement; the export tab never sends.
+  const mode: DecisionEmailMode =
+    tab === "announcement" ? "announcement" : "decision";
   const [selected, setSelected] = useState<DecidedStatus[]>([]);
-  const [exportSelected, setExportSelected] = useState<ExportStatus[]>([]);
+  const [exportSelected, setExportSelected] = useState<ApplicationStatus[]>([]);
   const [resendAll, setResendAll] = useState(false);
 
   const [emailStats, setEmailStats] = useState<DecisionEmailStats | null>(null);
@@ -203,19 +206,20 @@ function SendEmailsDialogBody({
     setSending(false);
   }
 
-  function toggleExportStatus(status: ExportStatus, checked: boolean) {
+  function toggleExportStatus(status: ApplicationStatus, checked: boolean) {
     setExportSelected((prev) =>
       checked ? [...prev, status] : prev.filter((s) => s !== status),
     );
   }
 
   // "All statuses" convenience: tick the master selector, then untick any row.
-  const allExportSelected = exportSelected.length === EXPORT_STATUSES.length;
+  const allExportSelected =
+    exportSelected.length === APPLICATION_STATUSES.length;
   function toggleAllExport(checked: boolean) {
-    setExportSelected(checked ? [...EXPORT_STATUSES] : []);
+    setExportSelected(checked ? [...APPLICATION_STATUSES] : []);
   }
 
-  async function handleExportCsv(exportStatuses: ExportStatus[]) {
+  async function handleExportCsv(exportStatuses: ApplicationStatus[]) {
     if (exportStatuses.length === 0) return;
 
     setDownloadingCsv(true);
@@ -241,7 +245,7 @@ function SendEmailsDialogBody({
     const link = document.createElement("a");
     link.href = url;
     link.download =
-      exportStatuses.length === EXPORT_STATUSES.length
+      exportStatuses.length === APPLICATION_STATUSES.length
         ? "all_applicants.csv"
         : `${exportStatuses.join("_")}_applicants.csv`;
     link.click();
@@ -257,20 +261,13 @@ function SendEmailsDialogBody({
           Emails
         </DialogTitle>
         <DialogDescription>
-          Email applicants their decision, or announce that decisions are out
-          without revealing them.
+          Email applicants their decision, announce that decisions are out
+          without revealing them, or export applicant emails as a CSV.
         </DialogDescription>
       </DialogHeader>
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        <Tabs
-          value={tab}
-          onValueChange={(value) => {
-            const next = value as "decision" | "announcement" | "export";
-            setTab(next);
-            if (next !== "export") setMode(next as DecisionEmailMode);
-          }}
-        >
+        <Tabs value={tab} onValueChange={(value) => setTab(value as EmailsTab)}>
           <TabsList className="w-full">
             <TabsTrigger value="decision" className="cursor-pointer">
               <Mail className="size-3.5" />
@@ -327,7 +324,7 @@ function SendEmailsDialogBody({
                           htmlFor={`send-${status}`}
                           className="cursor-pointer text-sm font-medium"
                         >
-                          {STATUS_LABELS[status]}
+                          {APPLICATION_STATUS_LABELS[status]}
                         </Label>
                         <Badge
                           variant="secondary"
@@ -401,7 +398,7 @@ function SendEmailsDialogBody({
               </Label>
             </div>
 
-            {EXPORT_STATUSES.map((status) => (
+            {APPLICATION_STATUSES.map((status) => (
               <div
                 key={status}
                 className="flex items-center gap-3 rounded-md border p-3"
@@ -418,7 +415,7 @@ function SendEmailsDialogBody({
                   htmlFor={`export-${status}`}
                   className="cursor-pointer text-sm font-medium"
                 >
-                  {EXPORT_STATUS_LABELS[status]}
+                  {APPLICATION_STATUS_LABELS[status]}
                 </Label>
               </div>
             ))}
@@ -468,8 +465,8 @@ function SendEmailsDialogBody({
               <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                 <p className="text-xs">
-                  Duplicate protection is off — everyone selected will be emailed,
-                  including those who already received this email.
+                  Duplicate protection is off — everyone selected will be
+                  emailed, including those who already received this email.
                 </p>
               </div>
             )}
@@ -487,8 +484,7 @@ function SendEmailsDialogBody({
         )}
       </div>
 
-      <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-between">
-        {tab !== "export" ? <span /> : null}
+      <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-end">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -524,7 +520,7 @@ function SendEmailsDialogBody({
             <AlertDialogDescription>
               {mode === "announcement"
                 ? "This tells every decided applicant that decisions are out, without saying what their decision is."
-                : `This tells ${selected.map((s) => STATUS_LABELS[s].toLowerCase()).join(", ")} applicants their result.`}{" "}
+                : `This tells ${selected.map((s) => APPLICATION_STATUS_LABELS[s].toLowerCase()).join(", ")} applicants their result.`}{" "}
               Emails cannot be unsent.
             </AlertDialogDescription>
           </AlertDialogHeader>

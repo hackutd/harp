@@ -12,6 +12,23 @@ export const DECIDED_STATUSES: DecidedStatus[] = [
   "rejected",
 ];
 
+/** Every application status, in pipeline order. CSV export accepts any of these. */
+export const APPLICATION_STATUSES: ApplicationStatus[] = [
+  "draft",
+  "submitted",
+  "accepted",
+  "waitlisted",
+  "rejected",
+];
+
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  accepted: "Accepted",
+  waitlisted: "Waitlisted",
+  rejected: "Rejected",
+};
+
 /**
  * Every application status an email list can be exported for. This is the
  * recognized counterpart to `DecidedStatus`: CSV export is deliberately not
