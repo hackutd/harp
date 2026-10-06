@@ -217,6 +217,83 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/applications/stats/timeline": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns per-day counts of started and submitted applications, bucketed by calendar day in the given IANA time zone (default UTC). Days with no activity are omitted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/applications"
+                ],
+                "summary": "Get application timeline (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IANA time zone, e.g. America/Chicago",
+                        "name": "tz",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ApplicationTimelineResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/applications/{applicationID}": {
             "get": {
                 "security": [
@@ -11115,6 +11192,20 @@ const docTemplate = `{
                 }
             }
         },
+        "main.ApplicationTimelineResponse": {
+            "type": "object",
+            "properties": {
+                "time_zone": {
+                    "type": "string"
+                },
+                "timeline": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationTimelinePoint"
+                    }
+                }
+            }
+        },
         "main.ApplicationWithSchema": {
             "type": "object",
             "properties": {
@@ -13448,6 +13539,21 @@ const docTemplate = `{
                 "StatusRejected",
                 "StatusWaitlisted"
             ]
+        },
+        "store.ApplicationTimelinePoint": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "description": "YYYY-MM-DD in the requested time zone",
+                    "type": "string"
+                },
+                "started": {
+                    "type": "integer"
+                },
+                "submitted": {
+                    "type": "integer"
+                }
+            }
         },
         "store.AttendanceStats": {
             "type": "object",

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type ApplicationStatus string
@@ -149,6 +151,19 @@ type ApplicationStats struct {
 	CheckedIn     int64 `json:"checked_in"`
 	NoShows       int64 `json:"no_shows"`
 }
+
+// ApplicationTimelinePoint is one calendar day of application activity.
+// Started counts applications created that day (a draft is created on the
+// hacker's first visit to the apply page); Submitted counts first submissions.
+type ApplicationTimelinePoint struct {
+	Date      string `json:"date"` // YYYY-MM-DD in the requested time zone
+	Started   int64  `json:"started"`
+	Submitted int64  `json:"submitted"`
+}
+
+// ErrInvalidTimezone is returned when Postgres does not recognize the
+// time zone name used to bucket the timeline.
+var ErrInvalidTimezone = errors.New("invalid time zone")
 
 // FormOperationsStats is the super-admin operational view of the three
 // participant forms. Counts use people rather than files unless the field name
@@ -1014,6 +1029,60 @@ func (s *ApplicationsStore) GetStats(ctx context.Context) (*ApplicationStats, er
 	}
 
 	return &stats, nil
+}
+
+// GetTimeline returns per-day started and submitted counts, bucketed by
+// calendar day in tz. Days with no activity are omitted; the client fills
+// gaps. Each branch reads only an indexed timestamp column, so the planner
+// can answer it from idx_applications_created_at_id and
+// idx_applications_submitted_at without touching the wide responses JSONB.
+func (s *ApplicationsStore) GetTimeline(ctx context.Context, tz string) ([]ApplicationTimelinePoint, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT to_char(day, 'YYYY-MM-DD'), SUM(started), SUM(submitted)
+		FROM (
+			SELECT (created_at AT TIME ZONE $1)::date AS day, 1 AS started, 0 AS submitted
+			FROM applications
+			UNION ALL
+			SELECT (submitted_at AT TIME ZONE $1)::date, 0, 1
+			FROM applications
+			WHERE submitted_at IS NOT NULL
+		) events
+		GROUP BY day
+		ORDER BY day
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, tz)
+	if err != nil {
+		return nil, timezoneError(err)
+	}
+	defer rows.Close()
+
+	points := []ApplicationTimelinePoint{}
+	for rows.Next() {
+		var p ApplicationTimelinePoint
+		if err := rows.Scan(&p.Date, &p.Started, &p.Submitted); err != nil {
+			return nil, err
+		}
+		points = append(points, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, timezoneError(err)
+	}
+	return points, nil
+}
+
+// timezoneError maps Postgres's invalid_parameter_value (raised for an
+// unknown AT TIME ZONE name) to ErrInvalidTimezone. The driver may surface it
+// from the query call or from the row iterator, so both paths go through here.
+func timezoneError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "22023" {
+		return ErrInvalidTimezone
+	}
+	return err
 }
 
 // GetFormOperationsStats returns the cross-form funnel and travel financial

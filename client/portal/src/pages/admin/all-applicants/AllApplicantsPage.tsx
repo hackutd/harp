@@ -14,13 +14,14 @@ import { useRedactApplicants } from "@/shared/hooks";
 import { usePointsConfigStore } from "@/shared/stores";
 
 import { ApplicationDetailPanel } from "./components/ApplicationDetailPanel";
+import { ApplicationsOverview } from "./components/ApplicationsOverview";
 import { ApplicationsTable } from "./components/ApplicationsTable";
 import { AttendanceFilterTabs } from "./components/AttendanceFilterTabs";
 import { FilterModeToggle } from "./components/FilterModeToggle";
 import { PaginationControls } from "./components/PaginationControls";
-import { SectionCards } from "./components/SectionCards";
 import { StatusFilterTabs } from "./components/StatusFilterTabs";
 import { useApplicationDetail } from "./hooks/useApplicationDetail";
+import { useApplicationTimeline } from "./hooks/useApplicationTimeline";
 import { useApplicationsStore } from "./store";
 import type { ApplicationStatus, AttendanceView, FilterMode } from "./types";
 import {
@@ -46,6 +47,8 @@ export default function AllApplicantsPage() {
   const fetchStats = useApplicationsStore((s) => s.fetchStats);
   const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
   const redact = useRedactApplicants();
+  const timeline = useApplicationTimeline();
+
   const currentView = attendanceViewOf(
     currentStatus,
     currentRSVPStatus,
@@ -180,7 +183,14 @@ export default function AllApplicantsPage() {
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
       <div className="shrink-0">
-        <SectionCards stats={stats} loading={statsLoading} />
+        <ApplicationsOverview
+          stats={stats}
+          statsLoading={statsLoading}
+          points={timeline.points}
+          timeZone={timeline.timeZone}
+          loading={timeline.loading}
+          error={timeline.error}
+        />
       </div>
 
       <div className="shrink-0 flex flex-wrap items-center gap-3">

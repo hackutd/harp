@@ -157,6 +157,14 @@ func (m *MockApplicationStore) GetStats(ctx context.Context) (*ApplicationStats,
 	return args.Get(0).(*ApplicationStats), args.Error(1)
 }
 
+func (m *MockApplicationStore) GetTimeline(ctx context.Context, tz string) ([]ApplicationTimelinePoint, error) {
+	args := m.Called(tz)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ApplicationTimelinePoint), args.Error(1)
+}
+
 func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
 	args := m.Called(id, status)
 	if args.Get(0) == nil {

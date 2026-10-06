@@ -5,6 +5,7 @@ import type {
   ApplicationListResult,
   ApplicationStats,
   ApplicationStatus,
+  ApplicationTimeline,
   FetchParams,
 } from "./types";
 
@@ -80,6 +81,21 @@ export async function fetchApplicationStats(
   return getRequest<ApplicationStats>(
     "/admin/applications/stats",
     "stats",
+    signal,
+  );
+}
+
+/**
+ * Fetch per-day started/submitted counts, bucketed by day in timeZone
+ */
+export async function fetchApplicationTimeline(
+  timeZone: string,
+  signal?: AbortSignal,
+): Promise<ApiResponse<ApplicationTimeline>> {
+  const qs = new URLSearchParams({ tz: timeZone }).toString();
+  return getRequest<ApplicationTimeline>(
+    `/admin/applications/stats/timeline?${qs}`,
+    "application timeline",
     signal,
   );
 }

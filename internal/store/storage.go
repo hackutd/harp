@@ -58,6 +58,7 @@ type Storage struct {
 		SubmitTravelRSVP(ctx context.Context, app *Application) error
 		List(ctx context.Context, filters ApplicationListFilters, cursor *ApplicationCursor, direction PaginationDirection, limit int) (*ApplicationListResult, error)
 		GetStats(ctx context.Context) (*ApplicationStats, error)
+		GetTimeline(ctx context.Context, tz string) ([]ApplicationTimelinePoint, error)
 		SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error)
 		SetTravelStatus(ctx context.Context, id string, status TravelStatus, approvedAmountCents *int64) (*Application, error)
 		GetFormOperationsStats(ctx context.Context) (*FormOperationsStats, error)

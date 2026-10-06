@@ -73,6 +73,18 @@ export interface ApplicationStats {
   no_shows: number;
 }
 
+/** One calendar day of activity; days with none are omitted by the API. */
+export interface ApplicationTimelinePoint {
+  date: string; // YYYY-MM-DD in time_zone
+  started: number;
+  submitted: number;
+}
+
+export interface ApplicationTimeline {
+  time_zone: string;
+  timeline: ApplicationTimelinePoint[];
+}
+
 /**
  * Which filter row the applicants page shows: application status (before the
  * event) or RSVP and check-in (around it). Only one applies at a time.
