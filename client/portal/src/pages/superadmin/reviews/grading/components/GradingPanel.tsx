@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +33,7 @@ import {
   ReviewerNotesList,
 } from "@/pages/admin/_shared/grading";
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
+import { getStatusColor } from "@/pages/admin/all-applicants/utils";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
 import { cn } from "@/shared/lib/utils";
 import type { ApplicationStatus, RSVPStatus, TravelStatus } from "@/types";
@@ -115,7 +117,7 @@ function SectionHeader({
   return (
     <div
       className={cn(
-        "flex items-baseline justify-between gap-3 px-5 pb-3 pt-5",
+        "flex items-center justify-between gap-3 px-5 py-4",
         ruled && "border-b",
       )}
     >
@@ -320,7 +322,16 @@ export const GradingPanel = memo(function GradingPanel({
       <section aria-label="Decision">
         <SectionHeader
           title="Application decision"
-          aside={STATUS_OPTIONS.find((o) => o.value === listItem.status)?.label}
+          aside={
+            <Badge
+              className={cn(
+                "px-2.5 py-0.5 text-xs font-normal capitalize",
+                getStatusColor(listItem.status),
+              )}
+            >
+              {listItem.status}
+            </Badge>
+          }
           ruled
         />
         <div className="space-y-4 px-5 py-5">
@@ -647,8 +658,8 @@ export const GradingPanel = memo(function GradingPanel({
       )}
 
       {/* Reviewer Notes */}
-      <section aria-label="Reviewer notes" className="px-5 py-5">
-        <ReviewerNotesList notes={notes} loading={notesLoading} />
+      <section aria-label="Reviewer notes">
+        <ReviewerNotesList flush notes={notes} loading={notesLoading} />
       </section>
     </div>
   );
