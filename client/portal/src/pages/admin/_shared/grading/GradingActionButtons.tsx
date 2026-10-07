@@ -19,7 +19,10 @@ interface GradingActionButtonsProps {
   onAccept: () => void;
   label?: string | null;
   selected?: GradingAction | null;
-  /** "row" fits the three actions side by side; shortcuts move to tooltips. */
+  /**
+   * "row" fits the three actions side by side; shortcuts move to tooltips and
+   * labels collapse to icons when the row is narrower than 20rem.
+   */
   layout?: "stacked" | "row";
   /** A reviewer casts a vote; a super admin sets the final decision. */
   intent?: "vote" | "decision";
@@ -60,7 +63,7 @@ export function GradingActionButtons({
       )}
       <div
         className={cn(
-          isRow ? "grid grid-cols-3 gap-2" : "flex flex-col gap-2",
+          isRow ? "@container grid grid-cols-3 gap-2" : "flex flex-col gap-2",
           label && "mt-2",
         )}
       >
@@ -84,7 +87,10 @@ export function GradingActionButtons({
                   loading={disabled}
                 >
                   <Icon className={cn("h-4 w-4", !isRow && "mr-1.5")} />
-                  {actionLabel}
+                  {/* Narrow row: icon only, label kept for screen readers */}
+                  <span className={cn(isRow && "@max-xs:sr-only")}>
+                    {actionLabel}
+                  </span>
                   {!isRow && (
                     <span className="ml-auto flex items-center gap-2">
                       {isSelected && (
@@ -98,8 +104,8 @@ export function GradingActionButtons({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {intent === "decision" ? "Final decision" : "Your vote"} ·{" "}
-                {shortcut}
+                {intent === "decision" ? "Final decision" : "Your vote"}:{" "}
+                {actionLabel} · {shortcut}
               </TooltipContent>
             </Tooltip>
           );

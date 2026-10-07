@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -26,6 +26,11 @@ const result: AIAssessment = {
   },
 };
 
+async function openBreakdown(user: ReturnType<typeof userEvent.setup>) {
+  await user.hover(screen.getByRole("button", { name: /^AI score/ }));
+  return within(await screen.findByRole("tooltip"));
+}
+
 function Editor({ initial = result }: { initial?: AIAssessment }) {
   const [assessment, setAssessment] = useState(initial);
   return (
@@ -38,57 +43,73 @@ function Editor({ initial = result }: { initial?: AIAssessment }) {
 }
 
 describe("AI assessment editor", () => {
-  it("shows migrated percentages with unset details", () => {
+  it("shows only the score until the breakdown is hovered", async () => {
+    const user = userEvent.setup();
     render(<Editor initial={{ ...EMPTY_AI_ASSESSMENT, ai_score: 0.6 }} />);
     expect(screen.getByText("60%")).toBeInTheDocument();
-    expect(screen.getAllByText("Not set")).toHaveLength(5);
+    expect(screen.queryByText("Not set")).not.toBeInTheDocument();
+    const breakdown = await openBreakdown(user);
+    expect(breakdown.getAllByText("Not set")).toHaveLength(5);
   });
 
-  it("saves only the changed class and preserves zero", async () => {
+  it("edits only the AI percent and saves it as a 0–1 score", async () => {
     const user = userEvent.setup();
     vi.mocked(updateAIAssessment).mockResolvedValue({
       status: 200,
-      data: { ...result, classes: { ...result.classes, human: 0 } },
+      data: { ...result, ai_score: 0 },
     });
     render(<Editor />);
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(
-      screen.getByRole("spinbutton", { name: "AI score (0–1)" }),
-    ).toHaveFocus();
-    const input = screen.getByRole("spinbutton", { name: "Human (0–1)" });
+    await user.click(screen.getByRole("button", { name: "Edit AI score" }));
+    const input = screen.getByRole("spinbutton", { name: "AI score" });
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue(59.6);
+    expect(screen.getAllByRole("spinbutton")).toHaveLength(1);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     await user.clear(input);
     await user.type(input, "0");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByRole("button", { name: "Save AI score" }));
     expect(updateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1", {
-      classes: { human: 0 },
+      ai_score: 0,
     });
     expect(await screen.findByText("0%")).toBeInTheDocument();
-    expect(screen.getByText("59.6%")).toBeInTheDocument();
-    expect(screen.getByText("51.5%")).toBeInTheDocument();
   });
 
-  it("can independently clear the score and verdict", async () => {
+  it("can clear the AI percent", async () => {
     const user = userEvent.setup();
     vi.mocked(updateAIAssessment).mockResolvedValue({
       status: 200,
-      data: { ...result, ai_score: null, verdict: null },
+      data: { ...result, ai_score: null },
     });
     render(<Editor />);
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.clear(
-      screen.getByRole("spinbutton", { name: "AI score (0–1)" }),
-    );
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Verdict" }),
-      "",
-    );
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByRole("button", { name: "Edit AI score" }));
+    await user.clear(screen.getByRole("spinbutton", { name: "AI score" }));
+    await user.click(screen.getByRole("button", { name: "Save AI score" }));
     expect(updateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1", {
       ai_score: null,
-      verdict: null,
     });
-    expect(screen.getByText("40.4%")).toBeInTheDocument();
-    expect(screen.getAllByText("Not set")).toHaveLength(2);
+    expect(await screen.findByText("Not set")).toBeInTheDocument();
+  });
+
+  it("closes without saving when the percent is unchanged", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await user.click(screen.getByRole("button", { name: "Edit AI score" }));
+    await user.click(screen.getByRole("button", { name: "Save AI score" }));
+    expect(updateAIAssessment).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Edit AI score" }),
+    ).toBeInTheDocument();
+  });
+
+  it("cancels editing with Escape", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await user.click(screen.getByRole("button", { name: "Edit AI score" }));
+    await user.type(screen.getByRole("spinbutton", { name: "AI score" }), "1");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    expect(screen.getByText("59.6%")).toBeInTheDocument();
+    expect(updateAIAssessment).not.toHaveBeenCalled();
   });
 
   it("keeps the draft after a failed save", async () => {
@@ -98,19 +119,19 @@ describe("AI assessment editor", () => {
       error: "Save failed",
     });
     render(<Editor />);
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    const input = screen.getByRole("spinbutton", { name: "Humanized (0–1)" });
+    await user.click(screen.getByRole("button", { name: "Edit AI score" }));
+    const input = screen.getByRole("spinbutton", { name: "AI score" });
     await user.clear(input);
-    await user.type(input, "0.8");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.type(input, "80");
+    await user.click(screen.getByRole("button", { name: "Save AI score" }));
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Save changes" }),
+        screen.getByRole("button", { name: "Save AI score" }),
       ).toBeEnabled(),
     );
-    expect(input).toHaveValue(0.8);
+    expect(input).toHaveValue(80);
     expect(updateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1", {
-      classes: { humanized: 0.8 },
+      ai_score: 0.8,
     });
   });
 
@@ -126,14 +147,17 @@ describe("AI assessment editor", () => {
     );
     render(<Editor initial={EMPTY_AI_ASSESSMENT} />);
     await user.click(screen.getByRole("button", { name: "Calculate" }));
-    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Edit AI score" }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: /Calculating/ })).toBeDisabled();
     finish({ status: 200, data: result });
     expect(await screen.findByText("59.6%")).toBeInTheDocument();
-    expect(screen.getByText("40.4%")).toBeInTheDocument();
-    expect(screen.getByText("51.5%")).toBeInTheDocument();
-    expect(screen.getByText("1%")).toBeInTheDocument();
-    expect(screen.getByText("7%")).toBeInTheDocument();
+    const breakdown = await openBreakdown(user);
+    expect(breakdown.getByText("40.4%")).toBeInTheDocument();
+    expect(breakdown.getByText("51.5%")).toBeInTheDocument();
+    expect(breakdown.getByText("1%")).toBeInTheDocument();
+    expect(breakdown.getByText("7%")).toBeInTheDocument();
     expect(calculateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1");
     expect(updateAIAssessment).not.toHaveBeenCalled();
   });
