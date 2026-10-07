@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useReferralsStore } from "./store";
-import type { Referral } from "./types";
+import type { Referral, ReferralSignup } from "./types";
 
 const referralsApi = vi.hoisted(() => ({
   createReferral: vi.fn(),
   deleteReferral: vi.fn(),
   fetchReferrals: vi.fn(),
+  fetchReferralSignups: vi.fn(),
   updateReferral: vi.fn(),
 }));
 vi.mock("./api", () => referralsApi);
@@ -24,6 +25,14 @@ function makeReferral(id: string, overrides: Partial<Referral> = {}): Referral {
     created_at: "2026-10-01T15:00:00Z",
     updated_at: "2026-10-01T15:00:00Z",
     ...overrides,
+  };
+}
+
+function makeSignup(userID: string): ReferralSignup {
+  return {
+    user_id: userID,
+    email: `${userID}@example.com`,
+    created_at: "2026-10-02T15:00:00Z",
   };
 }
 
@@ -129,6 +138,85 @@ describe("updateReferral", () => {
       "Kai Codes TikTok",
       "Kai Codes",
     ]);
+  });
+
+  it("keeps the referral and shows the conflict", async () => {
+    useReferralsStore.setState({ referrals: [makeReferral("r1")] });
+    referralsApi.updateReferral.mockResolvedValue({
+      status: 409,
+      error: 'code "taken" is already in use',
+    });
+
+    const ok = await useReferralsStore
+      .getState()
+      .updateReferral("r1", { name: "Kai Codes", code: "taken" });
+
+    expect(ok).toBe(false);
+    const s = useReferralsStore.getState();
+    expect(s.referrals).toEqual([makeReferral("r1")]);
+    expect(s.saving).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith('code "taken" is already in use');
+  });
+});
+
+describe("fetchSignups", () => {
+  it("loads the signups for a referral", async () => {
+    referralsApi.fetchReferralSignups.mockResolvedValue({
+      status: 200,
+      data: { signups: [makeSignup("u1")] },
+    });
+
+    const p = useReferralsStore.getState().fetchSignups("r1");
+    expect(useReferralsStore.getState().signups).toBeNull();
+    await p;
+
+    const s = useReferralsStore.getState();
+    expect(s.signupsReferralID).toBe("r1");
+    expect(s.signups?.map((su) => su.user_id)).toEqual(["u1"]);
+  });
+
+  it("shows an error and an empty list on failure", async () => {
+    referralsApi.fetchReferralSignups.mockResolvedValue({
+      status: 500,
+      error: "boom",
+    });
+
+    await useReferralsStore.getState().fetchSignups("r1");
+
+    expect(useReferralsStore.getState().signups).toEqual([]);
+    expect(toast.error).toHaveBeenCalledWith("boom");
+  });
+
+  it("ignores an aborted response", async () => {
+    referralsApi.fetchReferralSignups.mockResolvedValue({
+      status: 200,
+      data: { signups: [makeSignup("u1")] },
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await useReferralsStore.getState().fetchSignups("r1", controller.signal);
+
+    expect(useReferralsStore.getState().signups).toBeNull();
+  });
+
+  it("drops a response for a referral it has moved away from", async () => {
+    let resolveOld!: (v: unknown) => void;
+    referralsApi.fetchReferralSignups
+      .mockReturnValueOnce(new Promise((resolve) => (resolveOld = resolve)))
+      .mockResolvedValueOnce({
+        status: 200,
+        data: { signups: [makeSignup("new")] },
+      });
+
+    const older = useReferralsStore.getState().fetchSignups("r1");
+    await useReferralsStore.getState().fetchSignups("r2");
+    resolveOld({ status: 200, data: { signups: [makeSignup("old")] } });
+    await older;
+
+    const s = useReferralsStore.getState();
+    expect(s.signupsReferralID).toBe("r2");
+    expect(s.signups?.map((su) => su.user_id)).toEqual(["new"]);
   });
 });
 

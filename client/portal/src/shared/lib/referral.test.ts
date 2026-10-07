@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   captureReferral,
-  clearReferralOnSignIn,
+  clearReferralOnceSent,
   getReferralCode,
   isValidReferralCode,
   REFERRAL_HEADER,
@@ -135,26 +135,26 @@ describe("withReferralHeader", () => {
   });
 });
 
-describe("clearReferralOnSignIn", () => {
+describe("clearReferralOnceSent", () => {
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status });
 
-  it("forgets the code after a successful sign-in", async () => {
+  it("forgets the code once the backend accepts it", async () => {
     captureReferral("NbjlBgit");
 
-    await clearReferralOnSignIn(json({ status: "OK" }));
+    await clearReferralOnceSent(json({ status: "OK" }));
 
     expect(getReferralCode()).toBeNull();
   });
 
   it.each([
-    ["a failed code", json({ status: "INCORRECT_USER_INPUT_CODE_ERROR" })],
+    ["a rejected request", json({ status: "SIGN_IN_UP_NOT_ALLOWED" })],
     ["an HTTP error", json({ status: "OK" }, 500)],
     ["a non-JSON body", new Response("nope")],
   ])("keeps the code after %s", async (_, response) => {
     captureReferral("NbjlBgit");
 
-    await clearReferralOnSignIn(response);
+    await clearReferralOnceSent(response);
 
     expect(getReferralCode()).toBe("NbjlBgit");
   });

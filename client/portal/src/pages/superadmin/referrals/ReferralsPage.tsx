@@ -1,5 +1,5 @@
-import { Check, Copy, Pencil, Plus, Trash2, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -46,106 +46,12 @@ import {
   referralLink,
 } from "@/shared/lib/referral";
 
-import { fetchReferralSignups } from "./api";
+import { CopyLinkButton } from "./components/CopyLinkButton";
+import { SignupsDialog } from "./components/SignupsDialog";
 import { useReferralsStore } from "./store";
-import type { Referral, ReferralSignup } from "./types";
+import type { Referral } from "./types";
 
 const CODE_HELP = "3–64 letters, digits, - or _";
-
-function CopyLinkButton({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(referralLink(code));
-      setCopied(true);
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast.error("Couldn't copy the link");
-    }
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={`Copy link for ${code}`}
-      onClick={handleCopy}
-    >
-      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-    </Button>
-  );
-}
-
-function SignupsDialog({
-  referral,
-  open,
-  onOpenChange,
-}: {
-  referral: Referral | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  // Keyed by referral so switching rows shows a skeleton, not stale emails.
-  const [loaded, setLoaded] = useState<{
-    referralID: string;
-    signups: ReferralSignup[];
-  } | null>(null);
-  const referralID = referral?.id;
-  const signups =
-    loaded && loaded.referralID === referralID ? loaded.signups : null;
-
-  useEffect(() => {
-    if (!open || !referralID) return;
-    const controller = new AbortController();
-    fetchReferralSignups(referralID, controller.signal).then((res) => {
-      if (controller.signal.aborted) return;
-      if (res.status === 200 && res.data) {
-        setLoaded({ referralID, signups: res.data.signups });
-      } else {
-        toast.error(res.error ?? "Failed to load signups");
-        setLoaded({ referralID, signups: [] });
-      }
-    });
-    return () => controller.abort();
-  }, [open, referralID]);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Signups from {referral?.name}</DialogTitle>
-          <DialogDescription>
-            Accounts created after following this link, newest first.
-          </DialogDescription>
-        </DialogHeader>
-        {signups === null ? (
-          <Skeleton className="h-24 w-full" />
-        ) : signups.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No signups yet.</p>
-        ) : (
-          <ul className="max-h-80 divide-y overflow-y-auto rounded-md border">
-            {signups.map((s) => (
-              <li
-                key={s.user_id}
-                className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-              >
-                <span className="min-w-0 truncate">{s.email}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {new Date(s.created_at).toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 interface FormState {
   name: string;

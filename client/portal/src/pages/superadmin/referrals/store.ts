@@ -6,11 +6,13 @@ import {
   createReferral as apiCreateReferral,
   deleteReferral as apiDeleteReferral,
   fetchReferrals,
+  fetchReferralSignups,
   updateReferral as apiUpdateReferral,
 } from "./api";
 import type {
   CreateReferralPayload,
   Referral,
+  ReferralSignup,
   UpdateReferralPayload,
 } from "./types";
 
@@ -18,8 +20,13 @@ export interface ReferralsState {
   referrals: Referral[];
   loading: boolean;
   saving: boolean;
+  // Signups of one referral at a time, for the signups dialog. Null while
+  // loading, so switching rows never shows the previous referral's emails.
+  signupsReferralID: string | null;
+  signups: ReferralSignup[] | null;
 
   fetch: (signal?: AbortSignal) => Promise<void>;
+  fetchSignups: (id: string, signal?: AbortSignal) => Promise<void>;
   createReferral: (payload: CreateReferralPayload) => Promise<Referral | null>;
   updateReferral: (
     id: string,
@@ -28,10 +35,12 @@ export interface ReferralsState {
   deleteReferral: (id: string) => Promise<boolean>;
 }
 
-export const useReferralsStore = create<ReferralsState>((set) => ({
+export const useReferralsStore = create<ReferralsState>((set, get) => ({
   referrals: [],
   loading: false,
   saving: false,
+  signupsReferralID: null,
+  signups: null,
 
   fetch: async (signal) => {
     set({ loading: true });
@@ -43,6 +52,20 @@ export const useReferralsStore = create<ReferralsState>((set) => ({
     } else {
       errorAlert(res);
       set({ loading: false });
+    }
+  },
+
+  fetchSignups: async (id, signal) => {
+    set({ signupsReferralID: id, signups: null });
+    const res = await fetchReferralSignups(id, signal);
+    // Drop a response for a referral the dialog has moved away from.
+    if (signal?.aborted || get().signupsReferralID !== id) return;
+
+    if (res.status === 200 && res.data) {
+      set({ signups: res.data.signups });
+    } else {
+      errorAlert(res);
+      set({ signups: [] });
     }
   },
 

@@ -119,34 +119,29 @@ func (app *application) createReferralHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// A chosen code gets one try; a generated one is retried on collision.
+	attempts := referralCodeAttempts
 	if payload.Code != "" {
 		if err := validReferralCode(payload.Code); err != nil {
 			app.badRequestResponse(w, r, err)
 			return
 		}
-		referral := &store.Referral{Name: payload.Name, Code: payload.Code}
-		if err := app.store.Referrals.Create(r.Context(), referral); err != nil {
-			if errors.Is(err, store.ErrConflict) {
-				app.conflictResponse(w, r, fmt.Errorf("code %q is already in use", payload.Code))
-				return
-			}
-			app.internalServerError(w, r, err)
-			return
-		}
-		if err := app.jsonResponse(w, http.StatusCreated, referral); err != nil {
-			app.internalServerError(w, r, err)
-		}
-		return
+		attempts = 1
 	}
 
-	for range referralCodeAttempts {
-		code, err := generateReferralCode()
-		if err != nil {
-			app.internalServerError(w, r, err)
-			return
+	for range attempts {
+		code := payload.Code
+		if code == "" {
+			generated, err := generateReferralCode()
+			if err != nil {
+				app.internalServerError(w, r, err)
+				return
+			}
+			code = generated
 		}
+
 		referral := &store.Referral{Name: payload.Name, Code: code}
-		err = app.store.Referrals.Create(r.Context(), referral)
+		err := app.store.Referrals.Create(r.Context(), referral)
 		if errors.Is(err, store.ErrConflict) {
 			continue
 		}
@@ -160,6 +155,10 @@ func (app *application) createReferralHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if payload.Code != "" {
+		app.conflictResponse(w, r, fmt.Errorf("code %q is already in use", payload.Code))
+		return
+	}
 	app.internalServerError(w, r, errors.New("could not generate a unique referral code"))
 }
 

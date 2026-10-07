@@ -7383,7 +7383,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, challenge tracks, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.",
+                "description": "Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, challenge tracks, referral links, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.",
                 "consumes": [
                     "application/json"
                 ],
@@ -12602,6 +12602,9 @@ const docTemplate = `{
                 "reset_notifications": {
                     "type": "boolean"
                 },
+                "reset_referrals": {
+                    "type": "boolean"
+                },
                 "reset_scan_types": {
                     "type": "boolean"
                 },
@@ -12639,6 +12642,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "reset_notifications": {
+                    "type": "boolean"
+                },
+                "reset_referrals": {
                     "type": "boolean"
                 },
                 "reset_scan_types": {

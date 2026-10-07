@@ -35,10 +35,10 @@ func TestGenerateReferralCode(t *testing.T) {
 }
 
 func TestListReferrals(t *testing.T) {
-	app := newTestApplication(t)
-	mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
-
 	t.Run("should list referrals", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
 		mockReferrals.On("List").Return([]store.Referral{
 			{ID: "ref-1", Name: "Kai Codes", Code: "NbjlBgit", VisitCount: 12, SignupCount: 3, CreatedAt: time.Now()},
 		}, nil).Once()
@@ -61,6 +61,9 @@ func TestListReferrals(t *testing.T) {
 	})
 
 	t.Run("should return 500 on store error", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
 		mockReferrals.On("List").Return(nil, errors.New("db down")).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -101,6 +104,20 @@ func TestCreateReferral(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.createReferralHandler))
 		checkResponseCode(t, http.StatusCreated, rr.Code)
+		mockReferrals.AssertExpectations(t)
+	})
+
+	t.Run("should return 500 when every generated code collides", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
+		mockReferrals.On("Create", mock.Anything).Return(store.ErrConflict).Times(referralCodeAttempts)
+
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"Kai Codes"}`))
+		require.NoError(t, err)
+
+		rr := executeRequest(req, http.HandlerFunc(app.createReferralHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
 		mockReferrals.AssertExpectations(t)
 	})
 
@@ -181,6 +198,7 @@ func TestUpdateReferral(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.updateReferralHandler))
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
+		mockReferrals.AssertExpectations(t)
 	})
 
 	t.Run("should return 409 when the code is taken", func(t *testing.T) {
@@ -194,6 +212,7 @@ func TestUpdateReferral(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.updateReferralHandler))
 		checkResponseCode(t, http.StatusConflict, rr.Code)
+		mockReferrals.AssertExpectations(t)
 	})
 
 	t.Run("should return 400 without a code", func(t *testing.T) {
@@ -209,10 +228,10 @@ func TestUpdateReferral(t *testing.T) {
 }
 
 func TestDeleteReferral(t *testing.T) {
-	app := newTestApplication(t)
-	mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
-
 	t.Run("should delete", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
 		mockReferrals.On("Delete", "ref-1").Return(nil).Once()
 
 		req, err := http.NewRequest(http.MethodDelete, "/", nil)
@@ -221,9 +240,13 @@ func TestDeleteReferral(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.deleteReferralHandler))
 		checkResponseCode(t, http.StatusNoContent, rr.Code)
+		mockReferrals.AssertExpectations(t)
 	})
 
 	t.Run("should return 404 when missing", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
 		mockReferrals.On("Delete", "nope").Return(store.ErrNotFound).Once()
 
 		req, err := http.NewRequest(http.MethodDelete, "/", nil)
@@ -232,16 +255,15 @@ func TestDeleteReferral(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.deleteReferralHandler))
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
+		mockReferrals.AssertExpectations(t)
 	})
-
-	mockReferrals.AssertExpectations(t)
 }
 
 func TestListReferralSignups(t *testing.T) {
-	app := newTestApplication(t)
-	mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
-
 	t.Run("should list signups", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
 		mockReferrals.On("ListSignups", "ref-1").Return([]store.ReferralSignup{
 			{UserID: "user-1", Email: "hacker@example.com", CreatedAt: time.Now()},
 		}, nil).Once()
@@ -259,9 +281,13 @@ func TestListReferralSignups(t *testing.T) {
 		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
 		require.Len(t, body.Data.Signups, 1)
 		assert.Equal(t, "hacker@example.com", body.Data.Signups[0].Email)
+		mockReferrals.AssertExpectations(t)
 	})
 
 	t.Run("should return 404 when the referral is missing", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
+
 		mockReferrals.On("ListSignups", "nope").Return(nil, store.ErrNotFound).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -270,9 +296,8 @@ func TestListReferralSignups(t *testing.T) {
 
 		rr := executeRequest(req, http.HandlerFunc(app.listReferralSignupsHandler))
 		checkResponseCode(t, http.StatusNotFound, rr.Code)
+		mockReferrals.AssertExpectations(t)
 	})
-
-	mockReferrals.AssertExpectations(t)
 }
 
 func TestRecordReferralVisit(t *testing.T) {

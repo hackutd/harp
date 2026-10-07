@@ -72,6 +72,11 @@ const RESET_ITEMS: {
     desc: "Deletes all challenge tracks, including their prizes and uploaded logos.",
   },
   {
+    id: "reset_referrals",
+    label: "Referral Links",
+    desc: "Deletes all referral links with their visit and signup counts. Accounts are kept but no longer credited to a link.",
+  },
+  {
     id: "reset_config",
     label: "Hackathon Config",
     desc: "Clears the hackathon name, dates, application deadline, and points name. It also closes applications and disables points until the next event is configured.",
@@ -95,6 +100,7 @@ const ALL_SELECTED: ResetHackathonOptions = {
   reset_sponsors: true,
   reset_faqs: true,
   reset_tracks: true,
+  reset_referrals: true,
   reset_config: true,
 };
 
@@ -108,6 +114,7 @@ const NONE_SELECTED: ResetHackathonOptions = {
   reset_sponsors: false,
   reset_faqs: false,
   reset_tracks: false,
+  reset_referrals: false,
   reset_config: false,
 };
 

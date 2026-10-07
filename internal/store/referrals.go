@@ -10,8 +10,8 @@ import (
 )
 
 // pendingReferralTTL bounds how long a code recorded at sign-in waits for its
-// user row. A magic link expires long before this; the rest is housekeeping so
-// abandoned sign-ins don't keep emails around.
+// user row. UsersStore.Create ignores an older one, and RecordPending deletes
+// them so abandoned sign-ins don't keep emails around.
 const pendingReferralTTL = 7 * 24 * time.Hour
 
 type Referral struct {

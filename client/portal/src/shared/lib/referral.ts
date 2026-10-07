@@ -93,11 +93,11 @@ export function clearReferral(): void {
 }
 
 /**
- * Forgets the saved code once a sign-in on this browser succeeds. By then the
- * backend holds it (or the account already existed), so sending it again
- * would only credit whoever signs in here next.
+ * Forgets the saved code once a request carrying it succeeds. By then the
+ * backend holds it against the email (or the account already existed), so
+ * keeping it would only credit whoever signs up in this browser next.
  */
-export async function clearReferralOnSignIn(
+export async function clearReferralOnceSent(
   fetchResponse: Response,
 ): Promise<void> {
   if (!fetchResponse.ok) return;

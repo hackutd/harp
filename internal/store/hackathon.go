@@ -24,13 +24,14 @@ type ResetOptions struct {
 	Sponsors      bool
 	FAQs          bool
 	Tracks        bool
+	Referrals     bool
 	Config        bool
 }
 
 // Any reports whether at least one domain is selected.
 func (o ResetOptions) Any() bool {
 	return o.Applications || o.Scans || o.ScanTypes || o.Schedule ||
-		o.Notifications || o.Settings || o.Sponsors || o.FAQs || o.Tracks || o.Config
+		o.Notifications || o.Settings || o.Sponsors || o.FAQs || o.Tracks || o.Referrals || o.Config
 }
 
 // ResetPaths holds the storage objects a reset orphaned, by kind, so the caller
@@ -133,6 +134,15 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 	if opts.Tracks {
 		// Logos live in the logo_data column as base64, so they go with the row.
 		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE tracks"); err != nil {
+			return nil, err
+		}
+	}
+
+	if opts.Referrals {
+		// DELETE, not TRUNCATE: users.referral_id references referrals, and only
+		// DELETE fires its ON DELETE SET NULL. TRUNCATE ... CASCADE would empty
+		// users. pending_referrals goes with it through its ON DELETE CASCADE.
+		if _, err := tx.ExecContext(ctx, "DELETE FROM referrals"); err != nil {
 			return nil, err
 		}
 	}

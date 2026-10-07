@@ -29,6 +29,7 @@ func TestResetHackathon(t *testing.T) {
 			ResetSponsors:      true,
 			ResetFAQs:          true,
 			ResetTracks:        true,
+			ResetReferrals:     true,
 			ResetConfig:        true,
 		}
 
@@ -37,7 +38,7 @@ func TestResetHackathon(t *testing.T) {
 			On("Reset", store.ResetOptions{
 				Applications: true, Scans: true, ScanTypes: true, Schedule: true,
 				Notifications: true, Settings: true, Sponsors: true, FAQs: true,
-				Tracks: true, Config: true,
+				Tracks: true, Referrals: true, Config: true,
 			}).
 			Return(&store.ResetPaths{
 				Resumes:        []string{"resumes/user-1/resume1.pdf", "resumes/user-2/resume2.pdf"},

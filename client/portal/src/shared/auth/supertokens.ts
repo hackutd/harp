@@ -5,7 +5,7 @@ import ThirdParty, { Google } from "supertokens-auth-react/recipe/thirdparty";
 
 import { branding } from "@/branding";
 import {
-  clearReferralOnSignIn,
+  clearReferralOnceSent,
   withReferralHeader,
 } from "@/shared/lib/referral";
 
@@ -27,6 +27,9 @@ export function initSuperTokens() {
         contactMethod: "EMAIL",
         // The two requests that reveal a new user's email carry the referral
         // code, so the backend can credit the link once the account exists.
+        // The code is dropped as soon as the backend holds it: the magic link
+        // may be opened on another device, and a code left here would credit
+        // the next person to sign up in this browser.
         preAPIHook: async (context) =>
           context.action === "PASSWORDLESS_CREATE_CODE"
             ? {
@@ -35,8 +38,8 @@ export function initSuperTokens() {
               }
             : context,
         postAPIHook: async (context) => {
-          if (context.action === "PASSWORDLESS_CONSUME_CODE") {
-            await clearReferralOnSignIn(context.fetchResponse);
+          if (context.action === "PASSWORDLESS_CREATE_CODE") {
+            await clearReferralOnceSent(context.fetchResponse);
           }
         },
       }),
@@ -54,7 +57,7 @@ export function initSuperTokens() {
                   : context,
               postAPIHook: async (context) => {
                 if (context.action === "THIRD_PARTY_SIGN_IN_UP") {
-                  await clearReferralOnSignIn(context.fetchResponse);
+                  await clearReferralOnceSent(context.fetchResponse);
                 }
               },
               signInAndUpFeature: {
