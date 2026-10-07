@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.17.0](https://github.com/hackutd/harp/compare/v0.16.0...v0.17.0) (2026-10-07)
+
+
+### Features
+
+* add AI detector! ([#208](https://github.com/hackutd/harp/issues/208)) ([59e3c6a](https://github.com/hackutd/harp/commit/59e3c6a65c9880da0f83baebe70bcdf70e29771e))
+* influencer referral links with signup attribution ([#210](https://github.com/hackutd/harp/issues/210)) ([a4d52e3](https://github.com/hackutd/harp/commit/a4d52e3c4f114b9b12b015a268abeb0eabc208ec))
+
+
+### Bug Fixes
+
+* **portal:** lift the mobile tab bar off the home indicator ([#211](https://github.com/hackutd/harp/issues/211)) ([0ba4d66](https://github.com/hackutd/harp/commit/0ba4d6685c6a64642e3fc1e9e2d60e5884d25b99))
+
 ## [0.16.0](https://github.com/hackutd/harp/compare/v0.15.0...v0.16.0) (2026-10-06)
 
 
