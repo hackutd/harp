@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.16.0](https://github.com/hackutd/harp/compare/v0.15.0...v0.16.0) (2026-10-06)
+
+
+### Features
+
+* applications over time chart on all applicants ([#205](https://github.com/hackutd/harp/issues/205)) ([fd70169](https://github.com/hackutd/harp/commit/fd7016994d626a6c9a9afea89329f7574d218d18))
+* **db:** migrate hacker pack setting into a notion hacker link ([#194](https://github.com/hackutd/harp/issues/194)) ([ee66a3d](https://github.com/hackutd/harp/commit/ee66a3dee10a57a8b359bfd48fabac7e4a8cd3b3))
+* editable ai percent and glass navbar mobile ([#198](https://github.com/hackutd/harp/issues/198)) ([32404b2](https://github.com/hackutd/harp/commit/32404b2e5605ce0e3965a1c10f4c99a38f971c23))
+* gate decisions, close travel requests, rename sponsor tier ([#202](https://github.com/hackutd/harp/issues/202)) ([833ba14](https://github.com/hackutd/harp/commit/833ba14c04a4ed4f644f22ba33c3014757f9bcff))
+* **mailer:** redesign emails with Zero Day banner layout ([#190](https://github.com/hackutd/harp/issues/190)) ([1eb569f](https://github.com/hackutd/harp/commit/1eb569fa397c7fdaaf7235d37d4405cd1ae4ef5e))
+* reviewer sidebar redesign and staging PII scrub script ([#200](https://github.com/hackutd/harp/issues/200)) ([519c52e](https://github.com/hackutd/harp/commit/519c52e7f68b7aeb5a61e7d494c20fa44da5438c))
+* rsvp and check-in visibility for applicants ([#204](https://github.com/hackutd/harp/issues/204)) ([e628764](https://github.com/hackutd/harp/commit/e62876406387b75e99193a2c84e36dccd2719f04))
+* super admin full control over applications ([#203](https://github.com/hackutd/harp/issues/203)) ([858c69c](https://github.com/hackutd/harp/commit/858c69cd0b5733aad726a795a3b26bbda446557a))
+* support multiple notion pages as hacker links ([#195](https://github.com/hackutd/harp/issues/195)) ([903bab4](https://github.com/hackutd/harp/commit/903bab4b2ef8f78855d7b1aa2eaa34f987bc4bfe))
+* vitest test suite([#130](https://github.com/hackutd/harp/issues/130)) ([#146](https://github.com/hackutd/harp/issues/146)) ([74df86f](https://github.com/hackutd/harp/commit/74df86fc728adc978d8b4c41365b96c58ce7c6b5))
+
+
+### Bug Fixes
+
+* **auth:** request Google account selection after explicit logout ([#175](https://github.com/hackutd/harp/issues/175)) ([02f43d9](https://github.com/hackutd/harp/commit/02f43d9ecb5c3236d10df88cf719a499f5116e71))
+
 ## [0.15.0](https://github.com/hackutd/harp/compare/v0.14.0...v0.15.0) (2026-10-05)
 
 
