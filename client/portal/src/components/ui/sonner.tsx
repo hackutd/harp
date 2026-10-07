@@ -26,7 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // On mobile the hacker layout renders a floating bottom nav bar, so lift
       // toasts above it. Desktop keeps sonner's default offset.
       mobileOffset={{
-        bottom: "calc(6rem + env(safe-area-inset-bottom))",
+        bottom: "calc(6.5rem + env(safe-area-inset-bottom))",
       }}
       style={
         {
