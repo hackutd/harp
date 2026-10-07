@@ -141,7 +141,7 @@ export default function HackerLayout() {
           "zero-hacker-surface bg-[#030409]",
           hideMobileNav
             ? "pb-0"
-            : "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0",
+            : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0",
         )}
       >
         <div key={location.pathname} className="animate-page-enter">
@@ -150,13 +150,18 @@ export default function HackerLayout() {
       </SidebarInset>
 
       {/* Mobile bottom tab bar: a floating glass capsule, with a scroll-edge
-          blur behind it so content dissolves under the bar. */}
+          blur behind it so content dissolves under the bar. It floats a bit
+          above the home indicator (HIG: never flush against it) and keeps a
+          minimum gap when there is no inset, e.g. above Safari's toolbar. */}
       {!hideMobileNav && (
         <div className="md:hidden">
           <div aria-hidden className="zero-tabbar-edge z-30" />
           <div
             className="fixed inset-x-3 z-40"
-            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+            style={{
+              bottom:
+                "max(1.25rem, calc(0.5rem + env(safe-area-inset-bottom)))",
+            }}
           >
             <nav
               aria-label="Primary"
