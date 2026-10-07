@@ -1315,7 +1315,7 @@ body.hacker-zero-portals
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  height: calc(6.5rem + env(safe-area-inset-bottom));
+  height: calc(7rem + env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgb(3 4 9 / 72%), transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
