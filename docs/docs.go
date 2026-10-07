@@ -11949,7 +11949,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "code": {
-                    "description": "Code is optional; leave it empty to generate a random one. A readable\ncode tells applicants which sponsor sent them, so random is the default.",
+                    "description": "Code is optional; leave it empty to generate a random one. A readable\ncode tells applicants which influencer sent them, so random is the default.",
                     "type": "string"
                 },
                 "name": {
