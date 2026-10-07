@@ -1243,7 +1243,7 @@ func (app *application) updateDirectoryInterestTagsHandler(w http.ResponseWriter
 		app.internalServerError(w, r, err)
 		return
 	}
-	if err := app.jsonResponse(w, http.StatusOK, DirectoryInterestTagsResponse{Tags: req.Tags}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, DirectoryInterestTagsResponse(req)); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { directoryQuery } from "./api";
 import { EMPTY_FILTERS } from "./store";
 import { directoryCard } from "./testFixtures";
-import { discordLink, initials, intentLabel } from "./utils";
+import { discordLink, initials, intentLabel, roleLabel } from "./utils";
 
 describe("intentLabel", () => {
   it.each([
@@ -62,5 +62,13 @@ describe("directoryQuery", () => {
     expect(params.get("checked_in")).toBe("true");
     expect(params.get("hidden")).toBe("true");
     expect(params.get("cursor")).toBe("abc");
+  });
+});
+
+describe("roleLabel", () => {
+  it("labels known roles and passes unknown ones through", () => {
+    expect(roleLabel("ml_ai")).toBe("ML / AI");
+    expect(roleLabel("fullstack")).toBe("Full stack");
+    expect(roleLabel("dj")).toBe("dj");
   });
 });

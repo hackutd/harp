@@ -1,5 +1,22 @@
 import type { DirectoryCardData, DirectoryIntent } from "./types";
 
+const ROLE_LABELS: Record<string, string> = {
+  frontend: "Frontend",
+  backend: "Backend",
+  fullstack: "Full stack",
+  mobile: "Mobile",
+  ml_ai: "ML / AI",
+  data: "Data",
+  design: "Design",
+  hardware: "Hardware",
+  product: "Product",
+  pitch: "Pitch",
+};
+
+export function roleLabel(role: string): string {
+  return ROLE_LABELS[role] ?? role;
+}
+
 export const INTENT_LABELS: Record<DirectoryIntent, string> = {
   looking_for_teammates: "Looking for teammates",
   partial_team: "Team has spots",

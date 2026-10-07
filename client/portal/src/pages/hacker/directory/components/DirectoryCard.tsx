@@ -15,7 +15,13 @@ import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 
 import type { DirectoryCardData } from "../types";
-import { discordLink, initials, INTENT_STYLES, intentLabel } from "../utils";
+import {
+  discordLink,
+  initials,
+  INTENT_STYLES,
+  intentLabel,
+  roleLabel,
+} from "../utils";
 
 export interface DirectoryCardActions {
   onPoke?: (card: DirectoryCardData) => void;
@@ -216,7 +222,7 @@ export function DirectoryCard({
 
       {card.roles_looking_for.length > 0 && (
         <p className="mt-3 text-xs font-light text-white/55">
-          Looking for: {card.roles_looking_for.join(", ")}
+          Looking for: {card.roles_looking_for.map(roleLabel).join(", ")}
         </p>
       )}
 

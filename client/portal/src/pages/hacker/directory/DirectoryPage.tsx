@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { errorAlert } from "@/shared/lib/api";
 import { cn } from "@/shared/lib/utils";
 
@@ -144,7 +145,9 @@ function BrowseView({ me }: { me: DirectoryMe }) {
     [cards, skipped],
   );
   const top = queue[0];
-  const reviewing = reviewMode && !filters.hidden;
+  // Quick review is a mobile-only mode; its toggle is hidden on desktop.
+  const isMobile = useIsMobile();
+  const reviewing = reviewMode && isMobile && !filters.hidden;
 
   useEffect(() => {
     if (reviewing && queue.length < 3 && nextCursor) void fetchMore();
@@ -180,7 +183,7 @@ function BrowseView({ me }: { me: DirectoryMe }) {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search names and skills"
+              placeholder="Search name or skill"
               className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
             />
           </label>
@@ -196,12 +199,12 @@ function BrowseView({ me }: { me: DirectoryMe }) {
               </>
             ) : (
               <>
-                <Layers className="size-4" /> Quick review
+                <Layers className="size-4" /> Review
               </>
             )}
           </button>
         </div>
-        <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:flex-wrap md:px-0">
+        <div className="-mx-5 flex [scrollbar-width:none] gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden">
           <FilterChip
             active={filters.checkedIn}
             onClick={() => setFilters({ checkedIn: !filters.checkedIn })}
@@ -226,7 +229,7 @@ function BrowseView({ me }: { me: DirectoryMe }) {
             <EyeOff className="size-3.5" /> Hidden
           </FilterChip>
         </div>
-        <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:flex-wrap md:px-0">
+        <div className="-mx-5 flex [scrollbar-width:none] gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden">
           {me.options.interest_tags.map((tag) => (
             <FilterChip
               key={tag}

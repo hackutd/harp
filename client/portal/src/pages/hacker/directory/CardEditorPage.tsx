@@ -39,7 +39,7 @@ import type {
   DirectoryMe,
   HeadshotContentType,
 } from "./types";
-import { initials, INTENT_LABELS } from "./utils";
+import { initials, INTENT_LABELS, roleLabel } from "./utils";
 import {
   type DirectoryProfileForm,
   directoryProfileSchema,
@@ -472,7 +472,7 @@ function Editor({ me }: { me: DirectoryMe }) {
                   )
                 }
               >
-                {role}
+                {roleLabel(role)}
               </Choice>
             ))}
           </div>
@@ -568,7 +568,10 @@ function Editor({ me }: { me: DirectoryMe }) {
 
       {me.profile && <DiscordSection me={me} />}
 
-      <div className="sticky bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-10 flex justify-end md:bottom-4">
+      <div className="sticky bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#05060C]/90 p-3 backdrop-blur md:bottom-4">
+        <p className="text-xs font-light text-white/50">
+          Saving also confirms your status.
+        </p>
         <button
           type="submit"
           disabled={isSubmitting || uploading}
