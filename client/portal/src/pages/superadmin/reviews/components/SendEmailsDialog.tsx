@@ -121,6 +121,7 @@ function SendEmailsDialogBody({
   );
   const exportGroupCount = exportSelected.length + rsvpExportSelected.length;
   const [resendAll, setResendAll] = useState(false);
+  const [sendPush, setSendPush] = useState(true);
 
   const [emailStats, setEmailStats] = useState<DecisionEmailStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -195,10 +196,11 @@ function SendEmailsDialogBody({
       mode,
       statuses: mode === "decision" ? selected : undefined,
       resend_all: resendAll,
+      send_push: sendPush,
     });
 
     if (res.status === 200 && res.data) {
-      const { queued, skipped } = res.data;
+      const { queued, skipped, push_recipients: pushed } = res.data;
       if (queued === 0) {
         toast.info(
           skipped > 0
@@ -207,7 +209,7 @@ function SendEmailsDialogBody({
         );
       } else {
         toast.success(
-          `Sending ${queued} email(s)${skipped > 0 ? `, skipped ${skipped} already emailed` : ""}`,
+          `Sending ${queued} email(s)${pushed > 0 ? ` and ${pushed} push alert(s)` : ""}${skipped > 0 ? `, skipped ${skipped} already emailed` : ""}`,
         );
       }
       await refreshStats();
@@ -520,6 +522,28 @@ function SendEmailsDialogBody({
                 id="resend-all"
                 checked={resendAll}
                 onCheckedChange={setResendAll}
+                className="mt-0.5 cursor-pointer"
+              />
+            </div>
+
+            <div className="mt-2 flex items-start justify-between gap-4 rounded-md border p-3">
+              <div className="grid gap-1">
+                <Label
+                  htmlFor="send-push"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  Also send a push notification
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Applicants who turned on notifications in the portal get a
+                  &quot;Decisions are out&quot; alert on their phone or browser
+                  after the email. It never includes the decision itself.
+                </p>
+              </div>
+              <Switch
+                id="send-push"
+                checked={sendPush}
+                onCheckedChange={setSendPush}
                 className="mt-0.5 cursor-pointer"
               />
             </div>

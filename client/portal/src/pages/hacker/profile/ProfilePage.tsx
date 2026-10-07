@@ -311,7 +311,9 @@ export default function ProfilePage() {
                 <p className="text-xs font-light text-[#8A8A8A]">
                   {push.supported
                     ? "Decision & event alerts"
-                    : "Not supported in this browser"}
+                    : install.platform === "ios" && !install.installed
+                      ? "Add to Home Screen to enable on iPhone"
+                      : "Not supported in this browser"}
                 </p>
               </div>
             </div>
