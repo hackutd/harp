@@ -48,12 +48,12 @@ beforeEach(() => {
 describe("isValidReferralCode", () => {
   it.each([
     ["NbjlBgit", true],
-    ["t-mobile_2026", true],
+    ["kai-codes_2026", true],
     ["abc", true],
     ["ab", false],
     ["a".repeat(65), false],
-    ["t mobile", false],
-    ["t&mobile", false],
+    ["kai codes", false],
+    ["kai&codes", false],
     ["", false],
   ])("%s -> %s", (code, valid) => {
     expect(isValidReferralCode(code)).toBe(valid);

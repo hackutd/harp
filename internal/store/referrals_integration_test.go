@@ -19,7 +19,7 @@ func TestIntegrationReferralAttribution(t *testing.T) {
 	refs := &ReferralsStore{db: db}
 	users := &UsersStore{db: db}
 
-	ref := &Referral{Name: "T-Mobile", Code: "NbjlBgit"}
+	ref := &Referral{Name: "Kai Codes", Code: "NbjlBgit"}
 	if err := refs.Create(ctx, ref); err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestIntegrationReferralAttribution(t *testing.T) {
 		t.Fatalf("signups: got %+v, want only %s", signups, newUser.ID)
 	}
 
-	ref.Name, ref.Code = "T-Mobile US", "tmobile"
+	ref.Name, ref.Code = "Kai Codes TikTok", "kaicodes"
 	if err := refs.Update(ctx, ref); err != nil {
 		t.Fatal(err)
 	}

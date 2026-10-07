@@ -1,4 +1,4 @@
-// Sponsor referral links: /?s=<code>. The code is saved here when someone
+// Influencer referral links: /?s=<code>. The code is saved here when someone
 // lands on the login page and sent on their sign-in request, where the backend
 // holds it against their email until their account is created.
 

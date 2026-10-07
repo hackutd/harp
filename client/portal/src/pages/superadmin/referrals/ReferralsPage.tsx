@@ -247,8 +247,8 @@ export default function ReferralsPage() {
         <CardHeader>
           <CardTitle>Referral links</CardTitle>
           <CardDescription>
-            Give a sponsor their own link to the sign-in page. Anyone who
-            creates an account after following it is credited to them.
+            Give each influencer or ad its own link to the sign-in page to see
+            how many people visit and sign up through it.
           </CardDescription>
           <CardAction>
             <Button size="sm" onClick={handleStartCreate} disabled={saving}>
@@ -353,7 +353,7 @@ export default function ReferralsPage() {
               <Label htmlFor="referral-name">Name</Label>
               <Input
                 id="referral-name"
-                placeholder="T-Mobile"
+                placeholder="Kai Codes (TikTok)"
                 value={form.name}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, name: e.target.value }))
@@ -381,7 +381,7 @@ export default function ReferralsPage() {
               <p className="text-xs text-muted-foreground">
                 {codeChanged
                   ? "Links already shared with the old code will stop counting. Existing signups are kept."
-                  : `${CODE_HELP}. A readable code like "tmobile" shows applicants who sent them, so leave it random unless you need it.`}
+                  : `${CODE_HELP}. A readable code like "kaicodes" shows applicants who sent them, so leave it random unless you need it.`}
               </p>
             </div>
           </div>

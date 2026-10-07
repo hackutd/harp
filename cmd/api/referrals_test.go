@@ -40,7 +40,7 @@ func TestListReferrals(t *testing.T) {
 
 	t.Run("should list referrals", func(t *testing.T) {
 		mockReferrals.On("List").Return([]store.Referral{
-			{ID: "ref-1", Name: "T-Mobile", Code: "NbjlBgit", VisitCount: 12, SignupCount: 3, CreatedAt: time.Now()},
+			{ID: "ref-1", Name: "Kai Codes", Code: "NbjlBgit", VisitCount: 12, SignupCount: 3, CreatedAt: time.Now()},
 		}, nil).Once()
 
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -78,10 +78,10 @@ func TestCreateReferral(t *testing.T) {
 		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
 
 		mockReferrals.On("Create", mock.MatchedBy(func(ref *store.Referral) bool {
-			return ref.Name == "T-Mobile" && len(ref.Code) == referralCodeLength
+			return ref.Name == "Kai Codes" && len(ref.Code) == referralCodeLength
 		})).Return(nil).Once()
 
-		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"  T-Mobile "}`))
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"  Kai Codes "}`))
 		require.NoError(t, err)
 
 		rr := executeRequest(req, http.HandlerFunc(app.createReferralHandler))
@@ -96,7 +96,7 @@ func TestCreateReferral(t *testing.T) {
 		mockReferrals.On("Create", mock.Anything).Return(store.ErrConflict).Once()
 		mockReferrals.On("Create", mock.Anything).Return(nil).Once()
 
-		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"T-Mobile"}`))
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"Kai Codes"}`))
 		require.NoError(t, err)
 
 		rr := executeRequest(req, http.HandlerFunc(app.createReferralHandler))
@@ -109,10 +109,10 @@ func TestCreateReferral(t *testing.T) {
 		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
 
 		mockReferrals.On("Create", mock.MatchedBy(func(ref *store.Referral) bool {
-			return ref.Code == "tmobile"
+			return ref.Code == "kaicodes"
 		})).Return(nil).Once()
 
-		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"T-Mobile","code":"tmobile"}`))
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"Kai Codes","code":"kaicodes"}`))
 		require.NoError(t, err)
 
 		rr := executeRequest(req, http.HandlerFunc(app.createReferralHandler))
@@ -126,7 +126,7 @@ func TestCreateReferral(t *testing.T) {
 
 		mockReferrals.On("Create", mock.Anything).Return(store.ErrConflict).Once()
 
-		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"T-Mobile","code":"tmobile"}`))
+		req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"Kai Codes","code":"kaicodes"}`))
 		require.NoError(t, err)
 
 		rr := executeRequest(req, http.HandlerFunc(app.createReferralHandler))
@@ -135,10 +135,10 @@ func TestCreateReferral(t *testing.T) {
 	})
 
 	for name, body := range map[string]string{
-		"missing name":       `{"code":"tmobile"}`,
-		"code with a space":  `{"name":"T-Mobile","code":"t mobile"}`,
-		"code too short":     `{"name":"T-Mobile","code":"ab"}`,
-		"code with a symbol": `{"name":"T-Mobile","code":"t&mobile"}`,
+		"missing name":       `{"code":"kaicodes"}`,
+		"code with a space":  `{"name":"Kai Codes","code":"kai codes"}`,
+		"code too short":     `{"name":"Kai Codes","code":"ab"}`,
+		"code with a symbol": `{"name":"Kai Codes","code":"kai&codes"}`,
 	} {
 		t.Run("should return 400 for "+name, func(t *testing.T) {
 			app := newTestApplication(t)
@@ -158,10 +158,10 @@ func TestUpdateReferral(t *testing.T) {
 		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
 
 		mockReferrals.On("Update", mock.MatchedBy(func(ref *store.Referral) bool {
-			return ref.ID == "ref-1" && ref.Name == "T-Mobile US" && ref.Code == "NbjlBgit"
+			return ref.ID == "ref-1" && ref.Name == "Kai Codes TikTok" && ref.Code == "NbjlBgit"
 		})).Return(nil).Once()
 
-		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"T-Mobile US","code":"NbjlBgit"}`))
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"Kai Codes TikTok","code":"NbjlBgit"}`))
 		require.NoError(t, err)
 		req = withReferralRouteParam(req, "ref-1")
 
@@ -175,7 +175,7 @@ func TestUpdateReferral(t *testing.T) {
 		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
 		mockReferrals.On("Update", mock.Anything).Return(store.ErrNotFound).Once()
 
-		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"T-Mobile","code":"NbjlBgit"}`))
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"Kai Codes","code":"NbjlBgit"}`))
 		require.NoError(t, err)
 		req = withReferralRouteParam(req, "nope")
 
@@ -188,7 +188,7 @@ func TestUpdateReferral(t *testing.T) {
 		mockReferrals := app.store.Referrals.(*store.MockReferralsStore)
 		mockReferrals.On("Update", mock.Anything).Return(store.ErrConflict).Once()
 
-		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"T-Mobile","code":"taken"}`))
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"Kai Codes","code":"taken"}`))
 		require.NoError(t, err)
 		req = withReferralRouteParam(req, "ref-1")
 
@@ -199,7 +199,7 @@ func TestUpdateReferral(t *testing.T) {
 	t.Run("should return 400 without a code", func(t *testing.T) {
 		app := newTestApplication(t)
 
-		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"T-Mobile"}`))
+		req, err := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name":"Kai Codes"}`))
 		require.NoError(t, err)
 		req = withReferralRouteParam(req, "ref-1")
 

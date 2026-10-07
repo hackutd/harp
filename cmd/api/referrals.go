@@ -28,7 +28,7 @@ var referralCodePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{3,64}$`)
 type CreateReferralPayload struct {
 	Name string `json:"name" validate:"required,min=1,max=100"`
 	// Code is optional; leave it empty to generate a random one. A readable
-	// code tells applicants which sponsor sent them, so random is the default.
+	// code tells applicants which influencer sent them, so random is the default.
 	Code string `json:"code"`
 }
 

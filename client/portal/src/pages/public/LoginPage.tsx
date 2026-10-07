@@ -138,7 +138,7 @@ export default function Login() {
   const referralCode = searchParams.get(REFERRAL_PARAM);
   const isSignedOut = !session.loading && !session.doesSessionExist;
 
-  // Save a sponsor referral (/?s=<code>) for the sign-in request, then drop it
+  // Save an influencer referral (/?s=<code>) for the sign-in request, then drop it
   // from the address bar so a refresh doesn't count a second visit. Someone
   // already signed in is redirected instead: they can't be a new signup, and
   // rewriting the URL here would race the redirect.

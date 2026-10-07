@@ -1,5 +1,5 @@
--- Sponsor referral links. A link is /?s=<code>; the code is random by default
--- so applicants can't tell which sponsor sent them. CITEXT keeps a hand-typed
+-- Influencer and ad referral links. A link is /?s=<code>; the code is random
+-- by default so applicants can't tell who sent them. CITEXT keeps a hand-typed
 -- code from colliding with one that differs only in case.
 CREATE TABLE IF NOT EXISTS referrals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

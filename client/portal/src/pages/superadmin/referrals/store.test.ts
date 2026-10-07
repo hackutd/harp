@@ -17,7 +17,7 @@ vi.mock("sonner", () => ({ toast }));
 function makeReferral(id: string, overrides: Partial<Referral> = {}): Referral {
   return {
     id,
-    name: "T-Mobile",
+    name: "Kai Codes",
     code: "NbjlBgit",
     visit_count: 0,
     signup_count: 0,
@@ -83,7 +83,7 @@ describe("createReferral", () => {
 
     const result = await useReferralsStore
       .getState()
-      .createReferral({ name: "T-Mobile" });
+      .createReferral({ name: "Kai Codes" });
 
     expect(result).toEqual(created);
     expect(useReferralsStore.getState().referrals.map((r) => r.id)).toEqual([
@@ -96,16 +96,16 @@ describe("createReferral", () => {
   it("returns null and shows the conflict", async () => {
     referralsApi.createReferral.mockResolvedValue({
       status: 409,
-      error: 'code "tmobile" is already in use',
+      error: 'code "kaicodes" is already in use',
     });
 
     const result = await useReferralsStore
       .getState()
-      .createReferral({ name: "T-Mobile", code: "tmobile" });
+      .createReferral({ name: "Kai Codes", code: "kaicodes" });
 
     expect(result).toBeNull();
     expect(toast.error).toHaveBeenCalledWith(
-      'code "tmobile" is already in use',
+      'code "kaicodes" is already in use',
     );
   });
 });
@@ -117,17 +117,17 @@ describe("updateReferral", () => {
     });
     referralsApi.updateReferral.mockResolvedValue({
       status: 200,
-      data: makeReferral("r1", { name: "T-Mobile US" }),
+      data: makeReferral("r1", { name: "Kai Codes TikTok" }),
     });
 
     const ok = await useReferralsStore
       .getState()
-      .updateReferral("r1", { name: "T-Mobile US", code: "NbjlBgit" });
+      .updateReferral("r1", { name: "Kai Codes TikTok", code: "NbjlBgit" });
 
     expect(ok).toBe(true);
     expect(useReferralsStore.getState().referrals.map((r) => r.name)).toEqual([
-      "T-Mobile US",
-      "T-Mobile",
+      "Kai Codes TikTok",
+      "Kai Codes",
     ]);
   });
 });
