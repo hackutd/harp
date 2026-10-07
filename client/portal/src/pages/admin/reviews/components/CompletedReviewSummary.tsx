@@ -3,7 +3,8 @@ import { memo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { ApplicationStatus } from "@/types";
+import { AIAssessmentSummary } from "@/pages/admin/_shared/AIAssessmentSummary";
+import type { AIAssessment, ApplicationStatus } from "@/types";
 
 import type { Review } from "../types";
 import { VoteBadge } from "./VoteBadge";
@@ -11,7 +12,7 @@ import { VoteBadge } from "./VoteBadge";
 interface CompletedReviewSummaryProps {
   review: Review;
   applicationStatus: ApplicationStatus;
-  aiPercent: number | null;
+  assessment: AIAssessment;
   onChangeVote: () => void;
 }
 
@@ -23,7 +24,7 @@ interface CompletedReviewSummaryProps {
 export const CompletedReviewSummary = memo(function CompletedReviewSummary({
   review,
   applicationStatus,
-  aiPercent,
+  assessment,
   onChangeVote,
 }: CompletedReviewSummaryProps) {
   const travelRequested = review.travel_status !== "not_requested";
@@ -60,13 +61,8 @@ export const CompletedReviewSummary = memo(function CompletedReviewSummary({
             <VoteBadge vote={review.vote} />
           </div>
         </div>
-        <div>
-          <Label className="text-muted-foreground text-xs">AI Percent</Label>
-          <p
-            className={`mt-1 ${aiPercent == null ? "text-muted-foreground italic" : ""}`}
-          >
-            {aiPercent != null ? `${aiPercent}%` : "Not set"}
-          </p>
+        <div className="col-span-2">
+          <AIAssessmentSummary assessment={assessment} />
         </div>
         {travelRequested && (
           <div>

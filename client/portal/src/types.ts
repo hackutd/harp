@@ -85,7 +85,30 @@ export interface User {
   updatedAt: string;
 }
 
-export interface Application {
+export type AIVerdict = "human" | "ai" | "ai_edited" | "humanized";
+
+export interface AIClassScores {
+  human: number | null;
+  ai: number | null;
+  ai_edited: number | null;
+  humanized: number | null;
+}
+
+/** AI scores are fractions (0–1); older records have no verdict or classes. */
+export interface AIAssessment {
+  ai_score: number | null;
+  verdict: AIVerdict | null;
+  classes: AIClassScores;
+}
+
+/** Omitted fields are preserved; explicit null clears the supplied field. */
+export interface AIAssessmentPatch {
+  ai_score?: number | null;
+  verdict?: AIVerdict | null;
+  classes?: Partial<AIClassScores> | null;
+}
+
+export interface Application extends AIAssessment {
   id: string;
   user_id: string;
   status: ApplicationStatus;
@@ -97,7 +120,6 @@ export interface Application {
   /** Assigned at check-in; null until the hacker has checked in. */
   meal_group: string | null;
   resume_path: string | null;
-  ai_percent: number | null;
   accept_votes: number;
   reject_votes: number;
   waitlist_votes: number;
@@ -192,7 +214,7 @@ export interface Scan {
 }
 
 // Lightweight application item from paginated admin list
-export interface ApplicationListItem {
+export interface ApplicationListItem extends AIAssessment {
   id: string;
   user_id: string;
   email: string;
@@ -215,7 +237,6 @@ export interface ApplicationListItem {
   waitlist_votes: number;
   reviews_assigned: number;
   reviews_completed: number;
-  ai_percent: number | null;
   has_resume: boolean;
   points: number;
   travel_status: TravelStatus;

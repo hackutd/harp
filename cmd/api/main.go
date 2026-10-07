@@ -136,6 +136,8 @@ func main() {
 			service:   resolveServiceName(env.GetString("SERVICE_NAME", "harp")),
 			version:   version,
 		},
+		aiDetectorURL:   env.GetString("AI_DETECTOR_URL", ""),
+		aiDetectorToken: env.GetString("AI_DETECTOR_TOKEN", ""),
 	}
 
 	// Init Logger

@@ -1,7 +1,12 @@
 // Application Review feature API layer
 
-import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
-import type { ApiResponse } from "@/types";
+import {
+  getRequest,
+  patchRequest,
+  postRequest,
+  putRequest,
+} from "@/shared/lib/api";
+import type { AIAssessment, AIAssessmentPatch, ApiResponse } from "@/types";
 
 import type {
   ClaimReviewsResponse,
@@ -136,30 +141,23 @@ export async function fetchReviewNotes(
   );
 }
 
-export async function setAIPercent(
+export async function updateAIAssessment(
   applicationId: string,
-  payload: { ai_percent: number },
-): Promise<{ success: boolean; error?: string }> {
-  const res = await putRequest(
-    `/admin/applications/${applicationId}/ai-percent`,
+  payload: AIAssessmentPatch,
+): Promise<ApiResponse<AIAssessment>> {
+  return patchRequest<AIAssessment>(
+    `/admin/applications/${applicationId}/ai-assessment`,
     payload,
+    "AI assessment",
   );
+}
 
-  if (res.status === 200) return { success: true };
-
-  if (res.status === 404) {
-    return {
-      success: false,
-      error: "Only the assigned admin can change this review's AI percent",
-    };
-  }
-  if (res.status === 400) {
-    if (payload.ai_percent > 100) {
-      return { success: false, error: "Percent cannot exceed 100%" };
-    }
-    if (payload.ai_percent < 0) {
-      return { success: false, error: "Percent cannot be below 0%" };
-    }
-  }
-  return { success: false, error: res.error ?? "Failed to set AI percent" };
+export async function calculateAIAssessment(
+  applicationId: string,
+): Promise<ApiResponse<AIAssessment>> {
+  return postRequest<AIAssessment>(
+    `/admin/applications/${applicationId}/ai-assessment/calculate`,
+    {},
+    "AI assessment",
+  );
 }

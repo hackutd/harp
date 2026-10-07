@@ -17,6 +17,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCalculateAIPercentAPIResponse(t *testing.T) {
+	const body = `{"ai_score":0.5956428647041321,"verdict":"ai","classes":{"human":0.4043571352958679,"ai":0.5150407552719116,"ai_edited":0.010439506731927395,"humanized":0.07016260176897049}}`
+
+	var response CalculateAIPercentAPIResponse
+	err := json.NewDecoder(strings.NewReader(body)).Decode(&response)
+	require.NoError(t, err)
+	assert.Equal(t, 0.5956428647041321, response.AIScore)
+	assert.Equal(t, "ai", response.Verdict)
+	assert.Equal(t, map[string]float64{
+		"human":     0.4043571352958679,
+		"ai":        0.5150407552719116,
+		"ai_edited": 0.010439506731927395,
+		"humanized": 0.07016260176897049,
+	}, response.Classes)
+
+	encoded, err := json.Marshal(response)
+	require.NoError(t, err)
+	assert.JSONEq(t, body, string(encoded))
+}
+
 func TestGetPendingReviews(t *testing.T) {
 	app := newTestApplication(t)
 	mockReviews := app.store.ApplicationReviews.(*store.MockApplicationReviewsStore)

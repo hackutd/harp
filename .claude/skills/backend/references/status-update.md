@@ -11,7 +11,7 @@ Don't use this for general-purpose updates — those belong in `crud-resource.md
 Working examples:
 - **Application status** (`PATCH /superadmin/applications/{id}/status`).
 - **User role** (`PATCH /superadmin/users/{userID}/role`).
-- **AI percent on a review** (`PUT /admin/applications/{id}/ai-percent`) — same shape but with a numeric `min/max` validation.
+- **AI assessment on a review** (`PATCH /admin/applications/{id}/ai-assessment`) — a partial update of several 0–1 scores, scoped to the assigned admin (see the conditional update below).
 
 ## Payload + Response Shape
 
@@ -29,7 +29,7 @@ type ApplicationResponse struct {
 
 `oneof=...` is the critical validation — anything outside the allowed values returns 400.
 
-For role updates use `oneof=hacker admin super_admin`. For numeric scores use `min=0,max=100`.
+For role updates use `oneof=hacker admin super_admin`. For numeric scores use `min=`/`max=` bounds.
 
 ## Store
 
@@ -79,26 +79,24 @@ func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status 
 If the change should only succeed under certain conditions, encode them in the SQL `WHERE` clause and treat 0 rows affected (or `sql.ErrNoRows` on `RETURNING`) as `ErrNotFound`:
 
 ```go
-// SetAIPercent: succeeds only if the admin is assigned and the value isn't already set
+// UpdateAIAssessment (internal/store/ai_assessment.go): succeeds only if the admin is assigned
 query := `
     UPDATE applications
-    SET ai_percent = $3
+    SET ai_score = CASE WHEN $3 THEN $4::double precision ELSE ai_score END,
+        ai_verdict = CASE WHEN $5 THEN $6::text ELSE ai_verdict END
+        -- ... one CASE per optional field ...
     WHERE id = $1
-      AND ai_percent IS NULL
       AND EXISTS (
           SELECT 1 FROM application_reviews
           WHERE application_id = $1 AND admin_id = $2
       )
+    RETURNING ai_score, ai_verdict /* ... */
 `
-result, err := s.db.ExecContext(ctx, query, applicationID, adminID, percent)
-if err != nil { return err }
-rows, err := result.RowsAffected()
-if err != nil { return err }
-if rows == 0 { return ErrNotFound }   // bundle "not found" + "not assigned" + "already set"
-return nil
+err := s.db.QueryRowContext(ctx, query, applicationID, adminID, /* set flag + value per field */).Scan(/* ... */)
+if errors.Is(err, sql.ErrNoRows) { return nil, ErrNotFound }   // bundle "not found" + "not assigned"
 ```
 
-The handler can return a generic 404 with a message that covers all three cases. Don't add a separate "AlreadySet" error type unless the UI needs to differentiate.
+The `CASE WHEN $set` pattern lets one statement apply a partial patch where an explicit `null` clears a field and an omitted field is left alone. The handler can return a generic 404 with a message that covers every case. Don't add a separate "AlreadySet" error type unless the UI needs to differentiate.
 
 ## Handler
 
@@ -140,11 +138,11 @@ func (app *application) setApplicationStatus(w http.ResponseWriter, r *http.Requ
 }
 ```
 
-For routes pulling user from context (e.g., `setAIPercent` scoping by admin), grab it after URL param validation:
+For routes pulling user from context (e.g., `updateAIAssessment` scoping by admin), grab it after URL param validation:
 
 ```go
 user := getUserFromContext(r.Context())
-// ... call store.SetAIPercent(ctx, applicationID, user.ID, req.AIPercent) ...
+// ... call store.UpdateAIAssessment(ctx, applicationID, user.ID, req) ...
 ```
 
 ## Method Choice
@@ -152,7 +150,7 @@ user := getUserFromContext(r.Context())
 | Style | Use when |
 |-------|----------|
 | `PATCH /resource/{id}/status` | Updating a single sub-field of a resource (most common) |
-| `PUT /resource/{id}/<field>` | Updating one field, but the convention or naming reads better as PUT (e.g., `ai-percent`) |
+| `PUT /resource/{id}/<field>` | Replacing one field wholesale, when the naming reads better as PUT |
 
 Both return 200 (not 204) — the response body carries the updated entity.
 

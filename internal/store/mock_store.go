@@ -666,9 +666,16 @@ func (m *MockApplicationReviewsStore) ClaimForAdmin(ctx context.Context, adminID
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockApplicationReviewsStore) SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error {
-	args := m.Called(applicationID, adminID, percent)
-	return args.Error(0)
+func (m *MockApplicationReviewsStore) UpdateAIAssessment(ctx context.Context, applicationID string, adminID string, patch AIAssessmentPatch) (*AIAssessment, error) {
+	args := m.Called(applicationID, adminID, patch)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*AIAssessment), args.Error(1)
+}
+
+func (m *MockApplicationReviewsStore) CheckAssignment(ctx context.Context, applicationID string, adminID string) error {
+	return m.Called(applicationID, adminID).Error(0)
 }
 
 // MockScansStore is a mock implementation of the Scans interface

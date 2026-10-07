@@ -127,7 +127,7 @@ func planFor(i int) appPlan {
 
 const insertApplicationQuery = `
 	INSERT INTO applications (
-		user_id, status, responses, resume_path, ai_percent,
+		user_id, status, responses, resume_path, ai_score,
 		submitted_at, created_at,
 		decision_email_sent_at, announcement_email_sent_at,
 		rsvp_status, rsvp_responses, rsvp_submitted_at,
@@ -175,9 +175,9 @@ func seedApplications(db *sql.DB, hackerIDs []string, tl timeline) []seededApp {
 			resumePath = ptr(fmt.Sprintf("seed/resumes/hacker-%d.pdf", i+1))
 		}
 
-		var aiPercent *int
+		var aiScore *float64
 		if p.Status != "draft" && chance(60) {
-			aiPercent = ptr(rng.Intn(96))
+			aiScore = ptr(float64(rng.Intn(96)) / 100)
 		}
 
 		rsvpResponses, rsvpSubmittedAt := buildRSVPResponses(i, p, tl)
@@ -196,7 +196,7 @@ func seedApplications(db *sql.DB, hackerIDs []string, tl timeline) []seededApp {
 
 		var id string
 		err := tx.QueryRow(insertApplicationQuery,
-			userID, p.Status, mustJSON(buildApplicationResponses(i, p)), resumePath, aiPercent,
+			userID, p.Status, mustJSON(buildApplicationResponses(i, p)), resumePath, aiScore,
 			submittedAt, createdAt,
 			decisionEmailAt, announcementEmailAt,
 			rsvpStatusOrPending(p), mustJSON(rsvpResponses), rsvpSubmittedAt,
