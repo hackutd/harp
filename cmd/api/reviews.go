@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackutd/harp/internal/store"
@@ -43,12 +48,18 @@ type NotesListResponse struct {
 	Notes []store.ReviewNote `json:"notes"`
 }
 
-type SetAIPercentPayload struct {
-	AIPercent int16 `json:"ai_percent" validate:"min=0,max=100"`
+// this payload gets sent out to the vultr instance
+type CalculateAIPercentPayload struct {
+	//json:"text" is REQUIRED by the given API
+	//ShortAnswers is kept as a descriptive name
+	ShortAnswers string `json:"text"`
 }
 
-type AIPercentResponse struct {
-	AIPercent int16 `json:"ai_percent"`
+// lowkey, this is the response we get back from the API, but I'm just forwarding this to the frontend
+type CalculateAIPercentAPIResponse struct {
+	AIScore float64            `json:"ai_score"`
+	Verdict string             `json:"verdict"`
+	Classes map[string]float64 `json:"classes"` // Scores from 0 to 1 for human, ai, ai_edited, and humanized.
 }
 
 // getPendingReviews returns reviews assigned to the current admin that haven't been voted on yet
@@ -359,24 +370,24 @@ func (app *application) explainRejectedVote(w http.ResponseWriter, r *http.Reque
 	app.conflictResponse(w, r, errors.New("vote could not be recorded, please retry"))
 }
 
-// setAIPercent records or updates the AI-generated content percent for an assigned application review
+// updateAIAssessment updates supplied AI assessment fields for an assigned application review
 //
-//	@Summary		Set AI percent on a review (Admin)
-//	@Description	Records or updates the estimated AI-generated content percent for an application assigned to the current admin
+//	@Summary		Update AI assessment on a review (Admin)
+//	@Description	Updates only supplied fields. Scores use 0–1; null clears a field. Omitted fields are preserved.
 //	@Tags			admin/applications
 //	@Accept			json
 //	@Produce		json
-//	@Param			applicationID	path		string				true	"Application ID"
-//	@Param			payload			body		SetAIPercentPayload	true	"AI percent (0–100)"
-//	@Success		200				{object}	AIPercentResponse
+//	@Param			applicationID	path		string					true	"Application ID"
+//	@Param			payload			body		store.AIAssessmentPatch	true	"Partial AI assessment"
+//	@Success		200				{object}	store.AIAssessment
 //	@Failure		400				{object}	object{error=string}
 //	@Failure		401				{object}	object{error=string}
 //	@Failure		403				{object}	object{error=string}
 //	@Failure		404				{object}	object{error=string}
 //	@Failure		500				{object}	object{error=string}
 //	@Security		CookieAuth
-//	@Router			/admin/applications/{applicationID}/ai-percent [put]
-func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
+//	@Router			/admin/applications/{applicationID}/ai-assessment [patch]
+func (app *application) updateAIAssessment(w http.ResponseWriter, r *http.Request) {
 
 	applicationID := chi.URLParam(r, "applicationID")
 
@@ -385,20 +396,21 @@ func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// is user here the requesting user? or the actual user?
 	user := getUserFromContext(r.Context())
 
-	var req SetAIPercentPayload
+	var req store.AIAssessmentPatch
 	if err := readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(req); err != nil {
+	if err := req.Validate(); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	err := app.store.ApplicationReviews.SetAIPercent(r.Context(), applicationID, user.ID, req.AIPercent)
+	response, err := app.store.ApplicationReviews.UpdateAIAssessment(r.Context(), applicationID, user.ID, req)
 
 	if err != nil {
 		switch {
@@ -410,9 +422,138 @@ func (app *application) setAIPercent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := AIPercentResponse(req)
-
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+// calculateAIPercent calculates and saves the complete detector result.
+//
+//	@Summary		Calculate AI assessment (Admin)
+//	@Description	Analyzes short answers and saves the result for an application assigned to the current admin.
+//	@Tags			admin/applications
+//	@Produce		json
+//	@Param			applicationID				path		string	true	"Application ID"
+//	@Success		200							{object}	store.AIAssessment
+//	@Failure		400,401,403,404,500,502,503	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/admin/applications/{applicationID}/ai-assessment/calculate [post]
+func (app *application) calculateAIPercent(w http.ResponseWriter, r *http.Request) {
+
+	applicationID := chi.URLParam(r, "applicationID")
+
+	//pull the application
+	if applicationID == "" {
+		app.badRequestResponse(w, r, errors.New("application ID is required"))
+		return
+	}
+	user := getUserFromContext(r.Context())
+	if err := app.store.ApplicationReviews.CheckAssignment(r.Context(), applicationID, user.ID); err != nil {
+		app.aiAssessmentStoreError(w, r, err)
+		return
+	}
+	if app.config.aiDetectorURL == "" || app.config.aiDetectorToken == "" {
+		writeJSONError(w, http.StatusServiceUnavailable, "AI detector is not configured")
+		return
+	}
+	application, err := app.store.Application.GetByID(r.Context(), applicationID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, errors.New("application not found or not assigned to you"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	//try to get the responses into a string, fron a RawMessage
+	var responses map[string]json.RawMessage
+	if err := json.Unmarshal(application.Responses, &responses); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	keys, err := app.shortAnswerKeys(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	var short_answers []string
+	for _, key := range keys {
+		if raw, ok := responses[key]; !ok || string(raw) == "null" {
+			continue
+		}
+		var answer string
+		//must unmarshal into a specific loc
+		if err := json.Unmarshal(responses[key], &answer); err != nil {
+			continue // a non-text answer has nothing to analyze
+		}
+		if strings.TrimSpace(answer) != "" {
+			short_answers = append(short_answers, answer)
+		}
+	}
+	if len(short_answers) == 0 {
+		app.badRequestResponse(w, r, errors.New("application has no short answers to analyze"))
+		return
+	}
+
+	//remarshal them.. into a json
+	short_answers_concat := strings.Join(short_answers[:], "\n")
+	payload := CalculateAIPercentPayload{
+		ShortAnswers: short_answers_concat,
+	}
+	payload_json, err := json.Marshal(payload)
+	if err != nil {
+		app.internalServerError(w, r, err) //lowkey tired of these
+		return
+	}
+
+	/**
+	 *	HTTP STUFF!
+	 */
+	req, err := http.NewRequestWithContext(r.Context(), "POST", app.config.aiDetectorURL, bytes.NewBuffer(payload_json))
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+app.config.aiDetectorToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{
+		Timeout: 25 * time.Second, // under the server's 30s WriteTimeout
+	}
+	if app.aiDetectorClient != nil {
+		client = app.aiDetectorClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		app.aiDetectorError(w, r, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		app.requestLogger(r).Errorw("AI detector request failed", "status", resp.StatusCode)
+		writeJSONError(w, http.StatusBadGateway, "AI detector request failed")
+		return
+	}
+
+	var resp_json CalculateAIPercentAPIResponse
+	err = json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&resp_json)
+	if err != nil {
+		app.aiDetectorError(w, r, err)
+		return
+	}
+
+	assessment, err := app.store.ApplicationReviews.UpdateAIAssessment(r.Context(), applicationID, user.ID, resp_json.assessmentPatch())
+	if err != nil {
+		app.aiAssessmentStoreError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, assessment); err != nil {
+		app.internalServerError(w, r, err)
+	}
+	//if u ask me, anish, why did we do this here instead of in the frontend? I'm gonna say, that's a great question.
+	//i felt like writing go, not typescript!
 }

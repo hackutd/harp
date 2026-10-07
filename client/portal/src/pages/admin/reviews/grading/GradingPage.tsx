@@ -12,6 +12,7 @@ import {
 import { formatName } from "@/pages/admin/all-applicants/utils";
 import { useRedactApplicants } from "@/shared/hooks";
 import { formatApplicantLabel } from "@/shared/lib/redaction";
+import type { AIAssessment } from "@/types";
 
 import { VoteBadge } from "../components/VoteBadge";
 import type { ReviewVote } from "../types";
@@ -52,18 +53,19 @@ export default function GradingPage() {
   const setLocalVote = useAdminGradingStore((s) => s.setLocalVote);
   const reset = useAdminGradingStore((s) => s.reset);
 
-  const aiPercent = detail?.ai_percent ?? null;
-  const setAiPercent = (percent: number) => {
+  const setAiAssessment = (assessment: AIAssessment) => {
     useAdminGradingStore.setState((state) => ({
       detail:
         state.detail && state.detail.id === detail?.id
-          ? { ...state.detail, ai_percent: percent }
+          ? { ...state.detail, ...assessment }
           : state.detail,
     }));
   };
   const redact = useRedactApplicants();
 
   const currentReview = reviews[currentIndex] ?? null;
+  const aiAssessment =
+    detail?.id === currentReview?.application_id ? detail : null;
   // A completed vote can change only while the application awaits a decision.
   const canChangeVote = detail?.status === "submitted";
 
@@ -197,8 +199,8 @@ export default function GradingPage() {
               otherReviewerNotes={otherNotes}
               notesLoading={notesLoading}
               submitting={submitting}
-              aiPercent={aiPercent}
-              onAiPercentUpdate={setAiPercent}
+              aiAssessment={aiAssessment}
+              onAiAssessmentUpdate={setAiAssessment}
               onNotesChange={setLocalNotes}
               onTravelVoteChange={setLocalTravelVote}
               onVoteChange={setLocalVote}
@@ -213,9 +215,9 @@ export default function GradingPage() {
             otherReviewerNotes={otherNotes}
             notesLoading={notesLoading}
             submitting={submitting}
-            aiPercent={aiPercent}
+            aiAssessment={aiAssessment}
             travelVote={localTravelVote}
-            onAiPercentUpdate={setAiPercent}
+            onAiAssessmentUpdate={setAiAssessment}
             onNotesChange={setLocalNotes}
             onTravelVoteChange={setLocalTravelVote}
             onVote={handleVote}

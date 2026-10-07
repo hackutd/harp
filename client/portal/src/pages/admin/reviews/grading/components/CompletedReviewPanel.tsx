@@ -6,8 +6,9 @@ import {
   ReviewerNotesList,
   SectionHeader,
 } from "@/pages/admin/_shared/grading";
+import type { AIAssessment } from "@/types";
 
-import { AIPercentField } from "../../components/AIPercentField";
+import { AIAssessmentField } from "../../components/AIAssessmentField";
 import { NotesTextarea } from "../../components/NotesTextarea";
 import { TravelVoteButtons } from "../../components/TravelVoteButtons";
 import { VoteBadge } from "../../components/VoteBadge";
@@ -25,8 +26,8 @@ interface CompletedReviewPanelProps {
   otherReviewerNotes: ReviewNote[];
   notesLoading: boolean;
   submitting: boolean;
-  aiPercent: number | null;
-  onAiPercentUpdate: (percent: number) => void;
+  aiAssessment: AIAssessment | null;
+  onAiAssessmentUpdate: (assessment: AIAssessment) => void;
   onNotesChange: (notes: string) => void;
   onTravelVoteChange: (vote: boolean) => void;
   onVoteChange: (vote: ReviewVote) => void;
@@ -48,8 +49,8 @@ export const CompletedReviewPanel = memo(function CompletedReviewPanel({
   otherReviewerNotes,
   notesLoading,
   submitting,
-  aiPercent,
-  onAiPercentUpdate,
+  aiAssessment,
+  onAiAssessmentUpdate,
   onNotesChange,
   onTravelVoteChange,
   onVoteChange,
@@ -66,12 +67,12 @@ export const CompletedReviewPanel = memo(function CompletedReviewPanel({
 
   return (
     <div ref={panelRef} className="divide-y">
-      <section aria-label="AI percent">
-        <AIPercentField
+      <section aria-label="AI assessment">
+        <AIAssessmentField
           key={review.application_id}
           applicationId={review.application_id}
-          aiPercent={aiPercent}
-          onUpdate={onAiPercentUpdate}
+          assessment={aiAssessment}
+          onUpdate={onAiAssessmentUpdate}
         />
       </section>
 

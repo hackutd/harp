@@ -372,14 +372,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/applications/{applicationID}/ai-percent": {
-            "put": {
+        "/admin/applications/{applicationID}/ai-assessment": {
+            "patch": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Records or updates the estimated AI-generated content percent for an application assigned to the current admin",
+                "description": "Updates only supplied fields. Scores use 0–1; null clears a field. Omitted fields are preserved.",
                 "consumes": [
                     "application/json"
                 ],
@@ -389,7 +389,7 @@ const docTemplate = `{
                 "tags": [
                     "admin/applications"
                 ],
-                "summary": "Set AI percent on a review (Admin)",
+                "summary": "Update AI assessment on a review (Admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -399,12 +399,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "AI percent (0–100)",
+                        "description": "Partial AI assessment",
                         "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.SetAIPercentPayload"
+                            "$ref": "#/definitions/store.AIAssessmentPatch"
                         }
                     }
                 ],
@@ -412,7 +412,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.AIPercentResponse"
+                            "$ref": "#/definitions/store.AIAssessment"
                         }
                     },
                     "400": {
@@ -461,6 +461,117 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/applications/{applicationID}/ai-assessment/calculate": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Analyzes short answers and saves the result for an application assigned to the current admin.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/applications"
+                ],
+                "summary": "Calculate AI assessment (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.AIAssessment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -11101,14 +11212,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.AIPercentResponse": {
-            "type": "object",
-            "properties": {
-                "ai_percent": {
-                    "type": "integer"
-                }
-            }
-        },
         "main.AdminFAQEditToggleResponse": {
             "type": "object",
             "properties": {
@@ -11212,14 +11315,20 @@ const docTemplate = `{
                 "accept_votes": {
                     "type": "integer"
                 },
-                "ai_percent": {
-                    "type": "integer"
+                "ai_score": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
                 },
                 "application_schema": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/store.ApplicationSchemaField"
                     }
+                },
+                "classes": {
+                    "$ref": "#/definitions/store.AIClassScores"
                 },
                 "created_at": {
                     "type": "string"
@@ -11299,6 +11408,16 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                },
+                "verdict": {
+                    "type": "string",
+                    "enum": [
+                        "human",
+                        "ai",
+                        "ai_edited",
+                        "humanized"
+                    ],
+                    "x-nullable": true
                 },
                 "waitlist_votes": {
                     "type": "integer"
@@ -12278,16 +12397,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.SetAIPercentPayload": {
-            "type": "object",
-            "properties": {
-                "ai_percent": {
-                    "type": "integer",
-                    "maximum": 100,
-                    "minimum": 0
-                }
-            }
-        },
         "main.SetAdminFAQEditTogglePayload": {
             "type": "object",
             "properties": {
@@ -13081,14 +13190,126 @@ const docTemplate = `{
                 }
             }
         },
+        "store.AIAssessment": {
+            "type": "object",
+            "properties": {
+                "ai_score": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "classes": {
+                    "$ref": "#/definitions/store.AIClassScores"
+                },
+                "verdict": {
+                    "type": "string",
+                    "enum": [
+                        "human",
+                        "ai",
+                        "ai_edited",
+                        "humanized"
+                    ],
+                    "x-nullable": true
+                }
+            }
+        },
+        "store.AIAssessmentPatch": {
+            "type": "object",
+            "properties": {
+                "ai_score": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "classes": {
+                    "$ref": "#/definitions/store.AIClassScoresPatch"
+                },
+                "verdict": {
+                    "type": "string",
+                    "enum": [
+                        "human",
+                        "ai",
+                        "ai_edited",
+                        "humanized"
+                    ],
+                    "x-nullable": true
+                }
+            }
+        },
+        "store.AIClassScores": {
+            "type": "object",
+            "properties": {
+                "ai": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "ai_edited": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "human": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "humanized": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                }
+            }
+        },
+        "store.AIClassScoresPatch": {
+            "type": "object",
+            "properties": {
+                "ai": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "ai_edited": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "human": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "humanized": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                }
+            }
+        },
         "store.Application": {
             "type": "object",
             "properties": {
                 "accept_votes": {
                     "type": "integer"
                 },
-                "ai_percent": {
-                    "type": "integer"
+                "ai_score": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
+                },
+                "classes": {
+                    "$ref": "#/definitions/store.AIClassScores"
                 },
                 "created_at": {
                     "type": "string"
@@ -13165,6 +13386,16 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string"
                 },
+                "verdict": {
+                    "type": "string",
+                    "enum": [
+                        "human",
+                        "ai",
+                        "ai_edited",
+                        "humanized"
+                    ],
+                    "x-nullable": true
+                },
                 "waitlist_votes": {
                     "type": "integer"
                 }
@@ -13211,12 +13442,18 @@ const docTemplate = `{
                 "age": {
                     "type": "integer"
                 },
-                "ai_percent": {
-                    "type": "integer"
+                "ai_score": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "x-nullable": true
                 },
                 "checked_in_at": {
                     "description": "CheckedInAt is the first check-in scan, nil until the hacker arrives.",
                     "type": "string"
+                },
+                "classes": {
+                    "$ref": "#/definitions/store.AIClassScores"
                 },
                 "country_of_residence": {
                     "type": "string"
@@ -13318,6 +13555,16 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                },
+                "verdict": {
+                    "type": "string",
+                    "enum": [
+                        "human",
+                        "ai",
+                        "ai_edited",
+                        "humanized"
+                    ],
+                    "x-nullable": true
                 },
                 "waitlist_votes": {
                     "type": "integer"

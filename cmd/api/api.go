@@ -25,6 +25,7 @@ import (
 )
 
 type application struct {
+	aiDetectorClient  *http.Client
 	config            config
 	store             store.Storage
 	logger            *zap.SugaredLogger
@@ -73,6 +74,8 @@ type config struct {
 	dispatcher       dispatcherConfig
 	appleWallet      appleWalletConfig
 	observability    observabilityConfig
+	aiDetectorURL    string
+	aiDetectorToken  string
 }
 
 // clientIPConfig selects the trusted source of the client address used for
@@ -296,7 +299,8 @@ func (app *application) mount() http.Handler {
 
 						// Assigned Applications
 						r.Get("/{applicationID}/notes", app.getApplicationNotes)
-						r.Put("/{applicationID}/ai-percent", app.setAIPercent)
+						r.Patch("/{applicationID}/ai-assessment", app.updateAIAssessment)
+						r.Post("/{applicationID}/ai-assessment/calculate", app.calculateAIPercent)
 					})
 
 					// Reviews

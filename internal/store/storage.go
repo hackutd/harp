@@ -157,7 +157,8 @@ type Storage struct {
 		GetLeaderboard(ctx context.Context) ([]ReviewerStats, error)
 		BatchAssign(ctx context.Context, reviewsPerApp int) (*BatchAssignmentResult, error)
 		ClaimForAdmin(ctx context.Context, adminID string, reviewsPerApp, limit int) (int, error)
-		SetAIPercent(ctx context.Context, applicationID string, adminID string, percent int16) error
+		UpdateAIAssessment(ctx context.Context, applicationID string, adminID string, patch AIAssessmentPatch) (*AIAssessment, error)
+		CheckAssignment(ctx context.Context, applicationID string, adminID string) error
 	}
 	Schedule interface {
 		List(ctx context.Context) ([]ScheduleItem, error)

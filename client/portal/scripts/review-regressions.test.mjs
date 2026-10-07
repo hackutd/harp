@@ -98,7 +98,12 @@ beforeEach(() => {
     if (path === `${appPath}/stats`) return ok({ submitted: 1 });
     if (path.endsWith("/notes")) return ok({ notes: [] });
     if (path.startsWith(`${appPath}/`))
-      return ok({ id: path.split("/").at(-1), ai_percent: null });
+      return ok({
+        id: path.split("/").at(-1),
+        ai_score: null,
+        verdict: null,
+        classes: { human: null, ai: null, ai_edited: null, humanized: null },
+      });
     if (path.startsWith("/v1/admin/reviews/") && options.method === "PUT") {
       return failVote ? failed() : ok({});
     }

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/pages/admin/_shared";
 import { useRedactApplicants } from "@/shared/hooks";
+import { formatAIScore } from "@/shared/lib/ai-assessment";
 import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
 
@@ -61,7 +62,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
             <TableHead className="w-28">Submitted</TableHead>
             <TableHead className="w-28">Created</TableHead>
             <TableHead className="w-28">Updated</TableHead>
-            <TableHead className="w-24">AI Percent</TableHead>
+            <TableHead className="w-24">AI score</TableHead>
             <TableHead className="w-24">{pointsName}</TableHead>
           </TableRow>
         </TableHeader>
@@ -167,7 +168,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                     {new Date(app.updated_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
+                    {app.ai_score != null ? formatAIScore(app.ai_score) : "-"}
                   </TableCell>
                   <TableCell className="tabular-nums">{app.points}</TableCell>
                 </TableRow>

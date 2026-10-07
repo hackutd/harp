@@ -17,6 +17,7 @@ import type {
   ApplicationSortBy,
 } from "@/pages/admin/all-applicants/types";
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
+import { formatAIScore } from "@/shared/lib/ai-assessment";
 
 interface ReviewsTableProps {
   reviewsPerApp: number | null;
@@ -83,7 +84,7 @@ export const ReviewsTable = memo(function ReviewsTable({
             ))}
             <TableHead>Travel</TableHead>
             <TableHead>Reviews</TableHead>
-            <TableHead>AI %</TableHead>
+            <TableHead>AI score</TableHead>
             <TableHead>Submitted</TableHead>
             <TableHead>Created</TableHead>
           </TableRow>
@@ -163,7 +164,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  {app.ai_percent != null ? `${app.ai_percent}%` : "-"}
+                  {app.ai_score != null ? formatAIScore(app.ai_score) : "-"}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   {app.submitted_at

@@ -439,7 +439,7 @@ export default function ReviewsPage() {
                       <CompletedReviewSummary
                         review={selectedReview}
                         applicationStatus={completedAppDetail.status}
-                        aiPercent={completedAppDetail.ai_percent}
+                        assessment={completedAppDetail}
                         onChangeVote={() =>
                           navigate(
                             `/admin/reviews/grade?mode=completed&review=${selectedReview.id}`,

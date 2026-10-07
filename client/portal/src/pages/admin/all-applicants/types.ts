@@ -1,4 +1,4 @@
-import type { RSVPStatus, TravelStatus } from "@/types";
+import type { AIAssessment, RSVPStatus, TravelStatus } from "@/types";
 
 export type ApplicationStatus =
   | "draft"
@@ -7,7 +7,7 @@ export type ApplicationStatus =
   | "rejected"
   | "waitlisted";
 
-export interface ApplicationListItem {
+export interface ApplicationListItem extends AIAssessment {
   id: string;
   user_id: string;
   email: string;
@@ -25,7 +25,6 @@ export interface ApplicationListItem {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
-  ai_percent: number | null;
   accept_votes: number;
   reject_votes: number;
   waitlist_votes: number;

@@ -83,36 +83,36 @@ type ApplicationListFilters struct {
 
 // ApplicationListItem is a lightweight view for admin listing
 type ApplicationListItem struct {
-	ID                        string            `json:"id"`
-	UserID                    string            `json:"user_id"`
-	Email                     string            `json:"email"`
-	Status                    ApplicationStatus `json:"status"`
-	FirstName                 *string           `json:"first_name"`
-	LastName                  *string           `json:"last_name"`
-	Phone                     *string           `json:"phone"`
-	Age                       *int16            `json:"age"`
-	CountryOfResidence        *string           `json:"country_of_residence"`
-	Gender                    *string           `json:"gender"`
-	University                *string           `json:"university"`
-	Major                     *string           `json:"major"`
-	LevelOfStudy              *string           `json:"level_of_study"`
-	HackathonsAttended        *int16            `json:"hackathons_attended"`
-	SubmittedAt               *time.Time        `json:"submitted_at"`
-	CreatedAt                 time.Time         `json:"created_at"`
-	UpdatedAt                 time.Time         `json:"updated_at"`
-	AcceptVotes               int               `json:"accept_votes"`
-	RejectVotes               int               `json:"reject_votes"`
-	WaitlistVotes             int               `json:"waitlist_votes"`
-	ReviewsAssigned           int               `json:"reviews_assigned"`
-	ReviewsCompleted          int               `json:"reviews_completed"`
-	AIPercent                 *int              `json:"ai_percent"`
-	HasResume                 bool              `json:"has_resume"`
-	MealGroup                 *string           `json:"meal_group"`
-	Points                    int               `json:"points"`
-	TravelStatus              TravelStatus      `json:"travel_status"`
-	TravelYesVotes            int               `json:"travel_yes_votes"`
-	TravelNoVotes             int               `json:"travel_no_votes"`
-	TravelApprovedAmountCents *int64            `json:"travel_approved_amount_cents"`
+	ID                 string            `json:"id"`
+	UserID             string            `json:"user_id"`
+	Email              string            `json:"email"`
+	Status             ApplicationStatus `json:"status"`
+	FirstName          *string           `json:"first_name"`
+	LastName           *string           `json:"last_name"`
+	Phone              *string           `json:"phone"`
+	Age                *int16            `json:"age"`
+	CountryOfResidence *string           `json:"country_of_residence"`
+	Gender             *string           `json:"gender"`
+	University         *string           `json:"university"`
+	Major              *string           `json:"major"`
+	LevelOfStudy       *string           `json:"level_of_study"`
+	HackathonsAttended *int16            `json:"hackathons_attended"`
+	SubmittedAt        *time.Time        `json:"submitted_at"`
+	CreatedAt          time.Time         `json:"created_at"`
+	UpdatedAt          time.Time         `json:"updated_at"`
+	AcceptVotes        int               `json:"accept_votes"`
+	RejectVotes        int               `json:"reject_votes"`
+	WaitlistVotes      int               `json:"waitlist_votes"`
+	ReviewsAssigned    int               `json:"reviews_assigned"`
+	ReviewsCompleted   int               `json:"reviews_completed"`
+	AIAssessment
+	HasResume                 bool         `json:"has_resume"`
+	MealGroup                 *string      `json:"meal_group"`
+	Points                    int          `json:"points"`
+	TravelStatus              TravelStatus `json:"travel_status"`
+	TravelYesVotes            int          `json:"travel_yes_votes"`
+	TravelNoVotes             int          `json:"travel_no_votes"`
+	TravelApprovedAmountCents *int64       `json:"travel_approved_amount_cents"`
 	// RSVPStatus and TravelRSVPStatus let the review UI tell whether the hacker
 	// has already acted on a one-shot RSVP, which pins the travel decision.
 	RSVPStatus               RSVPStatus `json:"rsvp_status"`
@@ -265,7 +265,7 @@ type Application struct {
 
 	Responses  json.RawMessage `json:"responses"`
 	ResumePath *string         `json:"resume_path"`
-	AIPercent  *int16          `json:"ai_percent"`
+	AIAssessment
 
 	AcceptVotes      int `json:"accept_votes"`
 	RejectVotes      int `json:"reject_votes"`
@@ -309,7 +309,7 @@ const checkInScanTypesSQL = `
 	WHERE settings.key = 'scan_types' AND st->>'category' = 'check_in'`
 
 const applicationSelectCols = `
-	id, user_id, status, responses, resume_path, ai_percent,
+	id, user_id, status, responses, resume_path, ai_score, ai_verdict, ai_class_human, ai_class_ai, ai_class_ai_edited, ai_class_humanized,
 	accept_votes, reject_votes, waitlist_votes, reviews_assigned, reviews_completed,
 	submitted_at, created_at, updated_at, meal_group,
 	rsvp_status, rsvp_responses, rsvp_submitted_at,
@@ -319,7 +319,7 @@ const applicationSelectCols = `
 // scanApplication scans a row into an Application struct
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
 	return row.Scan(
-		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIPercent,
+		&app.ID, &app.UserID, &app.Status, &app.Responses, &app.ResumePath, &app.AIScore, &app.Verdict, &app.Classes.Human, &app.Classes.AI, &app.Classes.AIEdited, &app.Classes.Humanized,
 		&app.AcceptVotes, &app.RejectVotes, &app.WaitlistVotes, &app.ReviewsAssigned, &app.ReviewsCompleted,
 		&app.SubmittedAt, &app.CreatedAt, &app.UpdatedAt, &app.MealGroup,
 		&app.RSVPStatus, &app.RSVPResponses, &app.RSVPSubmittedAt,
@@ -600,7 +600,7 @@ func (s *ApplicationsStore) List(
 		       CASE WHEN a.responses->>'hackathons_attended' ~ '^[0-9]{1,4}$'
 		            THEN (a.responses->>'hackathons_attended')::smallint END AS hackathons_attended,
 		       a.submitted_at, a.created_at, a.updated_at,
-		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_percent,
+		       a.accept_votes, a.reject_votes, a.waitlist_votes, a.reviews_assigned, a.reviews_completed, a.ai_score, a.ai_verdict, a.ai_class_human, a.ai_class_ai, a.ai_class_ai_edited, a.ai_class_humanized,
 		       a.resume_path IS NOT NULL AS has_resume, a.meal_group,
 		       (SELECT COALESCE(SUM(s.points), 0) FROM scans s WHERE s.user_id = a.user_id) AS points,
 		       a.travel_status, a.travel_yes_votes, a.travel_no_votes, a.travel_approved_amount_cents,
@@ -735,7 +735,7 @@ func (s *ApplicationsStore) List(
 			&item.University, &item.Major, &item.LevelOfStudy,
 			&item.HackathonsAttended,
 			&item.SubmittedAt, &item.CreatedAt, &item.UpdatedAt,
-			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIPercent,
+			&item.AcceptVotes, &item.RejectVotes, &item.WaitlistVotes, &item.ReviewsAssigned, &item.ReviewsCompleted, &item.AIScore, &item.Verdict, &item.Classes.Human, &item.Classes.AI, &item.Classes.AIEdited, &item.Classes.Humanized,
 			&item.HasResume, &item.MealGroup, &item.Points,
 			&item.TravelStatus, &item.TravelYesVotes, &item.TravelNoVotes, &item.TravelApprovedAmountCents,
 			&item.RSVPStatus, &item.TravelRSVPStatus,

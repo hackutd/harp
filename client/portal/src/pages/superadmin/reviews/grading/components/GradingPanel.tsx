@@ -38,6 +38,7 @@ import {
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
+import { formatAIScore } from "@/shared/lib/ai-assessment";
 import { cn } from "@/shared/lib/utils";
 import type { ApplicationStatus, RSVPStatus, TravelStatus } from "@/types";
 
@@ -238,9 +239,9 @@ export const GradingPanel = memo(function GradingPanel({
             <>
               {listItem.reviews_completed} of {listItem.reviews_assigned}{" "}
               complete
-              {listItem.ai_percent != null && (
+              {listItem.ai_score != null && (
                 <span className="ml-3 border px-3.5 py-1.5 text-base text-foreground">
-                  AI {listItem.ai_percent}%
+                  AI {formatAIScore(listItem.ai_score)}
                 </span>
               )}
             </>
