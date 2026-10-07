@@ -1,17 +1,17 @@
-import { Pencil, Sparkles } from "lucide-react";
+import { Check, Pencil, Sparkles, X } from "lucide-react";
 import { memo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AIAssessmentSummary } from "@/pages/admin/_shared/AIAssessmentSummary";
 import { SECTION_TITLE } from "@/pages/admin/_shared/grading";
-import {
-  AI_CLASS_KEYS,
-  AI_CLASS_LABELS,
-  EMPTY_AI_ASSESSMENT,
-} from "@/shared/lib/ai-assessment";
-import type { AIAssessment, AIAssessmentPatch, AIVerdict } from "@/types";
+import type { AIAssessment } from "@/types";
 
 import { calculateAIAssessment, updateAIAssessment } from "../api";
 
@@ -21,19 +21,9 @@ interface AIAssessmentFieldProps {
   onUpdate: (assessment: AIAssessment) => void;
 }
 
-type Draft = Record<"ai_score" | AIVerdict, string> & {
-  verdict: AIVerdict | "";
-};
-
-function toDraft(assessment: AIAssessment): Draft {
-  return {
-    ai_score: assessment.ai_score?.toString() ?? "",
-    verdict: assessment.verdict ?? "",
-    human: assessment.classes?.human?.toString() ?? "",
-    ai: assessment.classes?.ai?.toString() ?? "",
-    ai_edited: assessment.classes?.ai_edited?.toString() ?? "",
-    humanized: assessment.classes?.humanized?.toString() ?? "",
-  };
+/** The stored 0–1 score as the percentage a reviewer edits. */
+function toPercentDraft(score: number | null | undefined): string {
+  return score == null ? "" : Number((score * 100).toFixed(1)).toString();
 }
 
 /** Mount with key={applicationId} so drafts and pending state belong to one applicant. */
@@ -43,14 +33,14 @@ export const AIAssessmentField = memo(function AIAssessmentField({
   onUpdate,
 }: AIAssessmentFieldProps) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(() => toDraft(EMPTY_AI_ASSESSMENT));
-  const [baseline, setBaseline] = useState(draft);
+  const [draft, setDraft] = useState("");
+  const [baseline, setBaseline] = useState("");
   const [pending, setPending] = useState<"save" | "calculate" | null>(null);
   const inFlight = useRef(false);
   const disabled = pending !== null || assessment === null;
 
   function startEditing() {
-    const initial = toDraft(assessment ?? EMPTY_AI_ASSESSMENT);
+    const initial = toPercentDraft(assessment?.ai_score);
     setDraft(initial);
     setBaseline(initial);
     setEditing(true);
@@ -58,31 +48,25 @@ export const AIAssessmentField = memo(function AIAssessmentField({
 
   async function save() {
     if (inFlight.current || !assessment) return;
-    const patch: AIAssessmentPatch = {};
-    for (const key of ["ai_score", ...AI_CLASS_KEYS] as const) {
-      if (draft[key] === baseline[key]) continue;
-      const value = draft[key].trim() === "" ? null : Number(draft[key]);
-      if (
-        value !== null &&
-        (!Number.isFinite(value) || value < 0 || value > 1)
-      ) {
-        toast.error("Scores must be between 0 and 1");
-        return;
-      }
-      if (key === "ai_score") patch.ai_score = value;
-      else patch.classes = { ...patch.classes, [key]: value };
-    }
-    if (draft.verdict !== baseline.verdict)
-      patch.verdict = draft.verdict || null;
-    if (Object.keys(patch).length === 0) {
+    if (draft === baseline) {
       setEditing(false);
+      return;
+    }
+    const percent = draft.trim() === "" ? null : Number(draft);
+    if (
+      percent !== null &&
+      (!Number.isFinite(percent) || percent < 0 || percent > 100)
+    ) {
+      toast.error("AI percent must be between 0 and 100");
       return;
     }
 
     inFlight.current = true;
     setPending("save");
     try {
-      const result = await updateAIAssessment(applicationId, patch);
+      const result = await updateAIAssessment(applicationId, {
+        ai_score: percent === null ? null : percent / 100,
+      });
       if (result.status === 200 && result.data) {
         onUpdate(result.data);
         setEditing(false);
@@ -123,31 +107,26 @@ export const AIAssessmentField = memo(function AIAssessmentField({
   }
 
   return (
-    <div className="space-y-4 px-5 py-4" aria-busy={pending !== null}>
+    <div className="space-y-3 px-5 py-4" aria-busy={pending !== null}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className={SECTION_TITLE}>AI assessment</h3>
-        {!editing && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={startEditing}
-            >
-              <Pencil className="size-3.5" /> Edit
-            </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              disabled={disabled}
+              disabled={disabled || editing}
               loading={pending === "calculate"}
               onClick={() => void calculate()}
             >
               <Sparkles className="size-3.5" />{" "}
               {pending === "calculate" ? "Calculating…" : "Calculate"}
             </Button>
-          </div>
-        )}
+          </TooltipTrigger>
+          <TooltipContent>
+            Overwrites the current AI score and breakdown
+          </TooltipContent>
+        </Tooltip>
       </div>
       {editing ? (
         <form
@@ -155,98 +134,83 @@ export const AIAssessmentField = memo(function AIAssessmentField({
             event.preventDefault();
             void save();
           }}
-          className="space-y-4"
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !disabled) {
+              event.stopPropagation();
+              setEditing(false);
+            }
+          }}
+          className="text-sm"
         >
-          <p className="text-xs text-muted-foreground">
-            Scores range from 0 to 1. Clear a value to mark it as not set.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>AI score (0–1)</span>
+          <label
+            htmlFor={`ai-score-${applicationId}`}
+            className="text-xs text-muted-foreground"
+          >
+            AI score
+          </label>
+          <div className="mt-1 flex items-center gap-1">
+            <div className="relative">
               <Input
+                id={`ai-score-${applicationId}`}
                 type="number"
                 min={0}
-                max={1}
+                max={100}
                 step="any"
-                value={draft.ai_score}
+                placeholder="Not set"
+                value={draft}
                 autoFocus
                 disabled={disabled}
-                onChange={(event) =>
-                  setDraft({ ...draft, ai_score: event.target.value })
-                }
-                className="h-9 tabular-nums"
+                onChange={(event) => setDraft(event.target.value)}
+                className="h-8 w-24 pr-6 font-semibold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Verdict</span>
-              <select
-                value={draft.verdict}
-                disabled={disabled}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    verdict: event.target.value as AIVerdict | "",
-                  })
-                }
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-              >
-                <option value="">Not set</option>
-                {AI_CLASS_KEYS.map((key) => (
-                  <option key={key} value={key}>
-                    {AI_CLASS_LABELS[key]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {AI_CLASS_KEYS.map((key) => (
-              <label
-                key={key}
-                className="space-y-1 text-xs text-muted-foreground"
-              >
-                <span>{AI_CLASS_LABELS[key]} (0–1)</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={1}
-                  step="any"
-                  value={draft[key]}
-                  disabled={disabled}
-                  onChange={(event) =>
-                    setDraft({ ...draft, [key]: event.target.value })
-                  }
-                  className="h-9 tabular-nums"
-                />
-              </label>
-            ))}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={() => setEditing(false)}
-            >
-              Cancel
-            </Button>
+              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-foreground">
+                %
+              </span>
+            </div>
             <Button
               type="submit"
-              size="sm"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Save AI score"
               disabled={disabled}
               loading={pending === "save"}
             >
-              Save changes
+              <Check className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Cancel editing"
+              disabled={disabled}
+              onClick={() => setEditing(false)}
+            >
+              <X className="size-4" />
             </Button>
           </div>
         </form>
       ) : assessment ? (
         <>
-          <AIAssessmentSummary assessment={assessment} />
-          <p className="text-xs text-muted-foreground" role="status">
-            {pending === "calculate"
-              ? "Analyzing short answers…"
-              : "Calculate replaces all values with the detector result."}
-          </p>
+          <AIAssessmentSummary
+            assessment={assessment}
+            action={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Edit AI score"
+                disabled={disabled}
+                onClick={startEditing}
+                className="text-muted-foreground"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            }
+          />
+          {pending === "calculate" && (
+            <p className="text-xs text-muted-foreground" role="status">
+              Analyzing short answers…
+            </p>
+          )}
         </>
       ) : (
         <p className="text-xs text-muted-foreground">Loading assessment…</p>
