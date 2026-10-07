@@ -3,6 +3,7 @@ import type { ApiResponse } from "@/types";
 
 import type {
   DateSettingResult,
+  DirectoryInterestTagsResult,
   EmailSettingResult,
   FromNameResult,
   HackathonDateRangeResult,
@@ -45,6 +46,26 @@ export async function updateMealGroups(
     "/superadmin/settings/meal-groups",
     { groups },
     "meal groups",
+  );
+}
+
+export async function fetchDirectoryInterestTags(
+  signal?: AbortSignal,
+): Promise<ApiResponse<DirectoryInterestTagsResult>> {
+  return getRequest<DirectoryInterestTagsResult>(
+    "/superadmin/settings/directory-interest-tags",
+    "directory interest tags",
+    signal,
+  );
+}
+
+export async function updateDirectoryInterestTags(
+  tags: string[],
+): Promise<ApiResponse<DirectoryInterestTagsResult>> {
+  return putRequest<DirectoryInterestTagsResult>(
+    "/superadmin/settings/directory-interest-tags",
+    { tags },
+    "directory interest tags",
   );
 }
 

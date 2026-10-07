@@ -50,6 +50,8 @@ type application struct {
 	// decisionEmailInFlight is set while a decision email run is sending, so
 	// a concurrent request cannot start a second run over the same recipients.
 	decisionEmailInFlight atomic.Bool
+	// headshotURLs caches signed directory headshot URLs across requests.
+	headshotURLs signedURLCache
 	// dbPinger backs the health check's database probe; nil skips the probe.
 	dbPinger dbPinger
 }

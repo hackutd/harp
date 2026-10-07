@@ -111,7 +111,7 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
 
     fetchCards: async (signal) => {
       const seq = ++listSeq;
-      set({ loading: true });
+      set({ loading: true, loadingMore: false });
       const res = await fetchDirectory(get().filters, null, signal);
       if (signal?.aborted || seq !== listSeq) return;
       if (res.status === 200 && res.data) {
@@ -132,7 +132,12 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
       const seq = listSeq;
       set({ loadingMore: true });
       const res = await fetchDirectory(filters, nextCursor);
-      if (seq !== listSeq) return;
+      if (seq !== listSeq) {
+        // fetchCards replaced the list; drop this page but clear the flag so
+        // the next "Load more" isn't blocked.
+        set({ loadingMore: false });
+        return;
+      }
       if (res.status === 200 && res.data) {
         const page = res.data;
         set((s) => {

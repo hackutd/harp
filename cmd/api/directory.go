@@ -24,7 +24,8 @@ const (
 	directoryHeadshotFolder  = "directory-headshots"
 	directoryMaxSkills       = 3
 	directoryMaxInterestTags = 5
-	directoryAdminListLimit  = 200
+	directoryAdminPageSize   = 50
+	directoryAdminMaxPage    = 100
 )
 
 var directoryHeadshotContentTypes = map[string]string{
@@ -136,15 +137,8 @@ type DirectoryModerationPayload struct {
 }
 
 type DirectoryAdminListResponse struct {
-	Profiles []store.DirectoryAdminProfile `json:"profiles"`
-}
-
-type DirectoryInterestTagsResponse struct {
-	Tags []string `json:"tags"`
-}
-
-type UpdateDirectoryInterestTagsPayload struct {
-	Tags []string `json:"tags" validate:"max=50,unique,dive,required,max=30"`
+	Profiles   []store.DirectoryAdminProfile `json:"profiles"`
+	NextCursor *string                       `json:"next_cursor"`
 }
 
 func directoryHeadshotStoragePrefix(hackathonName string) string {
@@ -247,9 +241,15 @@ func (app *application) directoryViewer(ctx context.Context, userID string) (sto
 	return store.DirectoryViewer{UserID: userID, CheckInTypes: checkInTypes, StaleCutoff: cutoff}, near, nil
 }
 
-func (app *application) directoryForbidden(w http.ResponseWriter, r *http.Request, err error) {
-	app.requestLogger(r).Warnw("directory forbidden", "error", err.Error())
-	writeJSONError(w, http.StatusForbidden, err.Error())
+// directoryUserIDParam reads the {userID} path parameter, rejecting anything
+// that isn't a UUID before it reaches a query and fails there as a 500.
+func (app *application) directoryUserIDParam(w http.ResponseWriter, r *http.Request) (string, bool) {
+	id := chi.URLParam(r, "userID")
+	if err := Validate.Var(id, "required,uuid"); err != nil {
+		app.badRequestResponse(w, r, errors.New("invalid user ID"))
+		return "", false
+	}
+	return id, true
 }
 
 // requireDirectoryAccess admits hackers who are still RSVP-confirmed and have
@@ -267,43 +267,20 @@ func (app *application) requireDirectoryAccess(w http.ResponseWriter, r *http.Re
 		return nil, nil, false
 	}
 	if !eligible {
-		app.directoryForbidden(w, r, errDirectoryNotEligible)
+		app.forbiddenMessageResponse(w, r, errDirectoryNotEligible)
 		return nil, nil, false
 	}
 
 	profile, err := app.store.AttendeeDirectory.GetProfile(r.Context(), user.ID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			app.directoryForbidden(w, r, errDirectoryNoCard)
+			app.forbiddenMessageResponse(w, r, errDirectoryNoCard)
 			return nil, nil, false
 		}
 		app.internalServerError(w, r, err)
 		return nil, nil, false
 	}
 	return user, profile, true
-}
-
-// headshotURL signs the uploaded headshot, falling back to the account's
-// profile picture (e.g. from Google sign-in).
-func (app *application) headshotURL(ctx context.Context, headshotPath, profilePictureURL *string) *string {
-	if headshotPath != nil && *headshotPath != "" && app.gcsClient != nil {
-		url, err := app.gcsClient.GenerateDownloadURL(ctx, *headshotPath)
-		if err == nil {
-			return &url
-		}
-		app.logger.Warnw("failed to sign directory headshot", "error", err)
-	}
-	if profilePictureURL != nil && *profilePictureURL != "" {
-		return profilePictureURL
-	}
-	return nil
-}
-
-func (app *application) withHeadshots(ctx context.Context, cards []store.DirectoryCard) []store.DirectoryCard {
-	for i := range cards {
-		cards[i].HeadshotURL = app.headshotURL(ctx, cards[i].HeadshotPath, cards[i].ProfilePictureURL)
-	}
-	return cards
 }
 
 func (app *application) directoryOptions(ctx context.Context) (DirectoryOptions, error) {
@@ -378,7 +355,7 @@ func (app *application) buildDirectoryMe(ctx context.Context, user *store.User) 
 //
 //	@Summary		Get my directory card
 //	@Description	Returns the caller's attendee directory card (null if none), eligibility, stale-status state, and the fixed field options.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	DirectoryMeResponse
 //	@Failure		401	{object}	object{error=string}
@@ -467,7 +444,7 @@ func normalizeDirectoryPayload(req *UpsertDirectoryProfilePayload, interestTags 
 //
 //	@Summary		Create or update my directory card
 //	@Description	Creates or replaces the caller's attendee directory card. Requires a confirmed RSVP. Saving re-confirms the status. discoverable only applies when creating; use PATCH /directory/me/discoverable afterwards.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Accept			json
 //	@Produce		json
 //	@Param			profile	body		UpsertDirectoryProfilePayload	true	"Directory card"
@@ -501,7 +478,7 @@ func (app *application) upsertMyDirectoryProfileHandler(w http.ResponseWriter, r
 		return
 	}
 	if !eligible {
-		app.directoryForbidden(w, r, errDirectoryNotEligible)
+		app.forbiddenMessageResponse(w, r, errDirectoryNotEligible)
 		return
 	}
 
@@ -593,7 +570,7 @@ func (app *application) deleteDirectoryHeadshot(userID, objectPath string) {
 //
 //	@Summary		Set my directory discoverability
 //	@Description	Hides or shows the caller's card. Hidden cards are absent from all directory results and reject new pokes and contact adds, but the owner keeps full access and existing matches and contacts are untouched.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Accept			json
 //	@Produce		json
 //	@Param			discoverable	body		UpdateDirectoryDiscoverablePayload	true	"Discoverability"
@@ -637,7 +614,7 @@ func (app *application) updateMyDirectoryDiscoverableHandler(w http.ResponseWrit
 //
 //	@Summary		Re-confirm my directory status
 //	@Description	Marks the caller's intent/status as still accurate, clearing the stale nudge and the stale demotion in browse results.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	DirectoryMeResponse
 //	@Failure		401	{object}	object{error=string}
@@ -668,7 +645,7 @@ func (app *application) confirmMyDirectoryStatusHandler(w http.ResponseWriter, r
 //
 //	@Summary		Get directory headshot upload URL
 //	@Description	Generates a signed GCS upload URL for a directory card headshot. Pass the returned headshot_path when saving the card.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Accept			json
 //	@Produce		json
 //	@Param			upload	body		DirectoryHeadshotUploadURLPayload	true	"Content type"
@@ -703,7 +680,7 @@ func (app *application) generateDirectoryHeadshotUploadURLHandler(w http.Respons
 		return
 	}
 	if !eligible {
-		app.directoryForbidden(w, r, errDirectoryNotEligible)
+		app.forbiddenMessageResponse(w, r, errDirectoryNotEligible)
 		return
 	}
 
@@ -752,7 +729,7 @@ func splitQueryList(raw string) []string {
 //
 //	@Summary		Browse the attendee directory
 //	@Description	Lists other confirmed attendees' discoverable cards. Requires your own card. Stale statuses sort last close to the event.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Param			intent		query		string	false	"Comma-separated intents"
 //	@Param			tags		query		string	false	"Comma-separated interest tags (any match)"
@@ -807,8 +784,8 @@ func (app *application) listDirectoryHandler(w http.ResponseWriter, r *http.Requ
 	var cursor *store.DirectoryCursor
 	if raw := q.Get("cursor"); raw != "" {
 		c, err := store.DecodeDirectoryCursor(raw)
-		if err != nil {
-			app.badRequestResponse(w, r, err)
+		if err != nil || Validate.Var(c.UserID, "uuid") != nil {
+			app.badRequestResponse(w, r, errors.New("invalid cursor"))
 			return
 		}
 		cursor = c
@@ -818,6 +795,10 @@ func (app *application) listDirectoryHandler(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
+	}
+	// Later pages sort against the cutoff the first page used.
+	if cursor != nil {
+		viewer.StaleCutoff = cursor.StaleCutoff
 	}
 
 	result, err := app.store.AttendeeDirectory.List(r.Context(), viewer, filters, cursor, limit)
@@ -859,7 +840,7 @@ func (app *application) respondDirectoryCards(w http.ResponseWriter, r *http.Req
 //
 //	@Summary		List my directory contacts
 //	@Description	Lists the cards the caller saved, newest first. Contacts stay listed when the other person turns discoverability off. Discord details are only included for matches.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	DirectoryCardsResponse
 //	@Failure		401	{object}	object{error=string}
@@ -875,7 +856,7 @@ func (app *application) listDirectoryContactsHandler(w http.ResponseWriter, r *h
 //
 //	@Summary		List who poked me
 //	@Description	Lists attendees who poked the caller, newest first, with whether the caller already poked back (a match).
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	DirectoryCardsResponse
 //	@Failure		401	{object}	object{error=string}
@@ -897,7 +878,7 @@ func (app *application) directoryTargetAllowed(w http.ResponseWriter, r *http.Re
 		return false
 	}
 	if viewerProfile.ModerationHidden {
-		app.directoryForbidden(w, r, errDirectoryModerated)
+		app.forbiddenMessageResponse(w, r, errDirectoryModerated)
 		return false
 	}
 
@@ -915,7 +896,7 @@ func (app *application) directoryTargetAllowed(w http.ResponseWriter, r *http.Re
 		return false
 	}
 	if (!target.Discoverable || !target.Eligible) && !target.PokedViewer {
-		app.directoryForbidden(w, r, errDirectoryUnavailable)
+		app.forbiddenMessageResponse(w, r, errDirectoryUnavailable)
 		return false
 	}
 	return true
@@ -929,6 +910,10 @@ func (app *application) respondDirectoryCard(w http.ResponseWriter, r *http.Requ
 	}
 	card, err := app.store.AttendeeDirectory.GetCard(r.Context(), viewer, targetID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("directory card not found"))
+			return
+		}
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -942,7 +927,7 @@ func (app *application) respondDirectoryCard(w http.ResponseWriter, r *http.Requ
 //
 //	@Summary		Poke an attendee
 //	@Description	Sends a one-way poke and adds the target to the caller's contacts. A mutual poke is a match and reveals Discord details to both. The target gets a push notification. Rejected when the target is not discoverable, unless they poked the caller first.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Param			userID	path		string	true	"Target user ID"
 //	@Success		200		{object}	DirectoryPokeResponse
@@ -954,11 +939,14 @@ func (app *application) respondDirectoryCard(w http.ResponseWriter, r *http.Requ
 //	@Security		CookieAuth
 //	@Router			/directory/profiles/{userID}/poke [post]
 func (app *application) pokeDirectoryProfileHandler(w http.ResponseWriter, r *http.Request) {
+	targetID, ok := app.directoryUserIDParam(w, r)
+	if !ok {
+		return
+	}
 	user, profile, ok := app.requireDirectoryAccess(w, r)
 	if !ok {
 		return
 	}
-	targetID := chi.URLParam(r, "userID")
 	if !app.directoryTargetAllowed(w, r, user, profile, targetID) {
 		return
 	}
@@ -976,6 +964,10 @@ func (app *application) pokeDirectoryProfileHandler(w http.ResponseWriter, r *ht
 	}
 	card, err := app.store.AttendeeDirectory.GetCard(r.Context(), viewer, targetID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("directory card not found"))
+			return
+		}
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -1000,7 +992,7 @@ func (app *application) pokeDirectoryProfileHandler(w http.ResponseWriter, r *ht
 //
 //	@Summary		Add a directory contact
 //	@Description	Saves the target to the caller's private contact list. No notification is sent. Rejected when the target is not discoverable, unless they poked the caller first.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Param			userID	path		string	true	"Target user ID"
 //	@Success		200		{object}	DirectoryCardResponse
@@ -1012,11 +1004,14 @@ func (app *application) pokeDirectoryProfileHandler(w http.ResponseWriter, r *ht
 //	@Security		CookieAuth
 //	@Router			/directory/contacts/{userID} [put]
 func (app *application) addDirectoryContactHandler(w http.ResponseWriter, r *http.Request) {
+	targetID, ok := app.directoryUserIDParam(w, r)
+	if !ok {
+		return
+	}
 	user, profile, ok := app.requireDirectoryAccess(w, r)
 	if !ok {
 		return
 	}
-	targetID := chi.URLParam(r, "userID")
 	if !app.directoryTargetAllowed(w, r, user, profile, targetID) {
 		return
 	}
@@ -1031,7 +1026,7 @@ func (app *application) addDirectoryContactHandler(w http.ResponseWriter, r *htt
 //
 //	@Summary		Remove a directory contact
 //	@Description	Removes the target from the caller's contact list. Pokes and matches are unaffected.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Param			userID	path	string	true	"Target user ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
@@ -1040,11 +1035,15 @@ func (app *application) addDirectoryContactHandler(w http.ResponseWriter, r *htt
 //	@Security		CookieAuth
 //	@Router			/directory/contacts/{userID} [delete]
 func (app *application) removeDirectoryContactHandler(w http.ResponseWriter, r *http.Request) {
+	targetID, ok := app.directoryUserIDParam(w, r)
+	if !ok {
+		return
+	}
 	user, _, ok := app.requireDirectoryAccess(w, r)
 	if !ok {
 		return
 	}
-	if err := app.store.AttendeeDirectory.RemoveContact(r.Context(), user.ID, chi.URLParam(r, "userID")); err != nil {
+	if err := app.store.AttendeeDirectory.RemoveContact(r.Context(), user.ID, targetID); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -1055,7 +1054,7 @@ func (app *application) removeDirectoryContactHandler(w http.ResponseWriter, r *
 //
 //	@Summary		Hide a directory card
 //	@Description	Hides the target from the caller's browse feed. Undo with DELETE; hidden cards are listed with GET /directory/profiles?hidden=true.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Param			userID	path	string	true	"Target user ID"
 //	@Success		204
 //	@Failure		400	{object}	object{error=string}
@@ -1066,11 +1065,14 @@ func (app *application) removeDirectoryContactHandler(w http.ResponseWriter, r *
 //	@Security		CookieAuth
 //	@Router			/directory/hidden/{userID} [put]
 func (app *application) hideDirectoryProfileHandler(w http.ResponseWriter, r *http.Request) {
+	targetID, ok := app.directoryUserIDParam(w, r)
+	if !ok {
+		return
+	}
 	user, _, ok := app.requireDirectoryAccess(w, r)
 	if !ok {
 		return
 	}
-	targetID := chi.URLParam(r, "userID")
 	if targetID == user.ID {
 		app.badRequestResponse(w, r, errors.New("you can't hide your own card"))
 		return
@@ -1094,7 +1096,7 @@ func (app *application) hideDirectoryProfileHandler(w http.ResponseWriter, r *ht
 //
 //	@Summary		Unhide a directory card
 //	@Description	Restores a card the caller hid to their browse feed.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Param			userID	path	string	true	"Target user ID"
 //	@Success		204
 //	@Failure		401	{object}	object{error=string}
@@ -1103,11 +1105,15 @@ func (app *application) hideDirectoryProfileHandler(w http.ResponseWriter, r *ht
 //	@Security		CookieAuth
 //	@Router			/directory/hidden/{userID} [delete]
 func (app *application) unhideDirectoryProfileHandler(w http.ResponseWriter, r *http.Request) {
+	targetID, ok := app.directoryUserIDParam(w, r)
+	if !ok {
+		return
+	}
 	user, _, ok := app.requireDirectoryAccess(w, r)
 	if !ok {
 		return
 	}
-	if err := app.store.AttendeeDirectory.Unhide(r.Context(), user.ID, chi.URLParam(r, "userID")); err != nil {
+	if err := app.store.AttendeeDirectory.Unhide(r.Context(), user.ID, targetID); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -1117,23 +1123,57 @@ func (app *application) unhideDirectoryProfileHandler(w http.ResponseWriter, r *
 // listAdminDirectoryProfilesHandler lists directory cards for moderation.
 //
 //	@Summary		List directory cards (Admin)
-//	@Description	Lists attendee directory cards for moderation, newest first, optionally filtered by display name or email.
+//	@Description	Lists attendee directory cards for moderation, newest first, optionally filtered by display name or email. Cursor-paginated.
 //	@Tags			admin/directory
 //	@Produce		json
-//	@Param			search	query		string	false	"Name or email search"
+//	@Param			search	query		string	false	"Name or email search (max 100 characters)"
+//	@Param			cursor	query		string	false	"Pagination cursor"
+//	@Param			limit	query		int		false	"Page size (default 50, max 100)"
 //	@Success		200		{object}	DirectoryAdminListResponse
+//	@Failure		400		{object}	object{error=string}
 //	@Failure		401		{object}	object{error=string}
 //	@Failure		403		{object}	object{error=string}
 //	@Failure		500		{object}	object{error=string}
 //	@Security		CookieAuth
 //	@Router			/admin/directory/profiles [get]
 func (app *application) listAdminDirectoryProfilesHandler(w http.ResponseWriter, r *http.Request) {
-	profiles, err := app.store.AttendeeDirectory.AdminList(r.Context(), r.URL.Query().Get("search"), directoryAdminListLimit)
+	q := r.URL.Query()
+
+	search := strings.TrimSpace(q.Get("search"))
+	if len(search) > 100 {
+		app.badRequestResponse(w, r, errors.New("search must be at most 100 characters"))
+		return
+	}
+
+	limit := directoryAdminPageSize
+	if raw := q.Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > directoryAdminMaxPage {
+			app.badRequestResponse(w, r, fmt.Errorf("limit must be between 1 and %d", directoryAdminMaxPage))
+			return
+		}
+		limit = n
+	}
+
+	var cursor *store.DirectoryAdminCursor
+	if raw := q.Get("cursor"); raw != "" {
+		c, err := store.DecodeDirectoryAdminCursor(raw)
+		if err != nil || Validate.Var(c.UserID, "uuid") != nil {
+			app.badRequestResponse(w, r, errors.New("invalid cursor"))
+			return
+		}
+		cursor = c
+	}
+
+	result, err := app.store.AttendeeDirectory.AdminList(r.Context(), search, cursor, limit)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
-	if err := app.jsonResponse(w, http.StatusOK, DirectoryAdminListResponse{Profiles: profiles}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, DirectoryAdminListResponse{
+		Profiles:   app.withAdminHeadshots(r.Context(), result.Profiles),
+		NextCursor: result.NextCursor,
+	}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -1160,6 +1200,10 @@ func (app *application) moderateDirectoryProfileHandler(w http.ResponseWriter, r
 		app.unauthorizedErrorResponse(w, r, errors.New("user not in context"))
 		return
 	}
+	targetID, ok := app.directoryUserIDParam(w, r)
+	if !ok {
+		return
+	}
 
 	var req DirectoryModerationPayload
 	if err := readJSON(w, r, &req); err != nil {
@@ -1171,7 +1215,6 @@ func (app *application) moderateDirectoryProfileHandler(w http.ResponseWriter, r
 		return
 	}
 
-	targetID := chi.URLParam(r, "userID")
 	if err := app.store.AttendeeDirectory.SetModeration(r.Context(), targetID, admin.ID, *req.Hidden, trimOptional(req.Reason)); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			app.notFoundResponse(w, r, errors.New("directory card not found"))
@@ -1183,67 +1226,4 @@ func (app *application) moderateDirectoryProfileHandler(w http.ResponseWriter, r
 
 	app.requestLogger(r).Infow("directory card moderated", "target_user_id", targetID, "hidden", *req.Hidden)
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// getDirectoryInterestTagsHandler returns the directory interest tag list.
-//
-//	@Summary		Get directory interest tags (Super Admin)
-//	@Description	Returns the fixed list of interest tags hackers can pick for their directory card.
-//	@Tags			superadmin/settings
-//	@Produce		json
-//	@Success		200	{object}	DirectoryInterestTagsResponse
-//	@Failure		401	{object}	object{error=string}
-//	@Failure		403	{object}	object{error=string}
-//	@Failure		500	{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/directory-interest-tags [get]
-func (app *application) getDirectoryInterestTagsHandler(w http.ResponseWriter, r *http.Request) {
-	tags, err := app.store.Settings.GetDirectoryInterestTags(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-	if err := app.jsonResponse(w, http.StatusOK, DirectoryInterestTagsResponse{Tags: tags}); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
-// updateDirectoryInterestTagsHandler replaces the directory interest tag list.
-//
-//	@Summary		Update directory interest tags (Super Admin)
-//	@Description	Replaces the interest tag list. Cards keep tags that were removed until they are next saved.
-//	@Tags			superadmin/settings
-//	@Accept			json
-//	@Produce		json
-//	@Param			tags	body		UpdateDirectoryInterestTagsPayload	true	"Tags"
-//	@Success		200		{object}	DirectoryInterestTagsResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/superadmin/settings/directory-interest-tags [put]
-func (app *application) updateDirectoryInterestTagsHandler(w http.ResponseWriter, r *http.Request) {
-	var req UpdateDirectoryInterestTagsPayload
-	if err := readJSON(w, r, &req); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-	for i := range req.Tags {
-		req.Tags[i] = strings.TrimSpace(req.Tags[i])
-	}
-	if req.Tags == nil {
-		req.Tags = []string{}
-	}
-	if err := Validate.Struct(req); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-	if err := app.store.Settings.SetDirectoryInterestTags(r.Context(), req.Tags); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-	if err := app.jsonResponse(w, http.StatusOK, DirectoryInterestTagsResponse(req)); err != nil {
-		app.internalServerError(w, r, err)
-	}
 }

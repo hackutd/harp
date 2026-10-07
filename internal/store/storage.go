@@ -221,7 +221,7 @@ type Storage struct {
 		RemoveContact(ctx context.Context, ownerID, contactID string) error
 		Hide(ctx context.Context, ownerID, hiddenID string) error
 		Unhide(ctx context.Context, ownerID, hiddenID string) error
-		AdminList(ctx context.Context, search string, limit int) ([]DirectoryAdminProfile, error)
+		AdminList(ctx context.Context, search string, cursor *DirectoryAdminCursor, limit int) (*DirectoryAdminListResult, error)
 	}
 	ScheduledNotifications interface {
 		Create(ctx context.Context, n *ScheduledNotification) error

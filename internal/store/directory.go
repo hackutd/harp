@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -25,8 +26,6 @@ var DirectoryRoles = []string{
 	"frontend", "backend", "fullstack", "mobile", "ml_ai", "data",
 	"design", "hardware", "product", "pitch",
 }
-
-const SettingsKeyDirectoryInterestTags = "directory_interest_tags"
 
 // DirectoryProfile is a hacker's own attendee directory card, as they edit it.
 type DirectoryProfile struct {
@@ -100,10 +99,15 @@ type DirectoryFilters struct {
 	Hidden bool
 }
 
+// DirectoryCursor marks the last card of a browse page. StaleCutoff pins the
+// first page's cutoff so every later page sorts against the same instant;
+// recomputing it from "now" could move a card across the stale boundary
+// between pages and skip or repeat it.
 type DirectoryCursor struct {
-	Stale             bool
-	StatusConfirmedAt time.Time
-	UserID            string
+	Stale             bool       `json:"s"`
+	StatusConfirmedAt time.Time  `json:"c"`
+	UserID            string     `json:"i"`
+	StaleCutoff       *time.Time `json:"k,omitempty"`
 }
 
 type DirectoryListResult struct {
@@ -126,41 +130,89 @@ type PokeResult struct {
 
 // DirectoryAdminProfile is the moderation view of a directory card.
 type DirectoryAdminProfile struct {
-	UserID             string     `json:"user_id"`
-	Email              string     `json:"email"`
-	DisplayName        string     `json:"display_name"`
-	Discoverable       bool       `json:"discoverable"`
-	ModerationHiddenAt *time.Time `json:"moderation_hidden_at"`
-	ModerationReason   *string    `json:"moderation_reason"`
-	IcebreakerAnswer   *string    `json:"icebreaker_answer"`
-	WantToBuild        *string    `json:"want_to_build"`
-	CreatedAt          time.Time  `json:"created_at"`
-	ModerationHiddenBy *string    `json:"moderation_hidden_by"`
+	UserID             string      `json:"user_id"`
+	Email              string      `json:"email"`
+	DisplayName        string      `json:"display_name"`
+	Pronouns           *string     `json:"pronouns"`
+	HeadshotPath       *string     `json:"-"`
+	ProfilePictureURL  *string     `json:"-"`
+	HeadshotURL        *string     `json:"headshot_url"`
+	Skills             StringArray `json:"skills" swaggertype:"array,string"`
+	IcebreakerPrompt   *string     `json:"icebreaker_prompt"`
+	IcebreakerAnswer   *string     `json:"icebreaker_answer"`
+	WantToBuild        *string     `json:"want_to_build"`
+	Discoverable       bool        `json:"discoverable"`
+	ModerationHiddenAt *time.Time  `json:"moderation_hidden_at"`
+	ModerationHiddenBy *string     `json:"moderation_hidden_by"`
+	ModerationReason   *string     `json:"moderation_reason"`
+	CreatedAt          time.Time   `json:"created_at"`
+}
+
+// DirectoryAdminCursor marks the last card of a moderation page.
+type DirectoryAdminCursor struct {
+	CreatedAt time.Time `json:"c"`
+	UserID    string    `json:"i"`
+}
+
+type DirectoryAdminListResult struct {
+	Profiles   []DirectoryAdminProfile
+	NextCursor *string
+}
+
+func encodeCursor(v any) string {
+	data, _ := json.Marshal(v)
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+func decodeCursor(encoded string, v any) error {
+	data, err := base64.URLEncoding.DecodeString(encoded)
+	if err != nil {
+		return errors.New("invalid cursor encoding")
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return errors.New("invalid cursor format")
+	}
+	return nil
 }
 
 func EncodeDirectoryCursor(c DirectoryCursor) string {
-	stale := "0"
-	if c.Stale {
-		stale = "1"
-	}
-	raw := fmt.Sprintf("%s|%s|%s", stale, c.StatusConfirmedAt.UTC().Format(time.RFC3339Nano), c.UserID)
-	return base64.RawURLEncoding.EncodeToString([]byte(raw))
+	return encodeCursor(c)
 }
 
+// DecodeDirectoryCursor parses a browse cursor. Callers still need to check
+// that UserID is a UUID before it reaches a query.
 func DecodeDirectoryCursor(encoded string) (*DirectoryCursor, error) {
-	raw, err := base64.RawURLEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil, errors.New("invalid cursor")
+	var c DirectoryCursor
+	if err := decodeCursor(encoded, &c); err != nil {
+		return nil, err
 	}
-	parts := strings.SplitN(string(raw), "|", 3)
-	if len(parts) != 3 || (parts[0] != "0" && parts[0] != "1") || parts[2] == "" {
-		return nil, errors.New("invalid cursor")
+	if c.UserID == "" {
+		return nil, errors.New("invalid cursor: missing id")
 	}
-	ts, err := time.Parse(time.RFC3339Nano, parts[1])
-	if err != nil {
-		return nil, errors.New("invalid cursor")
+	if c.StatusConfirmedAt.IsZero() {
+		return nil, errors.New("invalid cursor: missing sort value")
 	}
-	return &DirectoryCursor{Stale: parts[0] == "1", StatusConfirmedAt: ts, UserID: parts[2]}, nil
+	return &c, nil
+}
+
+func EncodeDirectoryAdminCursor(c DirectoryAdminCursor) string {
+	return encodeCursor(c)
+}
+
+// DecodeDirectoryAdminCursor parses a moderation-list cursor. Callers still
+// need to check that UserID is a UUID before it reaches a query.
+func DecodeDirectoryAdminCursor(encoded string) (*DirectoryAdminCursor, error) {
+	var c DirectoryAdminCursor
+	if err := decodeCursor(encoded, &c); err != nil {
+		return nil, err
+	}
+	if c.UserID == "" {
+		return nil, errors.New("invalid cursor: missing id")
+	}
+	if c.CreatedAt.IsZero() {
+		return nil, errors.New("invalid cursor: missing sort value")
+	}
+	return &c, nil
 }
 
 type AttendeeDirectoryStore struct {
@@ -454,7 +506,12 @@ func (s *AttendeeDirectoryStore) List(ctx context.Context, viewer DirectoryViewe
 	if len(cards) > limit {
 		result.Cards = cards[:limit]
 		last := result.Cards[limit-1]
-		next := EncodeDirectoryCursor(DirectoryCursor{Stale: last.Stale, StatusConfirmedAt: last.StatusConfirmedAt, UserID: last.UserID})
+		next := EncodeDirectoryCursor(DirectoryCursor{
+			Stale:             last.Stale,
+			StatusConfirmedAt: last.StatusConfirmedAt,
+			UserID:            last.UserID,
+			StaleCutoff:       viewer.StaleCutoff,
+		})
 		result.NextCursor = &next
 	}
 	return result, nil
@@ -555,6 +612,16 @@ func (s *AttendeeDirectoryStore) Poke(ctx context.Context, pokerID, pokeeID stri
 	}
 	defer tx.Rollback()
 
+	// Serialize pokes between the same two people. Without this, A->B and B->A
+	// landing together each miss the other's uncommitted row, both report no
+	// match, and nobody gets the match notification. The second transaction
+	// now waits here, and its match check below sees the first one's poke.
+	if _, err := tx.ExecContext(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended(LEAST($1::text, $2::text) || ':' || GREATEST($1::text, $2::text), 0))`,
+		pokerID, pokeeID); err != nil {
+		return nil, err
+	}
+
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO pokes (poker_id, pokee_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, pokerID, pokeeID)
 	if err != nil {
@@ -612,24 +679,33 @@ func (s *AttendeeDirectoryStore) Unhide(ctx context.Context, ownerID, hiddenID s
 		`DELETE FROM directory_hidden_profiles WHERE owner_id = $1 AND hidden_id = $2`, ownerID, hiddenID)
 }
 
-// AdminList returns cards for moderation, optionally filtered by name or email.
-func (s *AttendeeDirectoryStore) AdminList(ctx context.Context, search string, limit int) ([]DirectoryAdminProfile, error) {
+// AdminList returns a page of cards for moderation, newest first, optionally
+// filtered by name or email.
+func (s *AttendeeDirectoryStore) AdminList(ctx context.Context, search string, cursor *DirectoryAdminCursor, limit int) (*DirectoryAdminListResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `
-		SELECT p.user_id, u.email, p.display_name, p.discoverable, p.moderation_hidden_at,
-		       p.moderation_reason, p.icebreaker_answer, p.want_to_build, p.created_at,
-		       p.moderation_hidden_by
-		FROM attendee_directory_profiles p
-		JOIN users u ON u.id = p.user_id`
 	args := []any{}
+	where := []string{}
 	if q := strings.TrimSpace(search); q != "" {
 		args = append(args, "%"+escapeLike(q)+"%")
-		query += ` WHERE p.display_name ILIKE $1 OR u.email ILIKE $1`
+		where = append(where, fmt.Sprintf("(p.display_name ILIKE $%[1]d OR u.email ILIKE $%[1]d)", len(args)))
 	}
-	args = append(args, limit)
-	query += fmt.Sprintf(` ORDER BY p.created_at DESC LIMIT $%d`, len(args))
+	if cursor != nil {
+		args = append(args, cursor.CreatedAt, cursor.UserID)
+		where = append(where, fmt.Sprintf("(p.created_at, p.user_id) < ($%d::timestamptz, $%d::uuid)", len(args)-1, len(args)))
+	}
+	query := `
+		SELECT p.user_id, u.email, p.display_name, p.pronouns, p.headshot_path, u.profile_picture_url,
+		       p.skills, p.icebreaker_prompt, p.icebreaker_answer, p.want_to_build, p.discoverable,
+		       p.moderation_hidden_at, p.moderation_hidden_by, p.moderation_reason, p.created_at
+		FROM attendee_directory_profiles p
+		JOIN users u ON u.id = p.user_id`
+	if len(where) > 0 {
+		query += ` WHERE ` + strings.Join(where, " AND ")
+	}
+	args = append(args, limit+1)
+	query += fmt.Sprintf(` ORDER BY p.created_at DESC, p.user_id DESC LIMIT $%d`, len(args))
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -640,13 +716,28 @@ func (s *AttendeeDirectoryStore) AdminList(ctx context.Context, search string, l
 	out := []DirectoryAdminProfile{}
 	for rows.Next() {
 		var p DirectoryAdminProfile
-		if err := rows.Scan(&p.UserID, &p.Email, &p.DisplayName, &p.Discoverable, &p.ModerationHiddenAt,
-			&p.ModerationReason, &p.IcebreakerAnswer, &p.WantToBuild, &p.CreatedAt, &p.ModerationHiddenBy); err != nil {
+		if err := rows.Scan(&p.UserID, &p.Email, &p.DisplayName, &p.Pronouns, &p.HeadshotPath, &p.ProfilePictureURL,
+			&p.Skills, &p.IcebreakerPrompt, &p.IcebreakerAnswer, &p.WantToBuild, &p.Discoverable,
+			&p.ModerationHiddenAt, &p.ModerationHiddenBy, &p.ModerationReason, &p.CreatedAt); err != nil {
 			return nil, err
+		}
+		if p.Skills == nil {
+			p.Skills = StringArray{}
 		}
 		out = append(out, p)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &DirectoryAdminListResult{Profiles: out}
+	if len(out) > limit {
+		result.Profiles = out[:limit]
+		last := result.Profiles[limit-1]
+		next := EncodeDirectoryAdminCursor(DirectoryAdminCursor{CreatedAt: last.CreatedAt, UserID: last.UserID})
+		result.NextCursor = &next
+	}
+	return result, nil
 }
 
 // collectDirectoryHeadshotPaths reads every uploaded headshot so the objects

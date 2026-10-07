@@ -34,11 +34,7 @@ import {
   uploadHeadshotToSignedURL,
 } from "./api";
 import { useDirectoryStore } from "./store";
-import type {
-  DirectoryIntent,
-  DirectoryMe,
-  HeadshotContentType,
-} from "./types";
+import type { DirectoryMe, HeadshotContentType } from "./types";
 import { initials, INTENT_LABELS, roleLabel } from "./utils";
 import {
   type DirectoryProfileForm,
@@ -60,15 +56,13 @@ const HEADSHOT_TYPES: HeadshotContentType[] = [
 const fieldClass =
   "w-full rounded-lg border border-white/12 bg-[#05060C] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#21FFF0]/50 focus:outline-none aria-invalid:border-[#FF5A7A]";
 
-function Section({
-  title,
-  hint,
-  children,
-}: {
+interface SectionProps {
   title: string;
   hint?: string;
   children: ReactNode;
-}) {
+}
+
+function Section({ title, hint, children }: SectionProps) {
   return (
     <section className="rounded-xl border border-white/10 bg-[#0B0C15]/85 p-4">
       <h2 className="text-[11px] font-medium tracking-[0.18em] text-white/55 uppercase">
@@ -80,22 +74,23 @@ function Section({
   );
 }
 
-function FieldError({ message }: { message?: string }) {
+interface FieldErrorProps {
+  message?: string;
+}
+
+function FieldError({ message }: FieldErrorProps) {
   if (!message) return null;
   return <p className="mt-1 text-xs text-[#FF8FA6]">{message}</p>;
 }
 
-function Choice({
-  selected,
-  disabled,
-  onClick,
-  children,
-}: {
+interface ChoiceProps {
   selected: boolean;
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
-}) {
+}
+
+function Choice({ selected, disabled, onClick, children }: ChoiceProps) {
   return (
     <button
       type="button"
@@ -114,7 +109,11 @@ function Choice({
   );
 }
 
-function VisibilityCard({ me }: { me: DirectoryMe }) {
+interface DirectoryMeProps {
+  me: DirectoryMe;
+}
+
+function VisibilityCard({ me }: DirectoryMeProps) {
   const setMe = useDirectoryStore((s) => s.setMe);
   const [busy, setBusy] = useState(false);
   const discoverable = me.profile?.discoverable ?? true;
@@ -175,7 +174,7 @@ function VisibilityCard({ me }: { me: DirectoryMe }) {
   );
 }
 
-function DiscordSection({ me }: { me: DirectoryMe }) {
+function DiscordSection({ me }: DirectoryMeProps) {
   const setMe = useDirectoryStore((s) => s.setMe);
   const [busy, setBusy] = useState(false);
   const linked = me.profile?.discord_user_id;
@@ -243,7 +242,7 @@ function DiscordSection({ me }: { me: DirectoryMe }) {
   );
 }
 
-function Editor({ me }: { me: DirectoryMe }) {
+function Editor({ me }: DirectoryMeProps) {
   const navigate = useNavigate();
   const setMe = useDirectoryStore((s) => s.setMe);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -417,7 +416,7 @@ function Editor({ me }: { me: DirectoryMe }) {
         hint="Saving re-confirms your status. Cards that go stale close to the event sink in the directory."
       >
         <div className="flex flex-wrap gap-2">
-          {(me.options.intents as DirectoryIntent[]).map((value) => (
+          {me.options.intents.map((value) => (
             <Choice
               key={value}
               selected={intent === value}
@@ -620,7 +619,9 @@ export default function CardEditorPage() {
           Directory cards open once you've confirmed your RSVP.
         </p>
       ) : (
-        <Editor key={me.profile?.updated_at ?? "new"} me={me} />
+        // Remount only when a card is created. Visibility and Discord changes
+        // also bump updated_at, and remounting on those would wipe unsaved edits.
+        <Editor key={me.profile ? "edit" : "new"} me={me} />
       )}
     </div>
   );

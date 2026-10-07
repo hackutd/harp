@@ -108,6 +108,162 @@ describe("fetchMore", () => {
     expect(s.cards.map((c) => c.user_id)).toEqual(["a", "b"]);
     expect(s.nextCursor).toBeNull();
   });
+
+  it("drops a page that lands after the filters changed, and can load more again", async () => {
+    useDirectoryStore.setState({
+      cards: [directoryCard({ user_id: "a" })],
+      nextCursor: "c1",
+    });
+    let resolveMore!: (v: unknown) => void;
+    api.fetchDirectory
+      .mockReturnValueOnce(new Promise((r) => (resolveMore = r)))
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          cards: [directoryCard({ user_id: "filtered" })],
+          next_cursor: "f1",
+          event_near: false,
+        },
+      });
+
+    const more = useDirectoryStore.getState().fetchMore();
+    expect(useDirectoryStore.getState().loadingMore).toBe(true);
+    await useDirectoryStore.getState().fetchCards();
+    resolveMore({
+      status: 200,
+      data: {
+        cards: [directoryCard({ user_id: "stale" })],
+        next_cursor: "c2",
+        event_near: false,
+      },
+    });
+    await more;
+
+    let s = useDirectoryStore.getState();
+    expect(s.cards.map((c) => c.user_id)).toEqual(["filtered"]);
+    expect(s.nextCursor).toBe("f1");
+    expect(s.loadingMore).toBe(false);
+
+    api.fetchDirectory.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        cards: [directoryCard({ user_id: "next" })],
+        next_cursor: null,
+        event_near: false,
+      },
+    });
+    await useDirectoryStore.getState().fetchMore();
+
+    s = useDirectoryStore.getState();
+    expect(api.fetchDirectory).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "f1",
+    );
+    expect(s.cards.map((c) => c.user_id)).toEqual(["filtered", "next"]);
+  });
+
+  it("keeps the list and clears the flag on failure", async () => {
+    useDirectoryStore.setState({
+      cards: [directoryCard({ user_id: "a" })],
+      nextCursor: "c1",
+    });
+    api.fetchDirectory.mockResolvedValue({ status: 500, error: "boom" });
+
+    await useDirectoryStore.getState().fetchMore();
+
+    const s = useDirectoryStore.getState();
+    expect(s.cards.map((c) => c.user_id)).toEqual(["a"]);
+    expect(s.nextCursor).toBe("c1");
+    expect(s.loadingMore).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith("boom");
+  });
+
+  it("does nothing without a cursor", async () => {
+    await useDirectoryStore.getState().fetchMore();
+    expect(api.fetchDirectory).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchCards abort", () => {
+  it("ignores an aborted request", async () => {
+    useDirectoryStore.setState({ cards: [directoryCard({ user_id: "keep" })] });
+    api.fetchDirectory.mockResolvedValue({
+      status: 200,
+      data: {
+        cards: [directoryCard({ user_id: "new" })],
+        next_cursor: null,
+        event_near: false,
+      },
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await useDirectoryStore.getState().fetchCards(controller.signal);
+
+    expect(useDirectoryStore.getState().cards.map((c) => c.user_id)).toEqual([
+      "keep",
+    ]);
+  });
+});
+
+describe.each([
+  {
+    action: "fetchPokes" as const,
+    apiFn: api.fetchDirectoryPokes,
+    list: "pokes" as const,
+    loading: "pokesLoading" as const,
+  },
+  {
+    action: "fetchContacts" as const,
+    apiFn: api.fetchDirectoryContacts,
+    list: "contacts" as const,
+    loading: "contactsLoading" as const,
+  },
+])("$action", ({ action, apiFn, list, loading }) => {
+  it("loads cards and clears loading", async () => {
+    apiFn.mockResolvedValue({
+      status: 200,
+      data: { cards: [directoryCard({ user_id: "p" })] },
+    });
+
+    const p = useDirectoryStore.getState()[action]();
+    expect(useDirectoryStore.getState()[loading]).toBe(true);
+    await p;
+
+    const s = useDirectoryStore.getState();
+    expect(s[list].map((c) => c.user_id)).toEqual(["p"]);
+    expect(s[loading]).toBe(false);
+  });
+
+  it("clears the list and toasts on failure", async () => {
+    useDirectoryStore.setState({ [list]: [directoryCard()] });
+    apiFn.mockResolvedValue({ status: 403, error: "no card" });
+
+    await useDirectoryStore.getState()[action]();
+
+    const s = useDirectoryStore.getState();
+    expect(s[list]).toEqual([]);
+    expect(s[loading]).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith("no card");
+  });
+
+  it("ignores an aborted request", async () => {
+    useDirectoryStore.setState({
+      [list]: [directoryCard({ user_id: "keep" })],
+    });
+    apiFn.mockResolvedValue({
+      status: 200,
+      data: { cards: [directoryCard({ user_id: "new" })] },
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await useDirectoryStore.getState()[action](controller.signal);
+
+    expect(useDirectoryStore.getState()[list].map((c) => c.user_id)).toEqual([
+      "keep",
+    ]);
+  });
 });
 
 describe("poke", () => {

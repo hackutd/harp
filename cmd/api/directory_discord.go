@@ -60,7 +60,7 @@ func (app *application) discordAPIBase() string {
 //
 //	@Summary		Start Discord linking
 //	@Description	Returns the Discord OAuth2 authorize URL (identify scope) and sets a short-lived state cookie. Discord redirects back to the portal, which completes the link with POST /directory/me/discord.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	DiscordAuthorizeResponse
 //	@Failure		401	{object}	object{error=string}
@@ -184,7 +184,7 @@ func doDiscordJSON(req *http.Request, out any) error {
 //
 //	@Summary		Complete Discord linking
 //	@Description	Exchanges the OAuth2 code for the caller's Discord user ID and username and stores them on their card. Matches get a discord.com/users/{id} deep link.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Accept			json
 //	@Produce		json
 //	@Param			link	body		LinkDiscordPayload	true	"OAuth callback values"
@@ -248,7 +248,7 @@ func (app *application) linkDiscordHandler(w http.ResponseWriter, r *http.Reques
 //
 //	@Summary		Unlink Discord
 //	@Description	Clears the OAuth-linked Discord account. Matches fall back to the Discord username from the RSVP form.
-//	@Tags			hackers/directory
+//	@Tags			hackers
 //	@Produce		json
 //	@Success		200	{object}	DirectoryMeResponse
 //	@Failure		401	{object}	object{error=string}

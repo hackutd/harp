@@ -1234,10 +1234,10 @@ func (m *MockAttendeeDirectoryStore) Unhide(ctx context.Context, ownerID, hidden
 	return args.Error(0)
 }
 
-func (m *MockAttendeeDirectoryStore) AdminList(ctx context.Context, search string, limit int) ([]DirectoryAdminProfile, error) {
-	args := m.Called(search, limit)
+func (m *MockAttendeeDirectoryStore) AdminList(ctx context.Context, search string, cursor *DirectoryAdminCursor, limit int) (*DirectoryAdminListResult, error) {
+	args := m.Called(search, cursor, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]DirectoryAdminProfile), args.Error(1)
+	return args.Get(0).(*DirectoryAdminListResult), args.Error(1)
 }

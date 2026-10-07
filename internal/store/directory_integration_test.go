@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 )
@@ -173,9 +174,33 @@ func TestIntegrationAttendeeDirectory(t *testing.T) {
 	if contacts, _ := dir.ListContacts(ctx, viewer); len(contacts) != 0 {
 		t.Fatalf("moderated contact still listed: %+v", contacts)
 	}
-	admin, err := dir.AdminList(ctx, "bob@", 10)
-	if err != nil || len(admin) != 1 || admin[0].ModerationHiddenAt == nil {
+	admin, err := dir.AdminList(ctx, "bob@", nil, 10)
+	if err != nil || len(admin.Profiles) != 1 || admin.Profiles[0].ModerationHiddenAt == nil || admin.NextCursor != nil {
 		t.Fatalf("admin list: %+v %v", admin, err)
+	}
+	// Paging one card at a time walks all three cards exactly once.
+	seen := map[string]bool{}
+	var adminCursor *DirectoryAdminCursor
+	for page := 0; page < 4; page++ {
+		res, err := dir.AdminList(ctx, "", adminCursor, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range res.Profiles {
+			if seen[p.UserID] {
+				t.Fatalf("admin list repeated %s", p.UserID)
+			}
+			seen[p.UserID] = true
+		}
+		if res.NextCursor == nil {
+			break
+		}
+		if adminCursor, err = DecodeDirectoryAdminCursor(*res.NextCursor); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(seen) != 3 {
+		t.Fatalf("admin pagination saw %d cards, want 3", len(seen))
 	}
 	if err := dir.SetModeration(ctx, "55555555-5555-5555-5555-555555555555", alice, true, nil); err != ErrNotFound {
 		t.Fatalf("moderating a missing card: %v", err)
@@ -189,5 +214,58 @@ func TestIntegrationAttendeeDirectory(t *testing.T) {
 	subs, err := push.ListByUserIDs(ctx, []string{bob, carol})
 	if err != nil || len(subs) != 1 {
 		t.Fatalf("push by user: %+v %v", subs, err)
+	}
+}
+
+// Two people poking each other at the same moment must produce exactly one
+// match, so exactly one of the two requests sends the match notification.
+func TestIntegrationDirectoryConcurrentPokesMatchOnce(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	ctx := context.Background()
+	seedIntegration(t, db)
+
+	const (
+		alice = "11111111-1111-1111-1111-111111111111"
+		bob   = "22222222-2222-2222-2222-222222222222"
+	)
+	dir := &AttendeeDirectoryStore{db: db}
+
+	for round := 0; round < 20; round++ {
+		if _, err := db.ExecContext(ctx, `DELETE FROM pokes`); err != nil {
+			t.Fatal(err)
+		}
+
+		pairs := [][2]string{{alice, bob}, {bob, alice}}
+		results := make([]*PokeResult, len(pairs))
+		errs := make([]error, len(pairs))
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for i, pair := range pairs {
+			wg.Add(1)
+			go func(i int, pair [2]string) {
+				defer wg.Done()
+				<-start
+				results[i], errs[i] = dir.Poke(ctx, pair[0], pair[1])
+			}(i, pair)
+		}
+		close(start)
+		wg.Wait()
+
+		matched := 0
+		for i := range pairs {
+			if errs[i] != nil {
+				t.Fatalf("round %d poke %d: %v", round, i, errs[i])
+			}
+			if !results[i].Created {
+				t.Fatalf("round %d poke %d was not created", round, i)
+			}
+			if results[i].Matched {
+				matched++
+			}
+		}
+		if matched != 1 {
+			t.Fatalf("round %d: %d pokes reported a match, want exactly 1", round, matched)
+		}
 	}
 }

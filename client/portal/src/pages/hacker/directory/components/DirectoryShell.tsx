@@ -1,6 +1,6 @@
 import { IdCard, Lock, ShieldAlert } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
-import { Link, NavLink } from "react-router";
+import { Link } from "react-router";
 
 import { HackerPageLoader } from "@/components/HackerPageLoader";
 import { cn } from "@/shared/lib/utils";
@@ -8,39 +8,41 @@ import { cn } from "@/shared/lib/utils";
 import { useDirectoryStore } from "../store";
 import type { DirectoryMe } from "../types";
 
-const TABS = [
-  { label: "Browse", to: "/app/directory", tab: null },
-  { label: "Poked you", to: "/app/directory?tab=pokes", tab: "pokes" },
-  { label: "My contacts", to: "/app/directory/contacts", tab: null },
-] as const;
+type DirectoryTab = "browse" | "pokes" | "contacts";
+
+const TABS: { id: DirectoryTab; label: string; to: string }[] = [
+  { id: "browse", label: "Browse", to: "/app/directory" },
+  { id: "pokes", label: "Poked you", to: "/app/directory?tab=pokes" },
+  { id: "contacts", label: "My contacts", to: "/app/directory/contacts" },
+];
 
 interface DirectoryTabsProps {
-  active: "browse" | "pokes" | "contacts";
+  active: DirectoryTab;
 }
 
 // Browse and contacts get equal billing: both are top-level tabs here.
+// Plain Links rather than NavLink: Browse and "Poked you" share a pathname, and
+// NavLink would mark both as the current page.
 export function DirectoryTabs({ active }: DirectoryTabsProps) {
-  const keys = ["browse", "pokes", "contacts"] as const;
   return (
     <nav
       aria-label="Directory"
       className="mt-4 grid grid-cols-3 gap-1 rounded-full border border-white/10 bg-[#0B0C15]/80 p-1"
     >
-      {TABS.map((t, i) => (
-        <NavLink
-          key={t.label}
+      {TABS.map((t) => (
+        <Link
+          key={t.id}
           to={t.to}
-          end
-          aria-current={active === keys[i] ? "page" : undefined}
+          aria-current={active === t.id ? "page" : undefined}
           className={cn(
             "rounded-full px-3 py-1.5 text-center text-xs font-medium tracking-wide uppercase transition-colors",
-            active === keys[i]
+            active === t.id
               ? "bg-[#5900FF] text-white shadow-[0_0_16px_rgba(89,0,255,0.35)]"
               : "text-white/60 hover:text-white",
           )}
         >
           {t.label}
-        </NavLink>
+        </Link>
       ))}
     </nav>
   );
@@ -48,7 +50,7 @@ export function DirectoryTabs({ active }: DirectoryTabsProps) {
 
 interface DirectoryHeaderProps {
   title: string;
-  active: "browse" | "pokes" | "contacts";
+  active: DirectoryTab;
 }
 
 export function DirectoryHeader({ title, active }: DirectoryHeaderProps) {
@@ -74,17 +76,14 @@ export function DirectoryHeader({ title, active }: DirectoryHeaderProps) {
   );
 }
 
-function Notice({
-  icon,
-  title,
-  body,
-  action,
-}: {
+interface NoticeProps {
   icon: ReactNode;
   title: string;
   body: string;
   action?: ReactNode;
-}) {
+}
+
+function Notice({ icon, title, body, action }: NoticeProps) {
   return (
     <div className="mx-auto max-w-md rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-6 text-center">
       <div className="mx-auto flex size-11 items-center justify-center rounded-full bg-[#5900FF]/25 text-[#D8C5FF]">

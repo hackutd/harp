@@ -9,7 +9,7 @@ import {
   Sparkles,
   Undo2,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { cn } from "@/shared/lib/utils";
@@ -38,13 +38,12 @@ interface DirectoryCardProps extends DirectoryCardActions {
   className?: string;
 }
 
-function Chip({
-  children,
-  className,
-}: {
+interface ChipProps {
   children: ReactNode;
   className?: string;
-}) {
+}
+
+function Chip({ children, className }: ChipProps) {
   return (
     <span
       className={cn(
@@ -57,7 +56,11 @@ function Chip({
   );
 }
 
-export function MatchDiscordButton({ card }: { card: DirectoryCardData }) {
+interface MatchDiscordButtonProps {
+  card: DirectoryCardData;
+}
+
+export function MatchDiscordButton({ card }: MatchDiscordButtonProps) {
   if (!card.matched) return null;
   const link = discordLink(card);
   if (link) {
@@ -102,7 +105,8 @@ export function MatchDiscordButton({ card }: { card: DirectoryCardData }) {
   );
 }
 
-export function DirectoryCard({
+// Memoized so a busy flag or poke on one card doesn't re-render the whole grid.
+export const DirectoryCard = memo(function DirectoryCard({
   card,
   busy,
   hideActions,
@@ -309,4 +313,4 @@ export function DirectoryCard({
       </div>
     </article>
   );
-}
+});

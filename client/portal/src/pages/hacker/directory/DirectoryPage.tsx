@@ -7,7 +7,7 @@ import {
   Search,
   SkipForward,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
@@ -21,20 +21,18 @@ import { DirectoryCard } from "./components/DirectoryCard";
 import { DirectoryGate, DirectoryHeader } from "./components/DirectoryShell";
 import { SwipeableCard } from "./components/SwipeableCard";
 import { useDirectoryStore } from "./store";
-import type { DirectoryIntent, DirectoryMe } from "./types";
+import type { DirectoryMe } from "./types";
 import { INTENT_LABELS } from "./utils";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
+interface FilterChipProps {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
-}) {
+  children: ReactNode;
+}
+
+function FilterChip({ active, onClick, children }: FilterChipProps) {
   return (
     <button
       type="button"
@@ -58,7 +56,11 @@ function toggle<T>(list: T[], value: T): T[] {
     : [...list, value];
 }
 
-function StatusNudge({ me }: { me: DirectoryMe }) {
+interface DirectoryMeProps {
+  me: DirectoryMe;
+}
+
+function StatusNudge({ me }: DirectoryMeProps) {
   const setMe = useDirectoryStore((s) => s.setMe);
   const [busy, setBusy] = useState(false);
   if (!me.status_stale || !me.profile) return null;
@@ -102,7 +104,7 @@ function StatusNudge({ me }: { me: DirectoryMe }) {
   );
 }
 
-function BrowseView({ me }: { me: DirectoryMe }) {
+function BrowseView({ me }: DirectoryMeProps) {
   const filters = useDirectoryStore((s) => s.filters);
   const setFilters = useDirectoryStore((s) => s.setFilters);
   const cards = useDirectoryStore((s) => s.cards);
@@ -153,7 +155,7 @@ function BrowseView({ me }: { me: DirectoryMe }) {
     if (reviewing && queue.length < 3 && nextCursor) void fetchMore();
   }, [reviewing, queue.length, nextCursor, fetchMore]);
 
-  const intents = me.options.intents as DirectoryIntent[];
+  const intents = me.options.intents;
 
   return (
     <>
@@ -331,7 +333,7 @@ function BrowseView({ me }: { me: DirectoryMe }) {
                   onPoke={poke}
                   onToggleContact={toggleContact}
                   onHide={hide}
-                  onUnhide={(c) => void unhide(c)}
+                  onUnhide={unhide}
                 />
               </SwipeableCard>
             ))}

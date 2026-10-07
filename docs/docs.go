@@ -869,7 +869,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Lists attendee directory cards for moderation, newest first, optionally filtered by display name or email.",
+                "description": "Lists attendee directory cards for moderation, newest first, optionally filtered by display name or email. Cursor-paginated.",
                 "produces": [
                     "application/json"
                 ],
@@ -880,8 +880,20 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Name or email search",
+                        "description": "Name or email search (max 100 characters)",
                         "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 100)",
+                        "name": "limit",
                         "in": "query"
                     }
                 ],
@@ -890,6 +902,17 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.DirectoryAdminListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     },
                     "401": {
@@ -4427,7 +4450,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "List my directory contacts",
                 "responses": {
@@ -4485,7 +4508,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Add a directory contact",
                 "parameters": [
@@ -4569,7 +4592,7 @@ const docTemplate = `{
                 ],
                 "description": "Removes the target from the caller's contact list. Pokes and matches are unaffected.",
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Remove a directory contact",
                 "parameters": [
@@ -4630,7 +4653,7 @@ const docTemplate = `{
                 ],
                 "description": "Hides the target from the caller's browse feed. Undo with DELETE; hidden cards are listed with GET /directory/profiles?hidden=true.",
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Hide a directory card",
                 "parameters": [
@@ -4711,7 +4734,7 @@ const docTemplate = `{
                 ],
                 "description": "Restores a card the caller hid to their browse feed.",
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Unhide a directory card",
                 "parameters": [
@@ -4775,7 +4798,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Get my directory card",
                 "responses": {
@@ -4823,7 +4846,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Create or update my directory card",
                 "parameters": [
@@ -4903,7 +4926,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Re-confirm my directory status",
                 "responses": {
@@ -4964,7 +4987,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Complete Discord linking",
                 "parameters": [
@@ -5064,7 +5087,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Unlink Discord",
                 "responses": {
@@ -5122,7 +5145,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Start Discord linking",
                 "responses": {
@@ -5194,7 +5217,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Set my directory discoverability",
                 "parameters": [
@@ -5277,7 +5300,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Get directory headshot upload URL",
                 "parameters": [
@@ -5368,7 +5391,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "List who poked me",
                 "responses": {
@@ -5426,7 +5449,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Browse the attendee directory",
                 "parameters": [
@@ -5539,7 +5562,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "hackers/directory"
+                    "hackers"
                 ],
                 "summary": "Poke an attendee",
                 "parameters": [
@@ -13572,6 +13595,9 @@ const docTemplate = `{
         "main.DirectoryAdminListResponse": {
             "type": "object",
             "properties": {
+                "next_cursor": {
+                    "type": "string"
+                },
                 "profiles": {
                     "type": "array",
                     "items": {
@@ -16292,7 +16318,13 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "headshot_url": {
+                    "type": "string"
+                },
                 "icebreaker_answer": {
+                    "type": "string"
+                },
+                "icebreaker_prompt": {
                     "type": "string"
                 },
                 "moderation_hidden_at": {
@@ -16303,6 +16335,15 @@ const docTemplate = `{
                 },
                 "moderation_reason": {
                     "type": "string"
+                },
+                "pronouns": {
+                    "type": "string"
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "user_id": {
                     "type": "string"

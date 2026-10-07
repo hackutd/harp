@@ -90,6 +90,9 @@ const AdminGradingPage = lazy(
 const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
 const FAQAdminPage = lazy(() => import("@/pages/admin/faq/FAQPage"));
 const TracksPage = lazy(() => import("@/pages/admin/tracks/TracksPage"));
+const DirectoryModerationPage = lazy(
+  () => import("@/pages/admin/directory/DirectoryModerationPage"),
+);
 
 export const router = createBrowserRouter([
   {
@@ -334,6 +337,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <TracksPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "directory",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <DirectoryModerationPage />
               </Suspense>
             ),
           },

@@ -6,6 +6,7 @@ import {
   ClipboardList,
   DoorOpen,
   Handshake,
+  IdCard,
   Link2,
   Megaphone,
   MessageSquare,
@@ -71,6 +72,11 @@ const eventNav = [
     name: "Tracks",
     url: "/admin/tracks",
     icon: Trophy,
+  },
+  {
+    name: "Directory",
+    url: "/admin/directory",
+    icon: IdCard,
   },
 ];
 
