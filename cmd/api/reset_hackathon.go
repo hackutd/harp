@@ -142,9 +142,13 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 }
 
 // isHackathonUploadPath reports whether a stored object is a per-cycle hacker
-// upload — a resume or a travel receipt — and so belongs to a reset's cleanup.
+// upload — a resume, travel receipt, or directory headshot — and so belongs to
+// a reset's cleanup.
 func isHackathonUploadPath(objectPath string) bool {
 	if _, ok := resumeStoragePrefixFromPath(objectPath); ok {
+		return true
+	}
+	if _, ok := directoryHeadshotObjectOwner(objectPath); ok {
 		return true
 	}
 	return isTravelReceiptObjectPath(objectPath)
@@ -162,7 +166,7 @@ func (app *application) deleteHackathonUploads(resetPaths *store.ResetPaths) {
 	// orphaned uploads and leftovers from an interrupted earlier cleanup.
 	// De-duplicate before issuing deletes. Objects elsewhere under hackathons/
 	// are deliberately ignored so future event assets can share the namespace.
-	linked := append(append([]string{}, resetPaths.Resumes...), resetPaths.TravelReceipts...)
+	linked := append(append(append([]string{}, resetPaths.Resumes...), resetPaths.TravelReceipts...), resetPaths.Headshots...)
 	uniquePaths := make(map[string]struct{}, len(linked))
 	for _, path := range linked {
 		if !isHackathonUploadPath(path) {

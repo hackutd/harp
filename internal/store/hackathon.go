@@ -39,6 +39,7 @@ func (o ResetOptions) Any() bool {
 type ResetPaths struct {
 	Resumes        []string
 	TravelReceipts []string
+	Headshots      []string
 }
 
 // Reset resets the selected domains of hackathon data in a single transaction.
@@ -68,12 +69,23 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 			return nil, err
 		}
 
+		paths.Headshots, err = collectDirectoryHeadshotPaths(ctx, tx, "")
+		if err != nil {
+			return nil, err
+		}
+
 		// CASCADE picks up application_reviews. walk_ins is listed explicitly:
 		// it references users rather than applications, so nothing cascades to
 		// it, yet every walk-in row owns the waitlisted application it created.
 		// Leaving the queue behind would orphan those rows and permanently
 		// block re-queuing, since Enqueue inserts ON CONFLICT (user_id) DO NOTHING.
 		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE applications, walk_ins CASCADE"); err != nil {
+			return nil, err
+		}
+
+		// Directory cards are gated on a confirmed RSVP, so they go with the
+		// applications that made them eligible.
+		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE attendee_directory_profiles, pokes, directory_contacts, directory_hidden_profiles"); err != nil {
 			return nil, err
 		}
 

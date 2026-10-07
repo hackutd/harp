@@ -411,6 +411,7 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 type DeletedUserPaths struct {
 	Resumes        []string
 	TravelReceipts []string
+	Headshots      []string
 }
 
 // Delete permanently removes a user and everything belonging to them, returning
@@ -456,6 +457,11 @@ func (s *UsersStore) Delete(ctx context.Context, userID string) (*DeletedUserPat
 		if path != "" {
 			paths.TravelReceipts = append(paths.TravelReceipts, path)
 		}
+	}
+
+	paths.Headshots, err = collectDirectoryHeadshotPaths(ctx, tx, " AND user_id = $1", userID)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := removeReviewAssignmentEntry(ctx, tx, userID); err != nil {
