@@ -18,6 +18,7 @@
 #                         resume_path and travel_receipt_paths are cleared.
 #   application_reviews   reviewer notes are replaced with a placeholder.
 #   push_subscriptions    deleted (device endpoints).
+#   pending_referrals     deleted (emails of sign-ins not yet finished).
 #
 # Votes, statuses, scans, walk-ins and timestamps are left alone.
 #
@@ -151,6 +152,9 @@ SELECT count(*) AS review_notes_scrubbed FROM updated;
 
 WITH deleted AS (DELETE FROM push_subscriptions RETURNING 1)
 SELECT count(*) AS push_subscriptions_deleted FROM deleted;
+
+WITH deleted AS (DELETE FROM pending_referrals RETURNING 1)
+SELECT count(*) AS pending_referrals_deleted FROM deleted;
 
 COMMIT;
 SQL

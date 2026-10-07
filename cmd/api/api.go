@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/hackutd/harp/internal/auth"
 	"github.com/hackutd/harp/internal/gcs"
 	"github.com/hackutd/harp/internal/mailer"
 	"github.com/hackutd/harp/internal/ratelimiter"
@@ -147,6 +148,7 @@ const swaggerTagsSorter = `(a, b) => {
 		"superadmin/applications",
 		"superadmin/emails",
 		"superadmin/hacker-links",
+		"superadmin/referrals",
 		"superadmin/settings",
 		"superadmin/users"
 	];
@@ -176,7 +178,7 @@ func (app *application) mount() http.Handler {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   allowedOrigins,
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   append([]string{"Content-Type", "X-API-Key"}, supertokens.GetAllCORSHeaders()...),
+			AllowedHeaders:   append([]string{"Content-Type", "X-API-Key", auth.ReferralCodeHeader}, supertokens.GetAllCORSHeaders()...),
 			AllowCredentials: true,
 		}))
 	}
@@ -212,6 +214,10 @@ func (app *application) mount() http.Handler {
 		// Legal document links. Unauthenticated on purpose: the login page
 		// tells hackers they agree to these before they have a session.
 		r.Get("/legal", app.getLegalConfigHandler)
+
+		// Referral link visits. Unauthenticated: the visitor has no session
+		// yet, and the rate limiter above bounds how far a count can be padded.
+		r.Post("/referrals/{code}/visit", app.recordReferralVisitHandler)
 
 		// Auth endpoints not handled by SuperTokens
 		r.Get("/auth/check-email", app.checkEmailAuthMethodHandler)
@@ -478,6 +484,15 @@ func (app *application) mount() http.Handler {
 						r.Get("/", app.searchUsersHandler)
 						r.Patch("/{userID}/role", app.updateUserRoleHandler)
 						r.Delete("/{userID}", app.deleteUserHandler)
+					})
+
+					// Referrals
+					r.Route("/referrals", func(r chi.Router) {
+						r.Get("/", app.listReferralsHandler)
+						r.Post("/", app.createReferralHandler)
+						r.Put("/{referralID}", app.updateReferralHandler)
+						r.Delete("/{referralID}", app.deleteReferralHandler)
+						r.Get("/{referralID}/signups", app.listReferralSignupsHandler)
 					})
 
 					// Scheduled push notifications

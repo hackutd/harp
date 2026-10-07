@@ -205,6 +205,7 @@ func main() {
 	// Initialize SuperTokens after the mailer so passwordless sign-in uses the
 	// themed application email rather than SuperTokens' stock delivery service.
 	authCfg := auth.Config{
+		Logger:             logger,
 		AppName:            cfg.supertokens.appName,
 		ConnectionURI:      cfg.supertokens.connectionURI,
 		APIKey:             cfg.supertokens.apiKey,

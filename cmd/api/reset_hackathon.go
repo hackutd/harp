@@ -28,6 +28,7 @@ type ResetHackathonPayload struct {
 	ResetSponsors      bool `json:"reset_sponsors"`
 	ResetFAQs          bool `json:"reset_faqs"`
 	ResetTracks        bool `json:"reset_tracks"`
+	ResetReferrals     bool `json:"reset_referrals"`
 	ResetConfig        bool `json:"reset_config"`
 }
 
@@ -42,6 +43,7 @@ func (p ResetHackathonPayload) toStoreOptions() store.ResetOptions {
 		Sponsors:      p.ResetSponsors,
 		FAQs:          p.ResetFAQs,
 		Tracks:        p.ResetTracks,
+		Referrals:     p.ResetReferrals,
 		Config:        p.ResetConfig,
 	}
 }
@@ -56,6 +58,7 @@ type ResetHackathonResponse struct {
 	ResetSponsors      bool `json:"reset_sponsors"`
 	ResetFAQs          bool `json:"reset_faqs"`
 	ResetTracks        bool `json:"reset_tracks"`
+	ResetReferrals     bool `json:"reset_referrals"`
 	ResetConfig        bool `json:"reset_config"`
 	// ResumesDeleted counts the resume files queued for removal from object
 	// storage. Deletion happens in the background, so a file may still fail;
@@ -69,7 +72,7 @@ type ResetHackathonResponse struct {
 // resetHackathonHandler resets hackathon data based on options
 //
 //	@Summary		Reset hackathon data (Super Admin)
-//	@Description	Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, challenge tracks, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.
+//	@Description	Resets selected hackathon data (applications and walk-in queue, scans, scan types, schedule, notifications, sponsors, FAQs, challenge tracks, referral links, settings, per-cycle config). Resetting applications or config also closes applications. Database work is performed in a single transaction; resume files are removed from object storage in the background.
 //	@Tags			superadmin
 //	@Accept			json
 //	@Produce		json
@@ -127,6 +130,7 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 		ResetSponsors:      req.ResetSponsors,
 		ResetFAQs:          req.ResetFAQs,
 		ResetTracks:        req.ResetTracks,
+		ResetReferrals:     req.ResetReferrals,
 		ResetConfig:        req.ResetConfig,
 		ResumesDeleted:     resumesQueued,
 		ReceiptsDeleted:    receiptsQueued,

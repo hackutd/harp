@@ -8,6 +8,7 @@ export interface ResetHackathonOptions {
   reset_sponsors: boolean;
   reset_faqs: boolean;
   reset_tracks: boolean;
+  reset_referrals: boolean;
   reset_config: boolean;
 }
 

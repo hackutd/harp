@@ -14,6 +14,7 @@ import (
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty/tpmodels"
 	"github.com/supertokens/supertokens-golang/supertokens"
+	"go.uber.org/zap"
 )
 
 const DefaultSessionRole = store.RoleHacker
@@ -32,19 +33,26 @@ type Config struct {
 	FrontendURL        string
 	GoogleClientID     string
 	GoogleClientSecret string
+	// Logger records failures the sign-in flow deliberately survives, such as
+	// a referral that could not be held. Optional; nil discards them.
+	Logger *zap.SugaredLogger
 }
 
 // InitSuperTokens initializes the SuperTokens SDK with the given configuration.
 func InitSuperTokens(cfg Config, appStore store.Storage, emailSender MagicLinkEmailSender) error {
 	apiBasePath := cfg.APIBasePath
+	logger := cfg.Logger
+	if logger == nil {
+		logger = zap.NewNop().Sugar()
+	}
 
 	recipes := []supertokens.Recipe{
-		passwordlessRecipe(appStore, emailSender),
+		passwordlessRecipe(appStore, emailSender, logger),
 		sessionRecipe(),
 	}
 
 	if googleEnabled(cfg) {
-		recipes = append(recipes, googleRecipe(cfg, appStore))
+		recipes = append(recipes, googleRecipe(cfg, appStore, logger))
 	}
 
 	return supertokens.Init(supertokens.TypeInput{
@@ -71,11 +79,11 @@ func googleEnabled(cfg Config) bool {
 	return cfg.GoogleClientID != "" && cfg.GoogleClientSecret != ""
 }
 
-func passwordlessRecipe(appStore store.Storage, emailSender MagicLinkEmailSender) supertokens.Recipe {
+func passwordlessRecipe(appStore store.Storage, emailSender MagicLinkEmailSender, logger *zap.SugaredLogger) supertokens.Recipe {
 	return passwordless.Init(plessmodels.TypeInput{
 		ContactMethodEmail: plessmodels.ContactMethodEmailConfig{Enabled: true},
 		FlowType:           "MAGIC_LINK",
-		Override:           passwordlessOverrides(appStore),
+		Override:           passwordlessOverrides(appStore, logger),
 		EmailDelivery:      magicLinkEmailDelivery(emailSender),
 	})
 }
@@ -104,7 +112,7 @@ func sessionRecipe() supertokens.Recipe {
 	})
 }
 
-func googleRecipe(cfg Config, appStore store.Storage) supertokens.Recipe {
+func googleRecipe(cfg Config, appStore store.Storage, logger *zap.SugaredLogger) supertokens.Recipe {
 	return thirdparty.Init(&tpmodels.TypeInput{
 		SignInAndUpFeature: tpmodels.TypeInputSignInAndUp{
 			Providers: []tpmodels.ProviderInput{
@@ -121,11 +129,11 @@ func googleRecipe(cfg Config, appStore store.Storage) supertokens.Recipe {
 				},
 			},
 		},
-		Override: googleOverrides(appStore),
+		Override: googleOverrides(appStore, logger),
 	})
 }
 
-func passwordlessOverrides(appStore store.Storage) *plessmodels.OverrideStruct {
+func passwordlessOverrides(appStore store.Storage, logger *zap.SugaredLogger) *plessmodels.OverrideStruct {
 	return &plessmodels.OverrideStruct{
 		Functions: func(impl plessmodels.RecipeInterface) plessmodels.RecipeInterface {
 			origCreateCode := *impl.CreateCode
@@ -143,6 +151,25 @@ func passwordlessOverrides(appStore store.Storage) *plessmodels.OverrideStruct {
 					}
 				}
 				return origCreateCode(email, phoneNumber, userInputCode, tenantId, userContext)
+			}
+
+			return impl
+		},
+		APIs: func(impl plessmodels.APIInterface) plessmodels.APIInterface {
+			origCreateCodePOST := *impl.CreateCodePOST
+
+			*impl.CreateCodePOST = func(
+				email *string,
+				phoneNumber *string,
+				tenantId string,
+				options plessmodels.APIOptions,
+				userContext supertokens.UserContext,
+			) (plessmodels.CreateCodePOSTResponse, error) {
+				resp, err := origCreateCodePOST(email, phoneNumber, tenantId, options, userContext)
+				if err == nil && resp.OK != nil && email != nil {
+					recordPendingReferral(appStore, logger, options.Req, *email)
+				}
+				return resp, err
 			}
 
 			return impl
@@ -186,7 +213,7 @@ func sessionOverrides() *sessmodels.OverrideStruct {
 	}
 }
 
-func googleOverrides(appStore store.Storage) *tpmodels.OverrideStruct {
+func googleOverrides(appStore store.Storage, logger *zap.SugaredLogger) *tpmodels.OverrideStruct {
 	return &tpmodels.OverrideStruct{
 		Functions: func(impl tpmodels.RecipeInterface) tpmodels.RecipeInterface {
 			origSignInUp := *impl.SignInUp
@@ -239,6 +266,9 @@ func googleOverrides(appStore store.Storage) *tpmodels.OverrideStruct {
 				userContext supertokens.UserContext,
 			) (tpmodels.SignInUpPOSTResponse, error) {
 				resp, err := origSignInUpPOST(provider, input, tenantId, options, userContext)
+				if err == nil && resp.OK != nil {
+					recordPendingReferral(appStore, logger, options.Req, resp.OK.User.Email)
+				}
 
 				var mismatchErr *AuthMethodMismatchError
 				if errors.As(err, &mismatchErr) {

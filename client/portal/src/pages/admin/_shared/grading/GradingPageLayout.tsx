@@ -42,8 +42,9 @@ export function GradingPageLayout({
 
   return (
     <div className="-m-4 flex flex-col h-[calc(100%+2rem)] min-h-0">
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-3 border-b bg-background px-4 py-3">
+      {/* Header. Sized like the sidebar header (p-2 around the h-12 user
+          button, plus its border) so the two bottom borders line up. */}
+      <div className="box-content h-12 shrink-0 flex items-center gap-3 border-b bg-background px-4 py-2">
         <Button
           variant="ghost"
           size="icon-sm"

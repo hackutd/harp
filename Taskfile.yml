@@ -27,6 +27,14 @@ tasks:
     cmds:
       - migrate -path="{{.MIGRATIONS_PATH}}" -database="{{.DB_ADDR}}" down
 
+  migrate-goto:
+    desc: Migrate up or down to a specific version (task migrate-goto -- 56)
+    preconditions:
+      - sh: '[[ "{{.CLI_ARGS}}" =~ ^[0-9]+$ ]]'
+        msg: "Pass a target version number: task migrate-goto -- 56"
+    cmds:
+      - migrate -path="{{.MIGRATIONS_PATH}}" -database="{{.DB_ADDR}}" goto {{.CLI_ARGS}}
+
   scrub-staging-pii:
     desc: Scrub hacker PII from staging (task scrub-staging-pii -- --yes)
     cmds:

@@ -7,6 +7,7 @@ import {
   DoorOpen,
   Handshake,
   Link2,
+  Megaphone,
   MessageSquare,
   ScanLine,
   Settings,
@@ -98,6 +99,11 @@ const superAdminNav = [
     name: "Hacker Links",
     url: "/admin/sa/hacker-links",
     icon: Link2,
+  },
+  {
+    name: "Referrals",
+    url: "/admin/sa/referrals",
+    icon: Megaphone,
   },
   {
     name: "Walk-In Queue",
