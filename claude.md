@@ -32,6 +32,7 @@ Local dev ports: backend `8080`, portal `3000`. Port 3000 is pinned for the port
 | `task gen-docs`                    | Regenerate Swagger docs                    |
 | `task migrate-up`                  | Apply all DB migrations                    |
 | `task migrate-down`                | Roll back one migration                    |
+| `task migrate-goto -- <version>`   | Migrate up or down to a specific version   |
 | `task migrate-create -- <name>`    | Create a new migration                     |
 | `task seed`                        | Run DB seed script                         |
 | `task setup-hooks`                 | Configure git hooks (run once after clone) |
