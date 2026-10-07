@@ -83,6 +83,7 @@ func Seed(_ store.Storage, db *sql.DB) {
 	seedReviews(db, staffIDs, apps, tl)
 	seedEventData(db, staffIDs, superAdminIDs, apps, tl)
 	seedContent(db, superAdminIDs, apps, tl)
+	seedReferrals(db, hackerIDs)
 
 	promoted := promoteRealSuperAdmin(db)
 	seedSettings(db, append(superAdminIDs, promoted...), tl)
@@ -153,6 +154,8 @@ func summarize(db *sql.DB, tl timeline) {
 		{"schedule", "SELECT COUNT(*) FROM schedule"},
 		{"sponsors", "SELECT COUNT(*) FROM sponsors"},
 		{"faqs", "SELECT COUNT(*) FROM faqs"},
+		{"referrals", "SELECT COUNT(*) FROM referrals"},
+		{"referred users", "SELECT COUNT(*) FROM users WHERE referral_id IS NOT NULL"},
 		{"scheduled_notifications", "SELECT COUNT(*) FROM scheduled_notifications"},
 		{"push_subscriptions", "SELECT COUNT(*) FROM push_subscriptions"},
 		{"settings", "SELECT COUNT(*) FROM settings"},

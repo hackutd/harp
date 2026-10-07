@@ -1033,6 +1033,51 @@ func (m *MockWalkInsStore) List(ctx context.Context) ([]WalkIn, error) {
 }
 
 // returns a Storage with all mock implementations
+type MockReferralsStore struct {
+	mock.Mock
+}
+
+func (m *MockReferralsStore) List(ctx context.Context) ([]Referral, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]Referral), args.Error(1)
+}
+
+func (m *MockReferralsStore) Create(ctx context.Context, ref *Referral) error {
+	args := m.Called(ref)
+	return args.Error(0)
+}
+
+func (m *MockReferralsStore) Update(ctx context.Context, ref *Referral) error {
+	args := m.Called(ref)
+	return args.Error(0)
+}
+
+func (m *MockReferralsStore) Delete(ctx context.Context, id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockReferralsStore) ListSignups(ctx context.Context, id string) ([]ReferralSignup, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]ReferralSignup), args.Error(1)
+}
+
+func (m *MockReferralsStore) RecordVisit(ctx context.Context, code string) error {
+	args := m.Called(code)
+	return args.Error(0)
+}
+
+func (m *MockReferralsStore) RecordPending(ctx context.Context, email, code string) error {
+	args := m.Called(email, code)
+	return args.Error(0)
+}
+
 func NewMockStore() Storage {
 	return Storage{
 		Users:                  &MockUsersStore{},
@@ -1049,5 +1094,6 @@ func NewMockStore() Storage {
 		PushSubscriptions:      &MockPushSubscriptionsStore{},
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
 		WalkIns:                &MockWalkInsStore{},
+		Referrals:              &MockReferralsStore{},
 	}
 }

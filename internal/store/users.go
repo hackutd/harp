@@ -113,9 +113,16 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 	}
 	defer tx.Rollback()
 
+	// A referral code recorded at sign-in (see RecordPending) is claimed here,
+	// in the same statement, so it is consumed exactly when the user is born.
+	// A conflicting email fails the whole statement and leaves it pending.
 	query := `
-		INSERT INTO users (supertokens_user_id, email, role, auth_method, profile_picture_url)
-		VALUES ($1, $2, $3, $4, $5)
+		WITH claimed AS (
+			DELETE FROM pending_referrals WHERE email = $2
+			RETURNING referral_id
+		)
+		INSERT INTO users (supertokens_user_id, email, role, auth_method, profile_picture_url, referral_id)
+		VALUES ($1, $2, $3, $4, $5, (SELECT referral_id FROM claimed))
 		RETURNING id, created_at, updated_at
 	`
 

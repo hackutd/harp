@@ -214,6 +214,15 @@ type Storage struct {
 		ReleaseUnattempted(ctx context.Context, ids []string) error
 		GenerateFromSchedule(ctx context.Context, lead time.Duration, targetRole *UserRole, createdBy string, now time.Time) (*ScheduleNotificationGenerationResult, error)
 	}
+	Referrals interface {
+		List(ctx context.Context) ([]Referral, error)
+		Create(ctx context.Context, ref *Referral) error
+		Update(ctx context.Context, ref *Referral) error
+		Delete(ctx context.Context, id string) error
+		ListSignups(ctx context.Context, id string) ([]ReferralSignup, error)
+		RecordVisit(ctx context.Context, code string) error
+		RecordPending(ctx context.Context, email, code string) error
+	}
 	WalkIns interface {
 		Enqueue(ctx context.Context, userID string) (inserted bool, position int, err error)
 		PromoteNext(ctx context.Context, count int, promotedBy string) ([]User, error)
@@ -240,5 +249,6 @@ func NewStorage(db *sql.DB) Storage {
 		PushSubscriptions:      &PushSubscriptionsStore{db: db},
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
 		WalkIns:                &WalkInsStore{db: db},
+		Referrals:              &ReferralsStore{db: db},
 	}
 }

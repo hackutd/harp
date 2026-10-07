@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, ArrowUpRight, Mail } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
 import { createCode } from "supertokens-auth-react/recipe/passwordless";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
@@ -11,6 +11,7 @@ import sky from "@/assets/sky.webp";
 import wordmark from "@/assets/zero-day-wordmark.webp";
 import { Button } from "@/components/ui/button";
 import { checkEmailAuthMethod } from "@/shared/lib/api";
+import { captureReferral, REFERRAL_PARAM } from "@/shared/lib/referral";
 import { ZERODAY_URL } from "@/shared/lib/zeroday";
 
 import { fetchLegalConfig } from "./api";
@@ -133,6 +134,25 @@ export default function Login() {
   const [state, setState] = useState<LoginState>("email");
   const [error, setError] = useState("");
   const [legal, setLegal] = useState<LegalConfig | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const referralCode = searchParams.get(REFERRAL_PARAM);
+  const isSignedOut = !session.loading && !session.doesSessionExist;
+
+  // Save a sponsor referral (/?s=<code>) for the sign-in request, then drop it
+  // from the address bar so a refresh doesn't count a second visit. Someone
+  // already signed in is redirected instead: they can't be a new signup, and
+  // rewriting the URL here would race the redirect.
+  useEffect(() => {
+    if (referralCode === null || !isSignedOut) return;
+    captureReferral(referralCode);
+    setSearchParams(
+      (params) => {
+        params.delete(REFERRAL_PARAM);
+        return params;
+      },
+      { replace: true },
+    );
+  }, [referralCode, isSignedOut, setSearchParams]);
 
   // Must run before the redirect below — hooks cannot sit after an early return.
   useEffect(() => {
