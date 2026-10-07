@@ -43,6 +43,18 @@ const HackerProfilePage = lazy(
 const HackerNotificationsPage = lazy(
   () => import("@/pages/hacker/notifications/NotificationsPage"),
 );
+const HackerDirectoryPage = lazy(
+  () => import("@/pages/hacker/directory/DirectoryPage"),
+);
+const HackerDirectoryContactsPage = lazy(
+  () => import("@/pages/hacker/directory/ContactsPage"),
+);
+const HackerDirectoryCardPage = lazy(
+  () => import("@/pages/hacker/directory/CardEditorPage"),
+);
+const HackerDiscordCallbackPage = lazy(
+  () => import("@/pages/hacker/directory/DiscordCallbackPage"),
+);
 const HackerFAQPage = lazy(() => import("@/pages/hacker/faq/FAQPage"));
 const HackerNotionPage = lazy(() => import("@/pages/hacker/notion/NotionPage"));
 const SuperAdminUserManagementPage = lazy(
@@ -192,6 +204,38 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<HackerPageLoader />}>
                 <HackerNotificationsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "directory",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerDirectoryPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "directory/contacts",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerDirectoryContactsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "directory/card",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerDirectoryCardPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "directory/discord/callback",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerDiscordCallbackPage />
               </Suspense>
             ),
           },

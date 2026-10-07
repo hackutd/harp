@@ -982,15 +982,12 @@ func (app *application) pokeDirectoryProfileHandler(w http.ResponseWriter, r *ht
 	card.HeadshotURL = app.headshotURL(r.Context(), card.HeadshotPath, card.ProfilePictureURL)
 
 	if result.Created {
-		connections := "/app/directory/contacts"
 		if result.Matched {
 			app.sendPushToUsers([]string{targetID}, "It's a match!",
-				fmt.Sprintf("%s poked you back. Say hi on Discord.", profile.DisplayName), connections+"?tab=matches")
-			app.sendPushToUsers([]string{user.ID}, "It's a match!",
-				fmt.Sprintf("You and %s poked each other. Say hi on Discord.", card.DisplayName), connections+"?tab=matches")
+				fmt.Sprintf("%s poked you back. Say hi on Discord.", profile.DisplayName), "/app/directory/contacts")
 		} else {
 			app.sendPushToUsers([]string{targetID}, fmt.Sprintf("%s poked you", profile.DisplayName),
-				"Poke back to match and swap Discord.", connections+"?tab=pokes")
+				"Poke back to match and swap Discord.", "/app/directory?tab=pokes")
 		}
 	}
 

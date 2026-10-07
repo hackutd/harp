@@ -1,5 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, CalendarDays, House, ScanLine, User } from "lucide-react";
+import {
+  Bell,
+  BookUser,
+  CalendarDays,
+  House,
+  ScanLine,
+  User,
+  Users,
+} from "lucide-react";
 import { useLayoutEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
@@ -33,11 +41,28 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Home", to: "/app", icon: House, end: true },
   { label: "Scan", to: "/app/scan", icon: ScanLine, end: false },
   { label: "Schedule", to: "/app/schedule", icon: CalendarDays, end: false },
+  { label: "People", to: "/app/directory", icon: Users, end: false },
   { label: "Notifications", to: "/app/notifications", icon: Bell, end: false },
   { label: "Profile", to: "/app/profile", icon: User, end: false },
 ];
 
-const SIDEBAR_NAV = NAV_ITEMS.map(({ label, to, icon, end }) => ({
+// The sidebar has room to list the directory's two destinations separately;
+// the mobile tab bar folds both into "People".
+const SIDEBAR_ITEMS: NavItem[] = NAV_ITEMS.flatMap((item) =>
+  item.to === "/app/directory"
+    ? [
+        { ...item, label: "Who's Attending", end: true },
+        {
+          label: "My contacts",
+          to: "/app/directory/contacts",
+          icon: BookUser,
+          end: false,
+        },
+      ]
+    : [item],
+);
+
+const SIDEBAR_NAV = SIDEBAR_ITEMS.map(({ label, to, icon, end }) => ({
   name: label,
   url: to,
   icon,
