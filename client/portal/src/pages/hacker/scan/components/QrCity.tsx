@@ -142,7 +142,7 @@ export function QrCity({ value, className }: QrCityProps) {
         aria-label={
           mode === "qr" ? "Return to the city view" : "Show my QR code"
         }
-        className="relative block aspect-square w-full max-w-[320px] overflow-hidden rounded-xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+        className="relative block aspect-square w-full max-w-[440px] overflow-hidden rounded-xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
       >
         <img
           ref={skyRef}

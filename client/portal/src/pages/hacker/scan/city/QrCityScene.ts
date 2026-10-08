@@ -24,7 +24,7 @@ const ISO_AZIMUTH = THREE.MathUtils.degToRad(45);
 const TOP_ELEVATION = Math.PI / 2;
 const CAMERA_DISTANCE = 160;
 /** Fraction of the plate size used as the ortho half-extent in the iso view. */
-const ISO_FRAME_SCALE = 0.78;
+const ISO_FRAME_SCALE = 0.72;
 const ISO_TARGET_Y = 6.5;
 
 /** Gap between a block and the edge of the modules it covers. */
