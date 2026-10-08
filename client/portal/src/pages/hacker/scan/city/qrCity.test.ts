@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildCityLayout,
   buildQrModules,
+  CRANE_MIN_HEIGHT,
   createRng,
+  FACADE_COLORS,
   finderKind,
   hashSeed,
   HEIGHT_STEP,
@@ -90,6 +92,23 @@ describe("buildCityLayout", () => {
     }
     expect(covered.size).toBe(dark);
     expect(layout.cells.length).toBeLessThan(dark / 2);
+  });
+
+  it("tints facades and only puts cranes on tall plain blocks", () => {
+    const layout = buildCityLayout(USER_ID);
+    for (const cell of layout.cells) {
+      expect(cell.tint).toBeGreaterThanOrEqual(0);
+      expect(cell.tint).toBeLessThan(FACADE_COLORS.length);
+      if (cell.crane) {
+        expect(cell.kind).toBe("building");
+        expect(cell.billboard).toBe(false);
+        expect(cell.height).toBeGreaterThanOrEqual(CRANE_MIN_HEIGHT);
+      }
+      if (cell.billboard) expect(cell.kind).toBe("building");
+    }
+    expect(new Set(layout.cells.map((c) => c.tint)).size).toBeGreaterThan(1);
+    expect(layout.cells.some((c) => c.billboard)).toBe(true);
+    expect(layout.cells.some((c) => c.crane)).toBe(true);
   });
 
   it("snaps heights to the window texture step", () => {

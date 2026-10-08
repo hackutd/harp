@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import sky from "@/assets/sky.webp";
 import { cn } from "@/shared/lib/utils";
 
 import {
@@ -42,6 +43,7 @@ export function QrCity({ value, className }: QrCityProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<SVGSVGElement>(null);
+  const skyRef = useRef<HTMLImageElement>(null);
   const sceneRef = useRef<QrCityScene | null>(null);
   const progressRef = useRef(0);
   const cancelTweenRef = useRef<() => void>(() => {});
@@ -55,6 +57,9 @@ export function QrCity({ value, className }: QrCityProps) {
     if (overlayRef.current) {
       overlayRef.current.style.opacity = String(overlayOpacity(progress));
     }
+    if (skyRef.current) {
+      skyRef.current.style.opacity = String(1 - progress);
+    }
   };
 
   useEffect(() => {
@@ -66,7 +71,9 @@ export function QrCity({ value, className }: QrCityProps) {
         const canvas = canvasRef.current;
         if (cancelled || !canvas) return;
         try {
-          scene = new module.QrCityScene(canvas, layout);
+          scene = new module.QrCityScene(canvas, layout, {
+            animate: !prefersReducedMotion(),
+          });
         } catch {
           setStatus("unsupported");
           return;
@@ -137,6 +144,14 @@ export function QrCity({ value, className }: QrCityProps) {
         }
         className="relative block aspect-square w-full max-w-[320px] overflow-hidden rounded-xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
       >
+        <img
+          ref={skyRef}
+          src={sky}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[60%_0%]"
+          style={{ opacity: showStaticCode ? 0 : 1 }}
+        />
         <div ref={frameRef} className="absolute inset-0">
           <canvas
             ref={canvasRef}

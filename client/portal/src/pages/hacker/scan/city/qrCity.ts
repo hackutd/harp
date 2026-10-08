@@ -9,8 +9,18 @@ export const PLATE_COLOR = "#ece9f3";
 export const PLAZA_COLORS = ["#f5f3f9", "#e4e1ee"] as const;
 /** Rooftops: the QR's dark modules seen from above. */
 export const ROOF_COLOR = "#0b0c15";
-export const BUILDING_COLOR = "#161829";
 export const NEON = { magenta: "#ff2ee6", cyan: "#22e0ff", violet: "#7828ff" };
+/** Facade tints; a block picks one by `tint`. Roofs stay ROOF_COLOR. */
+export const FACADE_COLORS = [
+  "#161829",
+  "#241a4d",
+  "#0f2d3a",
+  "#3a1232",
+  "#1c2447",
+  "#2b1f3f",
+  "#10343a",
+  "#202a50",
+] as const;
 
 export type CellKind = "finder-ring" | "finder-core" | "building";
 export type WindowPalette = 0 | 1;
@@ -24,6 +34,11 @@ export interface CityCell {
   kind: CellKind;
   height: number;
   palette: WindowPalette;
+  /** Index into FACADE_COLORS. */
+  tint: number;
+  /** Rooftop props; they shrink away as the camera goes top-down. */
+  billboard: boolean;
+  crane: boolean;
 }
 
 export interface CityLayout {
@@ -42,6 +57,10 @@ const TOWER_HEIGHT = 13;
 const FINDER_RING_HEIGHT = 4;
 const FINDER_CORE_HEIGHT = 15;
 const TOWER_CHANCE = 0.1;
+const BILLBOARD_CHANCE = 0.14;
+const CRANE_CHANCE = 0.3;
+/** Only blocks at least this tall get a crane. */
+export const CRANE_MIN_HEIGHT = 8;
 /** Adjacent dark modules of the same kind merge into blocks up to this size. */
 export const MAX_FOOTPRINT = 3;
 
@@ -145,6 +164,7 @@ export function buildCityLayout(value: string): CityLayout {
       }
 
       const palette: WindowPalette = rng() < 0.5 ? 0 : 1;
+      const tint = Math.floor(rng() * FACADE_COLORS.length);
       let height: number;
       if (kind === "finder-core") {
         height = FINDER_CORE_HEIGHT;
@@ -155,7 +175,25 @@ export function buildCityLayout(value: string): CityLayout {
       } else {
         height = snap(MIN_HEIGHT + rng() * (MAX_HEIGHT - MIN_HEIGHT));
       }
-      cells.push({ row, col, w, h, kind, height, palette });
+      const isBuilding = kind === "building";
+      const billboard = isBuilding && rng() < BILLBOARD_CHANCE;
+      const crane =
+        isBuilding &&
+        !billboard &&
+        height >= CRANE_MIN_HEIGHT &&
+        rng() < CRANE_CHANCE;
+      cells.push({
+        row,
+        col,
+        w,
+        h,
+        kind,
+        height,
+        palette,
+        tint,
+        billboard,
+        crane,
+      });
     }
   }
 
