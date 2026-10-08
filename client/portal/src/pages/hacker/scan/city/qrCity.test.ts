@@ -7,6 +7,7 @@ import {
   finderKind,
   hashSeed,
   HEIGHT_STEP,
+  MAX_FOOTPRINT,
   modulesToSvgPath,
   QUIET_ZONE,
 } from "./qrCity";
@@ -72,11 +73,23 @@ describe("buildCityLayout", () => {
   it("places exactly one building on every dark module", () => {
     const layout = buildCityLayout(USER_ID);
     const dark = layout.modules.flat().filter(Boolean).length;
-    expect(layout.cells).toHaveLength(dark);
     expect(layout.plateSize).toBe(layout.moduleCount + QUIET_ZONE * 2);
+    const covered = new Set<string>();
     for (const cell of layout.cells) {
-      expect(layout.modules[cell.row][cell.col]).toBe(true);
+      expect(cell.w).toBeGreaterThanOrEqual(1);
+      expect(cell.w).toBeLessThanOrEqual(MAX_FOOTPRINT);
+      expect(cell.h).toBeGreaterThanOrEqual(1);
+      expect(cell.h).toBeLessThanOrEqual(MAX_FOOTPRINT);
+      for (let r = cell.row; r < cell.row + cell.h; r++) {
+        for (let c = cell.col; c < cell.col + cell.w; c++) {
+          expect(layout.modules[r][c]).toBe(true);
+          expect(covered.has(`${r},${c}`)).toBe(false);
+          covered.add(`${r},${c}`);
+        }
+      }
     }
+    expect(covered.size).toBe(dark);
+    expect(layout.cells.length).toBeLessThan(dark / 2);
   });
 
   it("snaps heights to the window texture step", () => {
@@ -91,7 +104,8 @@ describe("buildCityLayout", () => {
     const layout = buildCityLayout(USER_ID);
     const cores = layout.cells.filter((c) => c.kind === "finder-core");
     const rest = layout.cells.filter((c) => c.kind !== "finder-core");
-    expect(cores).toHaveLength(27);
+    expect(cores).toHaveLength(3);
+    expect(cores.every((c) => c.w === 3 && c.h === 3)).toBe(true);
     const coreHeight = cores[0].height;
     expect(cores.every((c) => c.height === coreHeight)).toBe(true);
     expect(Math.max(...rest.map((c) => c.height))).toBeLessThan(coreHeight);

@@ -135,7 +135,7 @@ export function QrCity({ value, className }: QrCityProps) {
         aria-label={
           mode === "qr" ? "Return to the city view" : "Show my QR code"
         }
-        className="relative block aspect-square w-full max-w-[320px] overflow-hidden rounded-xl border border-[#E5E5E5] bg-[#030409] shadow-[0_2px_16px_rgba(0,0,0,0.06)] outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+        className="relative block aspect-square w-full max-w-[320px] overflow-hidden rounded-xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
       >
         <div ref={frameRef} className="absolute inset-0">
           <canvas

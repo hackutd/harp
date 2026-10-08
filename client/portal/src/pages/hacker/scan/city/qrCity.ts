@@ -4,8 +4,6 @@ import qrcode from "qrcode-generator";
 export const QUIET_ZONE = 4;
 export const FINDER_SIZE = 7;
 
-/** Page background behind the canvas (matches .zero-hacker-surface). */
-export const PAGE_BG = "#030409";
 /** Light plate + plaza tiles: the QR's light modules seen from above. */
 export const PLATE_COLOR = "#ece9f3";
 export const PLAZA_COLORS = ["#f5f3f9", "#e4e1ee"] as const;
@@ -20,6 +18,9 @@ export type WindowPalette = 0 | 1;
 export interface CityCell {
   row: number;
   col: number;
+  /** Footprint in modules; merged blocks cover several dark modules. */
+  w: number;
+  h: number;
   kind: CellKind;
   height: number;
   palette: WindowPalette;
@@ -35,12 +36,14 @@ export interface CityLayout {
 
 /** Heights snap to this step so one window texture fits every building. */
 export const HEIGHT_STEP = 0.5;
-const MIN_HEIGHT = 1.5;
-const MAX_HEIGHT = 5.5;
-const TOWER_HEIGHT = 7.5;
-const FINDER_RING_HEIGHT = 3;
-const FINDER_CORE_HEIGHT = 8;
-const TOWER_CHANCE = 0.07;
+const MIN_HEIGHT = 3;
+const MAX_HEIGHT = 9;
+const TOWER_HEIGHT = 13;
+const FINDER_RING_HEIGHT = 4;
+const FINDER_CORE_HEIGHT = 15;
+const TOWER_CHANCE = 0.1;
+/** Adjacent dark modules of the same kind merge into blocks up to this size. */
+export const MAX_FOOTPRINT = 3;
 
 export function buildQrModules(value: string): boolean[][] {
   const qr = qrcode(0, "M");
@@ -112,12 +115,36 @@ export function buildCityLayout(value: string): CityLayout {
   const moduleCount = modules.length;
   const rng = createRng(hashSeed(value));
   const cells: CityCell[] = [];
+  const taken = modules.map((row) => row.map(() => false));
+
+  const free = (row: number, col: number, kind: CellKind) =>
+    row < moduleCount &&
+    col < moduleCount &&
+    modules[row][col] &&
+    !taken[row][col] &&
+    (finderKind(row, col, moduleCount) ?? "building") === kind;
 
   for (let row = 0; row < moduleCount; row++) {
     for (let col = 0; col < moduleCount; col++) {
-      if (!modules[row][col]) continue;
-      const palette: WindowPalette = rng() < 0.5 ? 0 : 1;
+      if (!modules[row][col] || taken[row][col]) continue;
       const kind = finderKind(row, col, moduleCount) ?? "building";
+
+      let w = 1;
+      while (w < MAX_FOOTPRINT && free(row, col + w, kind)) w++;
+      let h = 1;
+      while (h < MAX_FOOTPRINT) {
+        let rowFree = true;
+        for (let c = col; c < col + w; c++) {
+          if (!free(row + h, c, kind)) rowFree = false;
+        }
+        if (!rowFree) break;
+        h++;
+      }
+      for (let r = row; r < row + h; r++) {
+        for (let c = col; c < col + w; c++) taken[r][c] = true;
+      }
+
+      const palette: WindowPalette = rng() < 0.5 ? 0 : 1;
       let height: number;
       if (kind === "finder-core") {
         height = FINDER_CORE_HEIGHT;
@@ -128,7 +155,7 @@ export function buildCityLayout(value: string): CityLayout {
       } else {
         height = snap(MIN_HEIGHT + rng() * (MAX_HEIGHT - MIN_HEIGHT));
       }
-      cells.push({ row, col, kind, height, palette });
+      cells.push({ row, col, w, h, kind, height, palette });
     }
   }
 

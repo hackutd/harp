@@ -11,7 +11,6 @@ import {
   createRng,
   hashSeed,
   NEON,
-  PAGE_BG,
   PLATE_COLOR,
   PLAZA_COLORS,
   QUIET_ZONE,
@@ -24,10 +23,11 @@ const ISO_AZIMUTH = THREE.MathUtils.degToRad(45);
 const TOP_ELEVATION = Math.PI / 2;
 const CAMERA_DISTANCE = 160;
 /** Fraction of the plate size used as the ortho half-extent in the iso view. */
-const ISO_FRAME_SCALE = 0.7;
-const ISO_TARGET_Y = 1.6;
+const ISO_FRAME_SCALE = 0.78;
+const ISO_TARGET_Y = 3.5;
 
-const BUILDING_FOOTPRINT = 0.84;
+/** Gap between a block and the edge of the modules it covers. */
+const BUILDING_GAP = 0.16;
 const ROOF_THICKNESS = 0.08;
 const PLATE_THICKNESS = 1;
 const PLAZA_THICKNESS = 0.06;
@@ -86,7 +86,26 @@ function paintWindowTexture(palette: WindowPalette, seed: number) {
 }
 
 function groupKey(cell: CityCell): string {
-  return `${cell.height}:${cell.palette}`;
+  return `${cell.w}:${cell.h}:${cell.height}:${cell.palette}`;
+}
+
+/**
+ * Unit-height box with its base at y=0 whose side-face UVs span the face in
+ * module units, so one repeating window texture fits every block size.
+ */
+function createBlockGeometry(w: number, h: number, height: number) {
+  const geometry = new THREE.BoxGeometry(w - BUILDING_GAP, 1, h - BUILDING_GAP);
+  geometry.translate(0, 0.5, 0);
+  const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
+  const v = (height * WINDOW_ROWS_PER_UNIT) / WINDOW_TEXTURE_ROWS;
+  // BoxGeometry face order: +x, -x, +y, -y, +z, -z; four vertices each.
+  const faceWidth = [h, h, 0, 0, w, w];
+  for (let i = 0; i < uv.count; i++) {
+    const width = faceWidth[Math.floor(i / 4)];
+    uv.setXY(i, uv.getX(i) * width, uv.getY(i) * v);
+  }
+  uv.needsUpdate = true;
+  return geometry;
 }
 
 /**
@@ -113,11 +132,11 @@ export class QrCityScene {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
-      alpha: false,
+      alpha: true,
       powerPreference: "high-performance",
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setClearColor(new THREE.Color(PAGE_BG), 1);
+    this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
 
@@ -290,23 +309,13 @@ export class QrCityScene {
     }
 
     const seed = hashSeed(layout.value);
-    const baseTextures: Record<WindowPalette, THREE.CanvasTexture> = {
-      0: this.track(paintWindowTexture(0, seed)),
-      1: this.track(paintWindowTexture(1, seed)),
+    const materials: Record<WindowPalette, THREE.MeshStandardMaterial> = {
+      0: this.createBuildingMaterial(paintWindowTexture(0, seed)),
+      1: this.createBuildingMaterial(paintWindowTexture(1, seed)),
     };
 
-    // Unit-height box with its base on the plate; instances scale Y to height.
-    const bodyGeometry = this.track(
-      new THREE.BoxGeometry(BUILDING_FOOTPRINT, 1, BUILDING_FOOTPRINT),
-    );
-    bodyGeometry.translate(0, 0.5, 0);
-
     const roofGeometry = this.track(
-      new THREE.BoxGeometry(
-        BUILDING_FOOTPRINT,
-        ROOF_THICKNESS,
-        BUILDING_FOOTPRINT,
-      ),
+      new THREE.BoxGeometry(1, ROOF_THICKNESS, 1),
     );
     // Rooftops are unlit so the top-down view is a flat, uniform dark.
     const roofMaterial = this.track(
@@ -325,39 +334,26 @@ export class QrCityScene {
     let roofIndex = 0;
 
     for (const cells of groups.values()) {
-      const { height, palette } = cells[0];
-      const texture = this.track(baseTextures[palette].clone());
-      texture.repeat.set(
-        1,
-        (height * WINDOW_ROWS_PER_UNIT) / WINDOW_TEXTURE_ROWS,
-      );
-      texture.needsUpdate = true;
-
-      const material = this.track(
-        new THREE.MeshStandardMaterial({
-          color: BUILDING_COLOR,
-          roughness: 0.7,
-          metalness: 0.1,
-          emissive: 0xffffff,
-          emissiveMap: texture,
-          emissiveIntensity: EMISSIVE_INTENSITY,
-        }),
-      );
-      this.buildingMaterials.push(material);
-
+      const { w, h, height, palette } = cells[0];
+      const geometry = this.track(createBlockGeometry(w, h, height));
       const bodies = new THREE.InstancedMesh(
-        bodyGeometry,
-        material,
+        geometry,
+        materials[palette],
         cells.length,
       );
       cells.forEach((cell, i) => {
-        position.set(this.cellX(cell.col, n), 0, this.cellZ(cell.row, n));
+        position.set(
+          cell.col + cell.w / 2 - n / 2,
+          0,
+          cell.row + cell.h / 2 - n / 2,
+        );
         scale.set(1, cell.height, 1);
         matrix.compose(position, quaternion, scale);
         bodies.setMatrixAt(i, matrix);
 
         position.y = cell.height + ROOF_THICKNESS / 2;
-        matrix.makeTranslation(position.x, position.y, position.z);
+        scale.set(cell.w - BUILDING_GAP, 1, cell.h - BUILDING_GAP);
+        matrix.compose(position, quaternion, scale);
         roofs.setMatrixAt(roofIndex++, matrix);
       });
       bodies.instanceMatrix.needsUpdate = true;
@@ -366,6 +362,22 @@ export class QrCityScene {
 
     roofs.instanceMatrix.needsUpdate = true;
     this.scene.add(roofs);
+  }
+
+  private createBuildingMaterial(texture: THREE.CanvasTexture) {
+    this.track(texture);
+    const material = this.track(
+      new THREE.MeshStandardMaterial({
+        color: BUILDING_COLOR,
+        roughness: 0.7,
+        metalness: 0.1,
+        emissive: 0xffffff,
+        emissiveMap: texture,
+        emissiveIntensity: EMISSIVE_INTENSITY,
+      }),
+    );
+    this.buildingMaterials.push(material);
+    return material;
   }
 }
 
