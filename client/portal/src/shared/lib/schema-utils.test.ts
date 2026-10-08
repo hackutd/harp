@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ApplicationSchemaField } from "@/types";
 
 import {
+  applicantVisibleFields,
   buildDefaultValues,
   buildSchemaResolver,
   buildZodSchema,
@@ -12,6 +13,7 @@ import {
   getObsoleteOptions,
   getResponseValue,
   groupFieldsBySection,
+  hiddenFieldIds,
   isFieldVisible,
   stripLabelLinks,
 } from "./schema-utils";
@@ -440,5 +442,42 @@ describe("stripLabelLinks", () => {
       "See our rules first",
     );
     expect(stripLabelLinks("plain label")).toBe("plain label");
+  });
+});
+
+describe("hiddenFieldIds / applicantVisibleFields", () => {
+  const schema = [
+    field({ id: "first_name" }),
+    field({ id: "interview", type: "select", hidden: true, required: true }),
+    field({
+      id: "interview_ack",
+      type: "checkbox",
+      validation: { show_if: "interview=Yes", required_if: "interview=Yes" },
+    }),
+    field({ id: "interview_note", validation: { show_if: "interview_ack" } }),
+    field({ id: "travel", type: "checkbox" }),
+    field({ id: "travel_origin", validation: { show_if: "travel" } }),
+  ];
+
+  it("collects hidden fields and everything conditioned on them", () => {
+    expect([...hiddenFieldIds(schema)]).toEqual([
+      "interview",
+      "interview_ack",
+      "interview_note",
+    ]);
+  });
+
+  it("withholds them from the applicant view and keeps the rest", () => {
+    expect(applicantVisibleFields(schema).map((f) => f.id)).toEqual([
+      "first_name",
+      "travel",
+      "travel_origin",
+    ]);
+  });
+
+  it("returns the same array when nothing is hidden", () => {
+    const plain = [field({ id: "a" }), field({ id: "b" })];
+    expect(applicantVisibleFields(plain)).toBe(plain);
+    expect(hiddenFieldIds(plain).size).toBe(0);
   });
 });
