@@ -1,0 +1,124 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  buildCityLayout,
+  buildQrModules,
+  createRng,
+  finderKind,
+  hashSeed,
+  HEIGHT_STEP,
+  modulesToSvgPath,
+  QUIET_ZONE,
+} from "./qrCity";
+
+const USER_ID = "3f2d9c6e-8a1b-4c7d-9e0f-123456789abc";
+
+describe("buildQrModules", () => {
+  it("encodes a UUID as a 29x29 (version 3) code", () => {
+    const modules = buildQrModules(USER_ID);
+    expect(modules).toHaveLength(29);
+    expect(modules.every((row) => row.length === 29)).toBe(true);
+  });
+
+  it("has the three finder patterns in the corners", () => {
+    const modules = buildQrModules(USER_ID);
+    const n = modules.length;
+    for (const [r0, c0] of [
+      [0, 0],
+      [0, n - 7],
+      [n - 7, 0],
+    ]) {
+      expect(modules[r0][c0]).toBe(true);
+      expect(modules[r0 + 1][c0 + 1]).toBe(false);
+      expect(modules[r0 + 3][c0 + 3]).toBe(true);
+    }
+  });
+});
+
+describe("hashSeed / createRng", () => {
+  it("is deterministic and seed-sensitive", () => {
+    expect(hashSeed(USER_ID)).toBe(hashSeed(USER_ID));
+    expect(hashSeed(USER_ID)).not.toBe(hashSeed(USER_ID + "x"));
+
+    const a = createRng(42);
+    const b = createRng(42);
+    const c = createRng(43);
+    const first = a();
+    expect(first).toBe(b());
+    expect(first).not.toBe(c());
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(first).toBeLessThan(1);
+  });
+});
+
+describe("finderKind", () => {
+  it.each([
+    [0, 0, "finder-ring"],
+    [3, 3, "finder-core"],
+    [2, 4, "finder-core"],
+    [1, 1, "finder-ring"],
+    [0, 22, "finder-ring"],
+    [3, 25, "finder-core"],
+    [25, 3, "finder-core"],
+    [22, 22, null],
+    [10, 10, null],
+    [7, 7, null],
+  ] as const)("row %i col %i -> %s", (row, col, expected) => {
+    expect(finderKind(row, col, 29)).toBe(expected);
+  });
+});
+
+describe("buildCityLayout", () => {
+  it("places exactly one building on every dark module", () => {
+    const layout = buildCityLayout(USER_ID);
+    const dark = layout.modules.flat().filter(Boolean).length;
+    expect(layout.cells).toHaveLength(dark);
+    expect(layout.plateSize).toBe(layout.moduleCount + QUIET_ZONE * 2);
+    for (const cell of layout.cells) {
+      expect(layout.modules[cell.row][cell.col]).toBe(true);
+    }
+  });
+
+  it("snaps heights to the window texture step", () => {
+    const layout = buildCityLayout(USER_ID);
+    for (const cell of layout.cells) {
+      expect(cell.height).toBeGreaterThan(0);
+      expect((cell.height / HEIGHT_STEP) % 1).toBe(0);
+    }
+  });
+
+  it("makes the finder cores the tallest landmarks", () => {
+    const layout = buildCityLayout(USER_ID);
+    const cores = layout.cells.filter((c) => c.kind === "finder-core");
+    const rest = layout.cells.filter((c) => c.kind !== "finder-core");
+    expect(cores).toHaveLength(27);
+    const coreHeight = cores[0].height;
+    expect(cores.every((c) => c.height === coreHeight)).toBe(true);
+    expect(Math.max(...rest.map((c) => c.height))).toBeLessThan(coreHeight);
+  });
+
+  it("gives the same hacker the same skyline and different hackers different ones", () => {
+    const a = buildCityLayout(USER_ID);
+    const b = buildCityLayout(USER_ID);
+    const other = buildCityLayout("9e0f1234-5678-4abc-8def-3f2d9c6e8a1b");
+    expect(a.cells).toEqual(b.cells);
+    const heights = (layout: typeof a) =>
+      layout.cells.map((c) => `${c.row},${c.col}:${c.height}`).join("|");
+    expect(heights(a)).not.toBe(heights(other));
+  });
+});
+
+describe("modulesToSvgPath", () => {
+  it("merges horizontal runs and offsets by the quiet zone", () => {
+    const modules = [
+      [true, true, false],
+      [false, true, false],
+      [false, false, false],
+    ];
+    expect(modulesToSvgPath(modules, 4)).toBe("M4 4h2v1h-2zM5 5h1v1h-1z");
+  });
+
+  it("returns an empty path for an all-light matrix", () => {
+    expect(modulesToSvgPath([[false]], 0)).toBe("");
+  });
+});
