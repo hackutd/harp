@@ -1,5 +1,7 @@
 import qrcode from "qrcode-generator";
 
+import type { Module } from "./footprint";
+
 /** Plain modules of padding around the code, as the QR spec requires. */
 export const QUIET_ZONE = 4;
 export const FINDER_SIZE = 7;
@@ -26,11 +28,13 @@ export type CellKind = "finder-ring" | "finder-core" | "building";
 export type WindowPalette = 0 | 1;
 
 export interface CityCell {
+  /** Bounding box of the footprint, in modules. */
   row: number;
   col: number;
-  /** Footprint in modules; merged blocks cover several dark modules. */
   w: number;
   h: number;
+  /** The dark modules this building stands on (4-connected, same kind). */
+  modules: Module[];
   kind: CellKind;
   height: number;
   palette: WindowPalette;
@@ -61,8 +65,9 @@ const BILLBOARD_CHANCE = 0.14;
 const CRANE_CHANCE = 0.3;
 /** Only blocks at least this tall get a crane. */
 export const CRANE_MIN_HEIGHT = 8;
-/** Adjacent dark modules of the same kind merge into blocks up to this size. */
-export const MAX_FOOTPRINT = 3;
+/** Connected dark modules grow into one building of up to this many modules. */
+export const MIN_REGION = 8;
+export const MAX_REGION = 20;
 
 export function buildQrModules(value: string): boolean[][] {
   const qr = qrcode(0, "M");
@@ -129,6 +134,58 @@ function snap(height: number): number {
   return Math.round(height / HEIGHT_STEP) * HEIGHT_STEP;
 }
 
+/**
+ * Flood-fills from a seed through free modules of the same kind, always
+ * taking the frontier module that keeps the bounding box smallest so the
+ * footprint stays blob-shaped rather than snaking across the code.
+ */
+function growRegion(
+  row: number,
+  col: number,
+  kind: CellKind,
+  limit: number,
+  free: (row: number, col: number, kind: CellKind) => boolean,
+): Module[] {
+  const region: Module[] = [[row, col]];
+  const inRegion = new Set([`${row},${col}`]);
+  let top = row;
+  let bottom = row;
+  let left = col;
+  let right = col;
+
+  while (region.length < limit) {
+    let best: Module | null = null;
+    let bestArea = Infinity;
+    for (const [r, c] of region) {
+      const neighbours: Module[] = [
+        [r - 1, c],
+        [r + 1, c],
+        [r, c - 1],
+        [r, c + 1],
+      ];
+      for (const [nr, nc] of neighbours) {
+        if (nr < 0 || nc < 0 || inRegion.has(`${nr},${nc}`)) continue;
+        if (!free(nr, nc, kind)) continue;
+        const area =
+          (Math.max(bottom, nr) - Math.min(top, nr) + 1) *
+          (Math.max(right, nc) - Math.min(left, nc) + 1);
+        if (area < bestArea) {
+          bestArea = area;
+          best = [nr, nc];
+        }
+      }
+    }
+    if (!best) break;
+    region.push(best);
+    inRegion.add(`${best[0]},${best[1]}`);
+    top = Math.min(top, best[0]);
+    bottom = Math.max(bottom, best[0]);
+    left = Math.min(left, best[1]);
+    right = Math.max(right, best[1]);
+  }
+  return region;
+}
+
 export function buildCityLayout(value: string): CityLayout {
   const modules = buildQrModules(value);
   const moduleCount = modules.length;
@@ -137,6 +194,8 @@ export function buildCityLayout(value: string): CityLayout {
   const taken = modules.map((row) => row.map(() => false));
 
   const free = (row: number, col: number, kind: CellKind) =>
+    row >= 0 &&
+    col >= 0 &&
     row < moduleCount &&
     col < moduleCount &&
     modules[row][col] &&
@@ -147,21 +206,18 @@ export function buildCityLayout(value: string): CityLayout {
     for (let col = 0; col < moduleCount; col++) {
       if (!modules[row][col] || taken[row][col]) continue;
       const kind = finderKind(row, col, moduleCount) ?? "building";
-
-      let w = 1;
-      while (w < MAX_FOOTPRINT && free(row, col + w, kind)) w++;
-      let h = 1;
-      while (h < MAX_FOOTPRINT) {
-        let rowFree = true;
-        for (let c = col; c < col + w; c++) {
-          if (!free(row + h, c, kind)) rowFree = false;
-        }
-        if (!rowFree) break;
-        h++;
-      }
-      for (let r = row; r < row + h; r++) {
-        for (let c = col; c < col + w; c++) taken[r][c] = true;
-      }
+      const limit =
+        kind === "building"
+          ? MIN_REGION + Math.floor(rng() * (MAX_REGION - MIN_REGION + 1))
+          : Infinity;
+      const region = growRegion(row, col, kind, limit, free);
+      for (const [r, c] of region) taken[r][c] = true;
+      const rows = region.map(([r]) => r);
+      const cols = region.map(([, c]) => c);
+      const top = Math.min(...rows);
+      const left = Math.min(...cols);
+      const w = Math.max(...cols) - left + 1;
+      const h = Math.max(...rows) - top + 1;
 
       const palette: WindowPalette = rng() < 0.5 ? 0 : 1;
       const tint = Math.floor(rng() * FACADE_COLORS.length);
@@ -183,10 +239,11 @@ export function buildCityLayout(value: string): CityLayout {
         height >= CRANE_MIN_HEIGHT &&
         rng() < CRANE_CHANCE;
       cells.push({
-        row,
-        col,
+        row: top,
+        col: left,
         w,
         h,
+        modules: region,
         kind,
         height,
         palette,

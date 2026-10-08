@@ -4,6 +4,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
+import { footprintOutline } from "./footprint";
 import {
   type CityCell,
   type CityLayout,
@@ -24,11 +25,10 @@ const TOP_ELEVATION = Math.PI / 2;
 const CAMERA_DISTANCE = 160;
 /** Fraction of the plate size used as the ortho half-extent in the iso view. */
 const ISO_FRAME_SCALE = 0.78;
-const ISO_TARGET_Y = 3.5;
+const ISO_TARGET_Y = 6.5;
 
 /** Gap between a block and the edge of the modules it covers. */
 const BUILDING_GAP = 0.16;
-const ROOF_THICKNESS = 0.08;
 const PLATE_THICKNESS = 1;
 const PLAZA_THICKNESS = 0.06;
 
@@ -122,26 +122,56 @@ function paintBillboardTexture(seed: number) {
   return texture;
 }
 
-function groupKey(cell: CityCell): string {
-  return `${cell.w}:${cell.h}:${cell.height}:${cell.palette}`;
+/** The footprint module nearest the bounding-box centre, for rooftop props. */
+function roofModule(cell: CityCell): [number, number] {
+  const cr = cell.row + (cell.h - 1) / 2;
+  const cc = cell.col + (cell.w - 1) / 2;
+  return cell.modules.reduce((best, m) =>
+    Math.hypot(m[0] - cr, m[1] - cc) < Math.hypot(best[0] - cr, best[1] - cc)
+      ? m
+      : best,
+  );
 }
 
 /**
- * Unit-height box with its base at y=0 whose side-face UVs span the face in
- * module units, so one repeating window texture fits every block size.
+ * Extrudes a footprint straight up. Group 0 is the caps (roof), group 1 the
+ * walls, whose UVs are rescaled so one repeating window texture fits any
+ * height: u runs in module units, v in window rows.
  */
-function createBlockGeometry(w: number, h: number, height: number) {
-  const geometry = new THREE.BoxGeometry(w - BUILDING_GAP, 1, h - BUILDING_GAP);
-  geometry.translate(0, 0.5, 0);
+function createFootprintGeometry(
+  cell: CityCell,
+  moduleCount: number,
+): THREE.BufferGeometry {
+  const half = moduleCount / 2;
+  const shapes = footprintOutline(cell.modules, BUILDING_GAP).map((outline) => {
+    const toVec = ([x, y]: [number, number]) =>
+      new THREE.Vector2(x - half, -(y - half));
+    const shape = new THREE.Shape(outline.outer.map(toVec));
+    for (const hole of outline.holes) {
+      shape.holes.push(new THREE.Path(hole.map(toVec)));
+    }
+    return shape;
+  });
+  const geometry = new THREE.ExtrudeGeometry(shapes, {
+    depth: cell.height,
+    bevelEnabled: false,
+  });
+  geometry.rotateX(-Math.PI / 2);
   const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
-  const v = (height * WINDOW_ROWS_PER_UNIT) / WINDOW_TEXTURE_ROWS;
-  // BoxGeometry face order: +x, -x, +y, -y, +z, -z; four vertices each.
-  const faceWidth = [h, h, 0, 0, w, w];
-  for (let i = 0; i < uv.count; i++) {
-    const width = faceWidth[Math.floor(i / 4)];
-    uv.setXY(i, uv.getX(i) * width, uv.getY(i) * v);
+  const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+  const walls = geometry.groups[1];
+  if (walls) {
+    const index = geometry.getIndex();
+    const rows = WINDOW_ROWS_PER_UNIT / WINDOW_TEXTURE_ROWS;
+    const seen = new Set<number>();
+    for (let i = walls.start; i < walls.start + walls.count; i++) {
+      const v = index ? index.getX(i) : i;
+      if (seen.has(v)) continue;
+      seen.add(v);
+      uv.setXY(v, uv.getX(v), position.getY(v) * rows);
+    }
+    uv.needsUpdate = true;
   }
-  uv.needsUpdate = true;
   return geometry;
 }
 
@@ -397,71 +427,39 @@ export class QrCityScene {
   }
 
   private buildBuildings(layout: CityLayout) {
-    const n = layout.moduleCount;
-    const groups = new Map<string, CityCell[]>();
-    for (const cell of layout.cells) {
-      const key = groupKey(cell);
-      const group = groups.get(key);
-      if (group) group.push(cell);
-      else groups.set(key, [cell]);
-    }
-
     const seed = hashSeed(layout.value);
-    const materials: Record<WindowPalette, THREE.MeshStandardMaterial> = {
-      0: this.createBuildingMaterial(paintWindowTexture(0, seed)),
-      1: this.createBuildingMaterial(paintWindowTexture(1, seed)),
+    const textures: Record<WindowPalette, THREE.CanvasTexture> = {
+      0: this.track(paintWindowTexture(0, seed)),
+      1: this.track(paintWindowTexture(1, seed)),
     };
-
-    const roofGeometry = this.track(
-      new THREE.BoxGeometry(1, ROOF_THICKNESS, 1),
-    );
+    const facades = new Map<string, THREE.MeshStandardMaterial>();
+    const facade = (palette: WindowPalette, tint: number) => {
+      const key = `${palette}:${tint}`;
+      let material = facades.get(key);
+      if (!material) {
+        material = this.createBuildingMaterial(
+          textures[palette],
+          FACADE_COLORS[tint],
+        );
+        facades.set(key, material);
+      }
+      return material;
+    };
     // Rooftops are unlit so the top-down view is a flat, uniform dark.
     const roofMaterial = this.track(
       new THREE.MeshBasicMaterial({ color: ROOF_COLOR }),
     );
-    const roofs = new THREE.InstancedMesh(
-      roofGeometry,
-      roofMaterial,
-      layout.cells.length,
-    );
 
-    const matrix = new THREE.Matrix4();
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
-    const facades = FACADE_COLORS.map((hex) => new THREE.Color(hex));
-    let roofIndex = 0;
-
-    for (const cells of groups.values()) {
-      const { w, h, height, palette } = cells[0];
-      const geometry = this.track(createBlockGeometry(w, h, height));
-      const bodies = new THREE.InstancedMesh(
-        geometry,
-        materials[palette],
-        cells.length,
+    for (const cell of layout.cells) {
+      const geometry = this.track(
+        createFootprintGeometry(cell, layout.moduleCount),
       );
-      cells.forEach((cell, i) => {
-        bodies.setColorAt(i, facades[cell.tint]);
-        position.set(
-          cell.col + cell.w / 2 - n / 2,
-          0,
-          cell.row + cell.h / 2 - n / 2,
-        );
-        scale.set(1, cell.height, 1);
-        matrix.compose(position, quaternion, scale);
-        bodies.setMatrixAt(i, matrix);
-
-        position.y = cell.height + ROOF_THICKNESS / 2;
-        scale.set(cell.w - BUILDING_GAP, 1, cell.h - BUILDING_GAP);
-        matrix.compose(position, quaternion, scale);
-        roofs.setMatrixAt(roofIndex++, matrix);
-      });
-      bodies.instanceMatrix.needsUpdate = true;
-      this.scene.add(bodies);
+      const mesh = new THREE.Mesh(geometry, [
+        roofMaterial,
+        facade(cell.palette, cell.tint),
+      ]);
+      this.scene.add(mesh);
     }
-
-    roofs.instanceMatrix.needsUpdate = true;
-    this.scene.add(roofs);
   }
 
   private buildProps(layout: CityLayout) {
@@ -515,18 +513,19 @@ export class QrCityScene {
 
     for (const cell of layout.cells) {
       if (!cell.billboard && !cell.crane) continue;
+      const [row, col] = roofModule(cell);
+      const inFootprint = (r: number, c: number) =>
+        cell.modules.some(([mr, mc]) => mr === r && mc === c);
       const anchor = new THREE.Group();
-      anchor.position.set(
-        cell.col + cell.w / 2 - n / 2,
-        cell.height + ROOF_THICKNESS,
-        cell.row + cell.h / 2 - n / 2,
-      );
+      anchor.position.set(col + 0.5 - n / 2, cell.height, row + 0.5 - n / 2);
 
       if (cell.billboard) {
-        const panelW = Math.min(cell.w, 2) - 0.3;
+        const wide = inFootprint(row, col + 1);
+        const panelW = wide ? 1.7 : 0.8;
         const sign = new THREE.Group();
-        // Sits on the far edge of the roof so it faces the iso camera.
-        sign.position.z = -(cell.h - BUILDING_GAP) / 2 + 0.12;
+        // Sits on the far edge of the module so it faces the iso camera.
+        sign.position.z = -(1 - BUILDING_GAP) / 2 + 0.12;
+        sign.position.x = wide ? 0.5 : 0;
         sign.add(box(dark, [0.08, 0.7, 0.08], [-panelW / 2 + 0.1, 0.35, 0]));
         sign.add(box(dark, [0.08, 0.7, 0.08], [panelW / 2 - 0.1, 0.35, 0]));
         sign.add(
@@ -620,11 +619,11 @@ export class QrCityScene {
     this.helicopter.position.set(HELI_RADIUS, HELI_HEIGHT, 0);
   }
 
-  private createBuildingMaterial(texture: THREE.CanvasTexture) {
+  private createBuildingMaterial(texture: THREE.CanvasTexture, color: string) {
     this.track(texture);
     const material = this.track(
       new THREE.MeshStandardMaterial({
-        color: 0xffffff,
+        color,
         roughness: 0.7,
         metalness: 0.1,
         emissive: 0xffffff,

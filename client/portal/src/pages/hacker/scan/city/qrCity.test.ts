@@ -9,7 +9,7 @@ import {
   finderKind,
   hashSeed,
   HEIGHT_STEP,
-  MAX_FOOTPRINT,
+  MAX_REGION,
   modulesToSvgPath,
   QUIET_ZONE,
 } from "./qrCity";
@@ -78,20 +78,22 @@ describe("buildCityLayout", () => {
     expect(layout.plateSize).toBe(layout.moduleCount + QUIET_ZONE * 2);
     const covered = new Set<string>();
     for (const cell of layout.cells) {
-      expect(cell.w).toBeGreaterThanOrEqual(1);
-      expect(cell.w).toBeLessThanOrEqual(MAX_FOOTPRINT);
-      expect(cell.h).toBeGreaterThanOrEqual(1);
-      expect(cell.h).toBeLessThanOrEqual(MAX_FOOTPRINT);
-      for (let r = cell.row; r < cell.row + cell.h; r++) {
-        for (let c = cell.col; c < cell.col + cell.w; c++) {
-          expect(layout.modules[r][c]).toBe(true);
-          expect(covered.has(`${r},${c}`)).toBe(false);
-          covered.add(`${r},${c}`);
-        }
+      expect(cell.modules.length).toBeGreaterThanOrEqual(1);
+      if (cell.kind === "building") {
+        expect(cell.modules.length).toBeLessThanOrEqual(MAX_REGION);
+      }
+      for (const [r, c] of cell.modules) {
+        expect(r).toBeGreaterThanOrEqual(cell.row);
+        expect(r).toBeLessThan(cell.row + cell.h);
+        expect(c).toBeGreaterThanOrEqual(cell.col);
+        expect(c).toBeLessThan(cell.col + cell.w);
+        expect(layout.modules[r][c]).toBe(true);
+        expect(covered.has(`${r},${c}`)).toBe(false);
+        covered.add(`${r},${c}`);
       }
     }
     expect(covered.size).toBe(dark);
-    expect(layout.cells.length).toBeLessThan(dark / 2);
+    expect(layout.cells.length).toBeLessThan(dark / 4);
   });
 
   it("tints facades and only puts cranes on tall plain blocks", () => {
@@ -125,6 +127,10 @@ describe("buildCityLayout", () => {
     const rest = layout.cells.filter((c) => c.kind !== "finder-core");
     expect(cores).toHaveLength(3);
     expect(cores.every((c) => c.w === 3 && c.h === 3)).toBe(true);
+    expect(cores.every((c) => c.modules.length === 9)).toBe(true);
+    const rings = layout.cells.filter((c) => c.kind === "finder-ring");
+    expect(rings).toHaveLength(3);
+    expect(rings.every((c) => c.modules.length === 24)).toBe(true);
     const coreHeight = cores[0].height;
     expect(cores.every((c) => c.height === coreHeight)).toBe(true);
     expect(Math.max(...rest.map((c) => c.height))).toBeLessThan(coreHeight);
