@@ -1,13 +1,13 @@
 import {
-  ArrowDown,
-  ClipboardCheck,
-  ClipboardList,
-  Mail,
-  Minus,
-  Plus,
-  Shuffle,
-  ToggleRight,
-} from "lucide-react";
+  IconArrowDown,
+  IconArrowsShuffle,
+  IconClipboardCheck,
+  IconClipboardList,
+  IconMail,
+  IconMinus,
+  IconPlus,
+  IconToggleRight,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -376,7 +376,7 @@ export default function ReviewsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardDescription>Reviews Per Application</CardDescription>
-              <ClipboardList className="size-5 text-muted-foreground" />
+              <IconClipboardList className="size-5 text-muted-foreground" />
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -396,7 +396,7 @@ export default function ReviewsPage() {
                 }
                 className="size-7 cursor-pointer"
               >
-                <Minus className="size-3" />
+                <IconMinus className="size-3" />
               </Button>
               <CardTitle className="w-8 text-center text-xl font-semibold tabular-nums">
                 {reviewsPerApp ?? "—"}
@@ -418,7 +418,7 @@ export default function ReviewsPage() {
                 }
                 className="size-7 cursor-pointer"
               >
-                <Plus className="size-3" />
+                <IconPlus className="size-3" />
               </Button>
               {savingCount && <Skeleton className="ml-1 size-4 rounded-full" />}
             </div>
@@ -434,7 +434,7 @@ export default function ReviewsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardDescription>Assignment Toggle</CardDescription>
-              <ToggleRight className="size-5 text-muted-foreground" />
+              <IconToggleRight className="size-5 text-muted-foreground" />
             </div>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl font-semibold">
@@ -466,7 +466,7 @@ export default function ReviewsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardDescription>Auto Assign</CardDescription>
-              <Shuffle className="size-5 text-muted-foreground" />
+              <IconArrowsShuffle className="size-5 text-muted-foreground" />
             </div>
             <CardTitle className="text-xl font-semibold">Assign</CardTitle>
             <Button
@@ -488,7 +488,7 @@ export default function ReviewsPage() {
               ) : (
                 <>
                   Assign Reviews
-                  <Shuffle className="ml-1 size-3" />
+                  <IconArrowsShuffle className="ml-1 size-3" />
                 </>
               )}
             </Button>
@@ -549,11 +549,12 @@ export default function ReviewsPage() {
       )}
 
       {/* Applications Table Section */}
-      <div className="shrink-0 flex flex-wrap items-center gap-3">
+      {/* @container: the filter tabs fold into a dropdown when this row
+          is narrow (see FilterTabs). */}
+      <div className="@container shrink-0 flex flex-wrap items-center gap-3">
         <div>
           <ReviewStatusTabs
             stats={stats}
-            loading={tableLoading}
             currentStatus={currentStatus ?? "submitted"}
             onStatusChange={handleStatusFilter}
           />
@@ -585,7 +586,7 @@ export default function ReviewsPage() {
                 </Badge>
                 {currentSearch && <span>matching "{currentSearch}"</span>}
                 <span className="text-muted-foreground flex items-center gap-0.5">
-                  <ArrowDown className="size-4" />
+                  <IconArrowDown className="size-4" />
                   {currentSortBy === "accept_votes"
                     ? "accept votes"
                     : currentSortBy === "reject_votes"
@@ -596,8 +597,17 @@ export default function ReviewsPage() {
                 </span>
               </CardDescription>
               <div className="flex items-center gap-2">
+                <ReleaseDecisionsButton stats={stats} />
                 <Button
                   variant="outline"
+                  size="sm"
+                  className="cursor-pointer font-light"
+                  onClick={() => setSendEmailsOpen(true)}
+                >
+                  <IconMail className="size-3.5" />
+                  Emails
+                </Button>
+                <Button
                   size="sm"
                   className="cursor-pointer font-light"
                   onClick={() => {
@@ -608,19 +618,9 @@ export default function ReviewsPage() {
                     navigate(`/admin/sa/reviews/grade?${params.toString()}`);
                   }}
                 >
-                  <ClipboardCheck className="size-3.5" />
+                  <IconClipboardCheck className="size-3.5" />
                   Start Grading
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="cursor-pointer font-light"
-                  onClick={() => setSendEmailsOpen(true)}
-                >
-                  <Mail className="size-3.5" />
-                  Emails
-                </Button>
-                <ReleaseDecisionsButton stats={stats} />
               </div>
             </div>
           </CardHeader>

@@ -6,7 +6,7 @@ export default function ApplyPage() {
   const { user } = useUserStore();
 
   return (
-    <div className="min-h-svh bg-white">
+    <div className="min-h-svh bg-surface">
       <ApplicationWizard userEmail={user?.email} />
     </div>
   );

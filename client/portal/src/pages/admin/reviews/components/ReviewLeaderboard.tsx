@@ -1,4 +1,4 @@
-import { Medal, Trophy } from "lucide-react";
+import { IconMedal, IconTrophy } from "@tabler/icons-react";
 import { memo } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,9 +26,9 @@ interface ReviewLeaderboardProps {
 function RankBadge({ rank, completed }: { rank: number; completed: number }) {
   const Icon =
     completed > 0 && rank === 1
-      ? Trophy
+      ? IconTrophy
       : completed > 0 && rank <= 3
-        ? Medal
+        ? IconMedal
         : null;
   return (
     <span className="flex items-center gap-1.5 tabular-nums">
@@ -105,7 +105,7 @@ export const ReviewLeaderboard = memo(function ReviewLeaderboard({
       {loading && (
         <div className="absolute inset-0 bg-background/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+      <Table className="border-collapse [&_th]:border-r [&_th]:border-border [&_td]:border-r [&_td]:border-border [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-20">Rank</TableHead>

@@ -1,11 +1,11 @@
-import { ChevronRight, Users } from "lucide-react";
+import { IconChevronRight, IconUsers } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { fetchDirectoryMe } from "../api";
 import type { DirectoryMe } from "../types";
 
-// Dashboard nudge for confirmed hackers: make a card, or re-confirm a stale
+// Dashboard nudge for confirmed hackers: finish their profile, or re-confirm a stale
 // status when the event is close.
 export function DirectoryPromptBanner() {
   const [me, setMe] = useState<DirectoryMe | null>(null);
@@ -27,23 +27,23 @@ export function DirectoryPromptBanner() {
   const stale = Boolean(me.profile);
   return (
     <Link
-      to="/app/directory/card"
-      className="mt-5 flex items-center gap-3 rounded-xl border border-[#21FFF0]/25 bg-[#0B0C15]/92 bg-[radial-gradient(120%_140%_at_0%_0%,rgba(33,255,240,0.14),rgba(33,255,240,0)_55%)] p-4 transition-colors hover:border-[#21FFF0]/45"
+      to="/app/profile?edit=1"
+      className="hacker-application-card mt-4 flex items-center gap-3 rounded-xl bg-surface p-4 transition-colors hover:bg-surface-2"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#21FFF0]/10 text-[#21FFF0]">
-        <Users className="size-5" strokeWidth={1.75} />
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink/10 text-ink">
+        <IconUsers className="size-5" strokeWidth={1.75} />
       </span>
       <span className="flex-1">
-        <span className="block text-sm font-medium text-white">
-          {stale ? "Is your status still right?" : "See who's attending"}
+        <span className="block text-sm font-medium text-ink">
+          {stale ? "Is your status still right?" : "Open the Directory"}
         </span>
-        <span className="mt-0.5 block text-xs font-light text-white/60">
+        <span className="mt-0.5 block text-xs font-light text-ink/65">
           {stale
-            ? "The event is close. Confirm your card so people know you're still looking."
-            : "Make your directory card to browse other hackers, poke people, and swap Discord."}
+            ? "The event is close. Confirm your status so people know you're still looking."
+            : "Finish your profile to browse other hackers, poke people, and swap Discord."}
         </span>
       </span>
-      <ChevronRight className="size-4 text-white/50" />
+      <IconChevronRight className="size-4 text-ink/65" />
     </Link>
   );
 }

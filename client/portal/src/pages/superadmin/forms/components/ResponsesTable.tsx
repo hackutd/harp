@@ -1,4 +1,8 @@
-import { FileText, Maximize2, ReceiptText } from "lucide-react";
+import {
+  IconArrowsMaximize,
+  IconFileText,
+  IconReceipt,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -34,6 +38,7 @@ import type {
   FetchParams,
 } from "@/pages/admin/all-applicants/types";
 import { formatName } from "@/pages/admin/all-applicants/utils";
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import type { RSVPStatus, TravelStatus } from "@/types";
 
 import { fetchFormResponses } from "../api";
@@ -52,16 +57,16 @@ type TravelFilter = TravelStatus | "all";
 type ReceiptFilter = "all" | "with" | "without";
 
 const statusStyles: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-700",
-  submitted: "bg-blue-100 text-blue-700",
-  accepted: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
-  waitlisted: "bg-amber-100 text-amber-700",
-  pending: "bg-slate-100 text-slate-700",
-  confirmed: "bg-emerald-100 text-emerald-700",
-  declined: "bg-amber-100 text-amber-700",
-  not_requested: "bg-slate-100 text-slate-700",
-  approved: "bg-emerald-100 text-emerald-700",
+  draft: BADGE_COLORS.neutral,
+  submitted: BADGE_COLORS.blue,
+  accepted: BADGE_COLORS.green,
+  rejected: BADGE_COLORS.red,
+  waitlisted: BADGE_COLORS.orange,
+  pending: BADGE_COLORS.neutral,
+  confirmed: BADGE_COLORS.green,
+  declined: BADGE_COLORS.orange,
+  not_requested: BADGE_COLORS.neutral,
+  approved: BADGE_COLORS.green,
 };
 
 function StatusBadge({ value }: { value: string }) {
@@ -125,7 +130,7 @@ function ResponseRow({
           <p className="truncate text-xs text-muted-foreground">{item.email}</p>
         </div>
         <span className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
-          <Maximize2 className="h-4 w-4 text-muted-foreground" />
+          <IconArrowsMaximize className="h-4 w-4 text-muted-foreground" />
         </span>
       </TableCell>
       {form === "application" && (
@@ -151,7 +156,7 @@ function ResponseRow({
       {form === "travel" && (
         <TableCell>
           <span className="inline-flex items-center gap-1.5">
-            <ReceiptText className="size-3.5 text-muted-foreground" />
+            <IconReceipt className="size-3.5 text-muted-foreground" />
             {item.receipt_count}
           </span>
         </TableCell>
@@ -402,9 +407,9 @@ export function ResponsesTable({
             ) : (
               <div className="flex flex-col items-center px-6 py-14 text-center">
                 {form === "travel" ? (
-                  <ReceiptText className="mb-3 size-9 text-muted-foreground/50" />
+                  <IconReceipt className="mb-3 size-9 text-muted-foreground/50" />
                 ) : (
-                  <FileText className="mb-3 size-9 text-muted-foreground/50" />
+                  <IconFileText className="mb-3 size-9 text-muted-foreground/50" />
                 )}
                 <p className="font-medium">No matching people</p>
                 <p className="mt-1 text-sm text-muted-foreground">

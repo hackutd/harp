@@ -1,0 +1,1 @@
+ALTER TABLE pokes DROP COLUMN IF EXISTS seen_at;

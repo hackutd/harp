@@ -13,11 +13,8 @@ import type {
   DirectoryListResponse,
   DirectoryMe,
   DirectoryProfilePayload,
-  HeadshotContentType,
+  UnseenPokes,
 } from "./types";
-
-// Must match the x-goog-content-length-range the backend signs for images.
-export const MAX_HEADSHOT_SIZE_BYTES = 2 * 1024 * 1024;
 
 export function fetchDirectoryMe(
   signal?: AbortSignal,
@@ -47,65 +44,6 @@ export function confirmDirectoryStatus(): Promise<ApiResponse<DirectoryMe>> {
     {},
     "directory status",
   );
-}
-
-export function requestHeadshotUploadURL(
-  contentType: HeadshotContentType,
-): Promise<ApiResponse<{ upload_url: string; headshot_path: string }>> {
-  return postRequest(
-    "/directory/me/headshot-upload-url",
-    { content_type: contentType },
-    "headshot upload url",
-  );
-}
-
-export async function uploadHeadshotToSignedURL(
-  uploadURL: string,
-  file: File,
-): Promise<{ status: number; error?: string }> {
-  try {
-    const response = await fetch(uploadURL, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type,
-        "x-goog-content-length-range": `0,${MAX_HEADSHOT_SIZE_BYTES}`,
-      },
-      body: file,
-    });
-    if (!response.ok) {
-      return {
-        status: response.status,
-        error: `Photo upload failed with status ${response.status}`,
-      };
-    }
-    return { status: response.status };
-  } catch (error) {
-    return {
-      status: 500,
-      error: error instanceof Error ? error.message : "Network error",
-    };
-  }
-}
-
-export function fetchDiscordAuthorizeURL(): Promise<
-  ApiResponse<{ url: string }>
-> {
-  return getRequest("/directory/me/discord/authorize", "Discord link");
-}
-
-export function linkDiscord(
-  code: string,
-  state: string,
-): Promise<ApiResponse<DirectoryMe>> {
-  return postRequest<DirectoryMe>(
-    "/directory/me/discord",
-    { code, state },
-    "Discord link",
-  );
-}
-
-export function unlinkDiscord(): Promise<ApiResponse<DirectoryMe>> {
-  return deleteRequest<DirectoryMe>("/directory/me/discord", "Discord link");
 }
 
 export function directoryQuery(
@@ -139,6 +77,24 @@ export function fetchDirectoryPokes(
   signal?: AbortSignal,
 ): Promise<ApiResponse<{ cards: DirectoryCardData[] }>> {
   return getRequest("/directory/pokes", "pokes", signal);
+}
+
+export function fetchSentPokes(
+  signal?: AbortSignal,
+): Promise<ApiResponse<{ cards: DirectoryCardData[] }>> {
+  return getRequest("/directory/pokes/sent", "pokes", signal);
+}
+
+export function fetchUnseenPokes(
+  signal?: AbortSignal,
+): Promise<ApiResponse<UnseenPokes>> {
+  return getRequest<UnseenPokes>("/directory/pokes/unseen", "pokes", signal);
+}
+
+// through is the related_at of the newest poke shown, passed back verbatim:
+// a Date would drop the microseconds and leave that poke unseen.
+export function markPokesSeen(through: string): Promise<ApiResponse<unknown>> {
+  return postRequest("/directory/pokes/seen", { through }, "pokes");
 }
 
 export function fetchDirectoryContacts(

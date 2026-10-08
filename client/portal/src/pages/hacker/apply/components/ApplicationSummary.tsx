@@ -5,6 +5,7 @@ import {
   isFieldVisible,
   stripLabelLinks,
 } from "@/shared/lib/schema-utils";
+import { cn } from "@/shared/lib/utils";
 import type { ApplicationSchemaField } from "@/types";
 
 interface ApplicationSummaryProps {
@@ -14,6 +15,7 @@ interface ApplicationSummaryProps {
   hasResume: boolean;
   /** Section that hosts the resume; defaults to "links". Pass null to omit the resume row (e.g. RSVP schemas). */
   resumeSectionId?: string | null;
+  cardClassName?: string;
 }
 
 function SummaryRow({
@@ -32,8 +34,8 @@ function SummaryRow({
   if (stacked) {
     return (
       <div className="space-y-1 py-2">
-        <span className="block text-xs font-light text-[#8A8A8A]">{label}</span>
-        <p className="text-sm font-light break-words whitespace-pre-wrap text-black">
+        <span className="block text-xs font-light text-ink/65">{label}</span>
+        <p className="text-sm font-light break-words whitespace-pre-wrap text-ink">
           {value || "Not provided"}
         </p>
       </div>
@@ -50,8 +52,8 @@ function SummaryRow({
         title={truncateLabel ? label : undefined}
         className={
           truncateLabel
-            ? "min-w-0 flex-1 truncate text-xs font-light text-[#8A8A8A]"
-            : "max-w-full text-xs font-light break-words text-[#8A8A8A]"
+            ? "min-w-0 flex-1 truncate text-xs font-light text-ink/65"
+            : "max-w-full text-xs font-light break-words text-ink/65"
         }
       >
         {label}
@@ -59,8 +61,8 @@ function SummaryRow({
       <span
         className={
           truncateLabel
-            ? "shrink-0 text-right text-sm font-light text-black"
-            : "ml-auto max-w-full text-right text-sm font-light break-words text-black"
+            ? "shrink-0 text-right text-sm font-light text-ink"
+            : "ml-auto max-w-full text-right text-sm font-light break-words text-ink"
         }
       >
         {value || "Not provided"}
@@ -80,6 +82,7 @@ export function ApplicationSummary({
   userEmail,
   hasResume,
   resumeSectionId = "links",
+  cardClassName,
 }: ApplicationSummaryProps) {
   const sections = deriveSections(schema);
   const grouped = groupFieldsBySection(schema);
@@ -93,12 +96,12 @@ export function ApplicationSummary({
         return (
           <div
             key={sectionId}
-            className="rounded-xl border border-[#E5E5E5] p-4"
+            className={cn("rounded-xl border border-ink/10 p-4", cardClassName)}
           >
-            <h3 className="mb-2 text-sm font-medium text-black">
+            <h3 className="mb-2 text-sm font-medium text-ink">
               {sectionLabel}
             </h3>
-            <div className="divide-y divide-[#F5F5F5]">
+            <div className="divide-y divide-ink/10">
               {sectionId === "personal" && userEmail && (
                 <SummaryRow label="Email" value={userEmail} />
               )}

@@ -1,4 +1,4 @@
-import { ExternalLink, FileText } from "lucide-react";
+import { IconExternalLink, IconFileText } from "@tabler/icons-react";
 import { memo, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -76,9 +76,7 @@ export const TravelRSVPSection = memo(function TravelRSVPSection({
         Travel RSVP
       </h3>
       <div className="space-y-3">
-        <Badge className="bg-green-100 text-green-800">
-          Travel details submitted
-        </Badge>
+        <Badge variant="green">Travel details submitted</Badge>
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           {answeredFields.map((field) => (
@@ -108,9 +106,9 @@ export const TravelRSVPSection = memo(function TravelRSVPSection({
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline cursor-pointer"
                   >
-                    <FileText className="h-3.5 w-3.5" />
+                    <IconFileText className="h-3.5 w-3.5" />
                     Receipt {index + 1}
-                    <ExternalLink className="h-3 w-3" />
+                    <IconExternalLink className="h-3 w-3" />
                   </a>
                 ))
               )}

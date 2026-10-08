@@ -1,11 +1,11 @@
 import {
-  AlertCircle,
-  CheckCircle2,
-  MinusCircle,
-  PlusCircle,
-  ScanLine,
-  XCircle,
-} from "lucide-react";
+  IconAlertCircle,
+  IconCircleCheck,
+  IconCircleMinus,
+  IconCirclePlus,
+  IconCircleX,
+  IconScan,
+} from "@tabler/icons-react";
 import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -80,9 +80,9 @@ export function ScannerDialog() {
             }`}
           >
             {spends ? (
-              <MinusCircle className="size-5 shrink-0" />
+              <IconCircleMinus className="size-5 shrink-0" />
             ) : (
-              <PlusCircle className="size-5 shrink-0" />
+              <IconCirclePlus className="size-5 shrink-0" />
             )}
             <p>
               Each scan{" "}
@@ -101,7 +101,7 @@ export function ScannerDialog() {
           {error ? (
             <div className="flex aspect-square items-center justify-center rounded-lg bg-muted p-6 text-center text-sm text-muted-foreground">
               <div className="space-y-2">
-                <AlertCircle className="mx-auto size-8" />
+                <IconAlertCircle className="mx-auto size-8" />
                 <p>{error}</p>
               </div>
             </div>
@@ -135,9 +135,9 @@ export function ScannerDialog() {
               }`}
             >
               {lastScanResult.success ? (
-                <CheckCircle2 className="size-12" />
+                <IconCircleCheck className="size-12" />
               ) : (
-                <XCircle className="size-12" />
+                <IconCircleX className="size-12" />
               )}
               <p className="text-lg font-medium">{lastScanResult.message}</p>
               {lastScanResult.success &&
@@ -162,7 +162,7 @@ export function ScannerDialog() {
                 </p>
               )}
               <Button variant="outline" onClick={handleResume}>
-                <ScanLine className="mr-2 size-4" />
+                <IconScan className="mr-2 size-4" />
                 Scan Next
               </Button>
             </div>

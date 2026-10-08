@@ -1,25 +1,31 @@
-import type { LucideIcon } from "lucide-react";
-import { Github, Globe, Instagram, Link2 } from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
+import {
+  IconBrandInstagram,
+  IconLink,
+  IconWorld,
+  type TablerIcon,
+} from "@tabler/icons-react";
+import type { ComponentType } from "react";
 
 import {
+  type BrandIconProps,
   DevpostIcon,
   DiscordIcon,
+  GitHubIcon,
   NotionIcon,
 } from "./hacker-link-brand-icons";
 
 export type HackerLinkIconComponent =
-  | LucideIcon
-  | ComponentType<SVGProps<SVGSVGElement>>;
+  | TablerIcon
+  | ComponentType<BrandIconProps>;
 
 export const HACKER_LINK_ICONS: Record<string, HackerLinkIconComponent> = {
   devpost: DevpostIcon,
   discord: DiscordIcon,
-  github: Github,
-  instagram: Instagram,
-  globe: Globe,
+  github: GitHubIcon,
+  instagram: IconBrandInstagram,
+  globe: IconWorld,
   notion: NotionIcon,
-  link: Link2,
+  link: IconLink,
 };
 
 export const HACKER_LINK_ICON_OPTIONS = [
@@ -33,5 +39,5 @@ export const HACKER_LINK_ICON_OPTIONS = [
 ] as const;
 
 export function hackerLinkIcon(icon: string): HackerLinkIconComponent {
-  return HACKER_LINK_ICONS[icon] ?? Link2;
+  return HACKER_LINK_ICONS[icon] ?? IconLink;
 }

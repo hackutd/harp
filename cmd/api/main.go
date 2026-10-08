@@ -138,10 +138,6 @@ func main() {
 		},
 		aiDetectorURL:   env.GetString("AI_DETECTOR_URL", ""),
 		aiDetectorToken: env.GetString("AI_DETECTOR_TOKEN", ""),
-		discord: discordConfig{
-			clientID:     env.GetString("DISCORD_CLIENT_ID", ""),
-			clientSecret: env.GetString("DISCORD_CLIENT_SECRET", ""),
-		},
 	}
 
 	// Init Logger

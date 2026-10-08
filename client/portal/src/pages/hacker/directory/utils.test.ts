@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 import { directoryQuery } from "./api";
 import { EMPTY_FILTERS } from "./store";
 import { directoryCard } from "./testFixtures";
-import { discordLink, initials, intentLabel, roleLabel } from "./utils";
+import {
+  groupPokes,
+  initials,
+  intentLabel,
+  pokedYouSummary,
+  roleLabel,
+} from "./utils";
 
 describe("intentLabel", () => {
   it.each([
@@ -27,18 +33,6 @@ describe("initials", () => {
   });
 });
 
-describe("discordLink", () => {
-  it("deep links when the Discord ID is known", () => {
-    expect(discordLink(directoryCard({ discord_user_id: "42" }))).toBe(
-      "https://discord.com/users/42",
-    );
-  });
-
-  it("returns null with only a username", () => {
-    expect(discordLink(directoryCard({ discord_username: "bob" }))).toBeNull();
-  });
-});
-
 describe("directoryQuery", () => {
   it("is empty with no filters", () => {
     expect(directoryQuery(EMPTY_FILTERS)).toBe("");
@@ -47,7 +41,7 @@ describe("directoryQuery", () => {
   it("encodes every filter and the cursor", () => {
     const qs = directoryQuery(
       {
-        intents: ["partial_team", "open_to_collab"],
+        intents: ["partial_team", "team_set"],
         tags: ["AI/ML", "Web Dev"],
         q: "  rust ",
         checkedIn: true,
@@ -56,7 +50,7 @@ describe("directoryQuery", () => {
       "abc",
     );
     const params = new URLSearchParams(qs.slice(1));
-    expect(params.get("intent")).toBe("partial_team,open_to_collab");
+    expect(params.get("intent")).toBe("partial_team,team_set");
     expect(params.get("tags")).toBe("AI/ML,Web Dev");
     expect(params.get("q")).toBe("rust");
     expect(params.get("checked_in")).toBe("true");
@@ -70,5 +64,47 @@ describe("roleLabel", () => {
     expect(roleLabel("ml_ai")).toBe("ML / AI");
     expect(roleLabel("fullstack")).toBe("Full stack");
     expect(roleLabel("dj")).toBe("dj");
+  });
+});
+
+describe("pokedYouSummary", () => {
+  const poker = (display_name: string) => ({
+    user_id: display_name,
+    display_name,
+    headshot_url: null,
+  });
+  const ada = poker("Ada Lovelace");
+  const grace = poker("Grace Hopper");
+  const alan = poker("Alan Turing");
+
+  it.each([
+    [1, [ada], "Ada poked you"],
+    [2, [ada, grace], "Ada and Grace poked you"],
+    [3, [ada, grace, alan], "Ada, Grace and 1 other poked you"],
+    [7, [ada, grace, alan], "Ada, Grace and 5 others poked you"],
+  ])("%i pokes", (count, pokers, out) => {
+    expect(pokedYouSummary({ count, pokers })).toBe(out);
+  });
+});
+
+describe("groupPokes", () => {
+  const waiting = directoryCard({ user_id: "w", poked_me: true });
+  const matched = directoryCard({
+    user_id: "m",
+    poked_me: true,
+    poked_by_me: true,
+    matched: true,
+  });
+  const sent = directoryCard({ user_id: "s", poked_by_me: true });
+
+  it("splits received and sent pokes into the three sections", () => {
+    const groups = groupPokes([waiting, matched], [{ ...matched }, sent]);
+    expect(groups.waiting).toEqual([waiting]);
+    expect(groups.matched).toEqual([matched]);
+    expect(groups.sent).toEqual([sent]);
+  });
+
+  it("leaves every section empty with no pokes", () => {
+    expect(groupPokes([], [])).toEqual({ waiting: [], matched: [], sent: [] });
   });
 });

@@ -122,6 +122,24 @@ func TestIntegrationAttendeeDirectory(t *testing.T) {
 	if err != nil || len(pokes) != 1 || pokes[0].UserID != alice || !pokes[0].PokedMe || pokes[0].Matched {
 		t.Fatalf("bob's pokes: %+v %v", pokes, err)
 	}
+	sent, err := dir.ListPokedByMe(ctx, viewer)
+	if err != nil || len(sent) != 1 || sent[0].UserID != bob || !sent[0].PokedByMe || sent[0].Matched {
+		t.Fatalf("alice's sent pokes: %+v %v", sent, err)
+	}
+	if sent, _ := dir.ListPokedByMe(ctx, bobViewer); len(sent) != 0 {
+		t.Fatalf("bob hasn't poked anyone: %+v", sent)
+	}
+	unseen, err := dir.ListUnseenPokes(ctx, bob, 3)
+	if err != nil || unseen.Count != 1 || len(unseen.Pokers) != 1 || unseen.Pokers[0].UserID != alice {
+		t.Fatalf("bob's unseen pokes: %+v %v", unseen, err)
+	}
+	// Marking through a time before the poke leaves it unseen.
+	if err := dir.MarkPokesSeen(ctx, bob, pokes[0].RelatedAt.Add(-time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if unseen, _ := dir.ListUnseenPokes(ctx, bob, 3); unseen.Count != 1 {
+		t.Fatalf("poke after the cutoff marked seen: %+v", unseen)
+	}
 
 	// Alice goes undiscoverable: gone from browse, but bob can still poke back.
 	if err := dir.SetDiscoverable(ctx, alice, false); err != nil {
@@ -138,25 +156,27 @@ func TestIntegrationAttendeeDirectory(t *testing.T) {
 	if err != nil || !res.Matched {
 		t.Fatalf("poke back: %+v %v", res, err)
 	}
+	// Poking back answers alice's poke.
+	if unseen, _ := dir.ListUnseenPokes(ctx, bob, 3); unseen.Count != 0 {
+		t.Fatalf("poke back left alice's poke unseen: %+v", unseen)
+	}
+	if unseen, _ := dir.ListUnseenPokes(ctx, alice, 3); unseen.Count != 1 || unseen.Pokers[0].UserID != bob {
+		t.Fatalf("alice's unseen pokes: %+v", unseen)
+	}
+	if err := dir.MarkPokesSeen(ctx, alice, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if unseen, _ := dir.ListUnseenPokes(ctx, alice, 3); unseen.Count != 0 || len(unseen.Pokers) != 0 {
+		t.Fatalf("alice's pokes after marking seen: %+v", unseen)
+	}
 
-	// Match reveals Discord, falling back to the RSVP username.
+	// Match reveals the Discord username from the RSVP.
 	contacts, _ = dir.ListContacts(ctx, viewer)
 	if len(contacts) != 1 || !contacts[0].Matched || contacts[0].DiscordUsername == nil || *contacts[0].DiscordUsername != "bob_rsvp" {
 		t.Fatalf("match reveal: %+v", contacts)
 	}
-	discordID, discordName := "42", "bob_oauth"
-	if err := dir.SetDiscord(ctx, bob, &discordID, &discordName); err != nil {
-		t.Fatal(err)
-	}
-	card, err := dir.GetCard(ctx, viewer, bob)
-	if err != nil || card.DiscordUserID == nil || *card.DiscordUserID != "42" || *card.DiscordUsername != "bob_oauth" {
-		t.Fatalf("oauth discord: %+v %v", card, err)
-	}
 	// Carol never matched, so her Discord stays private.
-	if err := dir.SetDiscord(ctx, carol, &discordID, &discordName); err != nil {
-		t.Fatal(err)
-	}
-	if card, _ := dir.GetCard(ctx, viewer, carol); card.DiscordUserID != nil || card.DiscordUsername != nil {
+	if card, _ := dir.GetCard(ctx, viewer, carol); card.DiscordUsername != nil {
 		t.Fatalf("unmatched discord leaked: %+v", card)
 	}
 

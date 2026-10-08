@@ -40,6 +40,8 @@ type Storage struct {
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
+		SetPhoto(ctx context.Context, userID string, photoPath *string) (*string, error)
+		UpdateTheme(ctx context.Context, userID string, theme Theme) error
 		UpdateSuperTokensID(ctx context.Context, userID string, supertokensUserID string) (*User, error)
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)
 		UpdateRole(ctx context.Context, userID string, role UserRole) (*User, error)
@@ -209,14 +211,16 @@ type Storage struct {
 		UpsertProfile(ctx context.Context, p *DirectoryProfile) (*DirectoryProfile, error)
 		SetDiscoverable(ctx context.Context, userID string, discoverable bool) error
 		ConfirmStatus(ctx context.Context, userID string) error
-		SetDiscord(ctx context.Context, userID string, discordUserID, discordUsername *string) error
 		SetModeration(ctx context.Context, userID, adminID string, hidden bool, reason *string) error
 		List(ctx context.Context, viewer DirectoryViewer, filters DirectoryFilters, cursor *DirectoryCursor, limit int) (*DirectoryListResult, error)
 		ListContacts(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error)
 		ListPokedMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error)
+		ListPokedByMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error)
 		GetCard(ctx context.Context, viewer DirectoryViewer, targetID string) (*DirectoryCard, error)
 		GetTarget(ctx context.Context, viewerID, targetID string) (*DirectoryTarget, error)
 		Poke(ctx context.Context, pokerID, pokeeID string) (*PokeResult, error)
+		ListUnseenPokes(ctx context.Context, userID string, limit int) (*UnseenPokes, error)
+		MarkPokesSeen(ctx context.Context, userID string, through time.Time) error
 		AddContact(ctx context.Context, ownerID, contactID string) error
 		RemoveContact(ctx context.Context, ownerID, contactID string) error
 		Hide(ctx context.Context, ownerID, hiddenID string) error

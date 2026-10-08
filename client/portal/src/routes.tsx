@@ -43,17 +43,14 @@ const HackerProfilePage = lazy(
 const HackerNotificationsPage = lazy(
   () => import("@/pages/hacker/notifications/NotificationsPage"),
 );
+const HackerDirectoryLayout = lazy(
+  () => import("@/pages/hacker/directory/DirectoryLayout"),
+);
 const HackerDirectoryPage = lazy(
   () => import("@/pages/hacker/directory/DirectoryPage"),
 );
 const HackerDirectoryContactsPage = lazy(
   () => import("@/pages/hacker/directory/ContactsPage"),
-);
-const HackerDirectoryCardPage = lazy(
-  () => import("@/pages/hacker/directory/CardEditorPage"),
-);
-const HackerDiscordCallbackPage = lazy(
-  () => import("@/pages/hacker/directory/DiscordCallbackPage"),
 );
 const HackerFAQPage = lazy(() => import("@/pages/hacker/faq/FAQPage"));
 const HackerNotionPage = lazy(() => import("@/pages/hacker/notion/NotionPage"));
@@ -211,36 +208,23 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            // The tabs share one layout so switching swaps only the list.
             path: "directory",
             element: (
               <Suspense fallback={<HackerPageLoader />}>
-                <HackerDirectoryPage />
+                <HackerDirectoryLayout />
               </Suspense>
             ),
+            children: [
+              { index: true, element: <HackerDirectoryPage /> },
+              { path: "contacts", element: <HackerDirectoryContactsPage /> },
+            ],
           },
           {
-            path: "directory/contacts",
-            element: (
-              <Suspense fallback={<HackerPageLoader />}>
-                <HackerDirectoryContactsPage />
-              </Suspense>
-            ),
-          },
-          {
+            // The card is edited on the Profile page now; keep old links
+            // (installed apps, notifications) working.
             path: "directory/card",
-            element: (
-              <Suspense fallback={<HackerPageLoader />}>
-                <HackerDirectoryCardPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "directory/discord/callback",
-            element: (
-              <Suspense fallback={<HackerPageLoader />}>
-                <HackerDiscordCallbackPage />
-              </Suspense>
-            ),
+            element: <Navigate to="/app/profile?edit=1" replace />,
           },
           {
             path: "faq",

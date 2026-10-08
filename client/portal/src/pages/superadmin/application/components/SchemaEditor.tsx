@@ -1,10 +1,10 @@
 import {
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  Trash2,
-  TriangleAlert,
-} from "lucide-react";
+  IconAlertTriangle,
+  IconChevronDown,
+  IconChevronUp,
+  IconPencil,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useState } from "react";
 
 import {
@@ -75,7 +75,7 @@ export function SchemaEditor({
       {warnings.length > 0 && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
           <div className="flex items-center gap-2 text-amber-900">
-            <TriangleAlert className="size-4 shrink-0" />
+            <IconAlertTriangle className="size-4 shrink-0" />
             <span className="text-sm font-medium">Saved with warnings</span>
           </div>
           <ul className="mt-1.5 space-y-1 pl-6 text-xs text-amber-900 list-disc">
@@ -130,7 +130,7 @@ export function SchemaEditor({
                       className="h-7 px-2 text-xs cursor-pointer"
                       onClick={() => startRename(section, label)}
                     >
-                      <Pencil className="size-3 mr-1" />
+                      <IconPencil className="size-3 mr-1" />
                       Rename
                     </Button>
                     <Button
@@ -140,7 +140,7 @@ export function SchemaEditor({
                       disabled={sectionIdx === 0}
                       onClick={() => moveSection(section, "up")}
                     >
-                      <ChevronUp className="size-3 mr-1" />
+                      <IconChevronUp className="size-3 mr-1" />
                       Up
                     </Button>
                     <Button
@@ -150,7 +150,7 @@ export function SchemaEditor({
                       disabled={sectionIdx === sections.length - 1}
                       onClick={() => moveSection(section, "down")}
                     >
-                      <ChevronDown className="size-3 mr-1" />
+                      <IconChevronDown className="size-3 mr-1" />
                       Down
                     </Button>
                     <Button
@@ -159,7 +159,7 @@ export function SchemaEditor({
                       className="h-7 px-2 text-xs text-destructive hover:text-destructive cursor-pointer"
                       onClick={() => removeSection(section)}
                     >
-                      <Trash2 className="size-3 mr-1" />
+                      <IconTrash className="size-3 mr-1" />
                       Delete Section
                     </Button>
                   </div>

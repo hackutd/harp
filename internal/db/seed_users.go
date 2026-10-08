@@ -64,16 +64,20 @@ func seedHackers(db *sql.DB, count int) []string {
 
 	ids := make([]string, 0, count)
 	for i := 1; i <= count; i++ {
+		// Google sign-ins carry their account picture, which is what the
+		// profile and directory card fall back to without an uploaded photo.
 		authMethod := "passwordless"
+		var avatar *string
 		if i%4 == 0 {
 			authMethod = "google"
+			avatar = ptr(fmt.Sprintf("https://i.pravatar.cc/256?u=hacker%d", i))
 		}
 
 		var id string
 		err := tx.QueryRow(insertUserQuery,
 			fmt.Sprintf("%shacker-%d", seedUserPrefix, i),
 			fmt.Sprintf("hacker%d@example.com", i),
-			"hacker", authMethod, nil,
+			"hacker", authMethod, avatar,
 		).Scan(&id)
 		if err != nil {
 			log.Fatalf("failed to insert hacker %d: %v", i, err)

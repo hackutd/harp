@@ -1,10 +1,10 @@
 import {
-  Download,
-  FileDown,
-  Mail,
-  Megaphone,
-  TriangleAlert,
-} from "lucide-react";
+  IconAlertTriangle,
+  IconDownload,
+  IconFileDownload,
+  IconMail,
+  IconSpeakerphone,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -286,7 +286,7 @@ function SendEmailsDialogBody({
     <>
       <DialogHeader className="shrink-0 border-b px-6 py-4">
         <DialogTitle className="flex items-center gap-2">
-          <Mail className="size-4" />
+          <IconMail className="size-4" />
           Emails
         </DialogTitle>
         <DialogDescription>
@@ -299,15 +299,15 @@ function SendEmailsDialogBody({
         <Tabs value={tab} onValueChange={(value) => setTab(value as EmailsTab)}>
           <TabsList className="w-full">
             <TabsTrigger value="decision" className="cursor-pointer">
-              <Mail className="size-3.5" />
+              <IconMail className="size-3.5" />
               Decision emails
             </TabsTrigger>
             <TabsTrigger value="announcement" className="cursor-pointer">
-              <Megaphone className="size-3.5" />
+              <IconSpeakerphone className="size-3.5" />
               Decisions are out
             </TabsTrigger>
             <TabsTrigger value="export" className="cursor-pointer">
-              <FileDown className="size-3.5" />
+              <IconFileDownload className="size-3.5" />
               Export
             </TabsTrigger>
           </TabsList>
@@ -492,7 +492,7 @@ function SendEmailsDialogBody({
                 loading={downloadingCsv}
                 onClick={handleExportCsv}
               >
-                {!downloadingCsv && <Download className="size-3.5" />}
+                {!downloadingCsv && <IconDownload className="size-3.5" />}
                 {downloadingCsv
                   ? "Generating..."
                   : `Export CSV${exportGroupCount > 0 ? ` — ${exportGroupCount} group${exportGroupCount === 1 ? "" : "s"}` : ""}`}
@@ -529,7 +529,7 @@ function SendEmailsDialogBody({
                 className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800"
                 role="alert"
               >
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                <IconAlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                 <p className="text-xs">
                   Decisions have not been released. Release them from the
                   reviews page before emailing applicants, or the portal will
@@ -540,7 +540,7 @@ function SendEmailsDialogBody({
 
             {resendAll && (
               <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                <IconAlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                 <p className="text-xs">
                   Duplicate protection is off — everyone selected will be
                   emailed, including those who already received this email.
@@ -550,7 +550,7 @@ function SendEmailsDialogBody({
 
             {stats && stats.submitted > 0 && (
               <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                <IconAlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                 <p className="text-xs">
                   {stats.submitted} application(s) are still in submitted status
                   and will not receive anything.

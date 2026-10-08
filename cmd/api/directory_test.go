@@ -75,20 +75,51 @@ func TestDirectoryEventNear(t *testing.T) {
 	assert.False(t, directoryEventNear(dr, time.Date(2026, 11, 17, 0, 0, 0, 0, time.UTC)))
 }
 
-func TestDirectoryHeadshotObjectOwner(t *testing.T) {
-	owner, ok := directoryHeadshotObjectOwner("hackathons/hackutd-2026/directory-headshots/user-1/0123456789abcdef0123456789abcdef.webp")
-	assert.True(t, ok)
-	assert.Equal(t, "user-1", owner)
+func TestNormalizeDirectoryLinks(t *testing.T) {
+	str := func(s string) *string { return &s }
 
-	for _, bad := range []string{
-		"hackathons/hackutd-2026/travel-receipts/user-1/0123456789abcdef0123456789abcdef.png",
-		"hackathons/hackutd-2026/directory-headshots/user-1/short.png",
-		"hackathons/hackutd-2026/directory-headshots/user-1/0123456789abcdef0123456789abcdef.pdf",
-		"elsewhere/directory-headshots/user-1/0123456789abcdef0123456789abcdef.png",
-	} {
-		_, ok := directoryHeadshotObjectOwner(bad)
-		assert.False(t, ok, bad)
-	}
+	t.Run("reduces pasted links to handles", func(t *testing.T) {
+		for _, in := range []string{"octocat", "@octocat", "github.com/octocat", "https://www.github.com/octocat/"} {
+			req := UpsertDirectoryProfilePayload{GitHubUsername: str(in)}
+			require.NoError(t, normalizeDirectoryLinks(&req), in)
+			assert.Equal(t, "octocat", *req.GitHubUsername, in)
+		}
+		for _, in := range []string{"jane-doe", "linkedin.com/in/jane-doe", "https://www.linkedin.com/in/jane-doe/?trk=x"} {
+			req := UpsertDirectoryProfilePayload{LinkedInHandle: str(in)}
+			require.NoError(t, normalizeDirectoryLinks(&req), in)
+			assert.Equal(t, "jane-doe", *req.LinkedInHandle, in)
+		}
+	})
+
+	t.Run("rejects links to other sites or pages", func(t *testing.T) {
+		for _, req := range []UpsertDirectoryProfilePayload{
+			{GitHubUsername: str("https://evil.example/github.com/octocat")},
+			{GitHubUsername: str("https://notgithub.com/octocat")},
+			{GitHubUsername: str("bad name")},
+			{LinkedInHandle: str("https://www.linkedin.com/company/acme")},
+			{LinkedInHandle: str("javascript:alert(1)")},
+		} {
+			assert.Error(t, normalizeDirectoryLinks(&req))
+		}
+	})
+
+	t.Run("clears blanks and drops empty experience rows", func(t *testing.T) {
+		req := UpsertDirectoryProfilePayload{
+			GitHubUsername: str("  "),
+			Experiences: []DirectoryExperiencePayload{
+				{Company: " Acme ", Title: " SWE Intern "},
+				{Company: " ", Title: ""},
+			},
+		}
+		require.NoError(t, normalizeDirectoryLinks(&req))
+		assert.Nil(t, req.GitHubUsername)
+		assert.Equal(t, []DirectoryExperiencePayload{{Company: "Acme", Title: "SWE Intern"}}, req.Experiences)
+	})
+
+	t.Run("requires both halves of an experience", func(t *testing.T) {
+		req := UpsertDirectoryProfilePayload{Experiences: []DirectoryExperiencePayload{{Company: "Acme"}}}
+		assert.Error(t, normalizeDirectoryLinks(&req))
+	})
 }
 
 func TestGetMyDirectoryProfile(t *testing.T) {
@@ -189,23 +220,6 @@ func TestUpsertMyDirectoryProfile(t *testing.T) {
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("rejects a headshot path owned by someone else", func(t *testing.T) {
-		app := newTestApplication(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		settings := app.store.Settings.(*store.MockSettingsStore)
-		dir.On("IsEligible", "user-1").Return(true, nil).Once()
-		dir.On("GetProfile", "user-1").Return(nil, store.ErrNotFound).Once()
-		settings.On("GetDirectoryInterestTags").Return([]string{"AI/ML"}, nil).Once()
-
-		body := map[string]any{
-			"display_name":  "Alice",
-			"intent":        "team_set",
-			"headshot_path": "hackathons/h/directory-headshots/user-2/0123456789abcdef0123456789abcdef.png",
-		}
-		rr := executeRequest(directoryJSONRequest(t, http.MethodPut, body), http.HandlerFunc(app.upsertMyDirectoryProfileHandler))
-		checkResponseCode(t, http.StatusBadRequest, rr.Code)
-	})
-
 	t.Run("normalizes and saves the card", func(t *testing.T) {
 		app := newTestApplication(t)
 		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
@@ -215,7 +229,6 @@ func TestUpsertMyDirectoryProfile(t *testing.T) {
 		dir.On("IsEligible", "user-1").Return(true, nil)
 		settings.On("GetDirectoryInterestTags").Return([]string{"AI/ML"}, nil)
 		mockDirectoryViewer(settings)
-		dir.On("GetProfile", "user-1").Return(nil, store.ErrNotFound).Once()
 		dir.On("UpsertProfile", mock.MatchedBy(func(p *store.DirectoryProfile) bool {
 			return p.DisplayName == "Alice" &&
 				assert.ObjectsAreEqual(store.StringArray{"Go", "React"}, store.StringArray(p.Skills)) &&
@@ -311,9 +324,9 @@ func TestPokeDirectoryProfile(t *testing.T) {
 	t.Run("lets you poke back an undiscoverable poker into a match", func(t *testing.T) {
 		app, dir := setup(t, &store.DirectoryTarget{Discoverable: false, Eligible: true, PokedViewer: true})
 		dir.On("Poke", "user-1", dirTargetID).Return(&store.PokeResult{Created: true, Matched: true}, nil).Once()
-		discordID := "123"
+		discord := "bob_rsvp"
 		dir.On("GetCard", mock.Anything, dirTargetID).Return(&store.DirectoryCard{
-			UserID: dirTargetID, DisplayName: "Bob", Matched: true, DiscordUserID: &discordID,
+			UserID: dirTargetID, DisplayName: "Bob", Matched: true, DiscordUsername: &discord,
 		}, nil).Once()
 
 		rr := poke(app)
@@ -324,8 +337,8 @@ func TestPokeDirectoryProfile(t *testing.T) {
 		}
 		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
 		assert.True(t, body.Data.Matched)
-		require.NotNil(t, body.Data.Card.DiscordUserID)
-		assert.Equal(t, "123", *body.Data.Card.DiscordUserID)
+		require.NotNil(t, body.Data.Card.DiscordUsername)
+		assert.Equal(t, "bob_rsvp", *body.Data.Card.DiscordUsername)
 		dir.AssertExpectations(t)
 	})
 
@@ -403,71 +416,6 @@ func TestModerateDirectoryProfile(t *testing.T) {
 		req = setUserContext(req, newAdminUser())
 		rr := executeRequest(req, http.HandlerFunc(app.moderateDirectoryProfileHandler))
 		checkResponseCode(t, http.StatusBadRequest, rr.Code)
-	})
-}
-
-func TestLinkDiscord(t *testing.T) {
-	discord := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/oauth2/token":
-			require.NoError(t, r.ParseForm())
-			assert.Equal(t, "the-code", r.Form.Get("code"))
-			_, _ = w.Write([]byte(`{"access_token":"tok","token_type":"Bearer"}`))
-		case "/users/@me":
-			assert.Equal(t, "Bearer tok", r.Header.Get("Authorization"))
-			_, _ = w.Write([]byte(`{"id":"80351110224678912","username":"alice"}`))
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer discord.Close()
-
-	newApp := func(t *testing.T) *application {
-		app := newTestApplication(t)
-		app.config.discord = discordConfig{clientID: "cid", clientSecret: "secret", apiBaseURL: discord.URL}
-		app.config.frontendURL = "http://localhost:3000"
-		return app
-	}
-
-	t.Run("rejects a mismatched state", func(t *testing.T) {
-		app := newApp(t)
-		req := directoryJSONRequest(t, http.MethodPost, map[string]string{"code": "the-code", "state": "abc"})
-		req.AddCookie(&http.Cookie{Name: discordOAuthStateCookie, Value: "xyz"})
-		rr := executeRequest(req, http.HandlerFunc(app.linkDiscordHandler))
-		checkResponseCode(t, http.StatusBadRequest, rr.Code)
-	})
-
-	t.Run("stores the Discord identity", func(t *testing.T) {
-		app := newApp(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		settings := app.store.Settings.(*store.MockSettingsStore)
-		apps := app.store.Application.(*store.MockApplicationStore)
-
-		id, name := "80351110224678912", "alice"
-		dir.On("SetDiscord", "user-1", &id, &name).Return(nil).Once()
-		dir.On("IsEligible", "user-1").Return(true, nil).Once()
-		dir.On("GetProfile", "user-1").Return(testDirectoryProfile("user-1"), nil).Once()
-		settings.On("GetDirectoryInterestTags").Return([]string{}, nil).Once()
-		mockDirectoryViewer(settings)
-		apps.On("GetByUserID", "user-1").Return(nil, store.ErrNotFound).Once()
-
-		req := directoryJSONRequest(t, http.MethodPost, map[string]string{"code": "the-code", "state": "abc"})
-		req.AddCookie(&http.Cookie{Name: discordOAuthStateCookie, Value: "abc"})
-		rr := executeRequest(req, http.HandlerFunc(app.linkDiscordHandler))
-		checkResponseCode(t, http.StatusOK, rr.Code)
-		dir.AssertExpectations(t)
-	})
-
-	t.Run("authorize URL asks for identify and sets state", func(t *testing.T) {
-		app := newApp(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		dir.On("GetProfile", "user-1").Return(testDirectoryProfile("user-1"), nil).Once()
-
-		rr := executeRequest(directoryJSONRequest(t, http.MethodGet, nil), http.HandlerFunc(app.getDiscordAuthorizeURLHandler))
-		checkResponseCode(t, http.StatusOK, rr.Code)
-		assert.Contains(t, rr.Body.String(), "scope=identify")
-		assert.Contains(t, rr.Body.String(), "app%2Fdirectory%2Fdiscord%2Fcallback")
-		assert.Contains(t, rr.Header().Get("Set-Cookie"), discordOAuthStateCookie)
 	})
 }
 
@@ -623,73 +571,6 @@ func TestConfirmMyDirectoryStatus(t *testing.T) {
 	})
 }
 
-func TestGenerateDirectoryHeadshotUploadURL(t *testing.T) {
-	upload := func(app *application, contentType string) *httptest.ResponseRecorder {
-		req := directoryJSONRequest(t, http.MethodPost, map[string]string{"content_type": contentType})
-		return executeRequest(req, http.HandlerFunc(app.generateDirectoryHeadshotUploadURLHandler))
-	}
-
-	t.Run("returns a signed URL for a path the owner can save", func(t *testing.T) {
-		app := newTestApplication(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		settings := app.store.Settings.(*store.MockSettingsStore)
-		mockGCS := app.gcsClient.(*gcs.MockClient)
-
-		dir.On("IsEligible", "user-1").Return(true, nil).Once()
-		settings.On("GetHackathonName").Return("HackUTD 2026", nil).Once()
-		mockGCS.On("GenerateImageUploadURL", mock.Anything, mock.MatchedBy(func(p string) bool {
-			return strings.HasPrefix(p, "hackathons/hackutd-2026/directory-headshots/user-1/") && strings.HasSuffix(p, ".webp")
-		}), "image/webp").Return("https://upload.example.com", nil).Once()
-
-		rr := upload(app, "image/webp")
-		checkResponseCode(t, http.StatusOK, rr.Code)
-
-		var body struct {
-			Data DirectoryHeadshotUploadURLResponse `json:"data"`
-		}
-		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
-		assert.Equal(t, "https://upload.example.com", body.Data.UploadURL)
-		owner, ok := directoryHeadshotObjectOwner(body.Data.HeadshotPath)
-		assert.True(t, ok)
-		assert.Equal(t, "user-1", owner)
-		mockGCS.AssertExpectations(t)
-	})
-
-	t.Run("rejects hackers without a confirmed RSVP", func(t *testing.T) {
-		app := newTestApplication(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		dir.On("IsEligible", "user-1").Return(false, nil).Once()
-
-		checkResponseCode(t, http.StatusForbidden, upload(app, "image/png").Code)
-	})
-
-	t.Run("rejects unsupported image types", func(t *testing.T) {
-		app := newTestApplication(t)
-		checkResponseCode(t, http.StatusBadRequest, upload(app, "image/gif").Code)
-	})
-
-	t.Run("returns 503 when GCS is not configured", func(t *testing.T) {
-		app := newTestApplication(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		dir.On("IsEligible", "user-1").Return(true, nil).Once()
-		app.gcsClient = nil
-
-		checkResponseCode(t, http.StatusServiceUnavailable, upload(app, "image/png").Code)
-	})
-
-	t.Run("returns 500 when signing fails", func(t *testing.T) {
-		app := newTestApplication(t)
-		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
-		settings := app.store.Settings.(*store.MockSettingsStore)
-		mockGCS := app.gcsClient.(*gcs.MockClient)
-		dir.On("IsEligible", "user-1").Return(true, nil).Once()
-		settings.On("GetHackathonName").Return("HackUTD", nil).Once()
-		mockGCS.On("GenerateImageUploadURL", mock.Anything, mock.Anything, "image/png").Return("", assert.AnError).Once()
-
-		checkResponseCode(t, http.StatusInternalServerError, upload(app, "image/png").Code)
-	})
-}
-
 func TestHideDirectoryProfile(t *testing.T) {
 	hide := func(app *application, method string, handler func(http.ResponseWriter, *http.Request), target string) *httptest.ResponseRecorder {
 		req := withDirectoryUserParam(directoryJSONRequest(t, method, nil), target)
@@ -775,8 +656,9 @@ func TestDirectoryContacts(t *testing.T) {
 		method  string
 		handler func(*application) http.HandlerFunc
 	}{
-		"contacts": {"ListContacts", func(a *application) http.HandlerFunc { return a.listDirectoryContactsHandler }},
-		"pokes":    {"ListPokedMe", func(a *application) http.HandlerFunc { return a.listDirectoryPokesHandler }},
+		"contacts":   {"ListContacts", func(a *application) http.HandlerFunc { return a.listDirectoryContactsHandler }},
+		"pokes":      {"ListPokedMe", func(a *application) http.HandlerFunc { return a.listDirectoryPokesHandler }},
+		"sent pokes": {"ListPokedByMe", func(a *application) http.HandlerFunc { return a.listDirectorySentPokesHandler }},
 	}
 	for name, tc := range listCases {
 		t.Run("lists "+name+" with signed headshots", func(t *testing.T) {
@@ -822,15 +704,15 @@ func TestDirectoryContacts(t *testing.T) {
 	}
 }
 
-func TestDirectoryHeadshotSigning(t *testing.T) {
+func TestPhotoURLSigning(t *testing.T) {
 	t.Run("reuses a signed URL instead of signing again", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockGCS := app.gcsClient.(*gcs.MockClient)
 		path := "hackathons/h/directory-headshots/u/a.png"
 		mockGCS.On("GenerateDownloadURL", mock.Anything, path).Return("https://signed.example.com/a", nil).Once()
 
-		first := app.headshotURL(context.Background(), &path, nil)
-		second := app.headshotURL(context.Background(), &path, nil)
+		first := app.photoURL(context.Background(), &path, nil)
+		second := app.photoURL(context.Background(), &path, nil)
 		require.NotNil(t, first)
 		require.NotNil(t, second)
 		assert.Equal(t, *first, *second)
@@ -854,11 +736,11 @@ func TestDirectoryHeadshotSigning(t *testing.T) {
 		picture := "https://lh3.example.com/p.png"
 		mockGCS.On("GenerateDownloadURL", mock.Anything, path).Return("", assert.AnError).Twice()
 
-		got := app.headshotURL(context.Background(), &path, &picture)
+		got := app.photoURL(context.Background(), &path, &picture)
 		require.NotNil(t, got)
 		assert.Equal(t, picture, *got)
 		// Failures are not cached.
-		app.headshotURL(context.Background(), &path, &picture)
+		app.photoURL(context.Background(), &path, &picture)
 		mockGCS.AssertExpectations(t)
 	})
 
@@ -872,7 +754,7 @@ func TestDirectoryHeadshotSigning(t *testing.T) {
 			mockGCS.On("GenerateDownloadURL", mock.Anything, p).Return("signed:"+p, nil).Once()
 		}
 
-		for i, c := range app.withHeadshots(context.Background(), cards) {
+		for i, c := range app.withCardPhotos(context.Background(), cards) {
 			require.NotNil(t, c.HeadshotURL, i)
 			assert.Equal(t, "signed:"+*c.HeadshotPath, *c.HeadshotURL)
 		}
@@ -946,5 +828,72 @@ func TestListAdminDirectoryProfiles(t *testing.T) {
 		req := setUserContext(httptest.NewRequest(http.MethodGet, "/", nil), newAdminUser())
 		rr := executeRequest(req, http.HandlerFunc(app.listAdminDirectoryProfilesHandler))
 		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+	})
+}
+
+func TestUnseenDirectoryPokes(t *testing.T) {
+	t.Run("counts unseen pokes with signed headshots", func(t *testing.T) {
+		app := newTestApplication(t)
+		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
+		mockGCS := app.gcsClient.(*gcs.MockClient)
+		directoryAccess(dir)
+
+		path := "hackathons/h/directory-headshots/" + dirTargetID + "/a.png"
+		dir.On("ListUnseenPokes", "user-1", directoryUnseenPokers).Return(&store.UnseenPokes{
+			Count:  5,
+			Pokers: []store.DirectoryPoker{{UserID: dirTargetID, DisplayName: "Bob", HeadshotPath: &path}},
+		}, nil).Once()
+		mockGCS.On("GenerateDownloadURL", mock.Anything, path).Return("https://signed.example.com/a", nil).Once()
+
+		req := setUserContext(httptest.NewRequest(http.MethodGet, "/", nil), newTestUser())
+		rr := executeRequest(req, http.HandlerFunc(app.getUnseenDirectoryPokesHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data DirectoryUnseenPokesResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, 5, body.Data.Count)
+		require.Len(t, body.Data.Pokers, 1)
+		require.NotNil(t, body.Data.Pokers[0].HeadshotURL)
+		assert.Equal(t, "https://signed.example.com/a", *body.Data.Pokers[0].HeadshotURL)
+		dir.AssertExpectations(t)
+	})
+
+	t.Run("requires your own card", func(t *testing.T) {
+		app := newTestApplication(t)
+		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
+		dir.On("IsEligible", "user-1").Return(false, nil).Once()
+
+		req := setUserContext(httptest.NewRequest(http.MethodGet, "/", nil), newTestUser())
+		rr := executeRequest(req, http.HandlerFunc(app.getUnseenDirectoryPokesHandler))
+		checkResponseCode(t, http.StatusForbidden, rr.Code)
+		dir.AssertNotCalled(t, "ListUnseenPokes", mock.Anything, mock.Anything)
+	})
+}
+
+func TestMarkDirectoryPokesSeen(t *testing.T) {
+	t.Run("marks pokes seen through the given time", func(t *testing.T) {
+		app := newTestApplication(t)
+		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
+		directoryAccess(dir)
+		through := time.Date(2026, 11, 14, 18, 30, 0, 123456000, time.UTC)
+		dir.On("MarkPokesSeen", "user-1", mock.MatchedBy(func(t time.Time) bool { return t.Equal(through) })).Return(nil).Once()
+
+		req := directoryJSONRequest(t, http.MethodPost, map[string]any{"through": through})
+		rr := executeRequest(req, http.HandlerFunc(app.markDirectoryPokesSeenHandler))
+		checkResponseCode(t, http.StatusNoContent, rr.Code)
+		dir.AssertExpectations(t)
+	})
+
+	t.Run("requires through", func(t *testing.T) {
+		app := newTestApplication(t)
+		dir := app.store.AttendeeDirectory.(*store.MockAttendeeDirectoryStore)
+		directoryAccess(dir)
+
+		req := directoryJSONRequest(t, http.MethodPost, map[string]any{})
+		rr := executeRequest(req, http.HandlerFunc(app.markDirectoryPokesSeenHandler))
+		checkResponseCode(t, http.StatusBadRequest, rr.Code)
+		dir.AssertNotCalled(t, "MarkPokesSeen", mock.Anything, mock.Anything)
 	})
 }

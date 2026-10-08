@@ -4972,236 +4972,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/directory/me/discord": {
-            "post": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Exchanges the OAuth2 code for the caller's Discord user ID and username and stores them on their card. Matches get a discord.com/users/{id} deep link.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "hackers"
-                ],
-                "summary": "Complete Discord linking",
-                "parameters": [
-                    {
-                        "description": "OAuth callback values",
-                        "name": "link",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.LinkDiscordPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DirectoryMeResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Clears the OAuth-linked Discord account. Matches fall back to the Discord username from the RSVP form.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "hackers"
-                ],
-                "summary": "Unlink Discord",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DirectoryMeResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/directory/me/discord/authorize": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Returns the Discord OAuth2 authorize URL (identify scope) and sets a short-lived state cookie. Discord redirects back to the portal, which completes the link with POST /directory/me/discord.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "hackers"
-                ],
-                "summary": "Start Discord linking",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DiscordAuthorizeResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/directory/me/discoverable": {
             "patch": {
                 "security": [
@@ -5285,41 +5055,93 @@ const docTemplate = `{
                 }
             }
         },
-        "/directory/me/headshot-upload-url": {
-            "post": {
+        "/directory/pokes": {
+            "get": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Generates a signed GCS upload URL for a directory card headshot. Pass the returned headshot_path when saving the card.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Lists attendees who poked the caller, newest first, with whether the caller already poked back (a match).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "hackers"
                 ],
-                "summary": "Get directory headshot upload URL",
-                "parameters": [
-                    {
-                        "description": "Content type",
-                        "name": "upload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.DirectoryHeadshotUploadURLPayload"
-                        }
-                    }
-                ],
+                "summary": "List who poked me",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.DirectoryHeadshotUploadURLResponse"
+                            "$ref": "#/definitions/main.DirectoryCardsResponse"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/directory/pokes/seen": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Marks the caller's pokes up to and including ` + "`" + `through` + "`" + ` (the newest poke they were shown) as seen. Later pokes stay unseen.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "Mark pokes seen",
+                "parameters": [
+                    {
+                        "description": "Newest poke shown",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.MarkDirectoryPokesSeenPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -5364,9 +5186,56 @@ const docTemplate = `{
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/directory/pokes/sent": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Lists attendees the caller poked, newest first, including ones who poked back (a match).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hackers"
+                ],
+                "summary": "List who I poked",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DirectoryCardsResponse"
+                        }
                     },
-                    "503": {
-                        "description": "Service Unavailable",
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -5379,26 +5248,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/directory/pokes": {
+        "/directory/pokes/unseen": {
             "get": {
                 "security": [
                     {
                         "CookieAuth": []
                     }
                 ],
-                "description": "Lists attendees who poked the caller, newest first, with whether the caller already poked back (a match).",
+                "description": "Counts the pokes the caller hasn't seen yet and returns the newest few pokers for the \"Poked you\" badge. A poke is seen once the caller opens their pokes or pokes back.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "hackers"
                 ],
-                "summary": "List who poked me",
+                "summary": "Count unseen pokes",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.DirectoryCardsResponse"
+                            "$ref": "#/definitions/main.DirectoryUnseenPokesResponse"
                         }
                     },
                     "401": {
@@ -13153,6 +13022,328 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/photo": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Redirects to a signed URL for the caller's uploaded profile photo. 404 when none is uploaded.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "View my profile photo",
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the caller's profile photo to an image uploaded through POST /users/me/photo-upload-url. It is shown on the profile and the attendee directory card.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Set my profile photo",
+                "parameters": [
+                    {
+                        "description": "Uploaded photo path",
+                        "name": "photo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetUserPhotoPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Removes the caller's uploaded profile photo. The Google picture from sign-in, if any, is shown instead.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Remove my profile photo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/photo-upload-url": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS upload URL for the caller's profile photo. Upload the image, then pass the returned photo_path to PUT /users/me/photo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get profile photo upload URL",
+                "parameters": [
+                    {
+                        "description": "Content type",
+                        "name": "upload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UserPhotoUploadURLPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserPhotoUploadURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/theme": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the authenticated user's portal colour scheme (light or dark). Applies to the hacker and admin portals.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Set my theme",
+                "parameters": [
+                    {
+                        "description": "Theme",
+                        "name": "theme",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateThemePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/wallet/apple-pass": {
             "get": {
                 "security": [
@@ -13625,30 +13816,16 @@ const docTemplate = `{
                 }
             }
         },
-        "main.DirectoryHeadshotUploadURLPayload": {
+        "main.DirectoryExperiencePayload": {
             "type": "object",
-            "required": [
-                "content_type"
-            ],
             "properties": {
-                "content_type": {
+                "company": {
                     "type": "string",
-                    "enum": [
-                        "image/jpeg",
-                        "image/png",
-                        "image/webp"
-                    ]
-                }
-            }
-        },
-        "main.DirectoryHeadshotUploadURLResponse": {
-            "type": "object",
-            "properties": {
-                "headshot_path": {
-                    "type": "string"
+                    "maxLength": 60
                 },
-                "upload_url": {
-                    "type": "string"
+                "title": {
+                    "type": "string",
+                    "maxLength": 60
                 }
             }
         },
@@ -13683,9 +13860,6 @@ const docTemplate = `{
         "main.DirectoryMeResponse": {
             "type": "object",
             "properties": {
-                "discord_oauth_enabled": {
-                    "type": "boolean"
-                },
                 "eligible": {
                     "type": "boolean"
                 },
@@ -13742,6 +13916,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "max_experiences": {
+                    "type": "integer"
+                },
                 "max_interest_tags": {
                     "type": "integer"
                 },
@@ -13773,19 +13950,19 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "discord_user_id": {
-                    "type": "string"
-                },
-                "discord_username": {
-                    "type": "string"
-                },
                 "discoverable": {
                     "type": "boolean"
                 },
                 "display_name": {
                     "type": "string"
                 },
-                "headshot_path": {
+                "experiences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DirectoryExperience"
+                    }
+                },
+                "github_username": {
                     "type": "string"
                 },
                 "headshot_url": {
@@ -13805,6 +13982,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "linkedin_handle": {
+                    "type": "string"
                 },
                 "moderation_hidden": {
                     "type": "boolean"
@@ -13841,11 +14021,17 @@ const docTemplate = `{
                 }
             }
         },
-        "main.DiscordAuthorizeResponse": {
+        "main.DirectoryUnseenPokesResponse": {
             "type": "object",
             "properties": {
-                "url": {
-                    "type": "string"
+                "count": {
+                    "type": "integer"
+                },
+                "pokers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DirectoryPoker"
+                    }
                 }
             }
         },
@@ -14069,23 +14255,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.LinkDiscordPayload": {
-            "type": "object",
-            "required": [
-                "code",
-                "state"
-            ],
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "maxLength": 512
-                },
-                "state": {
-                    "type": "string",
-                    "maxLength": 128
-                }
-            }
-        },
         "main.LogoUploadPayload": {
             "type": "object",
             "required": [
@@ -14097,6 +14266,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "logo_data": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.MarkDirectoryPokesSeenPayload": {
+            "type": "object",
+            "required": [
+                "through"
+            ],
+            "properties": {
+                "through": {
                     "type": "string"
                 }
             }
@@ -14950,6 +15130,18 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SetUserPhotoPayload": {
+            "type": "object",
+            "required": [
+                "photo_path"
+            ],
+            "properties": {
+                "photo_path": {
+                    "type": "string",
+                    "maxLength": 300
+                }
+            }
+        },
         "main.SponsorListResponse": {
             "type": "object",
             "properties": {
@@ -15467,6 +15659,25 @@ const docTemplate = `{
                 }
             }
         },
+        "main.UpdateThemePayload": {
+            "type": "object",
+            "required": [
+                "theme"
+            ],
+            "properties": {
+                "theme": {
+                    "enum": [
+                        "light",
+                        "dark"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.Theme"
+                        }
+                    ]
+                }
+            }
+        },
         "main.UpdateTravelRSVPSchemaPayload": {
             "type": "object",
             "required": [
@@ -15495,8 +15706,16 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 60
                 },
-                "headshot_path": {
-                    "type": "string"
+                "experiences": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": {
+                        "$ref": "#/definitions/main.DirectoryExperiencePayload"
+                    }
+                },
+                "github_username": {
+                    "type": "string",
+                    "maxLength": 200
                 },
                 "icebreaker_answer": {
                     "type": "string",
@@ -15511,7 +15730,6 @@ const docTemplate = `{
                         "looking_for_teammates",
                         "partial_team",
                         "team_set",
-                        "open_to_collab",
                         "just_networking"
                     ],
                     "allOf": [
@@ -15527,6 +15745,10 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "linkedin_handle": {
+                    "type": "string",
+                    "maxLength": 200
                 },
                 "pronouns": {
                     "type": "string",
@@ -15558,23 +15780,63 @@ const docTemplate = `{
                 }
             }
         },
+        "main.UserPhotoUploadURLPayload": {
+            "type": "object",
+            "required": [
+                "content_type"
+            ],
+            "properties": {
+                "content_type": {
+                    "type": "string",
+                    "enum": [
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp"
+                    ]
+                }
+            }
+        },
+        "main.UserPhotoUploadURLResponse": {
+            "type": "object",
+            "properties": {
+                "photo_path": {
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
+                }
+            }
+        },
         "main.UserResponse": {
             "type": "object",
             "properties": {
+                "authMethod": {
+                    "$ref": "#/definitions/store.AuthMethod"
+                },
                 "createdAt": {
                     "type": "string"
                 },
+                "customPhoto": {
+                    "type": "boolean"
+                },
                 "email": {
+                    "type": "string"
+                },
+                "googlePictureUrl": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
                 "profilePictureUrl": {
+                    "description": "ProfilePictureUrl is the picture to show: the uploaded photo if there is\none, otherwise the Google picture.",
                     "type": "string"
                 },
                 "role": {
                     "$ref": "#/definitions/store.UserRole"
+                },
+                "theme": {
+                    "$ref": "#/definitions/store.Theme"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -16318,6 +16580,15 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "experiences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DirectoryExperience"
+                    }
+                },
+                "github_username": {
+                    "type": "string"
+                },
                 "headshot_url": {
                     "type": "string"
                 },
@@ -16325,6 +16596,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "icebreaker_prompt": {
+                    "type": "string"
+                },
+                "linkedin_handle": {
                     "type": "string"
                 },
                 "moderation_hidden_at": {
@@ -16359,13 +16633,19 @@ const docTemplate = `{
                 "checked_in": {
                     "type": "boolean"
                 },
-                "discord_user_id": {
-                    "type": "string"
-                },
                 "discord_username": {
                     "type": "string"
                 },
                 "display_name": {
+                    "type": "string"
+                },
+                "experiences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DirectoryExperience"
+                    }
+                },
+                "github_username": {
                     "type": "string"
                 },
                 "headshot_url": {
@@ -16391,6 +16671,9 @@ const docTemplate = `{
                 },
                 "is_hidden": {
                     "type": "boolean"
+                },
+                "linkedin_handle": {
+                    "type": "string"
                 },
                 "matched": {
                     "type": "boolean"
@@ -16437,22 +16720,45 @@ const docTemplate = `{
                 }
             }
         },
+        "store.DirectoryExperience": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "store.DirectoryIntent": {
             "type": "string",
             "enum": [
                 "looking_for_teammates",
                 "partial_team",
                 "team_set",
-                "open_to_collab",
                 "just_networking"
             ],
             "x-enum-varnames": [
                 "DirectoryIntentLookingForTeammates",
                 "DirectoryIntentPartialTeam",
                 "DirectoryIntentTeamSet",
-                "DirectoryIntentOpenToCollab",
                 "DirectoryIntentJustNetworking"
             ]
+        },
+        "store.DirectoryPoker": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "headshot_url": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
         },
         "store.EmailSendCounts": {
             "type": "object",
@@ -16926,6 +17232,17 @@ const docTemplate = `{
                 }
             }
         },
+        "store.Theme": {
+            "type": "string",
+            "enum": [
+                "light",
+                "dark"
+            ],
+            "x-enum-varnames": [
+                "ThemeLight",
+                "ThemeDark"
+            ]
+        },
         "store.Track": {
             "type": "object",
             "properties": {
@@ -17080,6 +17397,9 @@ const docTemplate = `{
                 },
                 "supertokens_user_id": {
                     "type": "string"
+                },
+                "theme": {
+                    "$ref": "#/definitions/store.Theme"
                 },
                 "updated_at": {
                     "type": "string"

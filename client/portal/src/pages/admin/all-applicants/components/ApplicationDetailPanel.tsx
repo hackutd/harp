@@ -1,9 +1,9 @@
 import {
-  ChevronLeft,
-  ChevronRight,
-  ClipboardPen,
-  Utensils,
-} from "lucide-react";
+  IconChevronLeft,
+  IconChevronRight,
+  IconClipboardText,
+  IconToolsKitchen2,
+} from "@tabler/icons-react";
 import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -105,8 +105,8 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
                   {application.points ?? 0} {pointsName}
                 </Badge>
                 {application.meal_group && (
-                  <Badge variant="outline" className="gap-1">
-                    <Utensils className="size-3" />
+                  <Badge variant="neutral" className="gap-1">
+                    <IconToolsKitchen2 className="size-3" />
                     {application.meal_group}
                   </Badge>
                 )}
@@ -119,7 +119,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
                         className="cursor-pointer"
                         onClick={onGrade}
                       >
-                        <ClipboardPen className="h-4 w-4" />
+                        <IconClipboardText className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Grade applicant</TooltipContent>
@@ -138,7 +138,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
               disabled={!canPrevious}
               onClick={onPrevious}
             >
-              <ChevronLeft className="size-4" />
+              <IconChevronLeft className="size-4" />
               Previous person
             </Button>
             <Button
@@ -148,7 +148,7 @@ export const ApplicationDetailPanel = memo(function ApplicationDetailPanel({
               onClick={onNext}
             >
               Next person
-              <ChevronRight className="size-4" />
+              <IconChevronRight className="size-4" />
             </Button>
           </div>
         )}

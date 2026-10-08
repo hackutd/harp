@@ -1,4 +1,4 @@
-import { Bookmark, EyeOff, Hand } from "lucide-react";
+import { IconBookmark, IconEyeOff, IconHandStop } from "@tabler/icons-react";
 import { type PointerEvent, type ReactNode, useRef, useState } from "react";
 
 import { cn } from "@/shared/lib/utils";
@@ -26,6 +26,9 @@ export function SwipeableCard({
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   const [dx, setDx] = useState(0);
   const [leaving, setLeaving] = useState<"left" | "right" | null>(null);
+  // A drag ends in a click on whatever was under the finger; swallow it so a
+  // swipe doesn't also open the card's details.
+  const dragged = useRef(false);
 
   const reset = () => {
     start.current = null;
@@ -34,6 +37,7 @@ export function SwipeableCard({
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (disabled || e.pointerType === "mouse") return;
+    dragged.current = false;
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
   };
 
@@ -47,6 +51,7 @@ export function SwipeableCard({
       start.current = null;
       return;
     }
+    if (Math.abs(moveX) > 8) dragged.current = true;
     setDx(moveX);
   };
 
@@ -71,26 +76,32 @@ export function SwipeableCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={reset}
+      onClickCapture={(e) => {
+        if (!dragged.current) return;
+        dragged.current = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       onTransitionEnd={() => setLeaving(null)}
     >
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 flex items-center rounded-xl px-5 text-sm font-medium",
+          "pointer-events-none absolute inset-0 flex items-center rounded-[3px] px-5 text-sm font-medium",
           dx > 0
-            ? "justify-start bg-[#5900FF]/30 text-white"
-            : "justify-end bg-white/5 text-white/70",
+            ? "justify-start bg-ice/15 text-ink"
+            : "justify-end bg-ink/[0.03] text-ink/75",
         )}
         style={{ opacity: dx === 0 ? 0 : progress }}
       >
         {dx > 0 ? (
           <span className="flex items-center gap-1.5">
-            <Hand className="size-4" /> Poke
-            <Bookmark className="ml-1 size-4" /> Save
+            <IconHandStop className="size-4" /> Poke
+            <IconBookmark className="ml-1 size-4" /> Save
           </span>
         ) : (
           <span className="flex items-center gap-1.5">
-            Hide <EyeOff className="size-4" />
+            Hide <IconEyeOff className="size-4" />
           </span>
         )}
       </div>

@@ -25,6 +25,53 @@ describe("DirectoryCard", () => {
     expect(screen.getByText("Team needs 2 more")).toBeInTheDocument();
   });
 
+  it("keeps the details off the small card until it's opened", async () => {
+    render(
+      <DirectoryCard
+        card={directoryCard({
+          icebreaker_prompt: "Ask me about",
+          icebreaker_answer: "robots",
+          experiences: [{ company: "Acme", title: "SWE Intern" }],
+        })}
+      />,
+    );
+    expect(screen.getByText("\u201crobots\u201d")).toBeInTheDocument();
+    expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "More about Bob Builder" }),
+    );
+
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      "SWE Intern at Acme",
+    );
+    expect(screen.getByText("Ask me about")).toBeInTheDocument();
+  });
+
+  it("shows experience and links to GitHub and LinkedIn", () => {
+    render(
+      <DirectoryCard
+        detailed
+        card={directoryCard({
+          github_username: "octocat",
+          linkedin_handle: "jane-doe",
+          experiences: [{ company: "Acme", title: "SWE Intern" }],
+        })}
+      />,
+    );
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      "SWE Intern at Acme",
+    );
+    expect(screen.getByRole("link", { name: "octocat" })).toHaveAttribute(
+      "href",
+      "https://github.com/octocat",
+    );
+    expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/in/jane-doe",
+    );
+  });
+
   it("offers poke back when they poked you", async () => {
     const onPoke = vi.fn();
     const card = directoryCard({ poked_me: true });
@@ -38,7 +85,7 @@ describe("DirectoryCard", () => {
 
   it("disables poke once sent", () => {
     render(<DirectoryCard card={directoryCard({ poked_by_me: true })} />);
-    expect(screen.getByRole("button", { name: "Poked" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Poke sent" })).toBeDisabled();
   });
 
   it("wires contact and hide buttons", async () => {
@@ -63,18 +110,20 @@ describe("DirectoryCard", () => {
 
   it("only shows Discord after a match", () => {
     const { rerender } = render(
-      <DirectoryCard card={directoryCard({ discord_user_id: "42" })} />,
+      <DirectoryCard card={directoryCard({ discord_username: "bob" })} />,
     );
-    expect(screen.queryByText("Message on Discord")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy Discord: bob" }),
+    ).not.toBeInTheDocument();
 
     rerender(
       <DirectoryCard
-        card={directoryCard({ matched: true, discord_user_id: "42" })}
+        card={directoryCard({ matched: true, discord_username: "bob" })}
       />,
     );
     expect(
-      screen.getByRole("link", { name: "Message on Discord" }),
-    ).toHaveAttribute("href", "https://discord.com/users/42");
+      screen.getByRole("button", { name: "Copy Discord: bob" }),
+    ).toBeInTheDocument();
   });
 
   it("copies the username when there's no Discord ID", async () => {

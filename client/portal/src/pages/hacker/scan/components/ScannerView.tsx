@@ -1,21 +1,22 @@
-import type { LucideIcon } from "lucide-react";
 import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  DoorOpen,
-  Gift,
-  MoreHorizontal,
-  ScanLine,
-  ShoppingCart,
-  UserCheck,
-  Utensils,
-  XCircle,
-} from "lucide-react";
+  IconAlertCircle,
+  IconChevronLeft,
+  IconChevronRight,
+  IconCircleCheck,
+  IconCircleX,
+  IconDoorEnter,
+  IconDots,
+  IconGift,
+  IconScan,
+  IconShoppingCart,
+  IconToolsKitchen2,
+  IconUserCheck,
+  type TablerIcon,
+} from "@tabler/icons-react";
 import { useCallback, useEffect } from "react";
 
 import { useQrScanner } from "@/shared/hooks";
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import { cn } from "@/shared/lib/utils";
 import { usePointsConfigStore } from "@/shared/stores";
 
@@ -23,13 +24,13 @@ import { useScannerStore } from "../store";
 import type { ScanType, ScanTypeCategory } from "../types";
 import { formatPointsDelta, spendsPoints } from "../utils";
 
-const CATEGORY_ICONS: Record<ScanTypeCategory, LucideIcon> = {
-  check_in: UserCheck,
-  meal: Utensils,
-  swag: Gift,
-  other: MoreHorizontal,
-  walk_in: DoorOpen,
-  shop: ShoppingCart,
+const CATEGORY_ICONS: Record<ScanTypeCategory, TablerIcon> = {
+  check_in: IconUserCheck,
+  meal: IconToolsKitchen2,
+  swag: IconGift,
+  other: IconDots,
+  walk_in: IconDoorEnter,
+  shop: IconShoppingCart,
 };
 
 const CATEGORY_LABELS: Record<ScanTypeCategory, string> = {
@@ -54,9 +55,7 @@ function PointsPill({
     <span
       className={cn(
         "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums",
-        spends
-          ? "bg-red-400/10 text-red-400"
-          : "bg-emerald-400/10 text-emerald-400",
+        spends ? BADGE_COLORS.red : BADGE_COLORS.green,
       )}
     >
       {formatPointsDelta(scanType)}
@@ -121,21 +120,21 @@ export function ScannerView() {
         <button
           type="button"
           onClick={() => setActiveScanType(null)}
-          className="-ml-2 flex h-9 items-center gap-1 rounded-full pr-3 pl-1 text-sm font-light text-black transition-colors hover:bg-[#F0F0F0] active:scale-[0.98]"
+          className="-ml-2 flex h-9 items-center gap-1 rounded-full pr-3 pl-1 text-sm font-light text-ink transition-colors hover:bg-ink/5 active:scale-[0.98]"
         >
-          <ChevronLeft className="size-5" strokeWidth={1.5} />
+          <IconChevronLeft className="size-5" strokeWidth={1.5} />
           Scan types
         </button>
 
         <div className="mt-3 flex items-center gap-3">
-          <h1 className="min-w-0 truncate text-2xl font-light tracking-tight text-black">
+          <h1 className="min-w-0 truncate text-2xl font-light tracking-tight text-ink">
             {activeScanType.display_name}
           </h1>
           {showPoints && (
             <PointsPill scanType={activeScanType} pointsName={pointsName} />
           )}
         </div>
-        <p className="mt-1 text-sm font-light text-[#8A8A8A]">
+        <p className="mt-1 text-sm font-light text-ink/65">
           Point the camera at a hacker&apos;s QR code
         </p>
 
@@ -145,8 +144,8 @@ export function ScannerView() {
         >
           {error ? (
             <div className="flex h-full items-center justify-center p-8 text-center">
-              <div className="space-y-3 text-white/80">
-                <AlertCircle className="mx-auto size-8" strokeWidth={1.5} />
+              <div className="space-y-3 text-ink/85">
+                <IconAlertCircle className="mx-auto size-8" strokeWidth={1.5} />
                 <p className="text-sm font-light">{error}</p>
               </div>
             </div>
@@ -163,7 +162,7 @@ export function ScannerView() {
                   className={cn(
                     "size-56 rounded-xl border-2",
                     !showPoints
-                      ? "border-white/80"
+                      ? "border-ink/25"
                       : spends
                         ? "border-red-400"
                         : "border-emerald-400",
@@ -175,16 +174,19 @@ export function ScannerView() {
           )}
 
           {lastScanResult && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 px-6 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-canvas/95 px-6 text-center">
               {lastScanResult.success ? (
-                <CheckCircle2
-                  className="size-12 text-emerald-700"
+                <IconCircleCheck
+                  className="size-12 text-emerald-400"
                   strokeWidth={1.5}
                 />
               ) : (
-                <XCircle className="size-12 text-red-600" strokeWidth={1.5} />
+                <IconCircleX
+                  className="size-12 text-red-400"
+                  strokeWidth={1.5}
+                />
               )}
-              <p className="text-lg font-normal text-black">
+              <p className="text-lg font-normal text-ink">
                 {lastScanResult.message}
               </p>
               {lastScanResult.success && resultPoints !== 0 && (
@@ -202,29 +204,29 @@ export function ScannerView() {
               )}
               {lastScanResult.success &&
                 lastScanResult.scan?.balance !== undefined && (
-                  <p className="text-sm font-light text-[#8A8A8A]">
+                  <p className="text-sm font-light text-ink/65">
                     Remaining balance: {lastScanResult.scan.balance}{" "}
                     {pointsName}
                   </p>
                 )}
               {lastScanResult.success && lastScanResult.scan?.meal_group && (
-                <p className="text-sm font-medium text-black">
+                <p className="text-sm font-medium text-ink">
                   Meal group: {lastScanResult.scan.meal_group}
                 </p>
               )}
               <button
                 type="button"
                 onClick={clearLastResult}
-                className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-medium text-white transition-transform active:scale-[0.98]"
+                className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-tide px-6 text-sm font-medium text-white transition-transform active:scale-[0.98]"
               >
-                <ScanLine className="size-4.5" strokeWidth={1.5} />
+                <IconScan className="size-4.5" strokeWidth={1.5} />
                 Scan next
               </button>
             </div>
           )}
         </div>
 
-        <p className="mt-4 text-center text-xs font-light text-[#8A8A8A]">
+        <p className="mt-4 text-center text-xs font-light text-ink/65">
           {count} scanned
         </p>
       </div>
@@ -233,45 +235,42 @@ export function ScannerView() {
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-light tracking-tight text-black">Scanner</h1>
-      <p className="mt-1 text-sm font-light text-[#8A8A8A]">
+      <h1 className="text-2xl font-light tracking-tight text-ink">Scanner</h1>
+      <p className="mt-1 text-sm font-light text-ink/65">
         Choose what you&apos;re scanning for
       </p>
 
       {loading && scanTypes.length === 0 ? (
         <div className="mt-6 space-y-3">
           {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="h-16 animate-pulse rounded-xl bg-[#F5F5F5]"
-            />
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-surface" />
           ))}
         </div>
       ) : activeTypes.length === 0 ? (
-        <p className="mt-8 text-sm font-light text-[#8A8A8A]">
+        <p className="mt-8 text-sm font-light text-ink/65">
           No active scan types configured. Ask a super admin to set them up.
         </p>
       ) : (
-        <div className="mt-6 divide-y divide-[#F0F0F0] rounded-xl border border-[#E5E5E5]">
+        <div className="mt-6 divide-y divide-ink/10 rounded-xl border border-ink/10">
           {activeTypes.map((scanType: ScanType) => {
-            const Icon = CATEGORY_ICONS[scanType.category] ?? UserCheck;
+            const Icon = CATEGORY_ICONS[scanType.category] ?? IconUserCheck;
             const count = statsMap.get(scanType.name) ?? 0;
             return (
               <button
                 key={scanType.name}
                 type="button"
                 onClick={() => setActiveScanType(scanType)}
-                className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-[#FAFAFA] active:scale-[0.99]"
+                className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-ink/5 active:scale-[0.99]"
               >
                 <Icon
-                  className="size-4.5 shrink-0 text-black"
+                  className="size-4.5 shrink-0 text-ink"
                   strokeWidth={1.5}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-normal text-black">
+                  <span className="block truncate text-sm font-normal text-ink">
                     {scanType.display_name}
                   </span>
-                  <span className="block text-xs font-light text-[#8A8A8A]">
+                  <span className="block text-xs font-light text-ink/65">
                     {CATEGORY_LABELS[scanType.category] ?? scanType.category} ·{" "}
                     {count} scanned
                   </span>
@@ -279,8 +278,8 @@ export function ScannerView() {
                 {pointsEnabled && scanType.points > 0 && (
                   <PointsPill scanType={scanType} />
                 )}
-                <ChevronRight
-                  className="size-4 shrink-0 text-[#C4C4C4]"
+                <IconChevronRight
+                  className="size-4 shrink-0 text-ink/65"
                   strokeWidth={1.5}
                 />
               </button>

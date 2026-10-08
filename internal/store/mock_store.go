@@ -47,6 +47,19 @@ func (m *MockUsersStore) UpdateProfilePicture(ctx context.Context, supertokensUs
 	return args.Error(0)
 }
 
+func (m *MockUsersStore) UpdateTheme(ctx context.Context, userID string, theme Theme) error {
+	args := m.Called(userID, theme)
+	return args.Error(0)
+}
+
+func (m *MockUsersStore) SetPhoto(ctx context.Context, userID string, photoPath *string) (*string, error) {
+	args := m.Called(userID, photoPath)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*string), args.Error(1)
+}
+
 func (m *MockUsersStore) UpdateSuperTokensID(ctx context.Context, userID string, supertokensUserID string) (*User, error) {
 	args := m.Called(userID, supertokensUserID)
 	if args.Get(0) == nil {
@@ -1156,11 +1169,6 @@ func (m *MockAttendeeDirectoryStore) ConfirmStatus(ctx context.Context, userID s
 	return args.Error(0)
 }
 
-func (m *MockAttendeeDirectoryStore) SetDiscord(ctx context.Context, userID string, discordUserID, discordUsername *string) error {
-	args := m.Called(userID, discordUserID, discordUsername)
-	return args.Error(0)
-}
-
 func (m *MockAttendeeDirectoryStore) SetModeration(ctx context.Context, userID, adminID string, hidden bool, reason *string) error {
 	args := m.Called(userID, adminID, hidden, reason)
 	return args.Error(0)
@@ -1190,6 +1198,14 @@ func (m *MockAttendeeDirectoryStore) ListPokedMe(ctx context.Context, viewer Dir
 	return args.Get(0).([]DirectoryCard), args.Error(1)
 }
 
+func (m *MockAttendeeDirectoryStore) ListPokedByMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error) {
+	args := m.Called(viewer)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DirectoryCard), args.Error(1)
+}
+
 func (m *MockAttendeeDirectoryStore) GetCard(ctx context.Context, viewer DirectoryViewer, targetID string) (*DirectoryCard, error) {
 	args := m.Called(viewer, targetID)
 	if args.Get(0) == nil {
@@ -1212,6 +1228,19 @@ func (m *MockAttendeeDirectoryStore) Poke(ctx context.Context, pokerID, pokeeID 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*PokeResult), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) ListUnseenPokes(ctx context.Context, userID string, limit int) (*UnseenPokes, error) {
+	args := m.Called(userID, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UnseenPokes), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) MarkPokesSeen(ctx context.Context, userID string, through time.Time) error {
+	args := m.Called(userID, through)
+	return args.Error(0)
 }
 
 func (m *MockAttendeeDirectoryStore) AddContact(ctx context.Context, ownerID, contactID string) error {

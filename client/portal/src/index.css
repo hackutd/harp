@@ -22,10 +22,69 @@
 }
 
 @custom-variant dark (&:is(.dark *));
+/* The user's portal theme (see .theme-dark below). Use for the odd colour
+   that a token can't carry, e.g. text on a fixed tint. */
+@custom-variant theme-dark (&:is(.theme-dark *));
+/* Light-only touches, e.g. the thin outline hacker cards get in light mode,
+   where the #F8F8F7 panel alone barely separates from the white canvas. */
+@custom-variant theme-light (&:is(.theme-light *));
+
+/* Shared dark surfaces and the public sign-in page's night-sky accents.
+   The hacker layout applies its blue palette below, including to portals.
+   Green/amber/red are reserved for statuses (emerald-*, amber-*, red-*). */
+:root {
+  --hacker-canvas: #000000;
+  --hacker-surface: #0c0c0d; /* neutral near-black: cards */
+  --hacker-surface-2: #171719; /* hover, raised controls */
+  --hacker-ink: #ffffff;
+  --hacker-tide: #086c88;
+  --hacker-ice: #d6f9ff;
+  --hacker-tide-hover: color-mix(
+    in srgb,
+    var(--hacker-tide) 82%,
+    var(--hacker-ice)
+  );
+  --hacker-blue: #0081e6;
+  /* Dashboard accents: the month on Important dates, and the unread dot on
+     notifications. Light mode deepens the purple to read on white. */
+  --date-accent: #c651ff;
+  --notify-accent: #3b30ff;
+  --hacker-navy: #001e4d;
+
+  /* Badge green (shared/lib/badge-colors.ts): the schedule green, a step
+     darker so white text holds up. The hacker theme overrides it below. */
+  --badge-green: color-mix(in srgb, var(--portal-green) 85%, black);
+
+  /* Admin portal's soft off-white: the sidebar and the filter tracks. */
+  --admin-panel: #f8f8f7;
+
+  /* The admin segmented toggles (filter tabs, review tabs): a white pill
+     floating on a gray track. Dark flips it to a lifted pill on the card. */
+  --toggle-track: #ededeb;
+  --toggle-active: #ffffff;
+
+  /* Inline links in schema-rendered text (shared/lib/schema-utils.ts). */
+  --link: var(--color-blue-600);
+  --link-hover: var(--color-blue-800);
+}
 
 @theme inline {
+  /* Satoshi is the default for the whole portal (preflight puts font-sans on
+     <html>, and form controls inherit it). */
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, sans-serif;
   --font-satoshi: "Satoshi", ui-sans-serif, system-ui, sans-serif;
   --font-hypik: "Hypik", "Satoshi", ui-sans-serif, sans-serif;
+
+  --color-canvas: var(--hacker-canvas);
+  --color-surface: var(--hacker-surface);
+  --color-surface-2: var(--hacker-surface-2);
+  --color-ink: var(--hacker-ink);
+  --color-tide: var(--hacker-tide);
+  --color-tide-hover: var(--hacker-tide-hover);
+  --color-ice: var(--hacker-ice);
+  --color-admin-panel: var(--admin-panel);
+  --color-toggle-track: var(--toggle-track);
+  --color-toggle-active: var(--toggle-active);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -303,7 +362,7 @@
 
 /*
  * Cyberpunk 2077 cursor set, copied from zero-day-2026. Hotspots come from the
- * original .cur headers; 2x copies are nearest-doubled pixel art. Each value
+ * original .cur headers, scaled with the art from 32px down to 28px. Each value
  * falls back to the native keyword if the image fails.
  *
  * Hacker and public pages only: AdminLayout puts .admin-portal on <body> (body,
@@ -315,15 +374,15 @@
         url("/cursors/cp-arrow.png") 1x,
         url("/cursors/cp-arrow@2x.png") 2x
       )
-      0 8,
+      0 7,
     auto;
   --cp-beam:
     image-set(url("/cursors/cp-beam.png") 1x, url("/cursors/cp-beam@2x.png") 2x)
-      17 15,
+      15 13,
     text;
   --cp-hand:
     image-set(url("/cursors/cp-link.png") 1x, url("/cursors/cp-link@2x.png") 2x)
-      6 5,
+      5 4,
     pointer;
 }
 
@@ -362,6 +421,18 @@
   body:not(.admin-portal) .cursor-pointer:not(:disabled) {
     cursor: var(--cp-hand);
   }
+}
+
+/* Sonner injects unlayered CSS at runtime (cursor: pointer on the toast's
+   action, cancel and close buttons), which beats every layer above, so the
+   toasts need their own unlayered rules with higher specificity. */
+body:not(.admin-portal) [data-sonner-toast] {
+  cursor: var(--cp-arrow);
+}
+body:not(.admin-portal)
+  [data-sonner-toast]
+  :is([data-button], [data-close-button]):not([data-disabled="true"]) {
+  cursor: var(--cp-hand);
 }
 
 /* Custom fast spin animation */
@@ -421,217 +492,21 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Login mascots
+ * Auth flow panels (verify, OAuth callback, error, loading)
  *
- * The mascot webps animate in place on their own (run cycle, wings, walk), so
- * these keyframes only move them around the sign-in page. Used by
- * `pages/public/components/MascotField.tsx`.
- * ------------------------------------------------------------------------ */
-
-/* Jaguar: sprints the width of the screen, waits off-screen, turns, sprints
-   back. The scaleX flip is scheduled while it is off-screen so it never reads
-   as a pivot in mid-stride. */
-@keyframes mascot-dash {
-  0% {
-    transform: translate3d(115vw, 0, 0) scaleX(1);
-  }
-  20% {
-    transform: translate3d(-45vw, 0, 0) scaleX(1);
-  }
-  20.01%,
-  60% {
-    transform: translate3d(-45vw, 0, 0) scaleX(-1);
-  }
-  80%,
-  100% {
-    transform: translate3d(115vw, 0, 0) scaleX(-1);
-  }
-}
-
-/* Timing is driven by custom properties rather than set directly, so a single
-   mascot can be re-timed from the JSX. These rules are unlayered and would
-   otherwise win over Tailwind's `[animation-duration:…]` utilities. */
-.mascot-dash {
-  animation: mascot-dash var(--mascot-duration, 24s) linear
-    var(--mascot-delay, 0s) infinite;
-  will-change: transform;
-}
-
-/* Wandering: waypoints inside a --roam-x by --roam-y box rather than a straight
-   there-and-back, so the path never reads as a pendulum. The box hangs off the
-   mascot's anchor corner, so the signs of the two vars are what aim it at open
-   space. Easing applies per segment, which gives the drift-and-pause rhythm of
-   something that keeps changing its mind. */
-@keyframes mascot-roam {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  18% {
-    transform: translate3d(
-      calc(var(--roam-x, 0px) * 0.85),
-      calc(var(--roam-y, 0px) * 0.2),
-      0
-    );
-  }
-  35% {
-    transform: translate3d(
-      calc(var(--roam-x, 0px) * 0.3),
-      calc(var(--roam-y, 0px) * 0.85),
-      0
-    );
-  }
-  52% {
-    transform: translate3d(var(--roam-x, 0px), var(--roam-y, 0px), 0);
-  }
-  70% {
-    transform: translate3d(
-      calc(var(--roam-x, 0px) * 0.45),
-      calc(var(--roam-y, 0px) * 0.35),
-      0
-    );
-  }
-  86% {
-    transform: translate3d(
-      calc(var(--roam-x, 0px) * 0.9),
-      calc(var(--roam-y, 0px) * 0.75),
-      0
-    );
-  }
-}
-
-.mascot-roam {
-  animation: mascot-roam var(--mascot-duration, 21s) ease-in-out
-    var(--mascot-delay, 0s) infinite;
-  will-change: transform;
-}
-
-/* Hovering: bobs and tips on a shorter period than the drift underneath it, so
-   the two never settle into an obvious repeat. */
-@keyframes mascot-hover {
-  0%,
-  100% {
-    transform: translate3d(0, calc(var(--float, 10px) * -1), 0) rotate(-5deg);
-  }
-  50% {
-    transform: translate3d(0, var(--float, 10px), 0) rotate(5deg);
-  }
-}
-
-.mascot-hover {
-  animation: mascot-hover var(--mascot-bounce-duration, 6.5s) ease-in-out
-    var(--mascot-bounce-delay, 0s) infinite;
-}
-
-/* A small bounce for the ones whose own animation is a walk in place. */
-@keyframes mascot-waddle {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(-2.5deg);
-  }
-  50% {
-    transform: translate3d(0, calc(var(--waddle, 4px) * -1), 0) rotate(2.5deg);
-  }
-}
-
-.mascot-waddle {
-  animation: mascot-waddle var(--mascot-bounce-duration, 2.8s) ease-in-out
-    var(--mascot-bounce-delay, 0s) infinite;
-}
-
-/* Walks the length of --patrol, turns, doubles back part of the way, turns
-   again — four legs of uneven length so it reads as pottering about rather than
-   pacing. scaleX passing through 0 at each end is what sells the turn, and the
-   keyframes are spaced by distance so the walking speed stays constant.
-
-   The raccoon art faces left, so scaleX(-1) is the one that walks it forwards
-   to the right: every leg travelling in +x is mirrored, every leg travelling
-   back to the left is not. */
-@keyframes mascot-patrol {
-  0% {
-    transform: translate3d(0, 0, 0) scaleX(-1);
-  }
-  29% {
-    transform: translate3d(var(--patrol, 80px), 0, 0) scaleX(-1);
-  }
-  33% {
-    transform: translate3d(var(--patrol, 80px), 0, 0) scaleX(1);
-  }
-  52% {
-    transform: translate3d(calc(var(--patrol, 80px) * 0.35), 0, 0) scaleX(1);
-  }
-  56% {
-    transform: translate3d(calc(var(--patrol, 80px) * 0.35), 0, 0) scaleX(-1);
-  }
-  69% {
-    transform: translate3d(calc(var(--patrol, 80px) * 0.8), 0, 0) scaleX(-1);
-  }
-  73% {
-    transform: translate3d(calc(var(--patrol, 80px) * 0.8), 0, 0) scaleX(1);
-  }
-  96% {
-    transform: translate3d(0, 0, 0) scaleX(1);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) scaleX(-1);
-  }
-}
-
-.mascot-patrol {
-  animation: mascot-patrol var(--mascot-duration, 24s) linear
-    var(--mascot-delay, 0s) infinite;
-  will-change: transform;
-}
-
-/* The mascots are decoration, and the webps keep animating even when the layer
-   stops moving — so drop the whole field rather than freeze it. */
-@media (prefers-reduced-motion: reduce) {
-  .mascot-field {
-    display: none;
-  }
-}
-
-/* On a landscape phone the form fills the viewport top to bottom, leaving the
-   mascots nowhere to wander that isn't on top of it. */
-@media (max-height: 560px) {
-  .mascot-field {
-    display: none;
-  }
-}
-
-/* ---------------------------------------------------------------------------
- * Zero Day login
- *
- * The login screen is intentionally isolated from the portal's light UI. Its
- * gradients behave as sparse neon light pollution over a black canvas, while
- * the grid, scanlines, and clipped panels supply the technical geometry.
+ * These pages sit on the sign-in page's night sky (components/SkyBackdrop.tsx)
+ * with a clipped teal-black panel. No glows.
  * ------------------------------------------------------------------------ */
 
 .zero-login {
-  background-color: #020307;
-  background-image:
-    radial-gradient(circle at 10% 18%, rgb(89 0 255 / 22%), transparent 28%),
-    radial-gradient(circle at 88% 8%, rgb(246 43 232 / 14%), transparent 24%),
-    radial-gradient(circle at 58% 105%, rgb(33 255 240 / 10%), transparent 34%);
-}
-
-.zero-login::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(
-    115deg,
-    transparent 0 44%,
-    rgb(89 0 255 / 6%) 44.1% 44.3%,
-    transparent 44.4% 100%
-  );
-  content: "";
+  background-color: #000000;
+  color: #ffffff;
 }
 
 .zero-login-grid {
   background-image:
-    linear-gradient(rgb(33 255 240 / 9%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(33 255 240 / 9%) 1px, transparent 1px);
+    linear-gradient(rgb(214 249 255 / 9%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(214 249 255 / 9%) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: linear-gradient(
     to bottom,
@@ -655,13 +530,7 @@
 }
 
 .zero-login-panel {
-  background: linear-gradient(
-    135deg,
-    rgb(33 255 240 / 72%),
-    rgb(255 255 255 / 12%) 30%,
-    rgb(255 255 255 / 12%) 68%,
-    rgb(246 43 232 / 72%)
-  );
+  background: rgb(214 249 255 / 16%);
   clip-path: polygon(
     0 0,
     calc(100% - 24px) 0,
@@ -670,7 +539,6 @@
     24px 100%,
     0 calc(100% - 24px)
   );
-  filter: drop-shadow(0 28px 60px rgb(0 0 0 / 48%));
 }
 
 .zero-login-panel::after {
@@ -679,14 +547,13 @@
   right: 24px;
   width: 72px;
   height: 1px;
-  background: #f62be8;
-  box-shadow: 0 0 12px #f62be8;
+  background: var(--color-ice);
   content: "";
 }
 
 .zero-login-panel-inner {
   min-height: 100%;
-  background: rgb(7 8 15 / 94%);
+  background: color-mix(in srgb, var(--hacker-surface) 88%, transparent);
   clip-path: inherit;
   backdrop-filter: blur(18px);
 }
@@ -739,8 +606,7 @@
 }
 
 .zero-login-legal-link::after {
-  background: #21fff0;
-  box-shadow: 0 0 8px rgb(33 255 240 / 70%);
+  background: #fff;
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 280ms ease;
@@ -748,8 +614,7 @@
 
 .zero-login-legal-link:hover,
 .zero-login-legal-link:focus-visible {
-  color: #21fff0;
-  text-shadow: 0 0 12px rgb(33 255 240 / 55%);
+  color: #fff;
   outline: none;
 }
 
@@ -811,33 +676,120 @@
   transform: translateX(2px);
 }
 
-/* Zero Day hacker portal. The theme class lives at the shared hacker layout,
-   so admin and public pages retain their existing palette. A matching body
-   class covers Radix portals, which render outside the layout subtree. */
-.hacker-zero-theme,
-body.hacker-zero-portals {
-  --background: #080910;
-  --foreground: #f8f8ff;
-  --card: #0b0c15;
-  --card-foreground: #f8f8ff;
-  --popover: #0d0e18;
-  --popover-foreground: #f8f8ff;
-  --primary: #5900ff;
+/* Portal themes. Each user picks light or dark (shared/hooks/use-theme.ts);
+   HackerLayout and AdminLayout put .theme-dark or .theme-light on <body> so
+   dialogs, menus, and toasts follow, and on their wrapper. Public and sign-in
+   pages set neither and keep their own night-sky colours.
+
+   Dark: black and white, primary blue, and occasional navy for selected
+   navigation. Keep the legacy tide/ice utilities as aliases so shared hacker
+   components receive the same palette. The full-screen loader uses
+   .theme-dark directly, since it renders before any layout. The application
+   status cards keep this night-sky palette in light mode too (see
+   .hacker-application-card below). */
+.theme-dark,
+.theme-light .hacker-application-card {
+  /* White ink, restated so a status card inside a light page (which rebinds
+     it to near-black) still reads white on the sky. */
+  --hacker-ink: #ffffff;
+  /* A soft charcoal page rather than pure black, a step below the cards. */
+  --hacker-canvas: #101010;
+  --hacker-surface: #171717;
+  --hacker-surface-2: #242424;
+  --hacker-tide: var(--hacker-blue);
+  --hacker-ice: var(--hacker-blue);
+  --hacker-tide-hover: color-mix(in srgb, var(--hacker-blue) 90%, black);
+  /* Deeper badge green for the dark hacker cards. */
+  --badge-green: #0d6c4e;
+  /* Admin filter tracks and panels sit one step above the canvas. */
+  --admin-panel: var(--hacker-surface);
+  --toggle-track: var(--hacker-surface);
+  --toggle-active: #333333;
+  /* Rebind aliases here as well as their source tokens for direct CSS users. */
+  --color-canvas: var(--hacker-canvas);
+  --color-surface: var(--hacker-surface);
+  --color-surface-2: var(--hacker-surface-2);
+  --color-ink: var(--hacker-ink);
+  --color-tide: var(--hacker-tide);
+  --color-tide-hover: var(--hacker-tide-hover);
+  --color-ice: var(--hacker-ice);
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--hacker-blue);
   --primary-foreground: #ffffff;
-  --secondary: #151625;
-  --secondary-foreground: #f8f8ff;
-  --muted: #151625;
-  --muted-foreground: rgb(255 255 255 / 52%);
-  --accent: rgb(33 255 240 / 10%);
-  --accent-foreground: #21fff0;
-  --border: rgb(255 255 255 / 11%);
-  --input: rgb(255 255 255 / 13%);
-  --ring: rgb(33 255 240 / 65%);
+  --secondary: var(--color-surface-2);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-surface-2);
+  --muted-foreground: rgb(255 255 255 / 60%);
+  /* Hover and highlighted menu items: a lighter gray, never a blue wash. */
+  --accent: var(--color-surface-2);
+  --accent-foreground: #ffffff;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: var(--hacker-blue);
+  --link: var(--hacker-blue);
+  --link-hover: #ffffff;
 }
 
-body.hacker-zero-portals {
-  background: #030409;
-  color: #f8f8ff;
+/* Admin portal: outline buttons (Calculate, votes, View Resume...) sit on the
+   panel gray, like the short-answer boxes. */
+body.admin-portal {
+  --button-outline: var(--admin-panel);
+}
+
+/* Light admin: a step darker, the toggle-track gray, so secondary actions
+   (Start Grading, Preview API, Promote next walk-ins...) stand off the white
+   page, with no visible edge. Hover darkens further rather than falling
+   back to the paler accent. */
+body.admin-portal.theme-light {
+  --button-outline: var(--toggle-track);
+  --button-outline-hover: #e2e2e0;
+  --button-outline-border: transparent;
+}
+
+/* Light: the admin palette (white canvas, #F8F8F7 panels, near-black ink and
+   the stock shadcn light tokens from branding/theme.css), keeping the hacker
+   blue for actions. Ice is used for small accent text, so it is darkened
+   enough to read on white. */
+.theme-light {
+  --date-accent: #9a1fd6;
+  --hacker-canvas: #ffffff;
+  --hacker-surface: var(--admin-panel);
+  --hacker-surface-2: #ededeb;
+  --hacker-ink: #171717;
+  --hacker-tide: var(--hacker-blue);
+  --hacker-ice: color-mix(in srgb, var(--hacker-blue) 80%, black);
+  --hacker-tide-hover: color-mix(in srgb, var(--hacker-blue) 90%, black);
+  --color-canvas: var(--hacker-canvas);
+  --color-surface: var(--hacker-surface);
+  --color-surface-2: var(--hacker-surface-2);
+  --color-ink: var(--hacker-ink);
+  --color-tide: var(--hacker-tide);
+  --color-tide-hover: var(--hacker-tide-hover);
+  --color-ice: var(--hacker-ice);
+}
+
+body:is(.theme-dark, .theme-light) {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+/* Both portals keep the hacker blue for primary actions in light mode, as
+   they do in dark. The hacker portal also takes it for focus rings and links;
+   the admin portal keeps the stock gray ring and its own link blue. */
+body.theme-light {
+  --primary: var(--hacker-blue);
+  --primary-foreground: #ffffff;
+}
+
+body.theme-light:not(.admin-portal) {
+  --ring: var(--hacker-blue);
+  --link: var(--hacker-blue);
+  --link-hover: var(--hacker-ice);
 }
 
 .zero-hacker-surface {
@@ -845,128 +797,62 @@ body.hacker-zero-portals {
      URL answer must wrap, never turn the page into a sideways scroller. clip
      (not hidden) keeps sticky positioning working inside the page. */
   overflow-x: clip;
-  background-color: #030409;
+  background-color: var(--color-canvas);
 }
 
-/* Translate the hacker pages' legacy hard-coded light utilities at the theme
-   boundary. QR and camera surfaces opt out because their contrast is
-   functional rather than decorative. */
-:where(.hacker-zero-theme, body.hacker-zero-portals) .text-black {
-  color: #f8f8ff;
+/* Shared lighter surfaces for borderless homepage and application cards, and
+   the desktop sidebar, which matches them. */
+.theme-dark
+  :is(.hacker-dashboard, .hacker-card-surfaces, .hacker-zero-sidebar) {
+  --hacker-surface: #171717;
+  --hacker-surface-2: #242424;
+  --color-surface: var(--hacker-surface);
+  --color-surface-2: var(--hacker-surface-2);
+  --card: var(--hacker-surface);
 }
 
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(
-    [class~="text-[#8A8A8A]"],
-    [class~="text-[#6B6B6B]"],
-    [class~="text-[#9B9B9B]"],
-    [class~="text-[#B4B4B4]"],
-    [class~="text-[#B8B8B8]"],
-    [class~="text-[#C4C4C4]"]
-  ) {
-  color: rgb(255 255 255 / 48%);
+/* Each status card clips its slice of the same faded login sky. SkyCardStack
+   supplies the shared height and vertical offsets, including card gaps. */
+.hacker-application-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
 
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(
-    [class~="text-[#1A1A1A]"],
-    [class~="text-[#282828]"],
-    [class~="text-[#3D3D3D]"]
-  ) {
-  color: rgb(255 255 255 / 82%);
+.hacker-application-card::before {
+  content: "";
+  position: absolute;
+  top: var(--sky-card-offset, 0px);
+  right: 0;
+  left: 0;
+  height: var(--sky-stack-height, 100%);
+  z-index: -1;
+  pointer-events: none;
+  background: url("./assets/sky.webp") 60% 18% / cover no-repeat;
+  transform: scaleX(-1);
+  opacity: 0.35;
+  /* Screen only adds light: stars and clouds show, while the art's black sky
+     leaves the card's own gray untouched instead of darkening it. */
+  mix-blend-mode: screen;
 }
 
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  .bg-white:not([data-hacker-keep-light]) {
-  background-color: #0b0c15;
+/* The status cards stay a slice of the night sky in light mode: the dark
+   tokens are rebound on the card (with .theme-dark above), so its text, pills
+   and buttons read on the sky art. */
+.theme-light .hacker-application-card {
+  color: var(--color-ink);
 }
 
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  .bg-black:not([data-hacker-keep-black]) {
-  background-color: #5900ff;
+:where(.theme-dark) :is(input, textarea, select) {
+  color: var(--color-ink);
+  caret-color: var(--hacker-blue);
 }
 
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(
-    [class~="bg-[#FAFAFA]"],
-    [class~="bg-[#F5F5F5]"],
-    [class~="bg-[#F2F2F2]"],
-    [class~="bg-[#F0F0F0]"],
-    [class~="bg-[#EDEDED]"],
-    [class~="bg-[#E5E5E5]"]
-  ) {
-  background-color: #11121e;
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is([class~="bg-white/95"], [class~="bg-white/90"]) {
-  background-color: rgb(11 12 21 / 96%);
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(
-    [class~="border-[#E5E5E5]"],
-    [class~="border-[#D9D9D9]"],
-    [class~="border-[#F0F0F0]"],
-    [class~="border-[#EDEDED]"],
-    [class~="border-[#C9C9C9]"]
-  ) {
-  border-color: rgb(255 255 255 / 12%);
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is([class~="divide-[#F0F0F0]"], [class~="divide-[#F5F5F5]"])
-  > :not(:last-child) {
-  border-color: rgb(255 255 255 / 10%);
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(
-    [class~="hover:bg-[#FAFAFA]"],
-    [class~="hover:bg-[#F5F5F5]"],
-    [class~="hover:bg-[#F2F2F2]"],
-    [class~="hover:bg-[#F0F0F0]"],
-    [class~="hover:bg-[#EDEDED]"]
-  ):hover {
-  background-color: rgb(33 255 240 / 8%);
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is([class~="hover:text-black"], [class~="focus-visible:text-black"]):hover,
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  [class~="focus-visible:text-black"]:focus-visible {
-  color: #21fff0;
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(
-    [class~="hover:border-black"],
-    [class~="focus-visible:border-black"]
-  ):hover,
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  [class~="focus-visible:border-black"]:focus-visible {
-  border-color: #21fff0;
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is([class~="hover:bg-black/85"], [class~="active:bg-black/80"]):hover,
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  [class~="active:bg-black/80"]:active {
-  background-color: #6d1cff;
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(input, textarea, select) {
-  color: #f8f8ff;
-  caret-color: #21fff0;
-}
-
-:where(.hacker-zero-theme, body.hacker-zero-portals)
-  :is(input, textarea)::placeholder {
+:where(.theme-dark) :is(input, textarea)::placeholder {
   color: rgb(255 255 255 / 32%);
 }
 
-body.hacker-zero-portals
+body.theme-dark
   :is(
     [data-slot="dialog-content"],
     [data-slot="alert-dialog-content"],
@@ -977,28 +863,38 @@ body.hacker-zero-portals
     [data-slot="drawer-content"],
     [data-slot="hover-card-content"]
   ) {
-  border-color: rgb(255 255 255 / 12%);
-  background-color: #0b0c15;
-  color: #f8f8ff;
-  box-shadow: 0 24px 70px rgb(0 0 0 / 58%);
+  border-color: rgb(255 255 255 / 10%);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: none;
 }
 
-body.hacker-zero-portals
+/* Tooltips (sidebar icons, the toggle's shortcut hint): dark, not the
+   shadcn default of an inverted white chip. */
+body.theme-dark [data-slot="tooltip-content"] {
+  border: 1px solid rgb(255 255 255 / 10%);
+  background-color: var(--color-surface-2);
+  color: var(--color-ink);
+}
+
+body.theme-dark [data-slot="tooltip-content"] .fill-foreground {
+  fill: var(--color-surface-2);
+}
+
+body.theme-dark
   :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
-  background-color: rgb(0 0 0 / 72%);
+  background-color: rgb(0 0 0 / 75%);
 }
 
 .hacker-zero-sidebar {
-  --sidebar: #070810;
+  --sidebar: var(--color-surface);
   --sidebar-foreground: rgb(255 255 255 / 72%);
-  --sidebar-accent: rgb(89 0 255 / 22%);
+  --sidebar-primary: var(--hacker-blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-surface-2);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 10%);
-  --sidebar-ring: rgb(33 255 240 / 55%);
-}
-
-.hacker-zero-sidebar [data-sidebar="sidebar"] {
-  box-shadow: inset -1px 0 rgb(33 255 240 / 8%);
+  --sidebar-ring: var(--hacker-blue);
 }
 
 .hacker-zero-sidebar [data-sidebar="header"] {
@@ -1007,32 +903,30 @@ body.hacker-zero-portals
 }
 
 .hacker-zero-sidebar [data-sidebar="group-label"] {
-  color: rgb(33 255 240 / 55%);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: rgb(255 255 255 / 45%);
   font-size: 0.625rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
 .hacker-zero-sidebar [data-sidebar="menu-button"] {
-  color: rgb(255 255 255 / 58%);
+  color: rgb(255 255 255 / 60%);
+  font-weight: 300;
   transition:
     color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease;
+    background-color 180ms ease;
 }
 
 .hacker-zero-sidebar [data-sidebar="menu-button"]:hover {
-  background: rgb(33 255 240 / 8%);
-  color: #21fff0;
+  background: var(--sidebar-accent);
+  color: #ffffff;
 }
 
+/* Selected sidebar items use a subtle neutral highlight and white text. */
 .hacker-zero-sidebar [data-sidebar="menu-button"][data-active="true"] {
-  background: rgb(89 0 255 / 30%);
+  background: var(--color-surface-2);
   color: #ffffff;
-  box-shadow:
-    inset 2px 0 #21fff0,
-    0 0 18px rgb(89 0 255 / 12%);
+  font-weight: 400;
 }
 
 .hacker-zero-sidebar [data-sidebar="menu-button"][data-size="lg"] {
@@ -1040,12 +934,81 @@ body.hacker-zero-portals
 }
 
 .hacker-zero-sidebar [data-slot="avatar-fallback"] {
-  background: rgb(33 255 240 / 10%);
-  color: #21fff0;
+  background: var(--color-surface-2);
+  color: #ffffff;
 }
 
+.hacker-zero-sidebar svg {
+  color: rgb(255 255 255 / 75%);
+  transition: color 180ms ease;
+}
+
+.hacker-zero-sidebar [data-sidebar="menu-button"][data-active="true"] svg,
+.hacker-zero-sidebar :is(button, a):is(:hover, [data-state="open"]) svg {
+  color: #ffffff;
+}
+
+/* The collapse rail's hover line is a hint, not a highlight. */
 .hacker-zero-sidebar [data-sidebar="rail"]:hover::after {
-  background: #21fff0;
+  background: rgb(255 255 255 / 14%);
+}
+
+/* Light theme: the same sidebar (layouts/PortalSidebar.tsx) on a light
+   --admin-panel (#F8F8F7), the same off-white as the filter tracks.
+   Rebinding the hacker ink/surface tokens lets the shared markup's text-ink /
+   bg-surface-2 utilities read dark-on-light here; the class is also set on
+   the sidebar's portaled menus, which share the sidebar's background. */
+.admin-sidebar {
+  --hacker-ink: #171717;
+  --hacker-surface: var(--admin-panel);
+  --hacker-surface-2: #ededeb;
+  --sidebar: var(--admin-panel);
+  --sidebar-foreground: rgb(23 23 23 / 72%);
+  --sidebar-accent: var(--hacker-surface-2);
+  --sidebar-accent-foreground: var(--hacker-ink);
+  --sidebar-border: rgb(0 0 0 / 8%);
+}
+
+.admin-sidebar [data-sidebar="header"] {
+  border-bottom: 1px solid var(--sidebar-border);
+  padding-block: 0.75rem;
+}
+
+.admin-sidebar [data-sidebar="menu-button"][data-active="true"] {
+  color: var(--hacker-ink);
+}
+
+/* Directory cards are shaped like printed photos (a polaroid: picture on top,
+   caption below) but take the portal theme's colours: a dark card with white
+   ink in dark mode, the light panel in light mode. The hairline edge keeps the
+   card distinct from the canvas, and from a dialog of the same surface. */
+.directory-postcard {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  outline: 1px solid color-mix(in srgb, var(--hacker-ink) 9%, transparent);
+  outline-offset: -1px;
+}
+
+/* Placeholder block for hacker-side loading states (HackerSkeleton). A faint
+   ink fill that breathes. */
+@keyframes zero-skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Layered so bg-* utilities on a block override the default fill. */
+@layer components {
+  .zero-skeleton {
+    background-color: color-mix(in srgb, var(--hacker-ink) 7%, transparent);
+    animation: zero-skeleton-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zero-skeleton {
+    animation: none;
+  }
 }
 
 /* Indeterminate sweep for the auth-flow loading panel. Short and sharp rather
@@ -1073,12 +1036,6 @@ body.hacker-zero-portals
 }
 
 @media (max-width: 639px) {
-  .zero-login {
-    background-image:
-      radial-gradient(circle at 20% 10%, rgb(89 0 255 / 20%), transparent 30%),
-      radial-gradient(circle at 96% 42%, rgb(246 43 232 / 10%), transparent 25%);
-  }
-
   .zero-login-grid {
     background-size: 48px 48px;
     opacity: 0.14;
@@ -1118,12 +1075,12 @@ body.hacker-zero-portals
   inset: -1px;
   background: conic-gradient(
     from var(--login-angle),
-    #7828ff,
+    var(--hacker-tide),
     transparent 22%,
     transparent 48%,
-    #dbc4ff 58%,
+    var(--hacker-ice) 58%,
     transparent 70%,
-    #7828ff
+    var(--hacker-tide)
   );
   content: "";
   animation: login-border-turn 12s linear infinite;
@@ -1142,7 +1099,7 @@ body.hacker-zero-portals
 }
 
 .login-glow-card {
-  background: #0e011f;
+  background: var(--hacker-surface);
   clip-path: var(--notch);
 }
 
@@ -1187,11 +1144,11 @@ body.hacker-zero-portals
   /* Bright at the right-hand end, because that end leads. */
   background: linear-gradient(
     90deg,
-    rgba(219, 196, 255, 0) 0%,
-    rgba(219, 196, 255, 0.85) 65%,
+    rgba(214, 249, 255, 0) 0%,
+    rgba(214, 249, 255, 0.85) 65%,
     #ffffff 100%
   );
-  filter: drop-shadow(0 0 6px rgba(190, 150, 255, 0.95));
+  filter: drop-shadow(0 0 6px rgba(120, 220, 240, 0.95));
   animation:
     star-tail var(--star-cycle) ease-in-out infinite,
     star-shoot var(--star-cycle) ease-in-out infinite;
@@ -1209,9 +1166,9 @@ body.hacker-zero-portals
   border-radius: 100%;
   background: linear-gradient(
     -45deg,
-    rgba(219, 196, 255, 0),
-    rgba(233, 220, 255, 1),
-    rgba(219, 196, 255, 0)
+    rgba(214, 249, 255, 0),
+    rgba(235, 252, 255, 1),
+    rgba(214, 249, 255, 0)
   );
   animation: star-glint var(--star-cycle) ease-in-out infinite;
   animation-delay: var(--star-delay, 0s);
@@ -1269,9 +1226,9 @@ body.hacker-zero-portals
 
 /* ---------------------------------------------------------------------------
  * Cyberpunk cursors, from zeroday.hackutd.co (public/cursors). Scoped to the
- * pages that opt in with `.zero-cursor`. The hotspots are the ones baked into
- * the original .cur files - the arrow's tip is 8px down its bitmap, the hand's
- * at (6,5), the beam's centred at (17,15) - so clicks land where the cursor
+ * pages that opt in with `.zero-cursor`. The hotspots are 7/8 of the ones in
+ * the original .cur files - the arrow's tip is 7px down its bitmap, the hand's
+ * at (5,4), the beam's centred at (15,13) - so clicks land where the cursor
  * points. Each keeps its native keyword as the fallback.
  * ------------------------------------------------------------------------ */
 
@@ -1281,33 +1238,30 @@ body.hacker-zero-portals
         url("/cursors/cp-arrow.png") 1x,
         url("/cursors/cp-arrow@2x.png") 2x
       )
-      0 8,
+      0 7,
     auto;
 }
 
 .zero-cursor :is(a, button:not(:disabled), summary, label, [role="button"]) {
   cursor:
     image-set(url("/cursors/cp-link.png") 1x, url("/cursors/cp-link@2x.png") 2x)
-      6 5,
+      5 4,
     pointer;
 }
 
 .zero-cursor :is(input, textarea, [contenteditable="true"]) {
   cursor:
     image-set(url("/cursors/cp-beam.png") 1x, url("/cursors/cp-beam@2x.png") 2x)
-      17 15,
+      15 13,
     text;
 }
 
 /* ---------------------------------------------------------------------------
- * Hacker mobile tab bar - a floating dark glass capsule.
+ * Hacker mobile tab bar - a floating capsule.
  *
- * The bar is a translucent material over the page, not an opaque strip: blur
- * plus saturation lets the page colour bleed through, a bright inset top edge
- * reads as light catching the glass, and a deep soft shadow lifts it off the
- * content. The selection pill is a lighter glass layer inside the bar that
- * slides between tabs on transform only. Beneath the bar, a masked blur
- * dissolves content into the screen edge instead of a hard cut-off.
+ * A surface-coloured bar with a hairline border. The navy selection pill slides
+ * between tabs on transform only. Beneath the bar, a masked blur dissolves
+ * content into the screen edge instead of a hard cut-off.
  * ------------------------------------------------------------------------ */
 
 .zero-tabbar-edge {
@@ -1316,7 +1270,7 @@ body.hacker-zero-portals
   inset-inline: 0;
   bottom: 0;
   height: calc(7rem + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgb(3 4 9 / 72%), transparent);
+  background: color-mix(in srgb, var(--color-canvas) 70%, transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   -webkit-mask-image: linear-gradient(to top, #000 35%, transparent);
@@ -1327,25 +1281,16 @@ body.hacker-zero-portals
   position: relative;
   display: flex;
   border-radius: 9999px;
-  background: rgb(22 23 34 / 58%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 14%),
-    inset 0 -1px 0 rgb(255 255 255 / 4%),
-    inset 0 0 0 0.5px rgb(255 255 255 / 10%),
-    0 10px 30px rgb(0 0 0 / 45%),
-    0 2px 6px rgb(0 0 0 / 30%);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--hacker-ink) 10%, transparent);
 }
 
 .zero-tabbar-pill {
   pointer-events: none;
   position: absolute;
   border-radius: 9999px;
-  background: rgb(255 255 255 / 11%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 16%),
-    inset 0 0 0 0.5px rgb(255 255 255 / 8%);
+  background: color-mix(in srgb, var(--hacker-ink) 12%, transparent);
   /* Critically damped feel: fast out of the gate, settles with no overshoot. */
   transition:
     transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
@@ -1364,7 +1309,7 @@ body.hacker-zero-portals
   gap: 0.125rem;
   min-height: 3.25rem;
   border-radius: 9999px;
-  color: rgb(255 255 255 / 62%);
+  color: color-mix(in srgb, var(--hacker-ink) 55%, transparent);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   transition:
@@ -1379,11 +1324,11 @@ body.hacker-zero-portals
 }
 
 .zero-tabbar-item[aria-current="page"] {
-  color: #ffffff;
+  color: var(--hacker-ink);
 }
 
 .zero-tabbar-item:focus-visible {
-  outline: 2px solid rgb(33 255 240 / 65%);
+  outline: 2px solid var(--hacker-blue);
   outline-offset: -2px;
 }
 
@@ -1405,30 +1350,20 @@ body.hacker-zero-portals
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .zero-tabbar,
   .zero-tabbar-edge {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-  }
-
-  .zero-tabbar {
-    background: #11121e;
-  }
-
-  .zero-tabbar-edge {
-    background: linear-gradient(to top, #030409 40%, transparent);
+    background: var(--color-canvas);
   }
 }
 
 @media (prefers-contrast: more) {
   .zero-tabbar {
-    background: #0b0c15;
-    box-shadow:
-      inset 0 0 0 1px rgb(255 255 255 / 45%),
-      0 10px 30px rgb(0 0 0 / 45%);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--hacker-ink) 45%, transparent);
   }
 
   .zero-tabbar-item {
-    color: rgb(255 255 255 / 85%);
+    color: color-mix(in srgb, var(--hacker-ink) 85%, transparent);
   }
 }

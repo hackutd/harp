@@ -79,7 +79,6 @@ type config struct {
 	observability    observabilityConfig
 	aiDetectorURL    string
 	aiDetectorToken  string
-	discord          discordConfig
 }
 
 // clientIPConfig selects the trusted source of the client address used for
@@ -255,14 +254,13 @@ func (app *application) mount() http.Handler {
 				r.Put("/me", app.upsertMyDirectoryProfileHandler)
 				r.Patch("/me/discoverable", app.updateMyDirectoryDiscoverableHandler)
 				r.Post("/me/confirm-status", app.confirmMyDirectoryStatusHandler)
-				r.Post("/me/headshot-upload-url", app.generateDirectoryHeadshotUploadURLHandler)
-				r.Get("/me/discord/authorize", app.getDiscordAuthorizeURLHandler)
-				r.Post("/me/discord", app.linkDiscordHandler)
-				r.Delete("/me/discord", app.unlinkDiscordHandler)
 
 				r.Get("/profiles", app.listDirectoryHandler)
 				r.Post("/profiles/{userID}/poke", app.pokeDirectoryProfileHandler)
 				r.Get("/pokes", app.listDirectoryPokesHandler)
+				r.Get("/pokes/sent", app.listDirectorySentPokesHandler)
+				r.Get("/pokes/unseen", app.getUnseenDirectoryPokesHandler)
+				r.Post("/pokes/seen", app.markDirectoryPokesSeenHandler)
 				r.Get("/contacts", app.listDirectoryContactsHandler)
 				r.Put("/contacts/{userID}", app.addDirectoryContactHandler)
 				r.Delete("/contacts/{userID}", app.removeDirectoryContactHandler)
@@ -278,6 +276,11 @@ func (app *application) mount() http.Handler {
 			r.Get("/points-config", app.getPointsConfigHandler)
 			r.Get("/hackathon-config", app.getHackathonConfigHandler)
 			r.Delete("/users/me", app.deleteMyAccountHandler)
+			r.Patch("/users/me/theme", app.updateMyThemeHandler)
+			r.Get("/users/me/photo", app.getMyPhotoHandler)
+			r.Put("/users/me/photo", app.setMyPhotoHandler)
+			r.Delete("/users/me/photo", app.deleteMyPhotoHandler)
+			r.Post("/users/me/photo-upload-url", app.generateMyPhotoUploadURLHandler)
 			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
 			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
 

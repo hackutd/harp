@@ -1,4 +1,4 @@
-import { ChevronLeft, Eye } from "lucide-react";
+import { IconChevronLeft, IconEye } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
@@ -35,6 +35,7 @@ import type { RSVPStatus } from "@/types";
 import { ApplicationSummary } from "../apply/components/ApplicationSummary";
 import { SchemaStepRenderer } from "../apply/steps/SchemaStepRenderer";
 import { StatusDetailSkeleton } from "../components/StatusDetailSkeleton";
+import { pillClass } from "../components/tones";
 import { fetchMyTravelRSVP, submitMyTravelRSVP } from "./api";
 import { ReceiptPreviewDialog } from "./components/ReceiptPreviewDialog";
 import { ReceiptUploader } from "./components/ReceiptUploader";
@@ -61,18 +62,14 @@ function TravelRSVPResult({
   const confirmed = status === "confirmed";
 
   return (
-    <div className="rounded-xl border border-[#E5E5E5] p-5">
-      <span
-        className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${
-          confirmed ? "bg-emerald-700" : "bg-[#7A7973]"
-        }`}
-      >
+    <div className="rounded-xl border border-ink/10 p-5">
+      <span className={pillClass(confirmed ? "success" : "neutral")}>
         {confirmed ? "Travel details submitted" : "Reimbursement declined"}
       </span>
-      <h1 className="mt-3 text-xl font-light tracking-tight text-black">
+      <h1 className="mt-3 text-xl font-light tracking-tight text-ink">
         {confirmed ? "All set!" : "Travel RSVP received"}
       </h1>
-      <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+      <p className="mt-2 text-sm font-light text-ink/65">
         {confirmed
           ? `We received your receipts. The organizing team will follow up about your ${
               approvedAmountCents != null
@@ -223,9 +220,9 @@ export default function TravelRSVPPage() {
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
       >
-        <ChevronLeft className="size-5" strokeWidth={1.75} />
+        <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
 
       <div className="min-w-0 flex-1">
@@ -239,7 +236,7 @@ export default function TravelRSVPPage() {
               <>
                 {schema.length > 0 && (
                   <section className="mt-5">
-                    <h2 className="mb-3 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
+                    <h2 className="mb-3 text-xs font-light tracking-widest text-ink/65 uppercase">
                       Your submission
                     </h2>
                     <ApplicationSummary
@@ -252,7 +249,7 @@ export default function TravelRSVPPage() {
                 )}
                 {(travelRSVP.travel_receipt_paths ?? []).length > 0 && (
                   <section className="mt-5">
-                    <h2 className="mb-3 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
+                    <h2 className="mb-3 text-xs font-light tracking-widest text-ink/65 uppercase">
                       Receipts
                     </h2>
                     <div className="space-y-3">
@@ -264,18 +261,18 @@ export default function TravelRSVPPage() {
                             trigger={
                               <button
                                 type="button"
-                                className="flex w-full items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+                                className="flex w-full items-center justify-between rounded-xl border border-ink/10 px-5 py-4 text-left transition-colors hover:bg-ink/5"
                               >
                                 <div>
-                                  <p className="text-sm font-normal text-black">
+                                  <p className="text-sm font-normal text-ink">
                                     Receipt {index + 1}
                                   </p>
-                                  <p className="text-xs font-light text-[#8A8A8A]">
+                                  <p className="text-xs font-light text-ink/65">
                                     Tap to preview
                                   </p>
                                 </div>
-                                <Eye
-                                  className="size-4.5 text-[#8A8A8A]"
+                                <IconEye
+                                  className="size-4.5 text-ink/65"
                                   strokeWidth={1.5}
                                 />
                               </button>
@@ -290,38 +287,38 @@ export default function TravelRSVPPage() {
             )}
           </>
         ) : !travelRSVP.travel_rsvp_enabled ? (
-          <div className="rounded-xl border border-[#E5E5E5] p-5">
-            <span className="inline-block rounded-full bg-[#7A7973] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
+          <div className="rounded-xl border border-ink/10 p-5">
+            <span className="inline-block rounded-full bg-ink/5 px-3 py-1 text-[11px] font-medium tracking-wide text-ink">
               Travel forms closed
             </span>
-            <h1 className="mt-3 text-xl font-light tracking-tight text-black">
+            <h1 className="mt-3 text-xl font-light tracking-tight text-ink">
               Travel forms are closed
             </h1>
-            <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+            <p className="mt-2 text-sm font-light text-ink/65">
               The travel form window has ended. If you think this is a mistake,
               please reach out to the organizing team.
             </p>
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-light tracking-tight text-black">
+            <h1 className="text-2xl font-light tracking-tight text-ink">
               Travel reimbursement
             </h1>
-            <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+            <p className="mt-2 text-sm font-light text-ink/65">
               Your travel reimbursement was approved! Tell us how you&apos;re
               getting here, upload proof of travel, and let us know how
               you&apos;d like to be paid. You can only submit once.
             </p>
 
             {travelRSVP.travel_approved_amount_cents != null && (
-              <div className="mt-6 rounded-xl bg-[#F5F5F5] p-5">
-                <p className="text-[11px] font-medium tracking-wide text-[#8A8A8A] uppercase">
+              <div className="mt-6 rounded-xl bg-surface p-5">
+                <p className="text-[11px] font-medium tracking-wide text-ink/65 uppercase">
                   Approved amount
                 </p>
-                <p className="mt-1 text-3xl font-light tracking-tight text-black">
+                <p className="mt-1 text-3xl font-light tracking-tight text-ink">
                   {formatUSD(travelRSVP.travel_approved_amount_cents)}
                 </p>
-                <p className="mt-2 text-xs font-light text-[#8A8A8A]">
+                <p className="mt-2 text-xs font-light text-ink/65">
                   This amount was set by the organizing team and is the most you
                   can be reimbursed. Submit your receipts below.
                 </p>
@@ -340,10 +337,10 @@ export default function TravelRSVPPage() {
                 ))}
 
                 <div id={RECEIPTS_SECTION_ID} className="space-y-3">
-                  <h2 className="text-xl font-light tracking-tight text-black">
+                  <h2 className="text-xl font-light tracking-tight text-ink">
                     Receipts
                   </h2>
-                  <p className="text-sm font-light text-[#8A8A8A]">
+                  <p className="text-sm font-light text-ink/65">
                     Upload your ticket receipts (PDF, PNG, or JPEG). Required if
                     you&apos;re flying.
                   </p>
@@ -363,7 +360,7 @@ export default function TravelRSVPPage() {
                   <Button
                     type="submit"
                     loading={submitting}
-                    className="h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+                    className="h-12 w-full rounded-full bg-tide text-sm font-normal text-white hover:bg-tide-hover"
                   >
                     Submit travel details
                   </Button>
@@ -374,28 +371,28 @@ export default function TravelRSVPPage() {
                         type="button"
                         variant="ghost"
                         disabled={submitting}
-                        className="h-12 w-full rounded-full text-sm font-light text-[#8A8A8A] hover:text-black"
+                        className="h-12 w-full rounded-full text-sm font-light text-ink/65 hover:text-ink"
                       >
                         I no longer need reimbursement, decline
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
+                    <AlertDialogContent className="rounded-xl border-ink/10">
                       <AlertDialogHeader>
-                        <AlertDialogTitle className="font-light tracking-tight text-black">
+                        <AlertDialogTitle className="font-light tracking-tight text-ink">
                           Decline travel reimbursement?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="font-light text-[#8A8A8A]">
+                        <AlertDialogDescription className="font-light text-ink/65">
                           You won&apos;t be reimbursed for your travel and this
                           cannot be undone. Are you sure?
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter className="gap-3">
-                        <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
+                        <AlertDialogCancel className="h-11 rounded-full border-ink/10 px-6 font-normal hover:bg-ink/5">
                           Keep reimbursement
                         </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => submitDecision("declined")}
-                          className="h-11 rounded-full bg-destructive px-6 font-normal text-white hover:bg-destructive-hover"
+                          className="h-11 rounded-full bg-destructive px-6 font-normal text-ink hover:bg-destructive-hover"
                         >
                           Decline
                         </AlertDialogAction>

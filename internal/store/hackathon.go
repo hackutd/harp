@@ -39,7 +39,6 @@ func (o ResetOptions) Any() bool {
 type ResetPaths struct {
 	Resumes        []string
 	TravelReceipts []string
-	Headshots      []string
 }
 
 // Reset resets the selected domains of hackathon data in a single transaction.
@@ -65,11 +64,6 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 		}
 
 		paths.TravelReceipts, err = collectTravelReceiptPaths(ctx, tx)
-		if err != nil {
-			return nil, err
-		}
-
-		paths.Headshots, err = collectDirectoryHeadshotPaths(ctx, tx, "")
 		if err != nil {
 			return nil, err
 		}

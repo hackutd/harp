@@ -1,4 +1,4 @@
-import { EyeOff, RotateCcw } from "lucide-react";
+import { IconEyeOff, IconRotate } from "@tabler/icons-react";
 import { memo } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,11 +18,11 @@ import { cardStatus } from "../utils";
 
 const STATUS_BADGES: Record<
   DirectoryCardStatus,
-  { label: string; variant: "destructive" | "secondary" | "outline" }
+  { label: string; variant: "red" | "neutral" | "green" }
 > = {
-  moderated: { label: "Hidden by admin", variant: "destructive" },
-  hidden_by_owner: { label: "Hidden by owner", variant: "secondary" },
-  visible: { label: "Visible", variant: "outline" },
+  moderated: { label: "Hidden by admin", variant: "red" },
+  hidden_by_owner: { label: "Hidden by owner", variant: "neutral" },
+  visible: { label: "Visible", variant: "green" },
 };
 
 function initials(name: string): string {
@@ -116,6 +116,26 @@ export const ModerationTable = memo(function ModerationTable({
                     Skills: {profile.skills.join(", ")}
                   </p>
                 )}
+                {profile.experiences.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Experience:{" "}
+                    {profile.experiences
+                      .map((e) => `${e.title} at ${e.company}`)
+                      .join(", ")}
+                  </p>
+                )}
+                {(profile.github_username || profile.linkedin_handle) && (
+                  <p className="text-xs text-muted-foreground">
+                    {[
+                      profile.github_username &&
+                        `GitHub: ${profile.github_username}`,
+                      profile.linkedin_handle &&
+                        `LinkedIn: ${profile.linkedin_handle}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               </TableCell>
               <TableCell>
                 <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -130,20 +150,22 @@ export const ModerationTable = memo(function ModerationTable({
                   <Button
                     size="sm"
                     variant="outline"
+                    className="cursor-pointer bg-admin-panel hover:bg-surface-2"
                     disabled={saving[profile.user_id]}
                     onClick={() => onRestore(profile)}
                   >
-                    <RotateCcw className="size-4" />
+                    <IconRotate className="size-4" />
                     Restore
                   </Button>
                 ) : (
                   <Button
                     size="sm"
                     variant="outline"
+                    className="cursor-pointer bg-admin-panel hover:bg-surface-2"
                     disabled={saving[profile.user_id]}
                     onClick={() => onHide(profile)}
                   >
-                    <EyeOff className="size-4" />
+                    <IconEyeOff className="size-4" />
                     Hide
                   </Button>
                 )}

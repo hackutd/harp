@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { IconTrash } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -160,7 +160,7 @@ export function ScheduleHeaderCard({
                     disabled={loadingJsonResponse || eventCount === 0}
                     className="h-7 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 className="mr-1 size-3.5" />
+                    <IconTrash className="mr-1 size-3.5" />
                     Clear All
                   </Button>
                 ) : null}

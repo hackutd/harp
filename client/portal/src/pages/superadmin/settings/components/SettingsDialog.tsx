@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  AlertTriangle,
-  Rocket,
-  ShieldCheck,
-  Tags,
-  UtensilsCrossed,
-} from "lucide-react";
+  IconAlertTriangle,
+  IconRocket,
+  IconShieldCheck,
+  IconTags,
+  IconToolsKitchen,
+} from "@tabler/icons-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -36,19 +36,28 @@ type SettingsTab =
   | "reset";
 
 const settingsTabs = [
-  { id: "hackathon" as const, label: "Hackathon", icon: Rocket },
-  { id: "permissions" as const, label: "Permissions", icon: ShieldCheck },
-  { id: "meal-groups" as const, label: "Meal Groups", icon: UtensilsCrossed },
-  { id: "directory-tags" as const, label: "Directory Tags", icon: Tags },
-  { id: "reset" as const, label: "Danger Zone", icon: AlertTriangle },
+  { id: "hackathon" as const, label: "Hackathon", icon: IconRocket },
+  { id: "permissions" as const, label: "Permissions", icon: IconShieldCheck },
+  { id: "meal-groups" as const, label: "Meal Groups", icon: IconToolsKitchen },
+  { id: "directory-tags" as const, label: "Directory Tags", icon: IconTags },
+  { id: "reset" as const, label: "Danger Zone", icon: IconAlertTriangle },
 ];
 
 interface SettingsDialogProps {
-  trigger: React.ReactNode;
+  /** Opens the dialog on click. Omit it to control the dialog with `open`. */
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SettingsDialog({ trigger }: SettingsDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function SettingsDialog({
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: SettingsDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("hackathon");
 
   const handleClose = () => {
@@ -57,7 +66,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-6xl max-h-[85vh] p-0 gap-0 bg-zinc-900 border-zinc-800 overflow-hidden">
         <div className="flex min-h-[400px] h-[70vh] max-h-[85vh] rounded-lg overflow-hidden">
           {/* Left sidebar navigation */}

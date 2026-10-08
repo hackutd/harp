@@ -9,12 +9,20 @@ import {
   fetchDirectoryContacts,
   fetchDirectoryMe,
   fetchDirectoryPokes,
+  fetchSentPokes,
+  fetchUnseenPokes,
   hideAttendee,
+  markPokesSeen,
   pokeAttendee,
   removeContact,
   unhideAttendee,
 } from "./api";
-import type { DirectoryCardData, DirectoryFilters, DirectoryMe } from "./types";
+import type {
+  DirectoryCardData,
+  DirectoryFilters,
+  DirectoryMe,
+  UnseenPokes,
+} from "./types";
 
 export const EMPTY_FILTERS: DirectoryFilters = {
   intents: [],
@@ -27,25 +35,44 @@ export const EMPTY_FILTERS: DirectoryFilters = {
 interface DirectoryState {
   me: DirectoryMe | null;
   meLoading: boolean;
+  // Visibility picked before the card exists (in the editor or on Profile),
+  // sent along when the card is created.
+  draftDiscoverable: boolean;
   filters: DirectoryFilters;
   cards: DirectoryCardData[];
   nextCursor: string | null;
+  // The cursor each page of the grid was fetched with, page 1 first (null).
+  // The API only hands back a next cursor, so this is how Prev finds its way.
+  pageCursors: (string | null)[];
   loading: boolean;
   loadingMore: boolean;
+  // Who poked the viewer, matches included, newest poke first.
   pokes: DirectoryCardData[];
+  // Who the viewer poked, matches included, newest poke first.
+  sentPokes: DirectoryCardData[];
   pokesLoading: boolean;
+  unseenPokes: UnseenPokes | null;
   contacts: DirectoryCardData[];
   contactsLoading: boolean;
   busy: Record<string, boolean>;
+  // The person a poke just matched with, for the celebration dialog.
+  newMatch: DirectoryCardData | null;
 
   fetchMe: (signal?: AbortSignal) => Promise<void>;
   setMe: (me: DirectoryMe) => void;
+  setDraftDiscoverable: (discoverable: boolean) => void;
   setFilters: (patch: Partial<DirectoryFilters>) => void;
   fetchCards: (signal?: AbortSignal) => Promise<void>;
+  // Appends the next page; the swipe queue keeps itself topped up with it.
   fetchMore: () => Promise<void>;
+  // Swaps the grid to the next or previous page.
+  goToPage: (direction: "next" | "prev") => Promise<void>;
   fetchPokes: (signal?: AbortSignal) => Promise<void>;
+  fetchUnseenPokes: (signal?: AbortSignal) => Promise<void>;
+  markPokesSeen: () => Promise<void>;
   fetchContacts: (signal?: AbortSignal) => Promise<void>;
   poke: (card: DirectoryCardData) => Promise<boolean>;
+  dismissMatch: () => void;
   toggleContact: (card: DirectoryCardData) => Promise<void>;
   hide: (card: DirectoryCardData) => Promise<void>;
   unhide: (card: DirectoryCardData, restoreAt?: number) => Promise<void>;
@@ -53,8 +80,10 @@ interface DirectoryState {
 
 // Guards against a slow page of results landing after the filters changed.
 let listSeq = 0;
+// Guards against an unseen count fetched before markPokesSeen landing after it.
+let unseenSeq = 0;
 
-type Lists = Pick<DirectoryState, "cards" | "pokes" | "contacts">;
+type Lists = Pick<DirectoryState, "cards" | "pokes" | "sentPokes" | "contacts">;
 
 function patchLists(
   s: Lists,
@@ -66,6 +95,7 @@ function patchLists(
   return {
     cards: apply(s.cards),
     pokes: apply(s.pokes),
+    sentPokes: apply(s.sentPokes),
     contacts: apply(s.contacts),
   };
 }
@@ -82,18 +112,27 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
   return {
     me: null,
     meLoading: true,
+    draftDiscoverable: true,
     filters: EMPTY_FILTERS,
     cards: [],
     nextCursor: null,
+    pageCursors: [null],
     loading: false,
     loadingMore: false,
     pokes: [],
+    sentPokes: [],
     pokesLoading: false,
+    unseenPokes: null,
     contacts: [],
     contactsLoading: false,
     busy: {},
+    newMatch: null,
 
     fetchMe: async (signal) => {
+      // Flag every refresh, not just the first: a cached "not eligible" from
+      // before the RSVP was confirmed must not be acted on while the fresh
+      // answer is still in flight.
+      set({ meLoading: true });
       const res = await fetchDirectoryMe(signal);
       if (signal?.aborted) return;
       if (res.status === 200 && res.data) {
@@ -105,6 +144,7 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
     },
 
     setMe: (me) => set({ me }),
+    setDraftDiscoverable: (draftDiscoverable) => set({ draftDiscoverable }),
 
     setFilters: (patch) =>
       set((s) => ({ filters: { ...s.filters, ...patch } })),
@@ -118,10 +158,16 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
         set({
           cards: res.data.cards,
           nextCursor: res.data.next_cursor,
+          pageCursors: [null],
           loading: false,
         });
       } else {
-        set({ cards: [], nextCursor: null, loading: false });
+        set({
+          cards: [],
+          nextCursor: null,
+          pageCursors: [null],
+          loading: false,
+        });
         errorAlert(res);
       }
     },
@@ -157,15 +203,65 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
       }
     },
 
+    goToPage: async (direction) => {
+      const { nextCursor, pageCursors, loading, filters } = get();
+      if (loading) return;
+      const next = direction === "next";
+      if (next ? !nextCursor : pageCursors.length < 2) return;
+      const cursor = next ? nextCursor : pageCursors[pageCursors.length - 2];
+      const seq = ++listSeq;
+      set({ loading: true, loadingMore: false });
+      const res = await fetchDirectory(filters, cursor);
+      if (seq !== listSeq) return;
+      if (res.status === 200 && res.data) {
+        set({
+          cards: res.data.cards,
+          nextCursor: res.data.next_cursor,
+          pageCursors: next
+            ? [...pageCursors, cursor]
+            : pageCursors.slice(0, -1),
+          loading: false,
+        });
+      } else {
+        // Stay on the page already showing.
+        set({ loading: false });
+        errorAlert(res);
+      }
+    },
+
+    // Both directions load together so the page never shows one half.
     fetchPokes: async (signal) => {
       set({ pokesLoading: true });
-      const res = await fetchDirectoryPokes(signal);
+      const [received, sent] = await Promise.all([
+        fetchDirectoryPokes(signal),
+        fetchSentPokes(signal),
+      ]);
       if (signal?.aborted) return;
+      const failed = [received, sent].find((res) => res.status !== 200);
       set({
-        pokes: res.status === 200 && res.data ? res.data.cards : [],
+        pokes: !failed && received.data ? received.data.cards : [],
+        sentPokes: !failed && sent.data ? sent.data.cards : [],
         pokesLoading: false,
       });
-      if (res.status !== 200) errorAlert(res);
+      if (failed) errorAlert(failed);
+    },
+
+    // The badge is a nicety, so failures stay quiet rather than toasting.
+    fetchUnseenPokes: async (signal) => {
+      const seq = ++unseenSeq;
+      const res = await fetchUnseenPokes(signal);
+      if (signal?.aborted || seq !== unseenSeq) return;
+      if (res.status === 200 && res.data) set({ unseenPokes: res.data });
+    },
+
+    // Marks every poke in the loaded list as seen. Pokes that arrived after
+    // the list loaded stay unseen.
+    markPokesSeen: async () => {
+      const through = get().pokes[0]?.related_at;
+      if (!through) return;
+      unseenSeq++;
+      set({ unseenPokes: { count: 0, pokers: [] } });
+      await markPokesSeen(through);
     },
 
     fetchContacts: async (signal) => {
@@ -194,16 +290,20 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
           ...updated,
           is_hidden: c.is_hidden,
         }));
-        const saved = lists.contacts.some((c) => c.user_id === updated.user_id);
+        const has = (list: DirectoryCardData[]) =>
+          list.some((c) => c.user_id === updated.user_id);
         return {
           ...lists,
-          contacts: saved ? lists.contacts : [updated, ...lists.contacts],
+          sentPokes: has(lists.sentPokes)
+            ? lists.sentPokes
+            : [updated, ...lists.sentPokes],
+          contacts: has(lists.contacts)
+            ? lists.contacts
+            : [updated, ...lists.contacts],
         };
       });
       if (matched) {
-        toast.success(`You and ${updated.display_name} matched`, {
-          description: "Their Discord is on the card now.",
-        });
+        set({ newMatch: updated });
       } else {
         toast.success(`Poked ${updated.display_name}`, {
           description: "Saved to your contacts.",
@@ -211,6 +311,8 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => {
       }
       return true;
     },
+
+    dismissMatch: () => set({ newMatch: null }),
 
     toggleContact: async (card) => {
       if (get().busy[card.user_id]) return;

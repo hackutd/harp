@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { memo } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ export const PaginationControls = memo(function PaginationControls({
         onClick={onPrevPage}
         disabled={!prevCursor || loading}
       >
-        <ChevronLeft className="h-4 w-4 mr-1" />
+        <IconChevronLeft className="h-4 w-4 mr-1" />
         Prev
       </Button>
       <Button
@@ -36,7 +36,7 @@ export const PaginationControls = memo(function PaginationControls({
         disabled={!nextCursor || loading}
       >
         Next
-        <ChevronRight className="h-4 w-4 ml-1" />
+        <IconChevronRight className="h-4 w-4 ml-1" />
       </Button>
     </div>
   );

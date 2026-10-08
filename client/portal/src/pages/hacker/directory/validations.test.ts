@@ -72,18 +72,15 @@ describe("directoryProfileSchema", () => {
 
 describe("formToPayload", () => {
   it("trims, drops empty skills, and nulls blank text", () => {
-    const payload = formToPayload(
-      {
-        ...base(),
-        display_name: "  Ada  ",
-        skills: [" Go ", "", "Rust"],
-        pronouns: "  ",
-        icebreaker_prompt: "Ask me about...",
-        icebreaker_answer: "  ",
-        spots_needed: 3,
-      },
-      null,
-    );
+    const payload = formToPayload({
+      ...base(),
+      display_name: "  Ada  ",
+      skills: [" Go ", "", "Rust"],
+      pronouns: "  ",
+      icebreaker_prompt: "Ask me about...",
+      icebreaker_answer: "  ",
+      spots_needed: 3,
+    });
     expect(payload).toMatchObject({
       display_name: "Ada",
       skills: ["Go", "Rust"],
@@ -96,21 +93,66 @@ describe("formToPayload", () => {
   });
 
   it("keeps spots for a partial team", () => {
-    const payload = formToPayload(
-      { ...base(), intent: "partial_team", spots_needed: 2 },
-      "path.png",
-    );
+    const payload = formToPayload({
+      ...base(),
+      intent: "partial_team",
+      spots_needed: 2,
+    });
     expect(payload.spots_needed).toBe(2);
-    expect(payload.headshot_path).toBe("path.png");
+  });
+});
+
+describe("links and experience", () => {
+  it("needs both a company and a role for each experience", () => {
+    expect(
+      issuesFor({
+        ...base(),
+        experiences: [
+          { company: "Acme", title: "" },
+          { company: "", title: "Intern" },
+          { company: "", title: "" },
+        ],
+      }),
+    ).toEqual(["experiences.0.title", "experiences.1.company"]);
+  });
+
+  it("trims links, drops blank experience rows, and nulls empty links", () => {
+    const payload = formToPayload({
+      ...base(),
+      github_username: "  octocat ",
+      linkedin_handle: " ",
+      experiences: [
+        { company: " Acme ", title: " SWE Intern " },
+        { company: "", title: "" },
+      ],
+    });
+    expect(payload).toMatchObject({
+      github_username: "octocat",
+      linkedin_handle: null,
+      experiences: [{ company: "Acme", title: "SWE Intern" }],
+    });
+  });
+
+  it("only sends visibility when asked to", () => {
+    expect(formToPayload(base())).not.toHaveProperty("discoverable");
+    expect(formToPayload(base(), false).discoverable).toBe(false);
   });
 });
 
 describe("profileToForm", () => {
-  it("pads skills to three inputs", () => {
+  it("keeps only the interests the hacker typed in", () => {
     const form = profileToForm({
       display_name: "Ada",
       skills: ["Go"],
     } as DirectoryProfile);
-    expect(form.skills).toEqual(["Go", "", ""]);
+    expect(form.skills).toEqual(["Go"]);
+  });
+
+  it("falls back to the default for a status no longer offered", () => {
+    const form = profileToForm({
+      display_name: "Ada",
+      intent: "open_to_collab",
+    } as unknown as DirectoryProfile);
+    expect(form.intent).toBe("looking_for_teammates");
   });
 });

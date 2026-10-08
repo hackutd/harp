@@ -1,50 +1,135 @@
-import { IdCard, Lock, ShieldAlert } from "lucide-react";
+import {
+  IconChevronRight,
+  IconId,
+  IconShieldExclamation,
+  IconUser,
+} from "@tabler/icons-react";
 import { type ReactNode, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
 
 import { HackerPageLoader } from "@/components/HackerPageLoader";
 import { cn } from "@/shared/lib/utils";
 
 import { useDirectoryStore } from "../store";
-import type { DirectoryMe } from "../types";
+import type { DirectoryMe, DirectoryPoker, UnseenPokes } from "../types";
+import { initials, pokedYouSummary } from "../utils";
 
-type DirectoryTab = "browse" | "pokes" | "contacts";
+export type DirectoryTab = "browse" | "pokes" | "contacts";
 
 const TABS: { id: DirectoryTab; label: string; to: string }[] = [
   { id: "browse", label: "Browse", to: "/app/directory" },
-  { id: "pokes", label: "Poked you", to: "/app/directory?tab=pokes" },
+  { id: "pokes", label: "Pokes", to: "/app/directory?tab=pokes" },
   { id: "contacts", label: "My contacts", to: "/app/directory/contacts" },
 ];
+
+// Fills the full width with as many cards as fit, so wider windows get more
+// columns rather than bigger cards. The minimum card width steps up on large
+// screens so a full-screen window doesn't shrink them to thumbnails; the min()
+// keeps phones at two columns.
+export const CARD_GRID = cn(
+  "grid gap-3 [--card-min:9rem] lg:[--card-min:11.5rem] xl:[--card-min:13rem] 2xl:[--card-min:14rem]",
+  "grid-cols-[repeat(auto-fill,minmax(min(var(--card-min),calc(50%_-_0.375rem)),1fr))]",
+);
+
+export function CardGridSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn(CARD_GRID, className)}>
+      {Array.from({ length: 6 }, (_, i) => (
+        <div
+          key={i}
+          className="aspect-[2/3] animate-pulse rounded-[3px] bg-ink/[0.04]"
+        />
+      ))}
+    </div>
+  );
+}
 
 interface DirectoryTabsProps {
   active: DirectoryTab;
 }
 
 // Browse and contacts get equal billing: both are top-level tabs here.
-// Plain Links rather than NavLink: Browse and "Poked you" share a pathname, and
-// NavLink would mark both as the current page.
+// Plain Links rather than NavLink: Browse and Pokes share a pathname, and
+// NavLink would mark both as the current page. The header outlives tab
+// switches, so the highlight slides across instead of jumping.
 export function DirectoryTabs({ active }: DirectoryTabsProps) {
+  const unseen = useDirectoryStore((s) => s.unseenPokes?.count ?? 0);
+  const activeIndex = TABS.findIndex((t) => t.id === active);
   return (
     <nav
       aria-label="Directory"
-      className="mt-4 grid grid-cols-3 gap-1 rounded-full border border-white/10 bg-[#0B0C15]/80 p-1"
+      className="relative mt-5 grid max-w-xl grid-cols-3 gap-1 rounded-full border border-ink/10 p-1"
     >
+      {/* One tab wide (the track less its padding and two gaps, over three);
+          each step is a tab plus a gap. */}
+      <span
+        aria-hidden
+        className="absolute inset-y-1 left-1 w-[calc((100%-1rem)/3)] rounded-full bg-surface transition-transform duration-300 ease-out motion-reduce:transition-none"
+        style={{
+          transform: `translateX(calc(${activeIndex} * (100% + 0.25rem)))`,
+        }}
+      />
       {TABS.map((t) => (
         <Link
           key={t.id}
           to={t.to}
           aria-current={active === t.id ? "page" : undefined}
           className={cn(
-            "rounded-full px-3 py-1.5 text-center text-xs font-medium tracking-wide uppercase transition-colors",
-            active === t.id
-              ? "bg-[#5900FF] text-white shadow-[0_0_16px_rgba(89,0,255,0.35)]"
-              : "text-white/60 hover:text-white",
+            "relative inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-center text-sm font-light transition-colors duration-300",
+            active === t.id ? "text-ink" : "text-ink/65 hover:text-ink",
           )}
         >
           {t.label}
+          {t.id === "pokes" && unseen > 0 && (
+            <>
+              <span
+                aria-hidden
+                className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-tide px-1 text-[10px] font-medium text-white tabular-nums"
+              >
+                {unseen > 9 ? "9+" : unseen}
+              </span>
+              <span className="sr-only">, {unseen} new</span>
+            </>
+          )}
         </Link>
       ))}
     </nav>
+  );
+}
+
+function PokerAvatar({ poker }: { poker: DirectoryPoker }) {
+  return (
+    <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface text-[10px] font-medium text-ink ring-2 ring-canvas">
+      {poker.headshot_url ? (
+        <img
+          src={poker.headshot_url}
+          alt=""
+          className="size-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        initials(poker.display_name)
+      )}
+    </span>
+  );
+}
+
+// Who poked you since you last looked, for anyone who missed (or never
+// enabled) the push. Opening Pokes clears it.
+function PokedYouBubble({ unseen }: { unseen: UnseenPokes }) {
+  return (
+    <Link
+      to="/app/directory?tab=pokes"
+      className="mt-3 flex w-fit max-w-full items-center gap-3 rounded-full border border-ice/30 bg-ice/10 py-1.5 pr-3 pl-1.5 text-sm font-light text-ink transition-colors hover:bg-ice/15"
+    >
+      <span className="flex shrink-0 -space-x-2">
+        {unseen.pokers.map((p) => (
+          <PokerAvatar key={p.user_id} poker={p} />
+        ))}
+      </span>
+      <span className="min-w-0 truncate">{pokedYouSummary(unseen)}</span>
+      <IconChevronRight className="size-4 shrink-0 text-ink/65" />
+    </Link>
   );
 }
 
@@ -54,24 +139,33 @@ interface DirectoryHeaderProps {
 }
 
 export function DirectoryHeader({ title, active }: DirectoryHeaderProps) {
+  const unseen = useDirectoryStore((s) => s.unseenPokes);
+  const fetchUnseenPokes = useDirectoryStore((s) => s.fetchUnseenPokes);
+
+  // Pokes marks its own list seen, so it has nothing to fetch.
+  useEffect(() => {
+    if (active === "pokes") return;
+    const controller = new AbortController();
+    fetchUnseenPokes(controller.signal);
+    return () => controller.abort();
+  }, [active, fetchUnseenPokes]);
+
   return (
     <header>
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-medium tracking-[0.2em] text-[#21FFF0]/75 uppercase">
-            Attendee directory
-          </p>
-          <h1 className="mt-1 text-2xl font-light tracking-tight">{title}</h1>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-light tracking-tight text-ink">{title}</h1>
         <Link
-          to="/app/directory/card"
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-[#21FFF0]/40 hover:text-white"
+          to="/app/profile"
+          className="inline-flex items-center gap-1.5 text-sm font-light text-ink/65 transition-colors hover:text-ink"
         >
-          <IdCard className="size-3.5" strokeWidth={1.75} />
-          My card
+          <IconUser className="size-4" strokeWidth={1.5} />
+          My profile
         </Link>
       </div>
       <DirectoryTabs active={active} />
+      {active !== "pokes" && unseen && unseen.count > 0 && (
+        <PokedYouBubble unseen={unseen} />
+      )}
     </header>
   );
 }
@@ -85,12 +179,12 @@ interface NoticeProps {
 
 function Notice({ icon, title, body, action }: NoticeProps) {
   return (
-    <div className="mx-auto max-w-md rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-6 text-center">
-      <div className="mx-auto flex size-11 items-center justify-center rounded-full bg-[#5900FF]/25 text-[#D8C5FF]">
+    <div className="mx-auto max-w-md rounded-xl border border-ice/30 bg-surface p-6 text-center">
+      <div className="mx-auto flex size-11 items-center justify-center rounded-full bg-ink/10 text-ink">
         {icon}
       </div>
       <h2 className="mt-3 text-lg font-light">{title}</h2>
-      <p className="mt-1 text-sm font-light text-white/65">{body}</p>
+      <p className="mt-1 text-sm font-light text-ink/75">{body}</p>
       {action}
     </div>
   );
@@ -100,8 +194,8 @@ interface DirectoryGateProps {
   children: (me: DirectoryMe) => ReactNode;
 }
 
-// Browsing needs a confirmed RSVP and your own card. Anything short of that
-// gets an explanation here instead of a failed request.
+// Browsing needs a confirmed RSVP and a finished profile. Without the RSVP the
+// page doesn't exist; without a profile it explains what to do next.
 export function DirectoryGate({ children }: DirectoryGateProps) {
   const me = useDirectoryStore((s) => s.me);
   const meLoading = useDirectoryStore((s) => s.meLoading);
@@ -113,42 +207,30 @@ export function DirectoryGate({ children }: DirectoryGateProps) {
     return () => controller.abort();
   }, [fetchMe]);
 
-  if (meLoading && !me) return <HackerPageLoader />;
+  // An eligible card renders straight from cache; anything else waits for the
+  // refresh so a stale answer can't bounce a newly confirmed hacker home.
+  if (meLoading && !me?.eligible) return <HackerPageLoader />;
 
   const wrap = (node: ReactNode) => (
-    <div className="mx-auto max-w-2xl px-5 pt-10 pb-6 text-white">{node}</div>
+    <div className="mx-auto max-w-2xl px-5 pt-10 pb-6 text-ink">{node}</div>
   );
 
-  if (!me || !me.eligible) {
-    return wrap(
-      <Notice
-        icon={<Lock className="size-5" />}
-        title="Who's Attending opens after you RSVP"
-        body="Once you're accepted and confirm your spot, you can make a card and see who else is coming."
-        action={
-          <Link
-            to="/app"
-            className="mt-4 inline-flex rounded-full border border-white/15 px-5 py-2 text-sm text-white/85 hover:bg-white/5"
-          >
-            Back to home
-          </Link>
-        }
-      />,
-    );
-  }
+  // The directory is hidden from everyone without a confirmed RSVP, so a
+  // direct link just goes home rather than advertising what's locked.
+  if (!me || !me.eligible) return <Navigate to="/app" replace />;
 
   if (!me.profile) {
     return wrap(
       <Notice
-        icon={<IdCard className="size-5" />}
-        title="Make your card to see who's attending"
-        body="Your card is how other hackers find you. It takes a minute, and you can hide it any time."
+        icon={<IconId className="size-5" />}
+        title="Finish your profile to open the Directory"
+        body="Your profile is how other hackers find you. It takes a minute, and you can hide it any time."
         action={
           <Link
-            to="/app/directory/card"
-            className="mt-4 inline-flex rounded-full bg-[#5900FF] px-5 py-2 text-sm font-medium text-white shadow-[0_0_20px_rgba(89,0,255,0.28)] hover:bg-[#6D1CFF]"
+            to="/app/profile?edit=1"
+            className="mt-4 inline-flex rounded-full bg-tide px-5 py-2 text-sm font-medium text-white hover:bg-tide-hover"
           >
-            Create my card
+            Finish my profile
           </Link>
         }
       />,
@@ -158,9 +240,9 @@ export function DirectoryGate({ children }: DirectoryGateProps) {
   if (me.profile.moderation_hidden) {
     return wrap(
       <Notice
-        icon={<ShieldAlert className="size-5" />}
-        title="Your card is under review"
-        body="An organizer hid your card from the directory. Reach out to the team if you think this is a mistake."
+        icon={<IconShieldExclamation className="size-5" />}
+        title="Your profile is under review"
+        body="An organizer hid your profile from the directory. Reach out to the team if you think this is a mistake."
       />,
     );
   }

@@ -1,4 +1,10 @@
-import { Mail, MessageSquare, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  IconMail,
+  IconMessage,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -51,8 +57,8 @@ import type { HackerLink, HackerLinkPayload } from "./types";
 // (see pages/hacker/dashboard/DashboardPage.tsx QUICK_LINKS). Shown in the
 // preview for context only — they aren't managed here.
 const BUILT_IN_LINKS = [
-  { label: "FAQ", icon: MessageSquare },
-  { label: "Contact", icon: Mail },
+  { label: "FAQ", icon: IconMessage },
+  { label: "Contact", icon: IconMail },
 ] as const;
 
 interface PreviewCardProps {
@@ -65,13 +71,13 @@ interface PreviewCardProps {
 // divs; configured links stay clickable so their URLs can be sanity-checked.
 function PreviewCard({ label, icon: Icon, href }: PreviewCardProps) {
   const className = cn(
-    "flex flex-col items-start gap-2 rounded-lg border border-[#E5E5E5] bg-white p-4",
+    "flex flex-col items-start gap-2 rounded-lg border border-border bg-background p-4",
     href && "active:scale-[0.98]",
   );
   const content = (
     <>
-      <Icon className="size-5 text-black" strokeWidth={1.5} />
-      <span className="text-sm font-normal text-black">{label}</span>
+      <Icon className="size-5 text-foreground" strokeWidth={1.5} />
+      <span className="text-sm font-normal text-foreground">{label}</span>
     </>
   );
   return href ? (
@@ -222,7 +228,7 @@ export default function HackerLinksPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="rounded-xl bg-[#F5F5F3] p-4">
+          <div className="rounded-xl bg-admin-panel p-4">
             <div className="grid grid-cols-3 gap-3">
               {BUILT_IN_LINKS.map(({ label, icon }) => (
                 <PreviewCard key={label} label={label} icon={icon} />
@@ -251,7 +257,7 @@ export default function HackerLinksPage() {
           </CardDescription>
           <CardAction>
             <Button size="sm" onClick={handleStartCreate} disabled={saving}>
-              <Plus className="size-4" />
+              <IconPlus className="size-4" />
               Add link
             </Button>
           </CardAction>
@@ -287,7 +293,7 @@ export default function HackerLinksPage() {
                       onClick={() => handleStartEdit(link)}
                       disabled={saving}
                     >
-                      <Pencil className="size-4" />
+                      <IconPencil className="size-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -296,7 +302,7 @@ export default function HackerLinksPage() {
                       onClick={() => handleDelete(link)}
                       disabled={saving}
                     >
-                      <Trash2 className="size-4 text-destructive" />
+                      <IconTrash className="size-4 text-destructive" />
                     </Button>
                   </li>
                 );
@@ -427,7 +433,7 @@ export default function HackerLinksPage() {
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
-              {!isEditing && <Plus className="size-4" />}
+              {!isEditing && <IconPlus className="size-4" />}
               {isEditing ? "Save changes" : "Add link"}
             </Button>
           </DialogFooter>

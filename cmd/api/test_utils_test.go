@@ -144,6 +144,7 @@ func newTestUser() *store.User {
 		Email:             "hacker@test.com",
 		Role:              store.RoleHacker,
 		AuthMethod:        store.AuthMethodPasswordless,
+		Theme:             store.ThemeDark,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -156,6 +157,7 @@ func newAdminUser() *store.User {
 		Email:             "admin@test.com",
 		Role:              store.RoleAdmin,
 		AuthMethod:        store.AuthMethodPasswordless,
+		Theme:             store.ThemeDark,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -168,6 +170,7 @@ func newSuperAdminUser() *store.User {
 		Email:             "superadmin@test.com",
 		Role:              store.RoleSuperAdmin,
 		AuthMethod:        store.AuthMethodPasswordless,
+		Theme:             store.ThemeDark,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}

@@ -6,13 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hackutd/harp/internal/slug"
 	"github.com/hackutd/harp/internal/store"
 )
 
@@ -21,24 +22,20 @@ const (
 	directoryMaxPageSize     = 60
 	directoryStaleAfter      = 72 * time.Hour
 	directoryEventNearWindow = 7 * 24 * time.Hour
-	directoryHeadshotFolder  = "directory-headshots"
 	directoryMaxSkills       = 3
 	directoryMaxInterestTags = 5
+	directoryMaxExperiences  = 5
 	directoryAdminPageSize   = 50
 	directoryAdminMaxPage    = 100
+	// directoryUnseenPokers is how many pokers the "Poked you" badge shows
+	// faces for; the rest only add to the count.
+	directoryUnseenPokers = 3
 )
-
-var directoryHeadshotContentTypes = map[string]string{
-	"image/jpeg": "jpg",
-	"image/png":  "png",
-	"image/webp": "webp",
-}
 
 var directoryIntents = []store.DirectoryIntent{
 	store.DirectoryIntentLookingForTeammates,
 	store.DirectoryIntentPartialTeam,
 	store.DirectoryIntentTeamSet,
-	store.DirectoryIntentOpenToCollab,
 	store.DirectoryIntentJustNetworking,
 }
 
@@ -54,7 +51,7 @@ var directoryIcebreakerPrompts = []string{
 
 var (
 	errDirectoryNotEligible = errors.New("the attendee directory is open to hackers with a confirmed RSVP")
-	errDirectoryNoCard      = errors.New("create your directory card to browse who's attending")
+	errDirectoryNoCard      = errors.New("create your directory card to browse the directory")
 	errDirectoryUnavailable = errors.New("this attendee isn't accepting pokes or contact adds")
 	errDirectoryModerated   = errors.New("your directory card is under review")
 )
@@ -67,6 +64,7 @@ type DirectoryOptions struct {
 	IcebreakerPrompts []string `json:"icebreaker_prompts"`
 	MaxSkills         int      `json:"max_skills"`
 	MaxInterestTags   int      `json:"max_interest_tags"`
+	MaxExperiences    int      `json:"max_experiences"`
 }
 
 type DirectoryProfileResponse struct {
@@ -80,36 +78,33 @@ type DirectoryMeResponse struct {
 	StatusStale         bool                      `json:"status_stale"`
 	EventNear           bool                      `json:"event_near"`
 	RSVPDiscordUsername *string                   `json:"rsvp_discord_username"`
-	DiscordOAuthEnabled bool                      `json:"discord_oauth_enabled"`
 	Options             DirectoryOptions          `json:"options"`
 }
 
 type UpsertDirectoryProfilePayload struct {
-	DisplayName      string                `json:"display_name" validate:"required,max=60"`
-	Pronouns         *string               `json:"pronouns" validate:"omitempty,max=30"`
-	HeadshotPath     *string               `json:"headshot_path"`
-	Skills           []string              `json:"skills" validate:"max=3,dive,max=40"`
-	InterestTags     []string              `json:"interest_tags" validate:"max=5,unique"`
-	RolesLookingFor  []string              `json:"roles_looking_for" validate:"max=10,unique"`
-	IcebreakerPrompt *string               `json:"icebreaker_prompt" validate:"omitempty,max=120"`
-	IcebreakerAnswer *string               `json:"icebreaker_answer" validate:"omitempty,max=200"`
-	WantToBuild      *string               `json:"want_to_build" validate:"omitempty,max=100"`
-	Intent           store.DirectoryIntent `json:"intent" validate:"required,oneof=looking_for_teammates partial_team team_set open_to_collab just_networking"`
-	SpotsNeeded      *int                  `json:"spots_needed" validate:"omitempty,min=1,max=5"`
-	Discoverable     *bool                 `json:"discoverable"`
+	DisplayName      string                       `json:"display_name" validate:"required,max=60"`
+	Pronouns         *string                      `json:"pronouns" validate:"omitempty,max=30"`
+	Skills           []string                     `json:"skills" validate:"max=3,dive,max=40"`
+	InterestTags     []string                     `json:"interest_tags" validate:"max=5,unique"`
+	RolesLookingFor  []string                     `json:"roles_looking_for" validate:"max=10,unique"`
+	IcebreakerPrompt *string                      `json:"icebreaker_prompt" validate:"omitempty,max=120"`
+	IcebreakerAnswer *string                      `json:"icebreaker_answer" validate:"omitempty,max=200"`
+	WantToBuild      *string                      `json:"want_to_build" validate:"omitempty,max=100"`
+	GitHubUsername   *string                      `json:"github_username" validate:"omitempty,max=200"`
+	LinkedInHandle   *string                      `json:"linkedin_handle" validate:"omitempty,max=200"`
+	Experiences      []DirectoryExperiencePayload `json:"experiences" validate:"max=5,dive"`
+	Intent           store.DirectoryIntent        `json:"intent" validate:"required,oneof=looking_for_teammates partial_team team_set just_networking"`
+	SpotsNeeded      *int                         `json:"spots_needed" validate:"omitempty,min=1,max=5"`
+	Discoverable     *bool                        `json:"discoverable"`
+}
+
+type DirectoryExperiencePayload struct {
+	Company string `json:"company" validate:"max=60"`
+	Title   string `json:"title" validate:"max=60"`
 }
 
 type UpdateDirectoryDiscoverablePayload struct {
 	Discoverable *bool `json:"discoverable" validate:"required"`
-}
-
-type DirectoryHeadshotUploadURLPayload struct {
-	ContentType string `json:"content_type" validate:"required,oneof=image/jpeg image/png image/webp"`
-}
-
-type DirectoryHeadshotUploadURLResponse struct {
-	UploadURL    string `json:"upload_url"`
-	HeadshotPath string `json:"headshot_path"`
 }
 
 type DirectoryListResponse struct {
@@ -127,6 +122,15 @@ type DirectoryPokeResponse struct {
 	Card    store.DirectoryCard `json:"card"`
 }
 
+type DirectoryUnseenPokesResponse struct {
+	Count  int                    `json:"count"`
+	Pokers []store.DirectoryPoker `json:"pokers"`
+}
+
+type MarkDirectoryPokesSeenPayload struct {
+	Through time.Time `json:"through" validate:"required"`
+}
+
 type DirectoryCardResponse struct {
 	Card store.DirectoryCard `json:"card"`
 }
@@ -139,47 +143,6 @@ type DirectoryModerationPayload struct {
 type DirectoryAdminListResponse struct {
 	Profiles   []store.DirectoryAdminProfile `json:"profiles"`
 	NextCursor *string                       `json:"next_cursor"`
-}
-
-func directoryHeadshotStoragePrefix(hackathonName string) string {
-	return fmt.Sprintf("%s%s/%s/", hackathonStorageRootPrefix, slug.Hackathon(hackathonName), directoryHeadshotFolder)
-}
-
-// directoryHeadshotObjectOwner returns the user a headshot object belongs to,
-// and whether the path has the shape this API issues:
-// hackathons/{slug}/directory-headshots/{userID}/{random}.{ext}.
-func directoryHeadshotObjectOwner(objectPath string) (string, bool) {
-	parts := strings.Split(objectPath, "/")
-	if len(parts) != 5 ||
-		parts[0] != strings.TrimSuffix(hackathonStorageRootPrefix, "/") ||
-		parts[1] == "" ||
-		parts[2] != directoryHeadshotFolder ||
-		parts[3] == "" {
-		return "", false
-	}
-	name, ext, ok := strings.Cut(parts[4], ".")
-	if !ok || len(name) != randomResumeObjectIDBytes*2 || !isLowerHex(name) {
-		return "", false
-	}
-	known := false
-	for _, e := range directoryHeadshotContentTypes {
-		if e == ext {
-			known = true
-		}
-	}
-	if !known {
-		return "", false
-	}
-	return parts[3], true
-}
-
-func isLowerHex(s string) bool {
-	for _, c := range s {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
-			return false
-		}
-	}
-	return true
 }
 
 // directoryTiming reports whether the event is close, and if so the cutoff
@@ -299,6 +262,7 @@ func (app *application) directoryOptions(ctx context.Context) (DirectoryOptions,
 		IcebreakerPrompts: directoryIcebreakerPrompts,
 		MaxSkills:         directoryMaxSkills,
 		MaxInterestTags:   directoryMaxInterestTags,
+		MaxExperiences:    directoryMaxExperiences,
 	}, nil
 }
 
@@ -317,10 +281,9 @@ func (app *application) buildDirectoryMe(ctx context.Context, user *store.User) 
 	}
 
 	resp := &DirectoryMeResponse{
-		Eligible:            eligible,
-		EventNear:           near,
-		DiscordOAuthEnabled: app.discordOAuthEnabled(),
-		Options:             options,
+		Eligible:  eligible,
+		EventNear: near,
+		Options:   options,
 	}
 
 	profile, err := app.store.AttendeeDirectory.GetProfile(ctx, user.ID)
@@ -330,7 +293,7 @@ func (app *application) buildDirectoryMe(ctx context.Context, user *store.User) 
 	if profile != nil {
 		resp.Profile = &DirectoryProfileResponse{
 			DirectoryProfile: *profile,
-			HeadshotURL:      app.headshotURL(ctx, profile.HeadshotPath, user.ProfilePictureURL),
+			HeadshotURL:      app.photoURL(ctx, user.PhotoPath, user.ProfilePictureURL),
 		}
 		resp.StatusStale = cutoff != nil && profile.StatusConfirmedAt.Before(*cutoff)
 	}
@@ -391,6 +354,84 @@ func trimOptional(s *string) *string {
 	return &t
 }
 
+var (
+	githubUsernamePattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9]|-[A-Za-z0-9]){0,38}$`)
+	linkedInHandlePattern = regexp.MustCompile(`^[\p{L}\p{N}_-]{3,100}$`)
+)
+
+// profileHandle reduces what a hacker pasted ("@octocat", "github.com/octocat",
+// "https://www.linkedin.com/in/jane-doe/") to the bare handle. pathPrefix is
+// the path segment that precedes the handle on that site ("in/" for LinkedIn).
+// Anything on another host is rejected rather than guessed at, so a card can
+// only ever link to the site it claims to.
+func profileHandle(raw, host, pathPrefix string) (string, error) {
+	v := strings.TrimSpace(raw)
+	v = strings.TrimPrefix(v, "@")
+	lower := strings.ToLower(v)
+	if strings.Contains(lower, host) {
+		if !strings.Contains(lower, "://") {
+			v = "https://" + v
+		}
+		u, err := url.Parse(v)
+		if err != nil {
+			return "", err
+		}
+		h := strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+		if h != host {
+			return "", fmt.Errorf("not a %s link", host)
+		}
+		path := strings.Trim(u.Path, "/")
+		if pathPrefix != "" {
+			rest, ok := strings.CutPrefix(path, strings.TrimSuffix(pathPrefix, "/")+"/")
+			if !ok {
+				return "", fmt.Errorf("not a %s profile link", host)
+			}
+			path = rest
+		}
+		v, _, _ = strings.Cut(path, "/")
+	}
+	return v, nil
+}
+
+func normalizeDirectoryLinks(req *UpsertDirectoryProfilePayload) error {
+	if gh := trimOptional(req.GitHubUsername); gh != nil {
+		handle, err := profileHandle(*gh, "github.com", "")
+		if err != nil || !githubUsernamePattern.MatchString(handle) {
+			return errors.New("enter a GitHub username or profile link")
+		}
+		req.GitHubUsername = &handle
+	} else {
+		req.GitHubUsername = nil
+	}
+	if li := trimOptional(req.LinkedInHandle); li != nil {
+		handle, err := profileHandle(*li, "linkedin.com", "in/")
+		if err == nil {
+			// LinkedIn links percent-encode non-ASCII names.
+			handle, err = url.PathUnescape(handle)
+		}
+		if err != nil || !linkedInHandlePattern.MatchString(handle) {
+			return errors.New("enter a LinkedIn profile link (linkedin.com/in/...)")
+		}
+		req.LinkedInHandle = &handle
+	} else {
+		req.LinkedInHandle = nil
+	}
+
+	experiences := make([]DirectoryExperiencePayload, 0, len(req.Experiences))
+	for _, e := range req.Experiences {
+		company, title := strings.TrimSpace(e.Company), strings.TrimSpace(e.Title)
+		if company == "" && title == "" {
+			continue
+		}
+		if company == "" || title == "" {
+			return errors.New("each experience needs a company and a role")
+		}
+		experiences = append(experiences, DirectoryExperiencePayload{Company: company, Title: title})
+	}
+	req.Experiences = experiences
+	return nil
+}
+
 // normalizeDirectoryPayload trims input and checks it against the fixed option lists.
 func normalizeDirectoryPayload(req *UpsertDirectoryProfilePayload, interestTags []string) error {
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
@@ -398,7 +439,6 @@ func normalizeDirectoryPayload(req *UpsertDirectoryProfilePayload, interestTags 
 	req.IcebreakerPrompt = trimOptional(req.IcebreakerPrompt)
 	req.IcebreakerAnswer = trimOptional(req.IcebreakerAnswer)
 	req.WantToBuild = trimOptional(req.WantToBuild)
-	req.HeadshotPath = trimOptional(req.HeadshotPath)
 
 	skills := make([]string, 0, len(req.Skills))
 	for _, s := range req.Skills {
@@ -410,6 +450,9 @@ func normalizeDirectoryPayload(req *UpsertDirectoryProfilePayload, interestTags 
 
 	if req.DisplayName == "" {
 		return errors.New("display_name is required")
+	}
+	if err := normalizeDirectoryLinks(req); err != nil {
+		return err
 	}
 	for _, tag := range req.InterestTags {
 		if !slices.Contains(interestTags, tag) {
@@ -492,20 +535,6 @@ func (app *application) upsertMyDirectoryProfileHandler(w http.ResponseWriter, r
 		return
 	}
 
-	existing, err := app.store.AttendeeDirectory.GetProfile(r.Context(), user.ID)
-	if err != nil && !errors.Is(err, store.ErrNotFound) {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if req.HeadshotPath != nil {
-		unchanged := existing != nil && existing.HeadshotPath != nil && *existing.HeadshotPath == *req.HeadshotPath
-		if owner, ok := directoryHeadshotObjectOwner(*req.HeadshotPath); !unchanged && (!ok || owner != user.ID) {
-			app.badRequestResponse(w, r, errors.New("invalid headshot_path"))
-			return
-		}
-	}
-
 	discoverable := true
 	if req.Discoverable != nil {
 		discoverable = *req.Discoverable
@@ -515,13 +544,15 @@ func (app *application) upsertMyDirectoryProfileHandler(w http.ResponseWriter, r
 		UserID:           user.ID,
 		DisplayName:      req.DisplayName,
 		Pronouns:         req.Pronouns,
-		HeadshotPath:     req.HeadshotPath,
 		Skills:           req.Skills,
 		InterestTags:     req.InterestTags,
 		RolesLookingFor:  req.RolesLookingFor,
 		IcebreakerPrompt: req.IcebreakerPrompt,
 		IcebreakerAnswer: req.IcebreakerAnswer,
 		WantToBuild:      req.WantToBuild,
+		GitHubUsername:   req.GitHubUsername,
+		LinkedInHandle:   req.LinkedInHandle,
+		Experiences:      directoryExperiences(req.Experiences),
 		Intent:           req.Intent,
 		SpotsNeeded:      req.SpotsNeeded,
 		Discoverable:     discoverable,
@@ -531,12 +562,15 @@ func (app *application) upsertMyDirectoryProfileHandler(w http.ResponseWriter, r
 		return
 	}
 
-	if existing != nil && existing.HeadshotPath != nil &&
-		(req.HeadshotPath == nil || *req.HeadshotPath != *existing.HeadshotPath) {
-		app.deleteDirectoryHeadshot(user.ID, *existing.HeadshotPath)
-	}
-
 	app.respondDirectoryMe(w, r, user)
+}
+
+func directoryExperiences(in []DirectoryExperiencePayload) store.DirectoryExperiences {
+	out := make(store.DirectoryExperiences, len(in))
+	for i, e := range in {
+		out[i] = store.DirectoryExperience{Company: e.Company, Title: e.Title}
+	}
+	return out
 }
 
 func (app *application) respondDirectoryMe(w http.ResponseWriter, r *http.Request, user *store.User) {
@@ -548,22 +582,6 @@ func (app *application) respondDirectoryMe(w http.ResponseWriter, r *http.Reques
 	if err := app.jsonResponse(w, http.StatusOK, resp); err != nil {
 		app.internalServerError(w, r, err)
 	}
-}
-
-// deleteDirectoryHeadshot removes a replaced headshot on a best-effort basis.
-func (app *application) deleteDirectoryHeadshot(userID, objectPath string) {
-	if app.gcsClient == nil {
-		return
-	}
-	app.backgroundJobs.Add(1)
-	go func() {
-		defer app.backgroundJobs.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), userUploadDeleteTimeout)
-		defer cancel()
-		if err := app.gcsClient.DeleteObject(ctx, objectPath); err != nil {
-			app.logger.Warnw("failed to delete replaced directory headshot", "user_id", userID, "path", objectPath, "error", err)
-		}
-	}()
 }
 
 // updateMyDirectoryDiscoverableHandler toggles whether the caller's card shows up.
@@ -641,80 +659,6 @@ func (app *application) confirmMyDirectoryStatusHandler(w http.ResponseWriter, r
 	app.respondDirectoryMe(w, r, user)
 }
 
-// generateDirectoryHeadshotUploadURLHandler returns a signed upload URL for a headshot.
-//
-//	@Summary		Get directory headshot upload URL
-//	@Description	Generates a signed GCS upload URL for a directory card headshot. Pass the returned headshot_path when saving the card.
-//	@Tags			hackers
-//	@Accept			json
-//	@Produce		json
-//	@Param			upload	body		DirectoryHeadshotUploadURLPayload	true	"Content type"
-//	@Success		200		{object}	DirectoryHeadshotUploadURLResponse
-//	@Failure		400		{object}	object{error=string}
-//	@Failure		401		{object}	object{error=string}
-//	@Failure		403		{object}	object{error=string}
-//	@Failure		500		{object}	object{error=string}
-//	@Failure		503		{object}	object{error=string}
-//	@Security		CookieAuth
-//	@Router			/directory/me/headshot-upload-url [post]
-func (app *application) generateDirectoryHeadshotUploadURLHandler(w http.ResponseWriter, r *http.Request) {
-	user := getUserFromContext(r.Context())
-	if user == nil {
-		app.unauthorizedErrorResponse(w, r, errors.New("user not in context"))
-		return
-	}
-
-	var req DirectoryHeadshotUploadURLPayload
-	if err := readJSON(w, r, &req); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-	if err := Validate.Struct(req); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	eligible, err := app.store.AttendeeDirectory.IsEligible(r.Context(), user.ID)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-	if !eligible {
-		app.forbiddenMessageResponse(w, r, errDirectoryNotEligible)
-		return
-	}
-
-	if app.gcsClient == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "headshot uploads are not configured")
-		return
-	}
-
-	randomID, err := randomHex(randomResumeObjectIDBytes)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-	hackathonName, err := app.store.Settings.GetHackathonName(r.Context())
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	objectPath := fmt.Sprintf("%s%s/%s.%s", directoryHeadshotStoragePrefix(hackathonName), user.ID, randomID, directoryHeadshotContentTypes[req.ContentType])
-	uploadURL, err := app.gcsClient.GenerateImageUploadURL(r.Context(), objectPath, req.ContentType)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, DirectoryHeadshotUploadURLResponse{
-		UploadURL:    uploadURL,
-		HeadshotPath: objectPath,
-	}); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
 func splitQueryList(raw string) []string {
 	out := []string{}
 	for _, part := range strings.Split(raw, ",") {
@@ -725,7 +669,7 @@ func splitQueryList(raw string) []string {
 	return out
 }
 
-// listDirectoryHandler is the "Who's Attending" browse feed.
+// listDirectoryHandler is the directory browse feed.
 //
 //	@Summary		Browse the attendee directory
 //	@Description	Lists other confirmed attendees' discoverable cards. Requires your own card. Stale statuses sort last close to the event.
@@ -808,7 +752,7 @@ func (app *application) listDirectoryHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, DirectoryListResponse{
-		Cards:      app.withHeadshots(r.Context(), result.Cards),
+		Cards:      app.withCardPhotos(r.Context(), result.Cards),
 		NextCursor: result.NextCursor,
 		EventNear:  near,
 	}); err != nil {
@@ -831,7 +775,7 @@ func (app *application) respondDirectoryCards(w http.ResponseWriter, r *http.Req
 		app.internalServerError(w, r, err)
 		return
 	}
-	if err := app.jsonResponse(w, http.StatusOK, DirectoryCardsResponse{Cards: app.withHeadshots(r.Context(), cards)}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, DirectoryCardsResponse{Cards: app.withCardPhotos(r.Context(), cards)}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
@@ -866,6 +810,88 @@ func (app *application) listDirectoryContactsHandler(w http.ResponseWriter, r *h
 //	@Router			/directory/pokes [get]
 func (app *application) listDirectoryPokesHandler(w http.ResponseWriter, r *http.Request) {
 	app.respondDirectoryCards(w, r, app.store.AttendeeDirectory.ListPokedMe)
+}
+
+// listDirectorySentPokesHandler lists who the caller poked.
+//
+//	@Summary		List who I poked
+//	@Description	Lists attendees the caller poked, newest first, including ones who poked back (a match).
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	DirectoryCardsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/directory/pokes/sent [get]
+func (app *application) listDirectorySentPokesHandler(w http.ResponseWriter, r *http.Request) {
+	app.respondDirectoryCards(w, r, app.store.AttendeeDirectory.ListPokedByMe)
+}
+
+// getUnseenDirectoryPokesHandler counts the pokes the caller hasn't seen.
+//
+//	@Summary		Count unseen pokes
+//	@Description	Counts the pokes the caller hasn't seen yet and returns the newest few pokers for the "Poked you" badge. A poke is seen once the caller opens their pokes or pokes back.
+//	@Tags			hackers
+//	@Produce		json
+//	@Success		200	{object}	DirectoryUnseenPokesResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/directory/pokes/unseen [get]
+func (app *application) getUnseenDirectoryPokesHandler(w http.ResponseWriter, r *http.Request) {
+	user, _, ok := app.requireDirectoryAccess(w, r)
+	if !ok {
+		return
+	}
+	unseen, err := app.store.AttendeeDirectory.ListUnseenPokes(r.Context(), user.ID, directoryUnseenPokers)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	for i := range unseen.Pokers {
+		p := &unseen.Pokers[i]
+		p.HeadshotURL = app.photoURL(r.Context(), p.HeadshotPath, p.ProfilePictureURL)
+	}
+	if err := app.jsonResponse(w, http.StatusOK, DirectoryUnseenPokesResponse{Count: unseen.Count, Pokers: unseen.Pokers}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// markDirectoryPokesSeenHandler clears the caller's unseen pokes.
+//
+//	@Summary		Mark pokes seen
+//	@Description	Marks the caller's pokes up to and including `through` (the newest poke they were shown) as seen. Later pokes stay unseen.
+//	@Tags			hackers
+//	@Accept			json
+//	@Param			payload	body	MarkDirectoryPokesSeenPayload	true	"Newest poke shown"
+//	@Success		204
+//	@Failure		400	{object}	object{error=string}
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/directory/pokes/seen [post]
+func (app *application) markDirectoryPokesSeenHandler(w http.ResponseWriter, r *http.Request) {
+	user, _, ok := app.requireDirectoryAccess(w, r)
+	if !ok {
+		return
+	}
+	var req MarkDirectoryPokesSeenPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	if err := app.store.AttendeeDirectory.MarkPokesSeen(r.Context(), user.ID, req.Through); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // directoryTargetAllowed checks whether the viewer may start a new relationship
@@ -917,7 +943,7 @@ func (app *application) respondDirectoryCard(w http.ResponseWriter, r *http.Requ
 		app.internalServerError(w, r, err)
 		return
 	}
-	card.HeadshotURL = app.headshotURL(r.Context(), card.HeadshotPath, card.ProfilePictureURL)
+	card.HeadshotURL = app.photoURL(r.Context(), card.HeadshotPath, card.ProfilePictureURL)
 	if err := app.jsonResponse(w, http.StatusOK, DirectoryCardResponse{Card: *card}); err != nil {
 		app.internalServerError(w, r, err)
 	}
@@ -971,7 +997,7 @@ func (app *application) pokeDirectoryProfileHandler(w http.ResponseWriter, r *ht
 		app.internalServerError(w, r, err)
 		return
 	}
-	card.HeadshotURL = app.headshotURL(r.Context(), card.HeadshotPath, card.ProfilePictureURL)
+	card.HeadshotURL = app.photoURL(r.Context(), card.HeadshotPath, card.ProfilePictureURL)
 
 	if result.Created {
 		if result.Matched {
@@ -1171,7 +1197,7 @@ func (app *application) listAdminDirectoryProfilesHandler(w http.ResponseWriter,
 		return
 	}
 	if err := app.jsonResponse(w, http.StatusOK, DirectoryAdminListResponse{
-		Profiles:   app.withAdminHeadshots(r.Context(), result.Profiles),
+		Profiles:   app.withAdminPhotos(r.Context(), result.Profiles),
 		NextCursor: result.NextCursor,
 	}); err != nil {
 		app.internalServerError(w, r, err)

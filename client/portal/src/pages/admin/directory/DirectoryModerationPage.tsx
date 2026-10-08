@@ -80,7 +80,7 @@ export default function DirectoryModerationPage() {
         <CardHeader>
           <CardTitle>Attendee directory</CardTitle>
           <CardDescription>
-            Review the cards hackers publish in "Who's Attending". Hiding a card
+            Review the cards hackers publish in the Directory. Hiding a card
             removes it from every directory list until you restore it.
           </CardDescription>
           <CardAction>

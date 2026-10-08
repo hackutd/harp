@@ -1,5 +1,9 @@
-import type { LucideIcon } from "lucide-react";
-import { ChevronRight, Mail, MessageSquare } from "lucide-react";
+import {
+  IconChevronRight,
+  IconMail,
+  IconMessage,
+  type TablerIcon,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -12,6 +16,8 @@ import { hackerLinkIcon } from "@/shared/lib/hacker-link-icons";
 import type { Application, HackerLink, NotificationFeedItem } from "@/types";
 
 import { ApplicationStatusCards } from "../components/ApplicationStatusCards";
+import { SkyCardStack } from "../components/SkyCardStack";
+import { PILL_BASE, TONE_STYLES } from "../components/tones";
 import { DirectoryPromptBanner } from "../directory/components/DirectoryPromptBanner";
 import { getNotificationFeed } from "../notifications/api";
 import type { HackathonConfig } from "./api";
@@ -65,14 +71,14 @@ function importantDates(config: HackathonConfig | null): ImportantDate[] {
 
 interface QuickLink {
   label: string;
-  icon: LucideIcon;
+  icon: TablerIcon;
   href?: string;
   to?: string;
 }
 
 const QUICK_LINKS: Omit<QuickLink, "href">[] = [
-  { label: "FAQ", icon: MessageSquare, to: "/app/faq" },
-  { label: "Contact", icon: Mail },
+  { label: "FAQ", icon: IconMessage, to: "/app/faq" },
+  { label: "Contact", icon: IconMail },
 ];
 
 // Pre-decision states for the neutral hackathon card. Once a decision exists
@@ -85,23 +91,23 @@ function dashboardStatus(application: Application | null): {
   if (!application)
     return {
       label: "Not started",
-      color: "border border-[#A857FF]/35 bg-[#5900FF]/25 text-[#D8C5FF]",
+      color: TONE_STYLES.info,
     };
   switch (application.status) {
     case "draft":
       return {
         label: "In progress",
-        color: "border border-[#21FFF0]/30 bg-[#21FFF0]/10 text-[#21FFF0]",
+        color: TONE_STYLES.info,
       };
     case "submitted":
       return {
         label: "Under review",
-        color: "border border-[#F62BE8]/30 bg-[#F62BE8]/10 text-[#FF8FF7]",
+        color: TONE_STYLES.info,
       };
     default:
       return {
         label: "Decisions are out",
-        color: "bg-[#5900FF] text-white",
+        color: "bg-tide text-white",
       };
   }
 }
@@ -206,6 +212,11 @@ export default function DashboardPage() {
   }, []);
 
   const dates = importantDates(config);
+  const firstName = application?.responses["first_name"];
+  const greetingName =
+    typeof firstName === "string" && firstName.trim()
+      ? firstName.trim()
+      : "Hacker";
   const percent = completionPercent(application);
   const isDraft = !application || application.status === "draft";
   // Decided applications skip the neutral hackathon card entirely and show
@@ -220,7 +231,7 @@ export default function DashboardPage() {
   const status = applicationsClosed
     ? {
         label: "Applications closed",
-        color: "border border-white/15 bg-white/5 text-white/60",
+        color: "bg-ink/[0.03] text-ink/65",
       }
     : dashboardStatus(application);
   const statusSubtext = isDraft
@@ -269,99 +280,103 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative isolate mx-auto min-h-svh max-w-2xl px-5 pt-4 pb-6 text-white md:max-w-5xl md:px-8 md:pt-6">
+    <div className="hacker-dashboard relative isolate mx-auto min-h-svh max-w-2xl p-5 text-ink md:max-w-5xl">
       {/* Submit celebration: fires when the user was just redirected from submit */}
       {application && justSubmittedId === application.id && (
         <CelebrationEffect id={application.id} type="submit" />
       )}
 
-      {/* Once a decision exists the dashboard shows the full status card
-          cluster (decision, RSVP, travel) with its one-time celebration;
-          before that it keeps the neutral hackathon card. */}
-      {decided ? (
-        <ApplicationStatusCards application={application} />
-      ) : (
-        <div className="rounded-xl border border-[#A857FF]/25 bg-[#0B0C15]/92 bg-[radial-gradient(130%_130%_at_100%_100%,rgba(89,0,255,0.22),rgba(89,0,255,0)_58%)] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_34px_rgba(0,0,0,0.30)] backdrop-blur-xl">
-          <span
-            className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide ${status.color}`}
-          >
-            {status.label}
-          </span>
-          <h1 className="mt-3 text-xl font-light tracking-tight">
-            {hackathonName}
-          </h1>
-          {applicationsClosed ? (
-            <p className="mt-1 text-sm font-light text-white/70">
-              The application portal is not currently accepting submissions.
-              Please check back later.
-              {application?.status === "draft" &&
-                " Your draft has been saved and will be here when applications reopen."}
-              {contactEmail && (
-                <>
-                  {" "}
-                  If you believe this is a mistake, reach out to{" "}
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    onClick={handleCopyEmail}
-                    className="text-white underline underline-offset-2"
-                  >
-                    {contactEmail}
-                  </a>
-                  .
-                </>
-              )}
-            </p>
-          ) : (
-            <>
-              {statusSubtext && (
-                <p className="mt-1 text-sm font-light text-white/70">
-                  {statusSubtext}
-                </p>
-              )}
-              {isDraft && (
-                <div className="mt-3 h-1 w-full rounded-full bg-white/10">
-                  <div
-                    className="h-1 rounded-full bg-[#21FFF0] shadow-[0_0_10px_rgba(33,255,240,0.65)] transition-all"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-              )}
-              <Link
-                to={isDraft ? "/app/apply" : "/app/application"}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#5900FF] px-5 py-2 text-sm font-medium text-white shadow-[0_0_20px_rgba(89,0,255,0.28)] transition-colors hover:bg-[#6D1CFF] active:scale-[0.98]"
-              >
-                {isDraft ? "Continue" : "View submission"}
-                <ChevronRight className="size-4" strokeWidth={1.75} />
-              </Link>
-            </>
-          )}
-        </div>
-      )}
+      <h1 className="mb-4 text-xl font-normal tracking-tight text-ink">
+        Welcome back, {greetingName}
+      </h1>
 
-      {application?.rsvp_status === "confirmed" && <DirectoryPromptBanner />}
+      <SkyCardStack>
+        {/* Once a decision exists the dashboard shows the full status card
+            cluster (decision, RSVP, travel) with its one-time celebration;
+            before that it keeps the neutral hackathon card. */}
+        {decided ? (
+          <ApplicationStatusCards application={application} />
+        ) : (
+          <div className="hacker-application-card rounded-xl bg-surface p-5 text-ink">
+            <span className={`${PILL_BASE} ${status.color}`}>
+              {status.label}
+            </span>
+            <h2 className="mt-3 text-xl font-light tracking-tight">
+              {hackathonName}
+            </h2>
+            {applicationsClosed ? (
+              <p className="mt-1 text-sm font-light text-ink/75">
+                The application portal is not currently accepting submissions.
+                Please check back later.
+                {application?.status === "draft" &&
+                  " Your draft has been saved and will be here when applications reopen."}
+                {contactEmail && (
+                  <>
+                    {" "}
+                    If you believe this is a mistake, reach out to{" "}
+                    <a
+                      href={`mailto:${contactEmail}`}
+                      onClick={handleCopyEmail}
+                      className="text-ink underline underline-offset-2"
+                    >
+                      {contactEmail}
+                    </a>
+                    .
+                  </>
+                )}
+              </p>
+            ) : (
+              <>
+                {statusSubtext && (
+                  <p className="mt-1 text-sm font-light text-ink/75">
+                    {statusSubtext}
+                  </p>
+                )}
+                {isDraft && (
+                  <div className="mt-3 h-1 w-full rounded-full bg-ink/5">
+                    <div
+                      className="h-1 rounded-full bg-tide transition-all"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                )}
+                <Link
+                  to={isDraft ? "/app/apply" : "/app/application"}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-tide px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-tide-hover active:scale-[0.98]"
+                >
+                  {isDraft ? "Continue" : "View submission"}
+                  <IconChevronRight className="size-4" strokeWidth={1.75} />
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+
+        {application?.rsvp_status === "confirmed" && <DirectoryPromptBanner />}
+      </SkyCardStack>
 
       {/* Important dates */}
       <section className={dates.length > 0 ? "mt-5" : "hidden"}>
         <div className="mb-2.5 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-white">Important dates</h2>
+          <h2 className="text-base font-normal text-ink">Important dates</h2>
           <Link
             to="/app/schedule"
-            className="text-sm font-light text-[#21FFF0]/70 transition-colors hover:text-[#21FFF0]"
+            className="text-sm font-light text-ink/65 transition-colors hover:text-ink"
           >
             See all
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {dates.map((d) => (
             <div
               key={d.label}
-              className="rounded-lg border border-white/10 bg-[#0B0C15]/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+              className="rounded-lg bg-surface p-4 theme-light:border theme-light:border-ink/10"
             >
-              <p className="text-[11px] font-medium tracking-widest text-[#F62BE8] uppercase">
+              <p className="text-xs font-medium text-(--date-accent)">
                 {d.month}
               </p>
-              <p className="mt-1 text-2xl font-semibold text-white">{d.day}</p>
-              <p className="mt-1 text-xs font-light text-white/45">{d.label}</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">{d.day}</p>
+              <p className="mt-1 text-xs font-light text-ink/55">{d.label}</p>
             </div>
           ))}
         </div>
@@ -370,24 +385,24 @@ export default function DashboardPage() {
       {/* Notifications */}
       <section className="mt-5">
         <div className="mb-2.5 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-white">Notifications</h2>
+          <h2 className="text-base font-normal text-ink">Notifications</h2>
           <Link
             to="/app/notifications"
-            className="text-sm font-light text-[#21FFF0]/70 transition-colors hover:text-[#21FFF0]"
+            className="text-sm font-light text-ink/65 transition-colors hover:text-ink"
           >
             See all
           </Link>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {notifications.map((n) => (
             <div
               key={n.title}
-              className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#0B0C15]/80 px-4 py-3.5"
+              className="flex items-center gap-3 rounded-lg bg-surface px-4 py-3.5 theme-light:border theme-light:border-ink/10"
             >
-              <span className="size-2 shrink-0 rounded-full bg-[#5900FF]" />
+              <span className="size-2 shrink-0 rounded-full bg-(--notify-accent)" />
               <div>
-                <p className="text-sm font-normal text-white">{n.title}</p>
-                <p className="mt-0.5 text-xs font-light text-white/45">
+                <p className="text-sm font-normal text-ink">{n.title}</p>
+                <p className="mt-0.5 text-xs font-light text-ink/55">
                   {n.body}
                 </p>
               </div>
@@ -395,73 +410,77 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
-
-      {/* Quick links */}
-      <section className="mt-5 grid grid-cols-3 gap-3">
-        {QUICK_LINKS.filter(
-          ({ label }) => label !== "Contact" || contactEmail,
-        ).map(({ label, icon: Icon, to }) => {
-          const href =
-            label === "Contact" ? `mailto:${contactEmail}` : undefined;
-          const className =
-            "flex flex-col items-start gap-2 rounded-lg border border-white/10 bg-[#0B0C15]/80 p-4 transition-colors hover:border-[#21FFF0]/35 hover:bg-[#10121D] active:scale-[0.98]";
-          const content = (
-            <>
-              <Icon className="size-5 text-[#21FFF0]" strokeWidth={1.5} />
-              <span className="text-sm font-normal text-white">{label}</span>
-            </>
-          );
-          return to ? (
-            <Link key={label} to={to} className={className}>
-              {content}
-            </Link>
-          ) : (
-            <a
-              key={label}
-              href={href}
-              onClick={
-                href?.startsWith("mailto:") ? handleCopyEmail : undefined
-              }
-              className={className}
-            >
-              {content}
-            </a>
-          );
-        })}
-        {hackerLinks.map((link) => {
-          const Icon = hackerLinkIcon(link.icon);
-          const className =
-            "flex flex-col items-start gap-2 rounded-lg border border-white/10 bg-[#0B0C15]/80 p-4 transition-colors hover:border-[#F62BE8]/35 hover:bg-[#10121D] active:scale-[0.98]";
-          const content = (
-            <>
-              <Icon className="size-5 text-[#F62BE8]" strokeWidth={1.5} />
-              <span className="text-sm font-normal text-white">
-                {link.label}
-              </span>
-            </>
-          );
-          // Notion pages open embedded in the portal; everything else is an
-          // external site.
-          return link.icon === "notion" ? (
-            <Link
-              key={link.id}
-              to={`/app/notion/${link.id}`}
-              className={className}
-            >
-              {content}
-            </Link>
-          ) : (
-            <a
-              key={link.id}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={className}
-            >
-              {content}
-            </a>
-          );
-        })}
+      {/* Important links */}
+      <section className="mt-5">
+        <h2 className="mb-2.5 text-base font-normal text-ink">
+          Important links
+        </h2>
+        <div className="grid grid-cols-3 gap-4">
+          {QUICK_LINKS.filter(
+            ({ label }) => label !== "Contact" || contactEmail,
+          ).map(({ label, icon: Icon, to }) => {
+            const href =
+              label === "Contact" ? `mailto:${contactEmail}` : undefined;
+            const className =
+              "flex flex-col items-start gap-2 rounded-lg bg-surface p-4 transition-colors hover:bg-surface-2 active:scale-[0.98] theme-light:border theme-light:border-ink/10";
+            const content = (
+              <>
+                <Icon className="size-5 text-primary" strokeWidth={1.5} />
+                <span className="text-sm font-normal text-ink">{label}</span>
+              </>
+            );
+            return to ? (
+              <Link key={label} to={to} className={className}>
+                {content}
+              </Link>
+            ) : (
+              <a
+                key={label}
+                href={href}
+                onClick={
+                  href?.startsWith("mailto:") ? handleCopyEmail : undefined
+                }
+                className={className}
+              >
+                {content}
+              </a>
+            );
+          })}
+          {hackerLinks.map((link) => {
+            const Icon = hackerLinkIcon(link.icon);
+            const className =
+              "flex flex-col items-start gap-2 rounded-lg bg-surface p-4 transition-colors hover:bg-surface-2 active:scale-[0.98] theme-light:border theme-light:border-ink/10";
+            const content = (
+              <>
+                <Icon className="size-5 text-primary" strokeWidth={1.5} />
+                <span className="text-sm font-normal text-ink">
+                  {link.label}
+                </span>
+              </>
+            );
+            // Notion pages open embedded in the portal; everything else is an
+            // external site.
+            return link.icon === "notion" ? (
+              <Link
+                key={link.id}
+                to={`/app/notion/${link.id}`}
+                className={className}
+              >
+                {content}
+              </Link>
+            ) : (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={className}
+              >
+                {content}
+              </a>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

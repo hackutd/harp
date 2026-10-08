@@ -8,6 +8,9 @@ export interface DirectoryAdminProfile {
   icebreaker_prompt: string | null;
   icebreaker_answer: string | null;
   want_to_build: string | null;
+  github_username: string | null;
+  linkedin_handle: string | null;
+  experiences: { company: string; title: string }[];
   discoverable: boolean;
   moderation_hidden_at: string | null;
   moderation_hidden_by: string | null;

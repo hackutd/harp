@@ -1,7 +1,6 @@
-import { Zap } from "lucide-react";
+import { IconBolt } from "@tabler/icons-react";
 
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/shared/lib/utils";
 
 import { isPriorityApplication, PRIORITY_DEADLINE } from "./priority";
 
@@ -15,14 +14,15 @@ export function PriorityBadge({ submittedAt, className }: PriorityBadgeProps) {
   if (!isPriorityApplication(submittedAt)) return null;
   return (
     <Badge
-      className={cn("bg-purple-100 text-purple-800", className)}
+      variant="purple"
+      className={className}
       title={`Submitted by ${PRIORITY_DEADLINE.toLocaleString("en-US", {
         timeZone: "America/Chicago",
         dateStyle: "medium",
         timeStyle: "short",
       })} CT`}
     >
-      <Zap />
+      <IconBolt />
       Priority
     </Badge>
   );

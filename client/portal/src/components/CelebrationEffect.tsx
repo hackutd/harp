@@ -12,6 +12,11 @@ interface CelebrationEffectProps {
 
 const STORAGE_PREFIX = "harp-confetti";
 
+// canvas-confetti needs literal hex, matching the hacker palette in index.css.
+const BLUE = "#0081E6";
+const NAVY = "#001E4D";
+const INK = "#FFFFFF";
+
 function getStorageKey(type: string, id: string): string {
   return `${STORAGE_PREFIX}:${type}:${id}`;
 }
@@ -47,7 +52,7 @@ async function fireConfetti(options: Options): Promise<void> {
 }
 
 /**
- * Submit variant — restrained, geometric, black/charcoal, center-origin.
+ * Submit variant — restrained, geometric, palette-only, center-origin.
  */
 function fireSubmitConfetti(): void {
   void fireConfetti({
@@ -58,18 +63,18 @@ function fireSubmitConfetti(): void {
     gravity: 0.8,
     scalar: 0.8,
     shapes: ["square"],
-    colors: ["#000000", "#555555", "#D9D9D9"],
+    colors: [BLUE, BLUE, INK, NAVY],
   });
 }
 
 /**
- * Accepted variant — full burst, black/white/gold, multi-angle.
+ * Accepted variant — blue and white plus the success green, multi-angle.
  */
 async function fireAcceptedConfetti(): Promise<void> {
   const confettiModule = await import("canvas-confetti");
   const confetti = confettiModule.default;
   const accentColor = getComputedStyle(document.documentElement)
-    .getPropertyValue("--portal-orange")
+    .getPropertyValue("--portal-green")
     .trim();
 
   // First burst — center, diverse shapes
@@ -81,7 +86,7 @@ async function fireAcceptedConfetti(): Promise<void> {
     gravity: 0.7,
     scalar: 1,
     shapes: ["square", "circle"],
-    colors: ["#000000", "#FFFFFF", accentColor],
+    colors: [BLUE, INK, accentColor],
   });
 
   // Second burst — slight delay, from the left
@@ -95,7 +100,7 @@ async function fireAcceptedConfetti(): Promise<void> {
       gravity: 0.6,
       scalar: 0.9,
       shapes: ["square"],
-      colors: ["#000000", accentColor, "#FFFFFF"],
+      colors: [INK, accentColor, BLUE],
     });
   }, 150);
 
@@ -110,7 +115,7 @@ async function fireAcceptedConfetti(): Promise<void> {
       gravity: 0.6,
       scalar: 0.9,
       shapes: ["square"],
-      colors: ["#000000", accentColor, "#FFFFFF"],
+      colors: [INK, accentColor, BLUE],
     });
   }, 300);
 
@@ -124,7 +129,7 @@ async function fireAcceptedConfetti(): Promise<void> {
       gravity: 0.5,
       scalar: 1.1,
       shapes: ["square", "circle"],
-      colors: ["#000000", "#FFFFFF", accentColor, "#555555"],
+      colors: [BLUE, INK, accentColor],
     });
   }, 500);
 }
@@ -163,10 +168,8 @@ function ReducedMotionCelebration({
     >
       <div
         className={cn(
-          "flex items-center gap-3 rounded-full px-6 py-3 text-base font-semibold tracking-wider uppercase shadow-2xl",
-          isAccepted
-            ? "bg-black text-white"
-            : "border-2 border-black bg-white text-black",
+          "flex items-center gap-3 rounded-full px-6 py-3 text-base font-semibold tracking-wider uppercase",
+          isAccepted ? "bg-tide text-white" : "bg-surface text-ink",
         )}
       >
         {isAccepted ? "✓ Accepted" : "✓ Submitted"}

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -17,7 +18,6 @@ const (
 	DirectoryIntentLookingForTeammates DirectoryIntent = "looking_for_teammates"
 	DirectoryIntentPartialTeam         DirectoryIntent = "partial_team"
 	DirectoryIntentTeamSet             DirectoryIntent = "team_set"
-	DirectoryIntentOpenToCollab        DirectoryIntent = "open_to_collab"
 	DirectoryIntentJustNetworking      DirectoryIntent = "just_networking"
 )
 
@@ -27,56 +27,101 @@ var DirectoryRoles = []string{
 	"design", "hardware", "product", "pitch",
 }
 
+// DirectoryExperience is one past role on a card, e.g. an internship.
+type DirectoryExperience struct {
+	Company string `json:"company"`
+	Title   string `json:"title"`
+}
+
+// DirectoryExperiences implements sql.Scanner and driver.Valuer for the
+// experiences JSONB column.
+type DirectoryExperiences []DirectoryExperience
+
+func (e *DirectoryExperiences) Scan(src any) error {
+	var b []byte
+	switch v := src.(type) {
+	case nil:
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return fmt.Errorf("DirectoryExperiences.Scan: unsupported type %T", src)
+	}
+	out := []DirectoryExperience{}
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, &out); err != nil {
+			return err
+		}
+	}
+	if out == nil {
+		out = []DirectoryExperience{}
+	}
+	*e = out
+	return nil
+}
+
+func (e DirectoryExperiences) Value() (driver.Value, error) {
+	if e == nil {
+		// The column is NOT NULL, so an unset slice still has to serialize.
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]DirectoryExperience(e))
+}
+
 // DirectoryProfile is a hacker's own attendee directory card, as they edit it.
 type DirectoryProfile struct {
-	UserID            string          `json:"user_id"`
-	DisplayName       string          `json:"display_name"`
-	Pronouns          *string         `json:"pronouns"`
-	HeadshotPath      *string         `json:"headshot_path"`
-	Skills            StringArray     `json:"skills" swaggertype:"array,string"`
-	InterestTags      StringArray     `json:"interest_tags" swaggertype:"array,string"`
-	RolesLookingFor   StringArray     `json:"roles_looking_for" swaggertype:"array,string"`
-	IcebreakerPrompt  *string         `json:"icebreaker_prompt"`
-	IcebreakerAnswer  *string         `json:"icebreaker_answer"`
-	WantToBuild       *string         `json:"want_to_build"`
-	Intent            DirectoryIntent `json:"intent"`
-	SpotsNeeded       *int            `json:"spots_needed"`
-	Discoverable      bool            `json:"discoverable"`
-	StatusConfirmedAt time.Time       `json:"status_confirmed_at"`
-	DiscordUserID     *string         `json:"discord_user_id"`
-	DiscordUsername   *string         `json:"discord_username"`
-	ModerationHidden  bool            `json:"moderation_hidden"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
+	UserID            string               `json:"user_id"`
+	DisplayName       string               `json:"display_name"`
+	Pronouns          *string              `json:"pronouns"`
+	Skills            StringArray          `json:"skills" swaggertype:"array,string"`
+	InterestTags      StringArray          `json:"interest_tags" swaggertype:"array,string"`
+	RolesLookingFor   StringArray          `json:"roles_looking_for" swaggertype:"array,string"`
+	IcebreakerPrompt  *string              `json:"icebreaker_prompt"`
+	IcebreakerAnswer  *string              `json:"icebreaker_answer"`
+	WantToBuild       *string              `json:"want_to_build"`
+	GitHubUsername    *string              `json:"github_username"`
+	LinkedInHandle    *string              `json:"linkedin_handle"`
+	Experiences       DirectoryExperiences `json:"experiences"`
+	Intent            DirectoryIntent      `json:"intent"`
+	SpotsNeeded       *int                 `json:"spots_needed"`
+	Discoverable      bool                 `json:"discoverable"`
+	StatusConfirmedAt time.Time            `json:"status_confirmed_at"`
+	ModerationHidden  bool                 `json:"moderation_hidden"`
+	CreatedAt         time.Time            `json:"created_at"`
+	UpdatedAt         time.Time            `json:"updated_at"`
 }
 
 // DirectoryCard is another attendee's card as seen by a viewer, with the
-// viewer's relationship to them. Discord fields are only set once matched.
+// viewer's relationship to them. DiscordUsername, from their RSVP, is only set
+// once matched.
 type DirectoryCard struct {
-	UserID            string          `json:"user_id"`
-	DisplayName       string          `json:"display_name"`
-	Pronouns          *string         `json:"pronouns"`
-	HeadshotPath      *string         `json:"-"`
-	ProfilePictureURL *string         `json:"-"`
-	HeadshotURL       *string         `json:"headshot_url"`
-	Skills            StringArray     `json:"skills" swaggertype:"array,string"`
-	InterestTags      StringArray     `json:"interest_tags" swaggertype:"array,string"`
-	RolesLookingFor   StringArray     `json:"roles_looking_for" swaggertype:"array,string"`
-	IcebreakerPrompt  *string         `json:"icebreaker_prompt"`
-	IcebreakerAnswer  *string         `json:"icebreaker_answer"`
-	WantToBuild       *string         `json:"want_to_build"`
-	Intent            DirectoryIntent `json:"intent"`
-	SpotsNeeded       *int            `json:"spots_needed"`
-	StatusConfirmedAt time.Time       `json:"status_confirmed_at"`
-	CheckedIn         bool            `json:"checked_in"`
-	Stale             bool            `json:"stale"`
-	PokedByMe         bool            `json:"poked_by_me"`
-	PokedMe           bool            `json:"poked_me"`
-	Matched           bool            `json:"matched"`
-	IsContact         bool            `json:"is_contact"`
-	IsHidden          bool            `json:"is_hidden"`
-	DiscordUserID     *string         `json:"discord_user_id"`
-	DiscordUsername   *string         `json:"discord_username"`
+	UserID            string               `json:"user_id"`
+	DisplayName       string               `json:"display_name"`
+	Pronouns          *string              `json:"pronouns"`
+	HeadshotPath      *string              `json:"-"`
+	ProfilePictureURL *string              `json:"-"`
+	HeadshotURL       *string              `json:"headshot_url"`
+	Skills            StringArray          `json:"skills" swaggertype:"array,string"`
+	InterestTags      StringArray          `json:"interest_tags" swaggertype:"array,string"`
+	RolesLookingFor   StringArray          `json:"roles_looking_for" swaggertype:"array,string"`
+	IcebreakerPrompt  *string              `json:"icebreaker_prompt"`
+	IcebreakerAnswer  *string              `json:"icebreaker_answer"`
+	WantToBuild       *string              `json:"want_to_build"`
+	GitHubUsername    *string              `json:"github_username"`
+	LinkedInHandle    *string              `json:"linkedin_handle"`
+	Experiences       DirectoryExperiences `json:"experiences"`
+	Intent            DirectoryIntent      `json:"intent"`
+	SpotsNeeded       *int                 `json:"spots_needed"`
+	StatusConfirmedAt time.Time            `json:"status_confirmed_at"`
+	CheckedIn         bool                 `json:"checked_in"`
+	Stale             bool                 `json:"stale"`
+	PokedByMe         bool                 `json:"poked_by_me"`
+	PokedMe           bool                 `json:"poked_me"`
+	Matched           bool                 `json:"matched"`
+	IsContact         bool                 `json:"is_contact"`
+	IsHidden          bool                 `json:"is_hidden"`
+	DiscordUsername   *string              `json:"discord_username"`
 	// RelatedAt is when the viewer saved this contact or was poked, for lists.
 	RelatedAt *time.Time `json:"related_at,omitempty"`
 }
@@ -128,24 +173,42 @@ type PokeResult struct {
 	Matched bool
 }
 
+// DirectoryPoker is the little that the "Poked you" badge shows about someone
+// whose poke the viewer hasn't seen yet.
+type DirectoryPoker struct {
+	UserID            string  `json:"user_id"`
+	DisplayName       string  `json:"display_name"`
+	HeadshotPath      *string `json:"-"`
+	ProfilePictureURL *string `json:"-"`
+	HeadshotURL       *string `json:"headshot_url"`
+}
+
+type UnseenPokes struct {
+	Count  int
+	Pokers []DirectoryPoker
+}
+
 // DirectoryAdminProfile is the moderation view of a directory card.
 type DirectoryAdminProfile struct {
-	UserID             string      `json:"user_id"`
-	Email              string      `json:"email"`
-	DisplayName        string      `json:"display_name"`
-	Pronouns           *string     `json:"pronouns"`
-	HeadshotPath       *string     `json:"-"`
-	ProfilePictureURL  *string     `json:"-"`
-	HeadshotURL        *string     `json:"headshot_url"`
-	Skills             StringArray `json:"skills" swaggertype:"array,string"`
-	IcebreakerPrompt   *string     `json:"icebreaker_prompt"`
-	IcebreakerAnswer   *string     `json:"icebreaker_answer"`
-	WantToBuild        *string     `json:"want_to_build"`
-	Discoverable       bool        `json:"discoverable"`
-	ModerationHiddenAt *time.Time  `json:"moderation_hidden_at"`
-	ModerationHiddenBy *string     `json:"moderation_hidden_by"`
-	ModerationReason   *string     `json:"moderation_reason"`
-	CreatedAt          time.Time   `json:"created_at"`
+	UserID             string               `json:"user_id"`
+	Email              string               `json:"email"`
+	DisplayName        string               `json:"display_name"`
+	Pronouns           *string              `json:"pronouns"`
+	HeadshotPath       *string              `json:"-"`
+	ProfilePictureURL  *string              `json:"-"`
+	HeadshotURL        *string              `json:"headshot_url"`
+	Skills             StringArray          `json:"skills" swaggertype:"array,string"`
+	IcebreakerPrompt   *string              `json:"icebreaker_prompt"`
+	IcebreakerAnswer   *string              `json:"icebreaker_answer"`
+	WantToBuild        *string              `json:"want_to_build"`
+	GitHubUsername     *string              `json:"github_username"`
+	LinkedInHandle     *string              `json:"linkedin_handle"`
+	Experiences        DirectoryExperiences `json:"experiences"`
+	Discoverable       bool                 `json:"discoverable"`
+	ModerationHiddenAt *time.Time           `json:"moderation_hidden_at"`
+	ModerationHiddenBy *string              `json:"moderation_hidden_by"`
+	ModerationReason   *string              `json:"moderation_reason"`
+	CreatedAt          time.Time            `json:"created_at"`
 }
 
 // DirectoryAdminCursor marks the last card of a moderation page.
@@ -237,18 +300,20 @@ func (s *AttendeeDirectoryStore) IsEligible(ctx context.Context, userID string) 
 }
 
 const directoryProfileColumns = `
-	user_id, display_name, pronouns, headshot_path, skills, interest_tags,
+	user_id, display_name, pronouns, skills, interest_tags,
 	roles_looking_for, icebreaker_prompt, icebreaker_answer, want_to_build,
-	intent, spots_needed, discoverable, status_confirmed_at, discord_user_id,
-	discord_username, moderation_hidden_at IS NOT NULL, created_at, updated_at`
+	github_username, linkedin_handle, experiences,
+	intent, spots_needed, discoverable, status_confirmed_at,
+	moderation_hidden_at IS NOT NULL, created_at, updated_at`
 
 func scanDirectoryProfile(row interface{ Scan(...any) error }) (*DirectoryProfile, error) {
 	var p DirectoryProfile
 	err := row.Scan(
-		&p.UserID, &p.DisplayName, &p.Pronouns, &p.HeadshotPath, &p.Skills, &p.InterestTags,
+		&p.UserID, &p.DisplayName, &p.Pronouns, &p.Skills, &p.InterestTags,
 		&p.RolesLookingFor, &p.IcebreakerPrompt, &p.IcebreakerAnswer, &p.WantToBuild,
-		&p.Intent, &p.SpotsNeeded, &p.Discoverable, &p.StatusConfirmedAt, &p.DiscordUserID,
-		&p.DiscordUsername, &p.ModerationHidden, &p.CreatedAt, &p.UpdatedAt,
+		&p.GitHubUsername, &p.LinkedInHandle, &p.Experiences,
+		&p.Intent, &p.SpotsNeeded, &p.Discoverable, &p.StatusConfirmedAt,
+		&p.ModerationHidden, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -286,14 +351,13 @@ func (s *AttendeeDirectoryStore) UpsertProfile(ctx context.Context, p *Directory
 
 	row := s.db.QueryRowContext(ctx, `
 		INSERT INTO attendee_directory_profiles (
-			user_id, display_name, pronouns, headshot_path, skills, interest_tags,
+			user_id, display_name, pronouns, skills, interest_tags,
 			roles_looking_for, icebreaker_prompt, icebreaker_answer, want_to_build,
-			intent, spots_needed, discoverable
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			intent, spots_needed, discoverable, github_username, linkedin_handle, experiences
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (user_id) DO UPDATE SET
 			display_name = EXCLUDED.display_name,
 			pronouns = EXCLUDED.pronouns,
-			headshot_path = EXCLUDED.headshot_path,
 			skills = EXCLUDED.skills,
 			interest_tags = EXCLUDED.interest_tags,
 			roles_looking_for = EXCLUDED.roles_looking_for,
@@ -302,11 +366,14 @@ func (s *AttendeeDirectoryStore) UpsertProfile(ctx context.Context, p *Directory
 			want_to_build = EXCLUDED.want_to_build,
 			intent = EXCLUDED.intent,
 			spots_needed = EXCLUDED.spots_needed,
+			github_username = EXCLUDED.github_username,
+			linkedin_handle = EXCLUDED.linkedin_handle,
+			experiences = EXCLUDED.experiences,
 			status_confirmed_at = NOW()
 		RETURNING `+directoryProfileColumns,
-		p.UserID, p.DisplayName, p.Pronouns, p.HeadshotPath, nonNilArray(p.Skills), nonNilArray(p.InterestTags),
+		p.UserID, p.DisplayName, p.Pronouns, nonNilArray(p.Skills), nonNilArray(p.InterestTags),
 		nonNilArray(p.RolesLookingFor), p.IcebreakerPrompt, p.IcebreakerAnswer, p.WantToBuild,
-		p.Intent, p.SpotsNeeded, p.Discoverable,
+		p.Intent, p.SpotsNeeded, p.Discoverable, p.GitHubUsername, p.LinkedInHandle, p.Experiences,
 	)
 	return scanDirectoryProfile(row)
 }
@@ -346,14 +413,6 @@ func (s *AttendeeDirectoryStore) ConfirmStatus(ctx context.Context, userID strin
 		`UPDATE attendee_directory_profiles SET status_confirmed_at = NOW() WHERE user_id = $1`, userID)
 }
 
-// SetDiscord stores (or, with nil values, clears) the OAuth-linked Discord account.
-func (s *AttendeeDirectoryStore) SetDiscord(ctx context.Context, userID string, discordUserID, discordUsername *string) error {
-	return s.execOne(ctx, `
-		UPDATE attendee_directory_profiles
-		SET discord_user_id = $2, discord_username = $3
-		WHERE user_id = $1`, userID, discordUserID, discordUsername)
-}
-
 func (s *AttendeeDirectoryStore) SetModeration(ctx context.Context, userID, adminID string, hidden bool, reason *string) error {
 	if !hidden {
 		return s.execOne(ctx, `
@@ -371,17 +430,17 @@ func (s *AttendeeDirectoryStore) SetModeration(ctx context.Context, userID, admi
 // directoryCardSelect needs $1 = viewer ID, $2 = check-in scan types,
 // $3 = stale cutoff (nullable).
 const directoryCardSelect = `
-	SELECT p.user_id, p.display_name, p.pronouns, p.headshot_path, u.profile_picture_url,
+	SELECT p.user_id, p.display_name, p.pronouns, u.photo_path, u.profile_picture_url,
 	       p.skills, p.interest_tags, p.roles_looking_for, p.icebreaker_prompt,
-	       p.icebreaker_answer, p.want_to_build, p.intent, p.spots_needed, p.status_confirmed_at,
+	       p.icebreaker_answer, p.want_to_build, p.github_username, p.linkedin_handle, p.experiences,
+	       p.intent, p.spots_needed, p.status_confirmed_at,
 	       EXISTS (SELECT 1 FROM scans s WHERE s.user_id = p.user_id AND s.scan_type = ANY($2::text[])) AS checked_in,
 	       ($3::timestamptz IS NOT NULL AND p.status_confirmed_at < $3::timestamptz) AS stale,
 	       EXISTS (SELECT 1 FROM pokes k WHERE k.poker_id = $1 AND k.pokee_id = p.user_id) AS poked_by_me,
 	       EXISTS (SELECT 1 FROM pokes k WHERE k.poker_id = p.user_id AND k.pokee_id = $1) AS poked_me,
 	       EXISTS (SELECT 1 FROM directory_contacts c WHERE c.owner_id = $1 AND c.contact_id = p.user_id) AS is_contact,
 	       EXISTS (SELECT 1 FROM directory_hidden_profiles h WHERE h.owner_id = $1 AND h.hidden_id = p.user_id) AS is_hidden,
-	       p.discord_user_id,
-	       COALESCE(NULLIF(p.discord_username, ''), NULLIF(BTRIM(a.rsvp_responses->>'discord_username'), '')) AS discord_username`
+	       NULLIF(BTRIM(a.rsvp_responses->>'discord_username'), '') AS discord_username`
 
 const directoryCardFrom = `
 	FROM attendee_directory_profiles p
@@ -393,16 +452,16 @@ func scanDirectoryCard(row interface{ Scan(...any) error }, extra ...any) (*Dire
 	dest := []any{
 		&c.UserID, &c.DisplayName, &c.Pronouns, &c.HeadshotPath, &c.ProfilePictureURL,
 		&c.Skills, &c.InterestTags, &c.RolesLookingFor, &c.IcebreakerPrompt,
-		&c.IcebreakerAnswer, &c.WantToBuild, &c.Intent, &c.SpotsNeeded, &c.StatusConfirmedAt,
+		&c.IcebreakerAnswer, &c.WantToBuild, &c.GitHubUsername, &c.LinkedInHandle, &c.Experiences,
+		&c.Intent, &c.SpotsNeeded, &c.StatusConfirmedAt,
 		&c.CheckedIn, &c.Stale, &c.PokedByMe, &c.PokedMe, &c.IsContact, &c.IsHidden,
-		&c.DiscordUserID, &c.DiscordUsername,
+		&c.DiscordUsername,
 	}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		return nil, err
 	}
 	c.Matched = c.PokedByMe && c.PokedMe
 	if !c.Matched {
-		c.DiscordUserID = nil
 		c.DiscordUsername = nil
 	}
 	if c.Skills == nil {
@@ -463,7 +522,8 @@ func (s *AttendeeDirectoryStore) List(ctx context.Context, viewer DirectoryViewe
 		args = append(args, "%"+escapeLike(q)+"%")
 		n := len(args)
 		where = append(where, fmt.Sprintf(
-			"(p.display_name ILIKE $%d OR EXISTS (SELECT 1 FROM unnest(p.skills) sk WHERE sk ILIKE $%d))", n, n))
+			"(p.display_name ILIKE $%[1]d OR EXISTS (SELECT 1 FROM unnest(p.skills) sk WHERE sk ILIKE $%[1]d)"+
+				" OR EXISTS (SELECT 1 FROM jsonb_array_elements(p.experiences) ex WHERE ex->>'company' ILIKE $%[1]d))", n))
 	}
 	if filters.CheckedIn {
 		where = append(where, "EXISTS (SELECT 1 FROM scans s WHERE s.user_id = p.user_id AND s.scan_type = ANY($2::text[]))")
@@ -562,6 +622,14 @@ func (s *AttendeeDirectoryStore) ListPokedMe(ctx context.Context, viewer Directo
 		`rel.created_at DESC, p.user_id`)
 }
 
+// ListPokedByMe lists who the viewer poked, newest poke first. Matches are
+// included; the client splits them from the ones still waiting on a reply.
+func (s *AttendeeDirectoryStore) ListPokedByMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error) {
+	return s.listRelated(ctx, viewer,
+		` JOIN pokes rel ON rel.pokee_id = p.user_id AND rel.poker_id = $1`,
+		`rel.created_at DESC, p.user_id`)
+}
+
 // GetCard returns one card from the viewer's perspective, regardless of
 // visibility; callers decide whether the viewer may see it.
 func (s *AttendeeDirectoryStore) GetCard(ctx context.Context, viewer DirectoryViewer, targetID string) (*DirectoryCard, error) {
@@ -638,17 +706,62 @@ func (s *AttendeeDirectoryStore) Poke(ctx context.Context, pokerID, pokeeID stri
 		return nil, err
 	}
 
-	var matched bool
-	if err := tx.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM pokes WHERE poker_id = $1 AND pokee_id = $2)`, pokeeID, pokerID,
-	).Scan(&matched); err != nil {
+	// A poke back is a match, and it answers their poke, so it stops counting
+	// as unseen.
+	res, err = tx.ExecContext(ctx,
+		`UPDATE pokes SET seen_at = COALESCE(seen_at, NOW()) WHERE poker_id = $1 AND pokee_id = $2`,
+		pokeeID, pokerID)
+	if err != nil {
+		return nil, err
+	}
+	matchedRows, err := res.RowsAffected()
+	if err != nil {
 		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &PokeResult{Created: n > 0, Matched: matched}, nil
+	return &PokeResult{Created: n > 0, Matched: matchedRows > 0}, nil
+}
+
+// ListUnseenPokes counts the pokes the user hasn't seen and returns up to
+// limit of the pokers, newest first. Moderated pokers are left out, matching
+// the "Poked you" list.
+func (s *AttendeeDirectoryStore) ListUnseenPokes(ctx context.Context, userID string, limit int) (*UnseenPokes, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT p.user_id, p.display_name, u.photo_path, u.profile_picture_url, COUNT(*) OVER ()
+		FROM pokes k
+		JOIN attendee_directory_profiles p ON p.user_id = k.poker_id
+		JOIN users u ON u.id = p.user_id
+		WHERE k.pokee_id = $1 AND k.seen_at IS NULL AND p.moderation_hidden_at IS NULL
+		ORDER BY k.created_at DESC, p.user_id
+		LIMIT $2`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := &UnseenPokes{Pokers: []DirectoryPoker{}}
+	for rows.Next() {
+		var p DirectoryPoker
+		if err := rows.Scan(&p.UserID, &p.DisplayName, &p.HeadshotPath, &p.ProfilePictureURL, &result.Count); err != nil {
+			return nil, err
+		}
+		result.Pokers = append(result.Pokers, p)
+	}
+	return result, rows.Err()
+}
+
+// MarkPokesSeen marks the user's pokes up to and including through as seen.
+// The cap keeps a poke that lands after the list was loaded unseen.
+func (s *AttendeeDirectoryStore) MarkPokesSeen(ctx context.Context, userID string, through time.Time) error {
+	return s.exec(ctx,
+		`UPDATE pokes SET seen_at = NOW() WHERE pokee_id = $1 AND seen_at IS NULL AND created_at <= $2`,
+		userID, through)
 }
 
 func (s *AttendeeDirectoryStore) exec(ctx context.Context, query string, args ...any) error {
@@ -696,8 +809,9 @@ func (s *AttendeeDirectoryStore) AdminList(ctx context.Context, search string, c
 		where = append(where, fmt.Sprintf("(p.created_at, p.user_id) < ($%d::timestamptz, $%d::uuid)", len(args)-1, len(args)))
 	}
 	query := `
-		SELECT p.user_id, u.email, p.display_name, p.pronouns, p.headshot_path, u.profile_picture_url,
-		       p.skills, p.icebreaker_prompt, p.icebreaker_answer, p.want_to_build, p.discoverable,
+		SELECT p.user_id, u.email, p.display_name, p.pronouns, u.photo_path, u.profile_picture_url,
+		       p.skills, p.icebreaker_prompt, p.icebreaker_answer, p.want_to_build,
+		       p.github_username, p.linkedin_handle, p.experiences, p.discoverable,
 		       p.moderation_hidden_at, p.moderation_hidden_by, p.moderation_reason, p.created_at
 		FROM attendee_directory_profiles p
 		JOIN users u ON u.id = p.user_id`
@@ -717,7 +831,8 @@ func (s *AttendeeDirectoryStore) AdminList(ctx context.Context, search string, c
 	for rows.Next() {
 		var p DirectoryAdminProfile
 		if err := rows.Scan(&p.UserID, &p.Email, &p.DisplayName, &p.Pronouns, &p.HeadshotPath, &p.ProfilePictureURL,
-			&p.Skills, &p.IcebreakerPrompt, &p.IcebreakerAnswer, &p.WantToBuild, &p.Discoverable,
+			&p.Skills, &p.IcebreakerPrompt, &p.IcebreakerAnswer, &p.WantToBuild,
+			&p.GitHubUsername, &p.LinkedInHandle, &p.Experiences, &p.Discoverable,
 			&p.ModerationHiddenAt, &p.ModerationHiddenBy, &p.ModerationReason, &p.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -738,27 +853,4 @@ func (s *AttendeeDirectoryStore) AdminList(ctx context.Context, search string, c
 		result.NextCursor = &next
 	}
 	return result, nil
-}
-
-// collectDirectoryHeadshotPaths reads every uploaded headshot so the objects
-// can be removed from storage along with the cards that referenced them.
-func collectDirectoryHeadshotPaths(ctx context.Context, q interface {
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-}, where string, args ...any) ([]string, error) {
-	rows, err := q.QueryContext(ctx,
-		`SELECT headshot_path FROM attendee_directory_profiles WHERE headshot_path IS NOT NULL`+where, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var paths []string
-	for rows.Next() {
-		var p string
-		if err := rows.Scan(&p); err != nil {
-			return nil, err
-		}
-		paths = append(paths, p)
-	}
-	return paths, rows.Err()
 }

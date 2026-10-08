@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { IconFileText } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,7 @@ export function LinksSection({ application }: LinksSectionProps) {
               applicationId={application.id}
               trigger={
                 <Button type="button" variant="outline" size="sm">
-                  <FileText className="h-4 w-4 mr-2" />
+                  <IconFileText className="h-4 w-4 mr-2" />
                   View Resume
                 </Button>
               }

@@ -76,11 +76,20 @@ export interface NotesListResponse {
   notes: ReviewNote[];
 }
 
+/** The portal colour scheme a user picked; dark is the default. */
+export type Theme = "light" | "dark";
+
 export interface User {
   id: string;
   email: string;
   role: UserRole;
+  /** The picture to show everywhere: an uploaded photo, else Google's. */
   profilePictureUrl?: string;
+  /** Whether profilePictureUrl is an upload rather than the Google picture. */
+  customPhoto?: boolean;
+  googlePictureUrl?: string;
+  authMethod?: "passwordless" | "google";
+  theme: Theme;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,175 +1,178 @@
-import type { LucideIcon } from "lucide-react";
 import {
-  Bell,
-  BookUser,
-  CalendarDays,
-  House,
-  ScanLine,
-  User,
-  Users,
-} from "lucide-react";
-import { useLayoutEffect } from "react";
+  IconBell,
+  IconBellFilled,
+  IconCalendarMonth,
+  IconCalendarMonthFilled,
+  IconHome,
+  IconHomeFilled,
+  IconId,
+  IconIdFilled,
+  IconTicket,
+  IconTicketFilled,
+  IconUser,
+  IconUserFilled,
+  IconUsers,
+} from "@tabler/icons-react";
+import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
+import { IconUsersFilled } from "@/components/icons/IconUsersFilled";
 import { InstallPromptHost } from "@/components/InstallPromptHost";
 import { PushPromptHost } from "@/components/PushPromptHost";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-} from "@/components/ui/sidebar";
-import { NavSection, NavUser } from "@/pages/admin/_shared";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { UserSettingsDialog } from "@/pages/hacker/settings";
+import { themeClass, useApplyPortalTheme, useTheme } from "@/shared/hooks";
 import { cn } from "@/shared/lib/utils";
-import { ZERODAY_LOGO, ZERODAY_URL } from "@/shared/lib/zeroday";
-import { useUserStore } from "@/shared/stores";
+import { useAttendeeStore, useUserStore } from "@/shared/stores";
 
-interface NavItem {
-  label: string;
-  to: string;
-  icon: LucideIcon;
-  end: boolean;
-}
+import { PortalSidebar, type SidebarNavItem as NavItem } from "./PortalSidebar";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home", to: "/app", icon: House, end: true },
-  { label: "Scan", to: "/app/scan", icon: ScanLine, end: false },
-  { label: "Schedule", to: "/app/schedule", icon: CalendarDays, end: false },
-  { label: "People", to: "/app/directory", icon: Users, end: false },
-  { label: "Notifications", to: "/app/notifications", icon: Bell, end: false },
-  { label: "Profile", to: "/app/profile", icon: User, end: false },
+  {
+    label: "Home",
+    to: "/app",
+    icon: IconHome,
+    activeIcon: IconHomeFilled,
+    end: true,
+  },
+  {
+    label: "Scan",
+    to: "/app/scan",
+    icon: IconTicket,
+    activeIcon: IconTicketFilled,
+    end: false,
+  },
+  {
+    label: "Schedule",
+    to: "/app/schedule",
+    icon: IconCalendarMonth,
+    activeIcon: IconCalendarMonthFilled,
+    end: false,
+  },
+  {
+    label: "People",
+    to: "/app/directory",
+    icon: IconUsers,
+    activeIcon: IconUsersFilled,
+    end: false,
+  },
+  {
+    label: "Notifications",
+    to: "/app/notifications",
+    icon: IconBell,
+    activeIcon: IconBellFilled,
+    end: false,
+  },
+  {
+    label: "Profile",
+    to: "/app/profile",
+    icon: IconUser,
+    activeIcon: IconUserFilled,
+    end: false,
+  },
 ];
+
+// Attendee-only destinations, hidden until the hacker's RSVP is confirmed.
+const DIRECTORY_PATH = "/app/directory";
+
+// The mobile tab bar drops Notifications (the dashboard feed links to it), so
+// the remaining tabs keep room for their labels.
+const NOTIFICATIONS_PATH = "/app/notifications";
+
+function navItemsFor(attendee: boolean): NavItem[] {
+  return attendee
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.to !== DIRECTORY_PATH);
+}
 
 // The sidebar has room to list the directory's two destinations separately;
 // the mobile tab bar folds both into "People".
-const SIDEBAR_ITEMS: NavItem[] = NAV_ITEMS.flatMap((item) =>
-  item.to === "/app/directory"
-    ? [
-        { ...item, label: "Who's Attending", end: true },
-        {
-          label: "My contacts",
-          to: "/app/directory/contacts",
-          icon: BookUser,
-          end: false,
-        },
-      ]
-    : [item],
-);
-
-const SIDEBAR_NAV = SIDEBAR_ITEMS.map(({ label, to, icon, end }) => ({
-  name: label,
-  url: to,
-  icon,
-  end,
-}));
+function sidebarNavFor(items: NavItem[]) {
+  return items.flatMap((item) =>
+    item.to === DIRECTORY_PATH
+      ? [
+          { ...item, label: "Directory", end: true },
+          {
+            label: "My contacts",
+            to: "/app/directory/contacts",
+            icon: IconId,
+            activeIcon: IconIdFilled,
+            end: false,
+          },
+        ]
+      : [item],
+  );
+}
 
 // Uniform inset (rem) applied on every side of the bottom-nav bubble so the
 // gap around the active bubble is identical top/bottom/left/right. Matches the
 // bar's padding (p-[BOTTOM_NAV_PAD]) and the bubble's inset-y.
 const BOTTOM_NAV_PAD = 0.375;
 
-function activeIndex(pathname: string): number {
-  return NAV_ITEMS.findIndex((item) =>
+function activeIndex(items: NavItem[], pathname: string): number {
+  return items.findIndex((item) =>
     item.end
       ? pathname === item.to
       : pathname === item.to || pathname.startsWith(item.to + "/"),
   );
 }
 
-function HackerSidebar() {
-  const { user } = useUserStore();
-  const location = useLocation();
-
-  const userData = {
-    name: "Hacker",
-    email: user?.email || "",
-    avatar: user?.profilePictureUrl || "",
-  };
-
-  return (
-    <Sidebar
-      collapsible="icon"
-      className="hacker-zero-sidebar hidden border-white/10 md:flex"
-    >
-      <SidebarHeader>
-        <NavUser user={userData} />
-      </SidebarHeader>
-      <SidebarContent>
-        <NavSection
-          label="Menu"
-          items={SIDEBAR_NAV}
-          currentPath={location.pathname}
-        />
-      </SidebarContent>
-      <SidebarFooter className="border-t border-white/8">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg" tooltip="Back to Zero Day">
-              <a href={ZERODAY_URL}>
-                <img
-                  src={ZERODAY_LOGO}
-                  alt=""
-                  aria-hidden
-                  className="size-8 shrink-0 object-contain"
-                />
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-light">Back to Zero Day</span>
-                  <span className="truncate text-xs text-white/45">
-                    zeroday.hackutd.co
-                  </span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
-  );
+// The directory's tabs are one page, so moving between them must not replay
+// the page entrance; the directory animates its own list instead.
+function pageKey(pathname: string): string {
+  return pathname === `${DIRECTORY_PATH}/contacts` ? DIRECTORY_PATH : pathname;
 }
 
 export default function HackerLayout() {
   const location = useLocation();
+  const userId = useUserStore((s) => s.user?.id ?? null);
+  const attendeeFor = useAttendeeStore((s) => s.userId);
+  const confirmed = useAttendeeStore((s) => s.confirmed);
+  const fetchAttendee = useAttendeeStore((s) => s.fetchAttendee);
+  const theme = useTheme();
+  useApplyPortalTheme(theme);
 
-  const index = activeIndex(location.pathname);
+  useEffect(() => {
+    if (!userId) return;
+    const controller = new AbortController();
+    fetchAttendee(userId, controller.signal);
+    return () => controller.abort();
+  }, [userId, fetchAttendee]);
+
+  const navItems = navItemsFor(attendeeFor === userId && confirmed);
+  const tabItems = navItems.filter((item) => item.to !== NOTIFICATIONS_PATH);
+  const index = activeIndex(tabItems, location.pathname);
   const hasActive = index >= 0;
 
   // The application wizard has its own fixed bottom bar, so the mobile tab
   // bar is hidden there to avoid overlap.
   const hideMobileNav = location.pathname.startsWith("/app/apply");
 
-  // Radix dialogs and menus render into document.body rather than inside the
-  // layout wrapper. Scope the same hacker theme to those portals while this
-  // layout is mounted, then remove it before entering an admin/public route.
-  useLayoutEffect(() => {
-    document.body.classList.add("hacker-zero-portals");
-    return () => document.body.classList.remove("hacker-zero-portals");
-  }, []);
-
   return (
-    <SidebarProvider className="hacker-zero-theme min-h-svh bg-[#030409] text-white">
+    <SidebarProvider
+      className={cn(themeClass(theme), "min-h-svh bg-canvas text-ink")}
+    >
       {/* Onboarding prompts live here, not in providers.tsx, so they never
           appear on the admin portal or the public auth pages. */}
       <InstallPromptHost />
       <PushPromptHost />
-      <HackerSidebar />
+      <UserSettingsDialog />
+      <PortalSidebar
+        portal="hacker"
+        theme={theme}
+        sections={[{ items: sidebarNavFor(navItems) }]}
+      />
 
       {/* Page content */}
       <SidebarInset
         className={cn(
-          "zero-hacker-surface bg-[#030409]",
+          "zero-hacker-surface bg-canvas",
           hideMobileNav
             ? "pb-0"
             : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0",
         )}
       >
-        <div key={location.pathname} className="animate-page-enter">
+        <div key={pageKey(location.pathname)} className="animate-page-enter">
           <Outlet />
         </div>
       </SidebarInset>
@@ -202,27 +205,30 @@ export default function HackerLayout() {
                   top: `${BOTTOM_NAV_PAD}rem`,
                   bottom: `${BOTTOM_NAV_PAD}rem`,
                   left: `${BOTTOM_NAV_PAD}rem`,
-                  width: `calc((100% - ${2 * BOTTOM_NAV_PAD}rem) / ${NAV_ITEMS.length})`,
+                  width: `calc((100% - ${2 * BOTTOM_NAV_PAD}rem) / ${tabItems.length})`,
                   transform: `translateX(${Math.max(index, 0) * 100}%)`,
                   opacity: hasActive ? 1 : 0,
                 }}
               />
-              {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
+              {tabItems.map(({ label, to, icon, activeIcon, end }) => (
                 <NavLink
                   key={to}
                   to={to}
                   end={end}
                   className="zero-tabbar-item"
                 >
-                  {({ isActive }) => (
-                    <>
-                      <Icon
-                        className="size-[1.375rem]"
-                        strokeWidth={isActive ? 2 : 1.75}
-                      />
-                      <span className="zero-tabbar-label">{label}</span>
-                    </>
-                  )}
+                  {({ isActive }) => {
+                    const Icon = isActive ? (activeIcon ?? icon) : icon;
+                    return (
+                      <>
+                        <Icon
+                          className="size-[1.375rem]"
+                          strokeWidth={isActive ? 2 : 1.75}
+                        />
+                        <span className="zero-tabbar-label">{label}</span>
+                      </>
+                    );
+                  }}
                 </NavLink>
               ))}
             </nav>

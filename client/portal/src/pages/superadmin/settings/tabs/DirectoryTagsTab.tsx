@@ -1,4 +1,4 @@
-import { Plus, Tags, Trash2 } from "lucide-react";
+import { IconPlus, IconTags, IconTrash } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -91,7 +91,7 @@ export default function DirectoryTagsTab() {
               characters each.
             </p>
           </div>
-          <Tags className="size-5 text-zinc-500" />
+          <IconTags className="size-5 text-zinc-500" />
         </div>
 
         <div className="space-y-2">
@@ -120,7 +120,7 @@ export default function DirectoryTagsTab() {
                 aria-label={`Remove tag ${index + 1}`}
                 className="shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
               >
-                <Trash2 className="size-4" />
+                <IconTrash className="size-4" />
               </Button>
             </div>
           ))}
@@ -132,7 +132,7 @@ export default function DirectoryTagsTab() {
           disabled={loading || saving || tags.length >= MAX_DIRECTORY_TAGS}
           className="w-full border-zinc-800 bg-zinc-950 text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
         >
-          <Plus className="size-4" />
+          <IconPlus className="size-4" />
           Add Tag
         </Button>
 

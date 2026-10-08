@@ -1,4 +1,4 @@
-import { ImagePlus, Plus, X } from "lucide-react";
+import { IconPhotoPlus, IconPlus, IconX } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -180,7 +180,7 @@ function TrackForm({
               </>
             ) : (
               <>
-                <ImagePlus className="size-4 text-muted-foreground" />
+                <IconPhotoPlus className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">
                   {isDraggingLogo
                     ? "Drop to upload"
@@ -201,7 +201,7 @@ function TrackForm({
               aria-label="Remove selected logo"
               className="absolute right-1.5 top-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
             >
-              <X className="size-4" />
+              <IconX className="size-4" />
             </Button>
           )}
         </div>
@@ -268,7 +268,7 @@ function TrackForm({
                 className="cursor-pointer text-muted-foreground hover:text-red-500 shrink-0"
                 title="Remove prize"
               >
-                <X className="size-4" />
+                <IconX className="size-4" />
               </Button>
             </div>
           ))}
@@ -281,7 +281,7 @@ function TrackForm({
           disabled={prizes.length >= 10}
           className="cursor-pointer"
         >
-          <Plus className="mr-1 size-3" />
+          <IconPlus className="mr-1 size-3" />
           Add prize
         </Button>
       </div>

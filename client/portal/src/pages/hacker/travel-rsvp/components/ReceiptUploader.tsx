@@ -1,4 +1,4 @@
-import { Eye, FileText, Plus, X } from "lucide-react";
+import { IconEye, IconFileText, IconPlus, IconX } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -88,14 +88,14 @@ export function ReceiptUploader({
       {receipts.map((receipt) => (
         <div
           key={receipt.path}
-          className="flex items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] px-4 py-3"
+          className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 px-4 py-3"
         >
           <div className="flex min-w-0 items-center gap-2.5">
-            <FileText
-              className="size-4 shrink-0 text-[#8A8A8A]"
+            <IconFileText
+              className="size-4 shrink-0 text-ink/65"
               strokeWidth={1.5}
             />
-            <span className="truncate text-sm font-light text-black">
+            <span className="truncate text-sm font-light text-ink">
               {receipt.name}
             </span>
           </div>
@@ -106,9 +106,9 @@ export function ReceiptUploader({
                 <button
                   type="button"
                   aria-label={`Preview ${receipt.name}`}
-                  className="flex size-8 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F0F0F0] hover:text-black"
+                  className="flex size-8 items-center justify-center rounded-full text-ink/65 transition-colors hover:bg-ink/5 hover:text-ink"
                 >
-                  <Eye className="size-4" strokeWidth={1.5} />
+                  <IconEye className="size-4" strokeWidth={1.5} />
                 </button>
               }
             />
@@ -119,9 +119,9 @@ export function ReceiptUploader({
                 onClick={() =>
                   onChange(receipts.filter((r) => r.path !== receipt.path))
                 }
-                className="flex size-8 items-center justify-center rounded-full text-[#8A8A8A] transition-colors hover:bg-[#F0F0F0] hover:text-black"
+                className="flex size-8 items-center justify-center rounded-full text-ink/65 transition-colors hover:bg-ink/5 hover:text-ink"
               >
-                <X className="size-4" strokeWidth={1.5} />
+                <IconX className="size-4" strokeWidth={1.5} />
               </button>
             )}
           </div>
@@ -145,9 +145,9 @@ export function ReceiptUploader({
             type="button"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#D9D9D9] px-4 py-3.5 text-sm font-light text-[#8A8A8A] transition-colors hover:border-black hover:text-black disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-ink/10 px-4 py-3.5 text-sm font-light text-ink/65 transition-colors hover:border-ink/30 hover:text-ink disabled:opacity-60"
           >
-            <Plus className="size-4" strokeWidth={1.5} />
+            <IconPlus className="size-4" strokeWidth={1.5} />
             {uploading
               ? "Uploading..."
               : `Add receipt (${receipts.length}/${MAX_RECEIPTS})`}

@@ -1,4 +1,8 @@
-import { ArrowDown, ChevronsUpDown, Maximize2 } from "lucide-react";
+import {
+  IconArrowDown,
+  IconArrowsMaximize,
+  IconSelector,
+} from "@tabler/icons-react";
 import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -58,9 +62,9 @@ export const ReviewsTable = memo(function ReviewsTable({
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
       {loading && (
-        <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
+        <div className="absolute inset-0 bg-background/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+      <Table className="border-collapse [&_th]:border-r [&_th]:border-border [&_td]:border-r [&_td]:border-border [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead>Status</TableHead>
@@ -75,9 +79,9 @@ export const ReviewsTable = memo(function ReviewsTable({
                 >
                   {col.label}
                   {sortBy === col.key ? (
-                    <ArrowDown className="size-3.5" />
+                    <IconArrowDown className="size-3.5" />
                   ) : (
-                    <ChevronsUpDown className="size-3.5" />
+                    <IconSelector className="size-3.5" />
                   )}
                 </Button>
               </TableHead>
@@ -92,7 +96,10 @@ export const ReviewsTable = memo(function ReviewsTable({
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={12} className="text-center text-gray-500">
+              <TableCell
+                colSpan={12}
+                className="text-center text-muted-foreground"
+              >
                 No applications found
               </TableCell>
             </TableRow>
@@ -112,7 +119,7 @@ export const ReviewsTable = memo(function ReviewsTable({
                     <PriorityBadge submittedAt={app.submitted_at} />
                   </div>
                   <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
-                    <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                    <IconArrowsMaximize className="h-4 w-4 text-muted-foreground" />
                   </span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
@@ -138,12 +145,12 @@ export const ReviewsTable = memo(function ReviewsTable({
                     "-"
                   ) : (
                     <Badge
-                      className={
+                      variant={
                         app.travel_status === "approved"
-                          ? "bg-green-100 text-green-800"
+                          ? "green"
                           : app.travel_status === "rejected"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-blue-100 text-blue-800"
+                            ? "red"
+                            : "blue"
                       }
                     >
                       {app.travel_status}

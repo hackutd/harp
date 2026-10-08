@@ -101,7 +101,7 @@ export function SchemaDetailRenderer({
                         <p
                           className={
                             isShortAnswers
-                              ? "whitespace-pre-wrap mt-1 rounded-md border px-3 py-2 text-[15px] leading-relaxed"
+                              ? "whitespace-pre-wrap mt-1 rounded-md border bg-admin-panel px-3 py-2 text-[15px] leading-relaxed"
                               : "whitespace-pre-wrap"
                           }
                         >
