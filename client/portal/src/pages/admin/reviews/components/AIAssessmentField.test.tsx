@@ -43,7 +43,17 @@ function Editor({ initial = result }: { initial?: AIAssessment }) {
 }
 
 describe("AI assessment editor", () => {
-  it("shows only the score until the breakdown is hovered", async () => {
+  it("headlines the AI class, not the combined ai_score", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    const score = screen.getByRole("button", { name: /^AI score/ });
+    expect(score).toHaveTextContent("51.5%");
+    expect(screen.queryByText("59.6%")).not.toBeInTheDocument();
+    const breakdown = await openBreakdown(user);
+    expect(breakdown.getByText("40.4%")).toBeInTheDocument();
+  });
+
+  it("falls back to ai_score for records without classes", async () => {
     const user = userEvent.setup();
     render(<Editor initial={{ ...EMPTY_AI_ASSESSMENT, ai_score: 0.6 }} />);
     expect(screen.getByText("60%")).toBeInTheDocument();
@@ -56,13 +66,13 @@ describe("AI assessment editor", () => {
     const user = userEvent.setup();
     vi.mocked(updateAIAssessment).mockResolvedValue({
       status: 200,
-      data: { ...result, ai_score: 0 },
+      data: { ...result, ai_score: 0, classes: { ...result.classes, ai: 0 } },
     });
     render(<Editor />);
     await user.click(screen.getByRole("button", { name: "Edit AI score" }));
     const input = screen.getByRole("spinbutton", { name: "AI score" });
     expect(input).toHaveFocus();
-    expect(input).toHaveValue(59.6);
+    expect(input).toHaveValue(51.5);
     expect(screen.getAllByRole("spinbutton")).toHaveLength(1);
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     await user.clear(input);
@@ -70,6 +80,7 @@ describe("AI assessment editor", () => {
     await user.click(screen.getByRole("button", { name: "Save AI score" }));
     expect(updateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1", {
       ai_score: 0,
+      classes: { ai: 0 },
     });
     expect(await screen.findByText("0%")).toBeInTheDocument();
   });
@@ -78,7 +89,11 @@ describe("AI assessment editor", () => {
     const user = userEvent.setup();
     vi.mocked(updateAIAssessment).mockResolvedValue({
       status: 200,
-      data: { ...result, ai_score: null },
+      data: {
+        ...result,
+        ai_score: null,
+        classes: { ...result.classes, ai: null },
+      },
     });
     render(<Editor />);
     await user.click(screen.getByRole("button", { name: "Edit AI score" }));
@@ -86,6 +101,7 @@ describe("AI assessment editor", () => {
     await user.click(screen.getByRole("button", { name: "Save AI score" }));
     expect(updateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1", {
       ai_score: null,
+      classes: { ai: null },
     });
     expect(await screen.findByText("Not set")).toBeInTheDocument();
   });
@@ -108,7 +124,7 @@ describe("AI assessment editor", () => {
     await user.type(screen.getByRole("spinbutton", { name: "AI score" }), "1");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
-    expect(screen.getByText("59.6%")).toBeInTheDocument();
+    expect(screen.getByText("51.5%")).toBeInTheDocument();
     expect(updateAIAssessment).not.toHaveBeenCalled();
   });
 
@@ -132,6 +148,7 @@ describe("AI assessment editor", () => {
     expect(input).toHaveValue(80);
     expect(updateAIAssessment).toHaveBeenCalledExactlyOnceWith("app-1", {
       ai_score: 0.8,
+      classes: { ai: 0.8 },
     });
   });
 
@@ -152,7 +169,9 @@ describe("AI assessment editor", () => {
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: /Calculating/ })).toBeDisabled();
     finish({ status: 200, data: result });
-    expect(await screen.findByText("59.6%")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /^AI score 51.5%/ }),
+    ).toBeInTheDocument();
     const breakdown = await openBreakdown(user);
     expect(breakdown.getByText("40.4%")).toBeInTheDocument();
     expect(breakdown.getByText("51.5%")).toBeInTheDocument();
@@ -170,7 +189,7 @@ describe("AI assessment editor", () => {
     });
     render(<Editor />);
     await user.click(screen.getByRole("button", { name: "Calculate" }));
-    expect(screen.getByText("59.6%")).toBeInTheDocument();
+    expect(screen.getByText("51.5%")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calculate" })).toBeEnabled();
     expect(updateAIAssessment).not.toHaveBeenCalled();
   });

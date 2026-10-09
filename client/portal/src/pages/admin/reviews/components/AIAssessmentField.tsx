@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { AIAssessmentSummary } from "@/pages/admin/_shared/AIAssessmentSummary";
 import { SECTION_TITLE } from "@/pages/admin/_shared/grading";
+import { aiOnlyScore } from "@/shared/lib/ai-assessment";
 import type { AIAssessment } from "@/types";
 
 import { calculateAIAssessment, updateAIAssessment } from "../api";
@@ -45,7 +46,7 @@ export const AIAssessmentField = memo(function AIAssessmentField({
   const disabled = pending !== null || assessment === null;
 
   function startEditing() {
-    const initial = toPercentDraft(assessment?.ai_score);
+    const initial = toPercentDraft(assessment ? aiOnlyScore(assessment) : null);
     setDraft(initial);
     setBaseline(initial);
     setEditing(true);
@@ -69,8 +70,11 @@ export const AIAssessmentField = memo(function AIAssessmentField({
     inFlight.current = true;
     setPending("save");
     try {
+      // Write both so the edit shows on records with and without classes.
+      const score = percent === null ? null : percent / 100;
       const result = await updateAIAssessment(applicationId, {
-        ai_score: percent === null ? null : percent / 100,
+        ai_score: score,
+        classes: { ai: score },
       });
       if (result.status === 200 && result.data) {
         onUpdate(result.data);

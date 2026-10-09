@@ -117,10 +117,7 @@ func (app *application) getMyTravelRSVPHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := app.hideUnreleasedDecision(r, application); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	showReleasedDecision(application)
 
 	if err := travelRSVPEligibility(application); err != nil {
 		app.forbiddenResponse(w, r, err)
@@ -190,10 +187,7 @@ func (app *application) submitMyTravelRSVPHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err := app.hideUnreleasedDecision(r, application); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	showReleasedDecision(application)
 
 	if err := travelRSVPEligibility(application); err != nil {
 		app.forbiddenResponse(w, r, err)
@@ -390,10 +384,7 @@ func (app *application) generateTravelReceiptUploadURLHandler(w http.ResponseWri
 		return
 	}
 
-	if err := app.hideUnreleasedDecision(r, application); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	showReleasedDecision(application)
 
 	if err := travelRSVPEligibility(application); err != nil {
 		app.forbiddenResponse(w, r, err)

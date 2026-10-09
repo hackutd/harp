@@ -55,10 +55,7 @@ func (app *application) getMyRSVPHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := app.hideUnreleasedDecision(r, application); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	showReleasedDecision(application)
 
 	if application.Status != store.StatusAccepted {
 		app.forbiddenResponse(w, r, errors.New("application is not accepted"))
@@ -124,10 +121,7 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := app.hideUnreleasedDecision(r, application); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	showReleasedDecision(application)
 
 	if application.Status != store.StatusAccepted {
 		app.forbiddenResponse(w, r, errors.New("application is not accepted"))
@@ -184,7 +178,7 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.store.Application.SubmitRSVP(r.Context(), application); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			app.conflictResponse(w, r, errors.New("rsvp already submitted"))
+			app.conflictResponse(w, r, errors.New("rsvp already submitted or no longer available"))
 			return
 		}
 		app.internalServerError(w, r, err)

@@ -25,7 +25,7 @@ import type {
   ApplicationStatus,
 } from "@/pages/admin/all-applicants/types";
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
-import { formatAIScore } from "@/shared/lib/ai-assessment";
+import { aiOnlyScore, formatAIScore } from "@/shared/lib/ai-assessment";
 
 import { EditApplicationDialog } from "./components/EditApplicationDialog";
 import { GradingPanel } from "./components/GradingPanel";
@@ -232,9 +232,9 @@ export default function GradingPage() {
                     <Badge variant="orange">
                       {currentApp.waitlist_votes} waitlist
                     </Badge>
-                    {currentApp.ai_score != null && (
+                    {aiOnlyScore(currentApp) != null && (
                       <Badge variant="secondary">
-                        AI: {formatAIScore(currentApp.ai_score)}
+                        AI: {formatAIScore(aiOnlyScore(currentApp))}
                       </Badge>
                     )}
                   </div>

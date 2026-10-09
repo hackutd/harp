@@ -301,6 +301,8 @@ func (app *application) mount() http.Handler {
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
 
+					r.Get("/settings/priority-deadline", app.getPriorityDeadline)
+
 					// Applications
 					r.Route("/applications", func(r chi.Router) {
 						r.Get("/", app.listApplicationsHandler)
@@ -413,8 +415,6 @@ func (app *application) mount() http.Handler {
 						r.Put("/rsvp-schema", app.updateRSVPSchema)
 						r.Get("/rsvp-enabled", app.getRSVPEnabled)
 						r.Put("/rsvp-enabled", app.setRSVPEnabled)
-						r.Get("/decisions-released", app.getDecisionsReleased)
-						r.Put("/decisions-released", app.setDecisionsReleased)
 						r.Get("/travel-applications-enabled", app.getTravelApplicationsEnabled)
 						r.Put("/travel-applications-enabled", app.setTravelApplicationsEnabled)
 						r.Get("/check-in-requires-rsvp", app.getCheckInRequiresRSVP)
@@ -449,6 +449,8 @@ func (app *application) mount() http.Handler {
 						r.Post("/from-name", app.setFromName)
 						r.Get("/application-due-date", app.getApplicationDueDate)
 						r.Post("/application-due-date", app.setApplicationDueDate)
+						r.Get("/priority-deadline", app.getPriorityDeadlineStats)
+						r.Put("/priority-deadline", app.setPriorityDeadline)
 						r.Get("/privacy-policy-url", app.getPrivacyPolicyURL)
 						r.Post("/privacy-policy-url", app.setPrivacyPolicyURL)
 						r.Get("/terms-url", app.getTermsURL)
@@ -484,6 +486,13 @@ func (app *application) mount() http.Handler {
 					r.Route("/emails", func(r chi.Router) {
 						r.Get("/decisions/stats", app.getDecisionEmailStatsHandler)
 						r.Post("/decisions", app.sendDecisionEmailsHandler)
+					})
+
+					r.Route("/decisions/releases", func(r chi.Router) {
+						r.Get("/", app.listDecisionReleasesHandler)
+						r.Get("/preview", app.previewDecisionReleaseHandler)
+						r.Post("/", app.createDecisionReleaseHandler)
+						r.Post("/{releaseID}/undo", app.undoDecisionReleaseHandler)
 					})
 
 					// User Management

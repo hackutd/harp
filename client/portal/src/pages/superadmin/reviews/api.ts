@@ -1,10 +1,14 @@
 import type { ApplicationStatus } from "@/pages/admin/all-applicants/types";
-import { getRequest, postRequest, putRequest } from "@/shared/lib/api";
+import { getRequest, postRequest } from "@/shared/lib/api";
 import type { RSVPStatus } from "@/types";
 
 import type {
+  CreateDecisionReleasePayload,
+  CreateDecisionReleaseResponse,
   DecisionEmailStatsResponse,
-  DecisionsReleasedResponse,
+  DecisionReleaseAudience,
+  DecisionReleasePreviewResponse,
+  DecisionReleasesResponse,
   SendDecisionEmailsPayload,
   SendDecisionEmailsResponse,
 } from "./types";
@@ -49,19 +53,40 @@ export async function sendDecisionEmails(payload: SendDecisionEmailsPayload) {
   );
 }
 
-export async function fetchDecisionsReleased(signal?: AbortSignal) {
-  return getRequest<DecisionsReleasedResponse>(
-    "/superadmin/settings/decisions-released",
-    "decisions released",
+export async function fetchDecisionReleases(signal?: AbortSignal) {
+  return getRequest<DecisionReleasesResponse>(
+    "/superadmin/decisions/releases",
+    "decision releases",
     signal,
   );
 }
 
-export async function setDecisionsReleased(released: boolean) {
-  return putRequest<DecisionsReleasedResponse>(
-    "/superadmin/settings/decisions-released",
-    { released },
-    "decisions released",
+export async function previewDecisionRelease(
+  audience: DecisionReleaseAudience,
+  signal?: AbortSignal,
+) {
+  return getRequest<DecisionReleasePreviewResponse>(
+    `/superadmin/decisions/releases/preview?${new URLSearchParams({ audience })}`,
+    "decision release preview",
+    signal,
+  );
+}
+
+export async function createDecisionRelease(
+  payload: CreateDecisionReleasePayload,
+) {
+  return postRequest<CreateDecisionReleaseResponse>(
+    "/superadmin/decisions/releases",
+    payload,
+    "release decisions",
+  );
+}
+
+export async function undoDecisionRelease(id: string) {
+  return postRequest<DecisionReleasesResponse>(
+    `/superadmin/decisions/releases/${encodeURIComponent(id)}/undo`,
+    {},
+    "undo decision release",
   );
 }
 

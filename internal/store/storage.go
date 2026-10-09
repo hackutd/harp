@@ -67,7 +67,8 @@ type Storage struct {
 		ResetRSVP(ctx context.Context, id string) (*Application, []string, error)
 		ResetTravelRSVP(ctx context.Context, id string) (*Application, []string, error)
 		GetEmailsByStatus(ctx context.Context, status ApplicationStatus, rsvpStatus *RSVPStatus) ([]UserEmailInfo, error)
-		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error)
+		GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool, releaseID string) ([]DecisionEmailRecipient, error)
+		CountSubmittedByStatus(ctx context.Context, before time.Time) (map[ApplicationStatus]int, error)
 		SetDecisionEmailSent(ctx context.Context, applicationIDs []string, kind DecisionEmailKind, sent bool) error
 		GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error)
 		SetMealGroup(ctx context.Context, id string, mealGroup string) (*string, error)
@@ -83,8 +84,6 @@ type Storage struct {
 		UpdateRSVPSchema(ctx context.Context, fields []ApplicationSchemaField) error
 		GetRSVPEnabled(ctx context.Context) (bool, error)
 		SetRSVPEnabled(ctx context.Context, enabled bool) error
-		GetDecisionsReleased(ctx context.Context) (bool, error)
-		SetDecisionsReleased(ctx context.Context, released bool) error
 		GetTravelApplicationsEnabled(ctx context.Context) (bool, error)
 		SetTravelApplicationsEnabled(ctx context.Context, enabled bool) error
 		GetCheckInRequiresRSVP(ctx context.Context) (bool, error)
@@ -119,6 +118,8 @@ type Storage struct {
 		SetFromName(ctx context.Context, name string) error
 		GetApplicationDueDate(ctx context.Context) (string, error)
 		SetApplicationDueDate(ctx context.Context, date string) error
+		GetPriorityDeadline(ctx context.Context) (*time.Time, error)
+		SetPriorityDeadline(ctx context.Context, deadline *time.Time) error
 		GetPrivacyPolicyURL(ctx context.Context) (string, error)
 		SetPrivacyPolicyURL(ctx context.Context, url string) error
 		GetTermsURL(ctx context.Context) (string, error)
@@ -226,6 +227,12 @@ type Storage struct {
 		RecordVisit(ctx context.Context, code string) error
 		RecordPending(ctx context.Context, email, code string) error
 	}
+	DecisionReleases interface {
+		Preview(ctx context.Context, filter DecisionReleaseFilter) (*DecisionReleasePreview, error)
+		Create(ctx context.Context, filter DecisionReleaseFilter, releasedBy string) (*DecisionRelease, error)
+		List(ctx context.Context) ([]DecisionRelease, error)
+		Undo(ctx context.Context, id string, undoneBy string) error
+	}
 	WalkIns interface {
 		Enqueue(ctx context.Context, userID string) (inserted bool, position int, err error)
 		PromoteNext(ctx context.Context, count int, promotedBy string) ([]User, error)
@@ -253,5 +260,6 @@ func NewStorage(db *sql.DB) Storage {
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
 		WalkIns:                &WalkInsStore{db: db},
 		Referrals:              &ReferralsStore{db: db},
+		DecisionReleases:       &DecisionReleasesStore{db: db},
 	}
 }

@@ -45,6 +45,8 @@ export interface ApplicationListItem extends AIAssessment {
   estimated_travel_cost_cents: number | null;
   /** First check-in scan; null until the hacker arrives at the event. */
   checked_in_at: string | null;
+  /** The decision the hacker can see; null until a decision release covers it. */
+  released_status?: ApplicationStatus | null;
 }
 
 export interface ApplicationListResult {

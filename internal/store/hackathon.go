@@ -68,17 +68,15 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 			return nil, err
 		}
 
-		// CASCADE picks up application_reviews. walk_ins is listed explicitly:
-		// it references users rather than applications, so nothing cascades to
-		// it, yet every walk-in row owns the waitlisted application it created.
-		// Leaving the queue behind would orphan those rows and permanently
-		// block re-queuing, since Enqueue inserts ON CONFLICT (user_id) DO NOTHING.
-		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE applications, walk_ins CASCADE"); err != nil {
-			return nil, err
-		}
-
-		// The decisions they gated are gone, so the next cycle's start hidden.
-		if err := hideDecisions(ctx, tx); err != nil {
+		// CASCADE picks up application_reviews and decision_release_items.
+		// walk_ins is listed explicitly: it references users rather than
+		// applications, so nothing cascades to it, yet every walk-in row owns
+		// the waitlisted application it created. Leaving the queue behind would
+		// orphan those rows and permanently block re-queuing, since Enqueue
+		// inserts ON CONFLICT (user_id) DO NOTHING. decision_releases goes too:
+		// the decisions it published are gone, and the next cycle's undo must
+		// not reach back into this one.
+		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE applications, walk_ins, decision_releases CASCADE"); err != nil {
 			return nil, err
 		}
 

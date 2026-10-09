@@ -15,13 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PriorityBadge } from "@/pages/admin/_shared";
+import { PriorityBadge, UnreleasedBadge } from "@/pages/admin/_shared";
 import type {
   ApplicationListItem,
   ApplicationSortBy,
 } from "@/pages/admin/all-applicants/types";
 import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
-import { formatAIScore } from "@/shared/lib/ai-assessment";
+import { aiOnlyScore, formatAIScore } from "@/shared/lib/ai-assessment";
 
 interface ReviewsTableProps {
   reviewsPerApp: number | null;
@@ -117,6 +117,10 @@ export const ReviewsTable = memo(function ReviewsTable({
                       {app.status}
                     </Badge>
                     <PriorityBadge submittedAt={app.submitted_at} />
+                    <UnreleasedBadge
+                      status={app.status}
+                      releasedStatus={app.released_status}
+                    />
                   </div>
                   <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
                     <IconArrowsMaximize className="h-4 w-4 text-muted-foreground" />
@@ -171,7 +175,9 @@ export const ReviewsTable = memo(function ReviewsTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  {app.ai_score != null ? formatAIScore(app.ai_score) : "-"}
+                  {aiOnlyScore(app) != null
+                    ? formatAIScore(aiOnlyScore(app))
+                    : "-"}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   {app.submitted_at

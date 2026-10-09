@@ -123,6 +123,10 @@ type ApplicationListItem struct {
 	EstimatedTravelCostCents *int64     `json:"estimated_travel_cost_cents"`
 	// CheckedInAt is the first check-in scan, nil until the hacker arrives.
 	CheckedInAt *time.Time `json:"checked_in_at"`
+	// ReleasedStatus is the decision the hacker can see; nil until a decision
+	// release covers the application. A status that differs from it is an
+	// unreleased change.
+	ReleasedStatus *ApplicationStatus `json:"released_status"`
 }
 
 // ApplicationListResult contains paginated results
@@ -291,6 +295,15 @@ type Application struct {
 	TravelRSVPResponses   json.RawMessage `json:"travel_rsvp_responses" swaggertype:"object"`
 	TravelRSVPSubmittedAt *time.Time      `json:"travel_rsvp_submitted_at"`
 	TravelReceiptPaths    StringArray     `json:"travel_receipt_paths" swaggertype:"array,string"`
+
+	// The decision the hacker can see, copied from the fields above by the last
+	// decision release that covered the application. Nil until one has; the
+	// travel fields stay nil while travel is undecided. Hacker endpoints
+	// replace the live fields with these and then drop them.
+	ReleasedStatus            *ApplicationStatus `json:"released_status,omitempty"`
+	ReleasedTravelStatus      *TravelStatus      `json:"released_travel_status,omitempty"`
+	ReleasedTravelAmountCents *int64             `json:"released_travel_amount_cents,omitempty"`
+	DecisionReleasedAt        *time.Time         `json:"decision_released_at,omitempty"`
 }
 
 type ApplicationsStore struct {
@@ -314,7 +327,8 @@ const applicationSelectCols = `
 	submitted_at, created_at, updated_at, meal_group,
 	rsvp_status, rsvp_responses, rsvp_submitted_at,
 	travel_status, travel_yes_votes, travel_no_votes, travel_approved_amount_cents,
-	travel_rsvp_status, travel_rsvp_responses, travel_rsvp_submitted_at, travel_receipt_paths`
+	travel_rsvp_status, travel_rsvp_responses, travel_rsvp_submitted_at, travel_receipt_paths,
+	released_status, released_travel_status, released_travel_amount_cents, decision_released_at`
 
 // scanApplication scans a row into an Application struct
 func scanApplication(row interface{ Scan(dest ...any) error }, app *Application) error {
@@ -325,6 +339,7 @@ func scanApplication(row interface{ Scan(dest ...any) error }, app *Application)
 		&app.RSVPStatus, &app.RSVPResponses, &app.RSVPSubmittedAt,
 		&app.TravelStatus, &app.TravelYesVotes, &app.TravelNoVotes, &app.TravelApprovedAmountCents,
 		&app.TravelRSVPStatus, &app.TravelRSVPResponses, &app.TravelRSVPSubmittedAt, &app.TravelReceiptPaths,
+		&app.ReleasedStatus, &app.ReleasedTravelStatus, &app.ReleasedTravelAmountCents, &app.DecisionReleasedAt,
 	)
 }
 
@@ -454,8 +469,9 @@ func (s *ApplicationsStore) Submit(ctx context.Context, app *Application, travel
 }
 
 // SubmitRSVP records the hacker's one-shot RSVP decision. The WHERE clause
-// enforces the state machine in SQL: only accepted applications with a
-// pending RSVP can transition, so concurrent submits resolve to ErrConflict.
+// enforces the state machine in SQL: only applications both accepted and
+// released as accepted, with a pending RSVP, can transition, so concurrent
+// submits, or an acceptance changed since its release, resolve to ErrConflict.
 func (s *ApplicationsStore) SubmitRSVP(ctx context.Context, app *Application) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -463,7 +479,7 @@ func (s *ApplicationsStore) SubmitRSVP(ctx context.Context, app *Application) er
 	query := `
 		UPDATE applications
 		SET rsvp_status = $2, rsvp_responses = $3, rsvp_submitted_at = NOW()
-		WHERE id = $1 AND status = 'accepted' AND rsvp_status = 'pending'
+		WHERE id = $1 AND status = 'accepted' AND released_status = 'accepted' AND rsvp_status = 'pending'
 		RETURNING rsvp_status, rsvp_responses, rsvp_submitted_at, updated_at
 	`
 
@@ -481,7 +497,8 @@ func (s *ApplicationsStore) SubmitRSVP(ctx context.Context, app *Application) er
 
 // SubmitTravelRSVP records the hacker's one-shot travel RSVP (proof of travel).
 // The WHERE clause enforces the state machine in SQL: only accepted hackers who
-// claimed their spot and have approved travel with a pending travel RSVP can
+// claimed their spot and have approved travel, released as approved, with a
+// pending travel RSVP can
 // transition, so concurrent submits resolve to ErrConflict.
 func (s *ApplicationsStore) SubmitTravelRSVP(ctx context.Context, app *Application) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -491,7 +508,8 @@ func (s *ApplicationsStore) SubmitTravelRSVP(ctx context.Context, app *Applicati
 		UPDATE applications
 		SET travel_rsvp_status = $2, travel_rsvp_responses = $3, travel_receipt_paths = $4, travel_rsvp_submitted_at = NOW()
 		WHERE id = $1 AND status = 'accepted' AND rsvp_status = 'confirmed'
-		  AND travel_status = 'approved' AND travel_rsvp_status = 'pending'
+		  AND travel_status = 'approved' AND released_travel_status = 'approved'
+		  AND travel_rsvp_status = 'pending'
 		RETURNING travel_rsvp_status, travel_rsvp_responses, travel_receipt_paths, travel_rsvp_submitted_at, updated_at
 	`
 
@@ -610,7 +628,8 @@ func (s *ApplicationsStore) List(
 		       a.travel_estimated_cost_cents AS estimated_travel_cost_cents,
 		       (SELECT MIN(s.scanned_at) FROM scans s
 		        WHERE s.user_id = a.user_id
-		          AND s.scan_type IN (` + checkInScanTypesSQL + `)) AS checked_in_at
+		          AND s.scan_type IN (` + checkInScanTypesSQL + `)) AS checked_in_at,
+		       a.released_status
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id`
 
@@ -741,7 +760,7 @@ func (s *ApplicationsStore) List(
 			&item.RSVPStatus, &item.TravelRSVPStatus,
 			&item.RSVPSubmittedAt, &item.TravelRSVPSubmittedAt,
 			&item.ReceiptCount, &item.EstimatedTravelCostCents,
-			&item.CheckedInAt,
+			&item.CheckedInAt, &item.ReleasedStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -806,13 +825,21 @@ func (s *ApplicationsStore) encodeCursorForItem(item ApplicationListItem, sortBy
 	return EncodeCursor(item.CreatedAt, item.ID)
 }
 
+// SetStatus sets an application's status. Every other change waits for the
+// next decision release to reach the hacker, but reopening to draft is meant
+// for them to act on now, so it also drops the decision they could see.
 func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		UPDATE applications
-		SET status = $2, updated_at = NOW()
+		SET status = $2, updated_at = NOW(),
+		    released_status = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE released_status END,
+		    released_travel_status = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE released_travel_status END,
+		    released_travel_amount_cents = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE released_travel_amount_cents END,
+		    decision_release_id = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE decision_release_id END,
+		    decision_released_at = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE decision_released_at END
 		WHERE id = $1
 		RETURNING ` + applicationSelectCols
 
@@ -1360,9 +1387,12 @@ type DecisionEmailStats struct {
 	Announcement EmailSendCounts `json:"announcement"`
 }
 
-// GetDecisionEmailRecipients returns applicants in the given statuses. When
-// onlyUnsent is true, anyone already emailed for this kind is excluded.
-func (s *ApplicationsStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error) {
+// GetDecisionEmailRecipients returns applicants whose released decision is one
+// of the given statuses: an email describes what the hacker can see in the
+// portal, never a decision set since. A non-empty releaseID narrows it to the
+// applicants that release published. When onlyUnsent is true, anyone already
+// emailed for this kind is excluded.
+func (s *ApplicationsStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool, releaseID string) ([]DecisionEmailRecipient, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration*2)
 	defer cancel()
 
@@ -1384,10 +1414,16 @@ func (s *ApplicationsStore) GetDecisionEmailRecipients(ctx context.Context, stat
 		SELECT a.id, a.user_id, u.email,
 		       a.responses->>'first_name' AS first_name,
 		       a.responses->>'last_name' AS last_name,
-		       a.status
+		       a.released_status
 		FROM applications a
 		INNER JOIN users u ON a.user_id = u.id
-		WHERE a.status = ANY($1::application_status[])`
+		WHERE a.released_status = ANY($1::application_status[])`
+	args := []any{statusValues}
+
+	if releaseID != "" {
+		args = append(args, releaseID)
+		query += "\n\t\t  AND a.decision_release_id = $2"
+	}
 
 	if onlyUnsent {
 		query += "\n\t\t  AND a." + column + " IS NULL"
@@ -1395,7 +1431,7 @@ func (s *ApplicationsStore) GetDecisionEmailRecipients(ctx context.Context, stat
 
 	query += "\n\t\tORDER BY u.email"
 
-	rows, err := s.db.QueryContext(ctx, query, statusValues)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1450,22 +1486,56 @@ func (s *ApplicationsStore) SetDecisionEmailSent(ctx context.Context, applicatio
 	return err
 }
 
+// CountSubmittedByStatus returns how many applications were submitted at or
+// before the given instant, keyed by their current status. submitted_at
+// survives a reopen and resubmit, so an applicant keeps their original place.
+func (s *ApplicationsStore) CountSubmittedByStatus(ctx context.Context, before time.Time) (map[ApplicationStatus]int, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		SELECT status, COUNT(*)
+		FROM applications
+		WHERE submitted_at <= $1
+		GROUP BY status
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[ApplicationStatus]int)
+	for rows.Next() {
+		var status ApplicationStatus
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		counts[status] = count
+	}
+
+	return counts, rows.Err()
+}
+
 // GetDecisionEmailStats returns per-status sent/pending counts for both email
-// kinds, so the Send Emails dialog can show what a run would actually do.
+// kinds over released decisions, so the Send Emails dialog can show what a run
+// would actually do.
 func (s *ApplicationsStore) GetDecisionEmailStats(ctx context.Context) (*DecisionEmailStats, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
 		SELECT
-			COUNT(*) FILTER (WHERE status = 'accepted') AS accepted_total,
-			COUNT(*) FILTER (WHERE status = 'accepted' AND decision_email_sent_at IS NOT NULL) AS accepted_sent,
-			COUNT(*) FILTER (WHERE status = 'waitlisted') AS waitlisted_total,
-			COUNT(*) FILTER (WHERE status = 'waitlisted' AND decision_email_sent_at IS NOT NULL) AS waitlisted_sent,
-			COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_total,
-			COUNT(*) FILTER (WHERE status = 'rejected' AND decision_email_sent_at IS NOT NULL) AS rejected_sent,
-			COUNT(*) FILTER (WHERE status IN ('accepted', 'waitlisted', 'rejected')) AS announcement_total,
-			COUNT(*) FILTER (WHERE status IN ('accepted', 'waitlisted', 'rejected') AND announcement_email_sent_at IS NOT NULL) AS announcement_sent
+			COUNT(*) FILTER (WHERE released_status = 'accepted') AS accepted_total,
+			COUNT(*) FILTER (WHERE released_status = 'accepted' AND decision_email_sent_at IS NOT NULL) AS accepted_sent,
+			COUNT(*) FILTER (WHERE released_status = 'waitlisted') AS waitlisted_total,
+			COUNT(*) FILTER (WHERE released_status = 'waitlisted' AND decision_email_sent_at IS NOT NULL) AS waitlisted_sent,
+			COUNT(*) FILTER (WHERE released_status = 'rejected') AS rejected_total,
+			COUNT(*) FILTER (WHERE released_status = 'rejected' AND decision_email_sent_at IS NOT NULL) AS rejected_sent,
+			COUNT(*) FILTER (WHERE released_status IN ('accepted', 'waitlisted', 'rejected')) AS announcement_total,
+			COUNT(*) FILTER (WHERE released_status IN ('accepted', 'waitlisted', 'rejected') AND announcement_email_sent_at IS NOT NULL) AS announcement_sent
 		FROM applications
 	`
 

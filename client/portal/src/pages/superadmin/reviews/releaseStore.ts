@@ -4,64 +4,106 @@ import { create } from "zustand";
 import { errorAlert } from "@/shared/lib/api";
 
 import {
-  fetchDecisionsReleased as apiFetchDecisionsReleased,
-  setDecisionsReleased as apiSetDecisionsReleased,
+  createDecisionRelease as apiCreateDecisionRelease,
+  fetchDecisionReleases as apiFetchDecisionReleases,
+  undoDecisionRelease as apiUndoDecisionRelease,
 } from "./api";
+import type {
+  CreateDecisionReleasePayload,
+  CreateDecisionReleaseResponse,
+  DecisionRelease,
+} from "./types";
 
 interface DecisionReleaseState {
-  /** null until the first successful load. */
-  released: boolean | null;
+  /** Newest first; null until the first successful load. */
+  releases: DecisionRelease[] | null;
   loading: boolean;
   saving: boolean;
   error: string | null;
-  fetchReleased: (signal?: AbortSignal) => Promise<void>;
-  /** Resolves true when the server accepted the change. */
-  setReleased: (released: boolean) => Promise<boolean>;
+  fetchReleases: (signal?: AbortSignal) => Promise<void>;
+  /** Resolves with the result when the server accepted the release. */
+  createRelease: (
+    payload: CreateDecisionReleasePayload,
+  ) => Promise<CreateDecisionReleaseResponse | null>;
+  /** Resolves true when the server undid the release. */
+  undoRelease: (id: string) => Promise<boolean>;
 }
 
-// Drops a load that lands after a newer load or a save has already answered.
+/** The release an undo would revert: the newest one still in effect. */
+export function latestActiveRelease(
+  releases: DecisionRelease[] | null,
+): DecisionRelease | undefined {
+  return releases?.find((release) => !release.undone_at);
+}
+
+// Drops a load that lands after a newer load or a write has already answered.
 let requestSeq = 0;
 
-export const useDecisionReleaseStore = create<DecisionReleaseState>((set) => ({
-  released: null,
-  loading: false,
-  saving: false,
-  error: null,
+export const useDecisionReleaseStore = create<DecisionReleaseState>(
+  (set, get) => ({
+    releases: null,
+    loading: false,
+    saving: false,
+    error: null,
 
-  fetchReleased: async (signal) => {
-    const seq = ++requestSeq;
-    set({ loading: true, error: null });
-    const res = await apiFetchDecisionsReleased(signal);
-    if (signal?.aborted || seq !== requestSeq) return;
-    if (res.status === 200 && res.data) {
-      set({ released: res.data.released, loading: false });
-    } else {
-      set({
-        loading: false,
-        error: res.error || "Unable to load whether decisions are released.",
-      });
-    }
-  },
+    fetchReleases: async (signal) => {
+      const seq = ++requestSeq;
+      set({ loading: true, error: null });
+      const res = await apiFetchDecisionReleases(signal);
+      if (signal?.aborted || seq !== requestSeq) return;
+      if (res.status === 200 && res.data) {
+        set({ releases: res.data.releases, loading: false });
+      } else {
+        set({
+          loading: false,
+          error: res.error || "Unable to load decision releases.",
+        });
+      }
+    },
 
-  setReleased: async (released) => {
-    const seq = ++requestSeq;
-    set({ saving: true });
-    const res = await apiSetDecisionsReleased(released);
-    if (res.status === 200 && res.data) {
-      set({ released: res.data.released, saving: false, error: null });
-      toast.success(
-        res.data.released
-          ? "Decisions released. Hackers can now see their results."
-          : "Decisions hidden. Hackers see their application as under review.",
-      );
-      return true;
-    }
-    set({ saving: false });
-    errorAlert(res);
-    // The write may have committed before the failure, so reload the truth.
-    if (seq === requestSeq) {
-      void useDecisionReleaseStore.getState().fetchReleased();
-    }
-    return false;
-  },
-}));
+    createRelease: async (payload) => {
+      ++requestSeq;
+      set({ saving: true });
+      const res = await apiCreateDecisionRelease(payload);
+      set({ saving: false });
+      if (res.status !== 201 || !res.data) {
+        errorAlert(res);
+        return null;
+      }
+
+      const { release, emails, email_error } = res.data;
+      set({ releases: [release, ...(get().releases ?? [])], error: null });
+      const released = `Released ${release.released_count} decision${release.released_count === 1 ? "" : "s"}.`;
+      if (email_error) {
+        toast.warning(email_error);
+      } else if (emails) {
+        toast.success(
+          `${released} Emailing ${emails.queued} applicant${emails.queued === 1 ? "" : "s"}.`,
+        );
+      } else {
+        toast.success(released);
+      }
+      // Refresh for the server's view (released-by email, emailed counts).
+      void get().fetchReleases();
+      return res.data;
+    },
+
+    undoRelease: async (id) => {
+      const seq = ++requestSeq;
+      set({ saving: true });
+      const res = await apiUndoDecisionRelease(id);
+      if (res.status === 200 && res.data) {
+        set({ releases: res.data.releases, saving: false, error: null });
+        toast.success(
+          "Release undone. Those applicants see what they saw before it.",
+        );
+        return true;
+      }
+      set({ saving: false });
+      errorAlert(res);
+      // The undo may have committed before the failure, so reload the truth.
+      if (seq === requestSeq) void get().fetchReleases();
+      return false;
+    },
+  }),
+);

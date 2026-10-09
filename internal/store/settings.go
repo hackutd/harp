@@ -152,7 +152,6 @@ const SettingsKeyRSVPEnabled = "rsvp_enabled"
 const SettingsKeyCheckInRequiresRSVP = "check_in_requires_rsvp"
 const SettingsKeyTravelRSVPSchema = "travel_rsvp_schema"
 const SettingsKeyTravelRSVPEnabled = "travel_rsvp_enabled"
-const SettingsKeyDecisionsReleased = "decisions_released"
 const SettingsKeyTravelApplicationsEnabled = "travel_applications_enabled"
 const SettingsKeyReviewsPerApplication = "reviews_per_application"
 const SettingsKeyReviewAssignmentToggle = "review_assignment_toggle"
@@ -172,6 +171,7 @@ const SettingsKeyContactEmail = "contact_email"
 const SettingsKeyFromEmail = "from_email"
 const SettingsKeyFromName = "from_name"
 const SettingsKeyApplicationDueDate = "application_due_date"
+const SettingsKeyPriorityDeadline = "priority_deadline"
 const SettingsKeyPrivacyPolicyURL = "privacy_policy_url"
 const SettingsKeyTermsURL = "terms_url"
 
@@ -610,10 +610,11 @@ func resetHackathonConfig(ctx context.Context, tx *sql.Tx) error {
 	// such as contact/sender addresses, application schema, review count, admin
 	// permissions, and meal-group names intentionally carry forward.
 	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM settings WHERE key IN ($1, $2, $3, $4)`,
+		`DELETE FROM settings WHERE key IN ($1, $2, $3, $4, $5)`,
 		SettingsKeyHackathonName,
 		SettingsKeyHackathonDateRange,
 		SettingsKeyApplicationDueDate,
+		SettingsKeyPriorityDeadline,
 		SettingsKeyPointsName,
 	); err != nil {
 		return err
@@ -640,17 +641,6 @@ func closeApplications(ctx context.Context, tx *sql.Tx) error {
 		VALUES ($1, 'false'::jsonb)
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
 	_, err := tx.ExecContext(ctx, query, SettingsKeyApplicationsEnabled)
-	return err
-}
-
-// hideDecisions re-gates final decisions inside a reset transaction, so the
-// next hackathon's decisions stay hidden until a super admin releases them.
-func hideDecisions(ctx context.Context, tx *sql.Tx) error {
-	query := `
-		INSERT INTO settings (key, value)
-		VALUES ($1, 'false'::jsonb)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`
-	_, err := tx.ExecContext(ctx, query, SettingsKeyDecisionsReleased)
 	return err
 }
 
@@ -1216,51 +1206,6 @@ func (s *SettingsStore) SetTravelApplicationsEnabled(ctx context.Context, enable
 	return nil
 }
 
-// GetDecisionsReleased returns whether hackers can see their final application
-// decision. Defaults to false so a decision set by a super admin stays hidden
-// until results are released on purpose.
-func (s *SettingsStore) GetDecisionsReleased(ctx context.Context) (bool, error) {
-	value, found, err := s.getCachedRaw(ctx, SettingsKeyDecisionsReleased)
-	if err != nil {
-		return false, err
-	}
-	if !found {
-		return false, nil
-	}
-
-	var released bool
-	if err := json.Unmarshal(value, &released); err != nil {
-		return false, err
-	}
-
-	return released, nil
-}
-
-// SetDecisionsReleased updates whether hackers can see their final application decision.
-func (s *SettingsStore) SetDecisionsReleased(ctx context.Context, released bool) error {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	jsonValue, err := json.Marshal(released)
-	if err != nil {
-		return err
-	}
-
-	query := `
-		INSERT INTO settings (key, value)
-		VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-	`
-
-	_, err = s.db.ExecContext(ctx, query, SettingsKeyDecisionsReleased, string(jsonValue))
-	if err != nil {
-		return err
-	}
-
-	s.invalidate(SettingsKeyDecisionsReleased)
-	return nil
-}
-
 // GetCheckInRequiresRSVP returns whether the scanner refuses to check in a
 // hacker who has not confirmed their RSVP. Defaults to true so capacity and
 // catering counts hold by default; a hackathon that never runs the RSVP form
@@ -1589,6 +1534,31 @@ func (s *SettingsStore) GetApplicationDueDate(ctx context.Context) (string, erro
 // SetApplicationDueDate updates the application deadline (YYYY-MM-DD).
 func (s *SettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
 	return s.setStringSetting(ctx, SettingsKeyApplicationDueDate, date)
+}
+
+// GetPriorityDeadline returns the instant an application must have been
+// submitted by to count as priority, or nil when none is configured.
+func (s *SettingsStore) GetPriorityDeadline(ctx context.Context) (*time.Time, error) {
+	value, err := s.getStringSetting(ctx, SettingsKeyPriorityDeadline)
+	if err != nil || value == "" {
+		return nil, err
+	}
+
+	deadline, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return nil, err
+	}
+	return &deadline, nil
+}
+
+// SetPriorityDeadline updates the priority deadline. The instant is stored with
+// the offset it was given in, so it reads back in the organizer's time zone;
+// nil clears it.
+func (s *SettingsStore) SetPriorityDeadline(ctx context.Context, deadline *time.Time) error {
+	if deadline == nil {
+		return s.setStringSetting(ctx, SettingsKeyPriorityDeadline, "")
+	}
+	return s.setStringSetting(ctx, SettingsKeyPriorityDeadline, deadline.Format(time.RFC3339Nano))
 }
 
 // GetPrivacyPolicyURL returns the operator's privacy policy link (empty when unset).

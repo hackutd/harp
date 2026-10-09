@@ -26,45 +26,48 @@ type ApplicationWithSchema struct {
 	Points int `json:"points"`
 }
 
-// hasHackerVisibleDecision reports whether the application carries a decision
-// that must stay hidden from the hacker until results are released.
-func hasHackerVisibleDecision(a *store.Application) bool {
-	switch a.Status {
+func isDecided(status store.ApplicationStatus) bool {
+	switch status {
 	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
 		return true
 	}
-	return a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected
+	return false
 }
 
-// hideUnreleasedDecision masks the application's final decision, travel
-// decision, and the review votes that would reveal them, until a super admin
-// releases decisions. It mutates the in-memory copy only: callers must not
-// persist an application after masking it. Status gates that run afterwards
-// (RSVP, travel RSVP) then see an undecided application and refuse.
-func (app *application) hideUnreleasedDecision(r *http.Request, a *store.Application) error {
-	if !hasHackerVisibleDecision(a) {
-		return nil
-	}
-
-	released, err := app.store.Settings.GetDecisionsReleased(r.Context())
-	if err != nil {
-		return err
-	}
-	if released {
-		return nil
-	}
-
-	switch a.Status {
-	case store.StatusAccepted, store.StatusRejected, store.StatusWaitlisted:
-		a.Status = store.StatusSubmitted
-	}
-	if a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected {
-		a.TravelStatus = store.TravelPending
-	}
+// showReleasedDecision rewrites the application to what its hacker may see:
+// the decision and travel decision the last decision release published, never
+// one set since. A decision no release has covered reads as submitted, an
+// undecided or unreleased travel decision as pending, and review votes are
+// always withheld. A draft shows as is, since reopening is meant for the
+// hacker to act on. It mutates the in-memory copy only: callers must not
+// persist an application after this. Status gates that run afterwards (RSVP,
+// travel RSVP) see the released decision.
+func showReleasedDecision(a *store.Application) {
 	a.AcceptVotes, a.RejectVotes, a.WaitlistVotes = 0, 0, 0
 	a.TravelYesVotes, a.TravelNoVotes = 0, 0
-	a.TravelApprovedAmountCents = nil
-	return nil
+
+	if a.Status != store.StatusDraft {
+		switch {
+		case a.ReleasedStatus != nil:
+			a.Status = *a.ReleasedStatus
+		case isDecided(a.Status):
+			a.Status = store.StatusSubmitted
+		}
+	}
+
+	switch {
+	case a.ReleasedTravelStatus != nil:
+		a.TravelStatus = *a.ReleasedTravelStatus
+		a.TravelApprovedAmountCents = a.ReleasedTravelAmountCents
+	case a.TravelStatus == store.TravelApproved || a.TravelStatus == store.TravelRejected:
+		a.TravelStatus = store.TravelPending
+		a.TravelApprovedAmountCents = nil
+	}
+
+	// The copies have been applied; dropping them keeps the response to the
+	// fields the hacker portal reads.
+	a.ReleasedStatus, a.ReleasedTravelStatus, a.ReleasedTravelAmountCents = nil, nil, nil
+	a.DecisionReleasedAt = nil
 }
 
 // userPoints returns the user's total scan points. Points are cosmetic, so a
@@ -122,13 +125,11 @@ func (app *application) getOrCreateApplicationHandler(w http.ResponseWriter, r *
 		}
 	}
 
-	if err := app.hideUnreleasedDecision(r, application); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	showReleasedDecision(application)
 
-	// Fetch the schema the applicant sees to embed in response
-	schema, _, err := app.applicantSchema(r)
+	// Fetch the schema the applicant sees to embed in response, keeping any
+	// since-hidden questions a submitted application answered
+	schema, err := app.ownApplicationSchema(r, application)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return

@@ -154,6 +154,12 @@ export interface Application extends AIAssessment {
   travel_rsvp_responses: Record<string, unknown>;
   travel_rsvp_submitted_at: string | null;
   travel_receipt_paths: string[] | null;
+  /**
+   * The decision the hacker can see, set by the last decision release that
+   * covered the application. Admin responses only; hacker endpoints apply it
+   * to status and omit it.
+   */
+  released_status?: ApplicationStatus | null;
 }
 
 export interface ScheduleItem {

@@ -12,6 +12,7 @@ import type {
   OnboardingStatus,
   PointsEnabledResult,
   PointsNameResult,
+  PriorityDeadlineStats,
   ResetHackathonOptions,
   ResetHackathonResult,
   URLSettingResult,
@@ -186,6 +187,27 @@ export async function updateApplicationDueDate(
     "/superadmin/settings/application-due-date",
     { date },
     "application due date",
+  );
+}
+
+export async function fetchPriorityDeadlineStats(
+  signal?: AbortSignal,
+): Promise<ApiResponse<PriorityDeadlineStats>> {
+  return getRequest<PriorityDeadlineStats>(
+    "/superadmin/settings/priority-deadline",
+    "priority deadline",
+    signal,
+  );
+}
+
+/** deadline is an ISO 8601 timestamp with an offset; null clears it. */
+export async function updatePriorityDeadline(
+  deadline: string | null,
+): Promise<ApiResponse<PriorityDeadlineStats>> {
+  return putRequest<PriorityDeadlineStats>(
+    "/superadmin/settings/priority-deadline",
+    { deadline },
+    "priority deadline",
   );
 }
 

@@ -178,6 +178,14 @@ func (m *MockApplicationStore) GetTimeline(ctx context.Context, tz string) ([]Ap
 	return args.Get(0).([]ApplicationTimelinePoint), args.Error(1)
 }
 
+func (m *MockApplicationStore) CountSubmittedByStatus(ctx context.Context, before time.Time) (map[ApplicationStatus]int, error) {
+	args := m.Called(before)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[ApplicationStatus]int), args.Error(1)
+}
+
 func (m *MockApplicationStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
 	args := m.Called(id, status)
 	if args.Get(0) == nil {
@@ -236,8 +244,8 @@ func (m *MockApplicationStore) GetEmailsByStatus(ctx context.Context, status App
 	return args.Get(0).([]UserEmailInfo), args.Error(1)
 }
 
-func (m *MockApplicationStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool) ([]DecisionEmailRecipient, error) {
-	args := m.Called(statuses, kind, onlyUnsent)
+func (m *MockApplicationStore) GetDecisionEmailRecipients(ctx context.Context, statuses []ApplicationStatus, kind DecisionEmailKind, onlyUnsent bool, releaseID string) ([]DecisionEmailRecipient, error) {
+	args := m.Called(statuses, kind, onlyUnsent, releaseID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -324,16 +332,6 @@ func (m *MockSettingsStore) GetRSVPEnabled(ctx context.Context) (bool, error) {
 
 func (m *MockSettingsStore) SetRSVPEnabled(ctx context.Context, enabled bool) error {
 	args := m.Called(enabled)
-	return args.Error(0)
-}
-
-func (m *MockSettingsStore) GetDecisionsReleased(ctx context.Context) (bool, error) {
-	args := m.Called()
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockSettingsStore) SetDecisionsReleased(ctx context.Context, released bool) error {
-	args := m.Called(released)
 	return args.Error(0)
 }
 
@@ -548,6 +546,19 @@ func (m *MockSettingsStore) GetApplicationDueDate(ctx context.Context) (string, 
 
 func (m *MockSettingsStore) SetApplicationDueDate(ctx context.Context, date string) error {
 	args := m.Called(date)
+	return args.Error(0)
+}
+
+func (m *MockSettingsStore) GetPriorityDeadline(ctx context.Context) (*time.Time, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*time.Time), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetPriorityDeadline(ctx context.Context, deadline *time.Time) error {
+	args := m.Called(deadline)
 	return args.Error(0)
 }
 
@@ -1116,5 +1127,40 @@ func NewMockStore() Storage {
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
 		WalkIns:                &MockWalkInsStore{},
 		Referrals:              &MockReferralsStore{},
+		DecisionReleases:       &MockDecisionReleasesStore{},
 	}
+}
+
+// MockDecisionReleasesStore is a mock implementation of the DecisionReleases interface
+type MockDecisionReleasesStore struct {
+	mock.Mock
+}
+
+func (m *MockDecisionReleasesStore) Preview(ctx context.Context, filter DecisionReleaseFilter) (*DecisionReleasePreview, error) {
+	args := m.Called(filter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DecisionReleasePreview), args.Error(1)
+}
+
+func (m *MockDecisionReleasesStore) Create(ctx context.Context, filter DecisionReleaseFilter, releasedBy string) (*DecisionRelease, error) {
+	args := m.Called(filter, releasedBy)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DecisionRelease), args.Error(1)
+}
+
+func (m *MockDecisionReleasesStore) List(ctx context.Context) ([]DecisionRelease, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DecisionRelease), args.Error(1)
+}
+
+func (m *MockDecisionReleasesStore) Undo(ctx context.Context, id string, undoneBy string) error {
+	args := m.Called(id, undoneBy)
+	return args.Error(0)
 }
