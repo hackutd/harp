@@ -101,6 +101,34 @@ func (s *PushSubscriptionsStore) ListByRole(ctx context.Context, role *UserRole)
 	if err != nil {
 		return nil, err
 	}
+	return scanPushSubscriptions(rows)
+}
+
+// ListByUserIDs returns every subscription registered by any of the given
+// users. A user with several browsers gets one row per browser.
+func (s *PushSubscriptionsStore) ListByUserIDs(ctx context.Context, userIDs []string) ([]PushSubscription, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+
+	query := `
+		SELECT id, user_id, endpoint, p256dh, auth, user_agent, created_at, updated_at
+		FROM push_subscriptions
+		WHERE user_id = ANY($1::uuid[])
+		ORDER BY created_at
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	return scanPushSubscriptions(rows)
+}
+
+func scanPushSubscriptions(rows *sql.Rows) ([]PushSubscription, error) {
 	defer rows.Close()
 
 	var subs []PushSubscription
@@ -120,38 +148,4 @@ func (s *PushSubscriptionsStore) ListByRole(ctx context.Context, role *UserRole)
 	}
 
 	return subs, nil
-}
-
-// ListByUserIDs returns every subscription belonging to the given users, for
-// notifications addressed to specific people rather than a whole role.
-func (s *PushSubscriptionsStore) ListByUserIDs(ctx context.Context, userIDs []string) ([]PushSubscription, error) {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	if len(userIDs) == 0 {
-		return []PushSubscription{}, nil
-	}
-
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT ps.id, ps.user_id, ps.endpoint, ps.p256dh, ps.auth, ps.user_agent, ps.created_at, ps.updated_at
-		FROM push_subscriptions ps
-		WHERE ps.user_id::text = ANY($1::text[])
-	`, StringArray(userIDs))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	subs := []PushSubscription{}
-	for rows.Next() {
-		var sub PushSubscription
-		if err := rows.Scan(
-			&sub.ID, &sub.UserID, &sub.Endpoint, &sub.P256dh, &sub.Auth,
-			&sub.UserAgent, &sub.CreatedAt, &sub.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		subs = append(subs, sub)
-	}
-	return subs, rows.Err()
 }

@@ -85,12 +85,14 @@ export interface SendDecisionEmailsPayload {
   mode: DecisionEmailMode;
   statuses?: DecidedStatus[];
   resend_all?: boolean;
+  send_push?: boolean;
 }
 
 export interface SendDecisionEmailsResponse {
   mode: DecisionEmailMode;
   queued: number;
   skipped: number;
+  push_recipients: number;
 }
 
 export interface DecisionsReleasedResponse {

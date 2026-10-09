@@ -65,11 +65,12 @@ func (app *application) getMyRSVPHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	schema, err := app.store.Settings.GetRSVPSchema(r.Context())
+	fullSchema, err := app.store.Settings.GetRSVPSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
+	schema, _ := applicantFields(fullSchema)
 
 	enabled, err := app.store.Settings.GetRSVPEnabled(r.Context())
 	if err != nil {
@@ -149,11 +150,12 @@ func (app *application) submitMyRSVPHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	schema, err := app.store.Settings.GetRSVPSchema(r.Context())
+	fullSchema, err := app.store.Settings.GetRSVPSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
+	schema, _ := applicantFields(fullSchema)
 
 	// Declining a spot never requires form answers; confirming must satisfy
 	// the configured RSVP schema.

@@ -41,6 +41,9 @@ type SchemaFieldContract struct {
 	Purpose string `json:"purpose"`
 	// InactiveWarning explains what stops working when the field is removed.
 	InactiveWarning string `json:"inactive_warning"`
+	// HiddenWarning explains what stops working while the field is hidden
+	// from applicants.
+	HiddenWarning string `json:"hidden_warning"`
 }
 
 // applicationSchemaContracts are the bindings the application schema carries.
@@ -50,6 +53,7 @@ var applicationSchemaContracts = []SchemaFieldContract{
 		RequiredType:    "checkbox",
 		Purpose:         "Travel reimbursement opt-in",
 		InactiveWarning: "No \"" + travelOptInFieldID + "\" checkbox in the schema: submitted applications will no longer enter travel reimbursement review.",
+		HiddenWarning:   "\"" + travelOptInFieldID + "\" is hidden from applicants: new submissions will not enter travel reimbursement review.",
 	},
 }
 
@@ -61,6 +65,7 @@ var travelRSVPSchemaContracts = []SchemaFieldContract{
 		RequiredOptions: []string{travelModeFlying},
 		Purpose:         "Ticket receipt requirement",
 		InactiveWarning: "No \"" + travelModeFieldID + "\" field in the schema: hackers will never be required to upload a ticket receipt.",
+		HiddenWarning:   "\"" + travelModeFieldID + "\" is hidden from hackers: they will never be required to upload a ticket receipt.",
 	},
 }
 
@@ -83,9 +88,9 @@ func validateSchemaFields(contracts []SchemaFieldContract, fields []store.Applic
 // validateSchemaContracts checks the well-known bindings in a schema about to
 // be saved. A field that is still present but no longer usable — wrong type, or
 // missing the option the backend keys off — is always a mistake, so it is
-// returned as an error. A field that is gone entirely is allowed, since an
-// event may not run travel reimbursement at all, but returns a warning so the
-// editor can say the feature is now inactive.
+// returned as an error. A field that is gone entirely, or hidden from
+// applicants, is allowed, since an event may not run travel reimbursement at
+// all, but returns a warning so the editor can say the feature is now inactive.
 func validateSchemaContracts(contracts []SchemaFieldContract, fields []store.ApplicationSchemaField) ([]string, error) {
 	byID := make(map[string]store.ApplicationSchemaField, len(fields))
 	for _, f := range fields {
@@ -98,6 +103,9 @@ func validateSchemaContracts(contracts []SchemaFieldContract, fields []store.App
 		if !ok {
 			warnings = append(warnings, contract.InactiveWarning)
 			continue
+		}
+		if field.Hidden {
+			warnings = append(warnings, contract.HiddenWarning)
 		}
 
 		if field.Type != contract.RequiredType {
@@ -134,59 +142,106 @@ func conditionFieldID(expr string) string {
 	return fieldID
 }
 
-// travelQuestionIDs returns the travel opt-in checkbox and every field shown or
-// required only through it: the questions that exist only for an applicant
-// asking for travel reimbursement. They are found through the binding rather
-// than the section, so renaming the section in the editor changes nothing.
-func travelQuestionIDs(fields []store.ApplicationSchemaField) map[string]bool {
-	ids := map[string]bool{}
-	if schemaContractFieldID(fields, travelOptInFieldID) == "" {
-		return ids
-	}
-
-	ids[travelOptInFieldID] = true
-	for _, f := range fields {
-		for _, key := range []string{"show_if", "required_if"} {
-			if expr, ok := f.Validation[key].(string); ok && conditionFieldID(expr) == travelOptInFieldID {
-				ids[f.ID] = true
+// dependentFieldIDs returns controllerID and every field shown or required
+// only through it, following show_if / required_if chains: hiding a controller
+// hides the questions that exist only because of it.
+func dependentFieldIDs(fields []store.ApplicationSchemaField, controllerID string) map[string]bool {
+	ids := map[string]bool{controllerID: true}
+	for changed := true; changed; {
+		changed = false
+		for _, f := range fields {
+			if ids[f.ID] {
+				continue
+			}
+			for _, key := range []string{"show_if", "required_if"} {
+				if expr, ok := f.Validation[key].(string); ok && ids[conditionFieldID(expr)] {
+					ids[f.ID] = true
+					changed = true
+					break
+				}
 			}
 		}
 	}
 	return ids
 }
 
+// travelQuestionIDs returns the travel opt-in checkbox and every field shown or
+// required only through it: the questions that exist only for an applicant
+// asking for travel reimbursement. They are found through the binding rather
+// than the section, so renaming the section in the editor changes nothing.
+func travelQuestionIDs(fields []store.ApplicationSchemaField) map[string]bool {
+	if schemaContractFieldID(fields, travelOptInFieldID) == "" {
+		return map[string]bool{}
+	}
+	return dependentFieldIDs(fields, travelOptInFieldID)
+}
+
+// hiddenFieldIDs returns every field a super admin marked hidden, plus the
+// fields that are only shown or required through one of them.
+func hiddenFieldIDs(fields []store.ApplicationSchemaField) map[string]bool {
+	ids := map[string]bool{}
+	for _, f := range fields {
+		if !f.Hidden {
+			continue
+		}
+		for id := range dependentFieldIDs(fields, f.ID) {
+			ids[id] = true
+		}
+	}
+	return ids
+}
+
+// withholdFields splits a schema into the fields applicants are shown and the
+// ids kept from them. withheld is nil when nothing was removed.
+func withholdFields(fields []store.ApplicationSchemaField, withheld map[string]bool) ([]store.ApplicationSchemaField, map[string]bool) {
+	if len(withheld) == 0 {
+		return fields, nil
+	}
+	visible := make([]store.ApplicationSchemaField, 0, len(fields))
+	for _, f := range fields {
+		if !withheld[f.ID] {
+			visible = append(visible, f)
+		}
+	}
+	return visible, withheld
+}
+
+// applicantFields returns a schema as the hacker-facing forms see it: hidden
+// fields and their dependents are withheld, so they are neither shown nor
+// required. Admin endpoints keep reading the full schema.
+func applicantFields(fields []store.ApplicationSchemaField) ([]store.ApplicationSchemaField, map[string]bool) {
+	return withholdFields(fields, hiddenFieldIDs(fields))
+}
+
 // applicantSchema returns the application schema as applicants see it, plus
-// the ids of any fields withheld from them. While travel applications are
-// closed the travel questions are withheld, so applicants are neither shown
-// nor required to answer them and the opt-in binding goes inactive. Admin
-// endpoints keep reading the full schema, so earlier applicants' travel
-// answers still render in review.
+// the ids of any fields withheld from them. Fields a super admin marked hidden
+// are withheld, and while travel applications are closed so are the travel
+// questions, so applicants are neither shown nor required to answer them and
+// the opt-in binding goes inactive. Admin endpoints keep reading the full
+// schema, so earlier applicants' answers still render in review.
 func (app *application) applicantSchema(r *http.Request) ([]store.ApplicationSchemaField, map[string]bool, error) {
 	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
 	if err != nil {
 		return nil, nil, err
 	}
 
+	withheld := hiddenFieldIDs(schema)
+
 	travelIDs := travelQuestionIDs(schema)
-	if len(travelIDs) == 0 {
-		return schema, nil, nil
-	}
-
-	open, err := app.store.Settings.GetTravelApplicationsEnabled(r.Context())
-	if err != nil {
-		return nil, nil, err
-	}
-	if open {
-		return schema, nil, nil
-	}
-
-	visible := make([]store.ApplicationSchemaField, 0, len(schema))
-	for _, f := range schema {
-		if !travelIDs[f.ID] {
-			visible = append(visible, f)
+	if len(travelIDs) > 0 {
+		open, err := app.store.Settings.GetTravelApplicationsEnabled(r.Context())
+		if err != nil {
+			return nil, nil, err
+		}
+		if !open {
+			for id := range travelIDs {
+				withheld[id] = true
+			}
 		}
 	}
-	return visible, travelIDs, nil
+
+	visible, withheld := withholdFields(schema, withheld)
+	return visible, withheld, nil
 }
 
 func containsOption(options []string, want string) bool {

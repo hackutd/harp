@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,6 +62,11 @@ func sendDecisionEmailsRequest(body string) *http.Request {
 	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	return setUserContext(req, newSuperAdminUser())
+}
+
+func withUser(sub store.PushSubscription, userID string) store.PushSubscription {
+	sub.UserID = userID
+	return sub
 }
 
 func TestSendDecisionEmails(t *testing.T) {
@@ -164,6 +171,90 @@ func TestSendDecisionEmails(t *testing.T) {
 		assert.Equal(t, 0, body.Data.Skipped)
 
 		app.backgroundJobs.Wait()
+		mockApps.AssertExpectations(t)
+	})
+
+	t.Run("send_push alerts every subscribed recipient after the emails", func(t *testing.T) {
+		var pushes atomic.Int32
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			pushes.Add(1)
+			w.WriteHeader(http.StatusCreated)
+		}))
+		t.Cleanup(srv.Close)
+
+		app := newTestDispatcherAppWithVAPID(t, srv)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+		stubDecisionsReleased(app, true)
+		stubDecisionMailer(app)
+
+		pending := []store.DecisionEmailRecipient{
+			newDecisionRecipient("app-1", "a@test.com", store.StatusAccepted),
+			newDecisionRecipient("app-2", "b@test.com", store.StatusRejected),
+			newDecisionRecipient("app-3", "c@test.com", store.StatusAccepted),
+		}
+		statuses := []store.ApplicationStatus{store.StatusAccepted, store.StatusRejected}
+		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, true).
+			Return(pending, nil).Once()
+		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, false).
+			Return(pending, nil).Once()
+		stubDecisionMarker(mockApps, store.DecisionEmailKindDecision)
+
+		// user-app-1 has two browsers, user-app-2 none: three subscriptions, two people.
+		mockSubs.On("ListByUserIDs", []string{"user-app-1", "user-app-2", "user-app-3"}).
+			Return([]store.PushSubscription{
+				withUser(newTestPushSub(t, srv.URL+"/one"), "user-app-1"),
+				withUser(newTestPushSub(t, srv.URL+"/two"), "user-app-1"),
+				withUser(newTestPushSub(t, srv.URL+"/three"), "user-app-3"),
+			}, nil).Once()
+
+		req := sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted","rejected"],"send_push":true}`)
+		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data SendDecisionEmailsResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, 3, body.Data.Queued)
+		assert.Equal(t, 2, body.Data.PushRecipients)
+
+		app.backgroundJobs.Wait()
+		assert.Equal(t, int32(3), pushes.Load())
+		mockApps.AssertExpectations(t)
+		mockSubs.AssertExpectations(t)
+	})
+
+	t.Run("send_push is ignored when VAPID is not configured", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+		stubDecisionsReleased(app, true)
+		stubDecisionMailer(app)
+
+		pending := []store.DecisionEmailRecipient{
+			newDecisionRecipient("app-1", "a@test.com", store.StatusAccepted),
+		}
+		statuses := []store.ApplicationStatus{store.StatusAccepted}
+		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, true).
+			Return(pending, nil).Once()
+		mockApps.On("GetDecisionEmailRecipients", statuses, store.DecisionEmailKindDecision, false).
+			Return(pending, nil).Once()
+		stubDecisionMarker(mockApps, store.DecisionEmailKindDecision)
+
+		req := sendDecisionEmailsRequest(`{"mode":"decision","statuses":["accepted"],"send_push":true}`)
+		rr := executeRequest(req, http.HandlerFunc(app.sendDecisionEmailsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data SendDecisionEmailsResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, 1, body.Data.Queued)
+		assert.Equal(t, 0, body.Data.PushRecipients)
+
+		app.backgroundJobs.Wait()
+		mockSubs.AssertNotCalled(t, "ListByUserIDs", mock.Anything)
 		mockApps.AssertExpectations(t)
 	})
 

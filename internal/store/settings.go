@@ -184,10 +184,13 @@ type HackathonDateRange struct {
 // ApplicationSchemaField defines a single field in the configurable application form.
 // The full schema is stored as a JSON array in the settings table under key "application_schema".
 type ApplicationSchemaField struct {
-	ID           string                 `json:"id"`
-	Type         string                 `json:"type"`
-	Label        string                 `json:"label"`
-	Required     bool                   `json:"required"`
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Label    string `json:"label"`
+	Required bool   `json:"required"`
+	// Hidden withholds the field from applicants without deleting it, so
+	// answers already given keep rendering for admins.
+	Hidden       bool                   `json:"hidden,omitempty"`
 	Section      string                 `json:"section,omitempty"`
 	SectionLabel string                 `json:"section_label,omitempty"`
 	SectionOrder int                    `json:"section_order"`

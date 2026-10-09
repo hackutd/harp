@@ -12,6 +12,7 @@ import (
 // matches the host exactly or any subdomain of it.
 var defaultPushEndpointHosts = []string{
 	"fcm.googleapis.com",        // Chrome, Edge, Brave, Opera, Vivaldi
+	"jmt17.google.com",          // Chrome (alternate FCM front door)
 	"android.googleapis.com",    // legacy Chrome
 	"push.services.mozilla.com", // Firefox
 	"push.apple.com",            // Safari
