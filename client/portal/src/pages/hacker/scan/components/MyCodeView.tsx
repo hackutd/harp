@@ -1,4 +1,4 @@
-import { WalletCards } from "lucide-react";
+import { IconWallet } from "@tabler/icons-react";
 import { type MouseEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import Session from "supertokens-auth-react/recipe/session";
@@ -57,31 +57,31 @@ export function MyCodeView({ className }: MyCodeViewProps) {
 
   return (
     <div className={cn("flex flex-col items-center justify-center", className)}>
-      <h1 className="text-2xl font-light tracking-tight text-black">QR Code</h1>
-      <p className="mt-1 text-center text-sm font-light text-[#8A8A8A]">
+      <h1 className="text-2xl font-light tracking-tight text-ink">QR Code</h1>
+      <p className="mt-1 text-center text-sm font-light text-ink/65">
         Show this at check-in, meals, and events
       </p>
 
       {user?.id ? (
         <QrCity value={user.id} className="mt-8" />
       ) : (
-        <p className="mt-8 text-sm font-light text-[#8A8A8A]">
+        <p className="mt-8 text-sm font-light text-ink/65">
           Sign in to view your code.
         </p>
       )}
 
       {user?.email && (
-        <p className="mt-6 text-xs font-light text-[#8A8A8A]">{user.email}</p>
+        <p className="mt-6 text-xs font-light text-ink/65">{user.email}</p>
       )}
 
       {walletAvailableForUser === user?.id && (
         <a
           href={APPLE_WALLET_PASS_URL}
           onClick={handleAddToWallet}
-          className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-black px-5 text-sm font-medium text-white transition-colors active:bg-black/80"
+          className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-tide px-5 text-sm font-medium text-white transition-colors active:bg-tide-hover"
           aria-label="Add this hacker pass to Apple Wallet"
         >
-          <WalletCards className="size-5" aria-hidden="true" />
+          <IconWallet className="size-5" aria-hidden="true" />
           Add to Apple Wallet
         </a>
       )}

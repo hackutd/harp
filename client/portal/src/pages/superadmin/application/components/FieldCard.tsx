@@ -1,4 +1,10 @@
-import { ChevronDown, ChevronUp, Lock, Settings2, Trash2 } from "lucide-react";
+import {
+  IconAdjustments,
+  IconChevronDown,
+  IconChevronUp,
+  IconLock,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useState } from "react";
 
 import {
@@ -102,19 +108,16 @@ export function FieldCard({
     <div className="rounded-md border p-3 space-y-3">
       {/* Top row: type badge, label input, reorder, delete */}
       <div className="flex items-center gap-2">
-        <Badge
-          variant="outline"
-          className={`text-[10px] shrink-0 ${TYPE_COLORS[field.type]}`}
-        >
+        <Badge className={`text-[10px] shrink-0 ${TYPE_COLORS[field.type]}`}>
           {FIELD_TYPE_LABELS[field.type]}
         </Badge>
         {contract && (
           <Badge
-            variant="outline"
-            className="text-[10px] shrink-0 bg-slate-100 text-slate-700 border-slate-200"
+            variant="neutral"
+            className="text-[10px] shrink-0"
             title={`${contract.purpose} reads this field. Its type and options are locked.`}
           >
-            <Lock className="size-2.5 mr-1" />
+            <IconLock className="size-2.5 mr-1" />
             System
           </Badge>
         )}
@@ -132,7 +135,7 @@ export function FieldCard({
             disabled={isFirst}
             className="h-7 w-7 p-0 cursor-pointer"
           >
-            <ChevronUp className="size-3.5" />
+            <IconChevronUp className="size-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -141,7 +144,7 @@ export function FieldCard({
             disabled={isLast}
             className="h-7 w-7 p-0 cursor-pointer"
           >
-            <ChevronDown className="size-3.5" />
+            <IconChevronDown className="size-3.5" />
           </Button>
           {contract ? (
             <AlertDialog>
@@ -151,7 +154,7 @@ export function FieldCard({
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 cursor-pointer"
                 >
-                  <Trash2 className="size-3.5" />
+                  <IconTrash className="size-3.5" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -184,7 +187,7 @@ export function FieldCard({
               onClick={onRemove}
               className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 cursor-pointer"
             >
-              <Trash2 className="size-3.5" />
+              <IconTrash className="size-3.5" />
             </Button>
           )}
         </div>
@@ -212,7 +215,7 @@ export function FieldCard({
           onClick={() => setDetailsOpen((prev) => !prev)}
           className="h-7 text-xs text-muted-foreground cursor-pointer gap-1"
         >
-          <Settings2 className="size-3" />
+          <IconAdjustments className="size-3" />
           {detailsOpen ? "Hide" : "Details"}
         </Button>
       </div>

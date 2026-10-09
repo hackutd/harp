@@ -1,24 +1,40 @@
 export interface TagColor {
   color: string;
+  /** Text colour that stays legible on a solid `color` fill. */
+  ink: string;
   label: string;
 }
 
-// Keyed by lowercased tag name. Values reference the shared CSS palette in
-// branding/theme.css so the schedule, Tailwind utilities, and charts cannot
-// drift apart.
+// Schedule categories intentionally keep main's shared palette, independent
+// of the hacker brand colors. Preserve these mappings for filters and events.
+// `ink` is the text colour on a solid fill (the selected event).
 export const TAG_COLORS: Record<string, TagColor> = {
-  required: { color: "var(--portal-red)", label: "Required" },
+  required: { color: "var(--portal-red)", ink: "#ffffff", label: "Required" },
   "company events": {
     color: "var(--portal-orange)",
+    ink: "#000000",
     label: "Company Events",
   },
-  food: { color: "var(--portal-green)", label: "Food" },
-  workshops: { color: "var(--portal-blue)", label: "Workshops" },
-  "for fun": { color: "var(--portal-purple)", label: "For Fun" },
+  food: {
+    color: "var(--portal-green)",
+    ink: "#000000",
+    label: "Food",
+  },
+  workshops: {
+    color: "var(--portal-blue)",
+    ink: "#000000",
+    label: "Workshops",
+  },
+  "for fun": {
+    color: "var(--portal-purple)",
+    ink: "#000000",
+    label: "For Fun",
+  },
 };
 
 export const FALLBACK_TAG_COLOR: TagColor = {
   color: "var(--portal-neutral)",
+  ink: "#000000",
   label: "Other",
 };
 

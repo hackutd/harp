@@ -1,12 +1,12 @@
 import {
-  ChevronLeft,
-  ChevronRight,
-  CircleDollarSign,
-  ExternalLink,
-  FileText,
-  Loader2,
-  ReceiptText,
-} from "lucide-react";
+  IconChevronLeft,
+  IconChevronRight,
+  IconCoin,
+  IconExternalLink,
+  IconFileText,
+  IconLoader2,
+  IconReceipt,
+} from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
-import { formatName } from "@/pages/admin/all-applicants/utils";
+import { formatName, getStatusColor } from "@/pages/admin/all-applicants/utils";
 import {
   fetchTravelReceiptURLs,
   setApplicationTravelStatus,
@@ -49,6 +49,7 @@ import {
 } from "@/pages/superadmin/reviews/grading/api";
 import { errorAlert, getRequest } from "@/shared/lib/api";
 import { formatResponseValue, isFieldVisible } from "@/shared/lib/schema-utils";
+import { cn } from "@/shared/lib/utils";
 import type { Application, ApplicationSchemaField } from "@/types";
 
 import { formatCurrency, formatDateTime } from "../config";
@@ -140,14 +141,14 @@ function ReceiptViewer({
             disabled={index == null || index === 0}
             onClick={() => index != null && onIndexChange(index - 1)}
           >
-            <ChevronLeft className="size-4" />
+            <IconChevronLeft className="size-4" />
             Previous receipt
           </Button>
           {receipt && (
             <Button variant="ghost" size="sm" asChild>
               <a href={receipt.download_url} target="_blank" rel="noreferrer">
                 Open original
-                <ExternalLink className="size-4" />
+                <IconExternalLink className="size-4" />
               </a>
             </Button>
           )}
@@ -168,7 +169,7 @@ function ReceiptViewer({
                 ? "Next person’s receipts"
                 : "Last receipt"
               : "Next receipt"}
-            <ChevronRight className="size-4" />
+            <IconChevronRight className="size-4" />
           </Button>
         </div>
       </DialogContent>
@@ -325,7 +326,12 @@ export function ResponseDetailSheet({
                 </SheetDescription>
               </div>
               {item && (
-                <Badge variant="outline" className="shrink-0 capitalize">
+                <Badge
+                  className={cn(
+                    "shrink-0 capitalize",
+                    getStatusColor(statusFor(form, item)),
+                  )}
+                >
                   {statusFor(form, item).replace("_", " ")}
                 </Badge>
               )}
@@ -339,7 +345,7 @@ export function ResponseDetailSheet({
               disabled={!canPrevious}
               onClick={onPrevious}
             >
-              <ChevronLeft className="size-4" />
+              <IconChevronLeft className="size-4" />
               Previous person
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -352,7 +358,7 @@ export function ResponseDetailSheet({
               onClick={onNext}
             >
               Next person
-              <ChevronRight className="size-4" />
+              <IconChevronRight className="size-4" />
             </Button>
           </div>
 
@@ -371,7 +377,7 @@ export function ResponseDetailSheet({
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <h3 className="flex items-center gap-2 font-medium">
-                            <CircleDollarSign className="size-4 text-muted-foreground" />
+                            <IconCoin className="size-4 text-muted-foreground" />
                             Reimbursement amounts
                           </h3>
                           <p className="text-sm text-muted-foreground">
@@ -420,7 +426,7 @@ export function ResponseDetailSheet({
 
                   <section>
                     <div className="mb-3 flex items-center gap-2">
-                      <FileText className="size-4 text-muted-foreground" />
+                      <IconFileText className="size-4 text-muted-foreground" />
                       <h3 className="font-medium">Submitted answers</h3>
                     </div>
                     {visibleFields.length > 0 ? (
@@ -453,7 +459,7 @@ export function ResponseDetailSheet({
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <h3 className="flex items-center gap-2 font-medium">
-                            <ReceiptText className="size-4 text-muted-foreground" />
+                            <IconReceipt className="size-4 text-muted-foreground" />
                             Receipts
                             <Badge variant="secondary">{receipts.length}</Badge>
                           </h3>
@@ -478,7 +484,7 @@ export function ResponseDetailSheet({
                               className="flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
                             >
                               <span className="flex min-w-0 items-center gap-2">
-                                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                                <IconFileText className="size-4 shrink-0 text-muted-foreground" />
                                 <span className="truncate text-sm">
                                   Receipt {index + 1}
                                 </span>
@@ -579,7 +585,7 @@ export function ResponseDetailSheet({
                 saveAmount();
               }}
             >
-              {savingAmount && <Loader2 className="size-4 animate-spin" />}
+              {savingAmount && <IconLoader2 className="size-4 animate-spin" />}
               Save approved amount
             </AlertDialogAction>
           </AlertDialogFooter>

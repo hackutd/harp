@@ -24,11 +24,11 @@ export function OutdatedAnswersNotice({
   return (
     <div
       role="status"
-      className="mb-6 space-y-3 rounded-xl border border-[#E5E5E5] p-5"
+      className="mb-6 space-y-3 rounded-xl border border-ink/10 p-5"
     >
       <div className="space-y-1">
         <p className="text-sm font-normal">Some answer choices have changed</p>
-        <p className="text-xs font-light text-[#8A8A8A]">
+        <p className="text-xs font-light text-ink/65">
           You can keep saving your draft. Update these answers before
           submitting.
         </p>
@@ -37,7 +37,7 @@ export function OutdatedAnswersNotice({
         {outdated.map((field) => (
           <li key={field.id} className="space-y-1 text-sm font-light">
             <p>{stripLabelLinks(field.label)}</p>
-            <p className="break-words text-xs text-[#8A8A8A]">
+            <p className="break-words text-xs text-ink/65">
               No longer available:{" "}
               {getObsoleteOptions(field, values[field.id]).join(", ")}
             </p>
@@ -53,7 +53,7 @@ export function OutdatedAnswersNotice({
               )}
               <button
                 type="button"
-                className="text-[#8A8A8A] underline underline-offset-2 hover:text-black"
+                className="text-ink/65 underline underline-offset-2 hover:text-ink"
                 onClick={() => onClear(field)}
               >
                 Clear unavailable{" "}

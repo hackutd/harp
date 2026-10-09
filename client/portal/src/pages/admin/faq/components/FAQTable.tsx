@@ -1,4 +1,4 @@
-import { Code, Pencil, Plus, Trash2 } from "lucide-react";
+import { IconCode, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -145,7 +145,7 @@ export function FAQTable({
             >
               <PopoverTrigger asChild>
                 <Button size="sm" variant="outline" className="cursor-pointer">
-                  <Code className="mr-1 size-4" />
+                  <IconCode className="mr-1 size-4" />
                   Preview API
                 </Button>
               </PopoverTrigger>
@@ -174,7 +174,7 @@ export function FAQTable({
               disabled={!canEdit}
               className="cursor-pointer"
             >
-              <Plus className="mr-1 size-4" />
+              <IconPlus className="mr-1 size-4" />
               Add FAQ
             </Button>
           </div>
@@ -218,7 +218,7 @@ export function FAQTable({
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium">{faq.question}</span>
                           {canEdit && (
-                            <Pencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            <IconPencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                           )}
                         </div>
                       </TableCell>
@@ -239,7 +239,7 @@ export function FAQTable({
                             }}
                             title="Delete"
                           >
-                            <Trash2 className="size-4" />
+                            <IconTrash className="size-4" />
                           </Button>
                         )}
                       </TableCell>

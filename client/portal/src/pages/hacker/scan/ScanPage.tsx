@@ -43,10 +43,10 @@ export default function ScanPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-5 pt-6 pb-8 md:px-10">
       {/* Admins toggle between their own QR code and the mobile scanner */}
-      <div className="relative mx-auto flex w-full max-w-xs rounded-full bg-[#F0F0F0] p-1">
+      <div className="relative mx-auto flex w-full max-w-xs rounded-full bg-surface p-1">
         <span
           aria-hidden
-          className="pointer-events-none absolute rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-all duration-300 ease-out"
+          className="pointer-events-none absolute rounded-full bg-ink/10 transition-all duration-300 ease-out"
           style={{
             top: `${TAB_PAD}rem`,
             bottom: `${TAB_PAD}rem`,
@@ -62,9 +62,7 @@ export default function ScanPage() {
             aria-pressed={tab === value}
             className={cn(
               "relative z-10 flex-1 rounded-full py-2 text-sm transition-colors active:scale-[0.98]",
-              tab === value
-                ? "font-medium text-black"
-                : "font-light text-[#8A8A8A]",
+              tab === value ? "font-medium text-ink" : "font-light text-ink/65",
             )}
           >
             {label}

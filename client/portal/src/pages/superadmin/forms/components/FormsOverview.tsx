@@ -1,13 +1,13 @@
 import {
-  ArrowRight,
-  CircleDollarSign,
-  DoorOpen,
-  FileCheck2,
-  FileClock,
-  ReceiptText,
-  RefreshCw,
-  Users,
-} from "lucide-react";
+  IconArrowRight,
+  IconCoin,
+  IconDoorEnter,
+  IconFileCheck,
+  IconFileTime,
+  IconReceipt,
+  IconRefresh,
+  IconUsers,
+} from "@tabler/icons-react";
 import { Link } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,9 @@ function StatusBadge({ open }: { open: boolean }) {
   return (
     <span
       className={`inline-flex items-center text-xs font-normal ${
-        open ? "text-emerald-700" : "text-slate-500"
+        open
+          ? "text-emerald-700 theme-dark:text-emerald-400"
+          : "text-muted-foreground"
       }`}
     >
       <span
@@ -133,7 +135,7 @@ function FormCard({ form, data }: { form: FormKey; data: FormsOverviewData }) {
             <p className="truncate text-xs font-normal text-muted-foreground">
               Latest: {formatDateTime(latest)}
             </p>
-            <ArrowRight
+            <IconArrowRight
               className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
               strokeWidth={1.5}
             />
@@ -177,7 +179,7 @@ function AttendanceCard({ data }: { data: FormsOverviewData }) {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <DoorOpen className="size-5 text-muted-foreground" />
+          <IconDoorEnter className="size-5 text-muted-foreground" />
           <CardTitle className="text-base font-medium">
             Event attendance
           </CardTitle>
@@ -237,25 +239,25 @@ export function FormsOverview({
     {
       label: "Applications awaiting a decision",
       value: data.stats.applications.awaiting_decision,
-      icon: FileClock,
+      icon: IconFileTime,
       to: "/admin/sa/reviews",
     },
     {
       label: "Accepted hackers awaiting RSVP",
       value: data.stats.rsvp.pending,
-      icon: Users,
+      icon: IconUsers,
       to: "/admin/sa/forms/rsvp?tab=responses&status=pending",
     },
     {
       label: "Travel requests awaiting a decision",
       value: data.stats.travel.decision_pending,
-      icon: FileCheck2,
+      icon: IconFileCheck,
       to: "/admin/sa/forms/travel?tab=responses&travel_status=pending",
     },
     {
       label: "Approved travelers awaiting their form",
       value: data.stats.travel.form_pending,
-      icon: ReceiptText,
+      icon: IconReceipt,
       to: "/admin/sa/forms/travel?tab=responses&status=pending",
     },
   ];
@@ -285,7 +287,7 @@ export function FormsOverview({
                 onClick={onRefresh}
                 className="font-light"
               >
-                <RefreshCw
+                <IconRefresh
                   className={`size-4 ${refreshing ? "animate-spin" : ""}`}
                 />
                 Refresh
@@ -306,7 +308,7 @@ export function FormsOverview({
                     {step.label}
                   </p>
                   {index < funnel.length - 1 && (
-                    <ArrowRight className="absolute -right-3 top-1/2 z-10 hidden size-4 -translate-y-1/2 rounded-full bg-background text-muted-foreground xl:block" />
+                    <IconArrowRight className="absolute -right-3 top-1/2 z-10 hidden size-4 -translate-y-1/2 rounded-full bg-background text-muted-foreground xl:block" />
                   )}
                 </div>
               ))}
@@ -348,7 +350,7 @@ export function FormsOverview({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CircleDollarSign className="size-5 text-muted-foreground" />
+            <IconCoin className="size-5 text-muted-foreground" />
             <CardTitle className="text-base font-medium">
               Travel funding
             </CardTitle>

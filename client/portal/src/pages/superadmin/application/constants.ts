@@ -1,3 +1,4 @@
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import type { FieldType } from "@/types";
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
@@ -11,11 +12,11 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 };
 
 export const TYPE_COLORS: Record<FieldType, string> = {
-  text: "bg-blue-50 text-blue-700 border-blue-200",
-  number: "bg-purple-50 text-purple-700 border-purple-200",
-  textarea: "bg-green-50 text-green-700 border-green-200",
-  select: "bg-amber-50 text-amber-700 border-amber-200",
-  multi_select: "bg-orange-50 text-orange-700 border-orange-200",
-  checkbox: "bg-pink-50 text-pink-700 border-pink-200",
-  phone: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  text: BADGE_COLORS.blue,
+  number: BADGE_COLORS.purple,
+  textarea: BADGE_COLORS.green,
+  select: BADGE_COLORS.orange,
+  multi_select: BADGE_COLORS.orange,
+  checkbox: BADGE_COLORS.red,
+  phone: BADGE_COLORS.blue,
 };

@@ -1,11 +1,11 @@
 import {
-  Code,
-  ExternalLink,
-  ImagePlus,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+  IconCode,
+  IconExternalLink,
+  IconPencil,
+  IconPhotoPlus,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -47,6 +47,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 
 import { fetchSponsors } from "../api";
 import { ALLOWED_LOGO_TYPES, MAX_LOGO_SOURCE_BYTES } from "../constants";
@@ -54,13 +55,13 @@ import type { Sponsor, SponsorPayload } from "../types";
 import { SponsorFormDialog } from "./SponsorFormDialog";
 
 const tierColors: Record<string, string> = {
-  Title: "bg-rose-100 text-rose-800",
-  Platinum: "bg-violet-100 text-violet-800",
-  Gold: "bg-amber-100 text-amber-800",
-  Silver: "bg-gray-100 text-gray-800",
-  Bronze: "bg-orange-100 text-orange-800",
-  "Other Sponsors": "bg-blue-100 text-blue-800",
-  "Also Thanking": "bg-emerald-100 text-emerald-800",
+  Title: BADGE_COLORS.red,
+  Platinum: BADGE_COLORS.purple,
+  Gold: BADGE_COLORS.orange,
+  Silver: BADGE_COLORS.neutral,
+  Bronze: BADGE_COLORS.orange,
+  "Other Sponsors": BADGE_COLORS.blue,
+  "Also Thanking": BADGE_COLORS.green,
 };
 
 interface SponsorsTableProps {
@@ -247,12 +248,12 @@ export function SponsorsTable({
             className="size-10 rounded object-contain border"
           />
           <div className="absolute inset-0 rounded bg-black/50 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center">
-            <ImagePlus className="size-4 text-white" />
+            <IconPhotoPlus className="size-4 text-white" />
           </div>
         </div>
       ) : (
         <div className="size-10 rounded border border-dashed flex items-center justify-center text-muted-foreground hover:border-foreground hover:text-foreground transition-colors">
-          <ImagePlus className="size-4" />
+          <IconPhotoPlus className="size-4" />
         </div>
       )}
     </button>
@@ -281,7 +282,7 @@ export function SponsorsTable({
             >
               <PopoverTrigger asChild>
                 <Button size="sm" variant="outline" className="cursor-pointer">
-                  <Code className="mr-1 size-4" />
+                  <IconCode className="mr-1 size-4" />
                   Preview API
                 </Button>
               </PopoverTrigger>
@@ -305,7 +306,7 @@ export function SponsorsTable({
               </PopoverContent>
             </Popover>
             <Button size="sm" onClick={openCreate} className="cursor-pointer">
-              <Plus className="mr-1 size-4" />
+              <IconPlus className="mr-1 size-4" />
               Add Sponsor
             </Button>
           </div>
@@ -340,7 +341,7 @@ export function SponsorsTable({
                       <TableCell>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium">{sponsor.name}</span>
-                          <Pencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          <IconPencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </div>
                       </TableCell>
                       <TableCell>
@@ -352,8 +353,7 @@ export function SponsorsTable({
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant="secondary"
-                          className={`text-xs px-1.5 py-0 ${tierColors[sponsor.tier] ?? "bg-blue-100 text-blue-800"}`}
+                          className={`text-xs px-1.5 py-0 ${tierColors[sponsor.tier] ?? BADGE_COLORS.blue}`}
                         >
                           {sponsor.tier}
                         </Badge>
@@ -373,7 +373,7 @@ export function SponsorsTable({
                                   className="text-muted-foreground hover:text-foreground"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <ExternalLink className="size-4" />
+                                  <IconExternalLink className="size-4" />
                                 </a>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -394,7 +394,7 @@ export function SponsorsTable({
                           }}
                           title="Delete"
                         >
-                          <Trash2 className="size-4" />
+                          <IconTrash className="size-4" />
                         </Button>
                       </TableCell>
                     </TableRow>

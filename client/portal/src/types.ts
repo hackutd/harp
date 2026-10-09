@@ -76,11 +76,15 @@ export interface NotesListResponse {
   notes: ReviewNote[];
 }
 
+/** The portal colour scheme a user picked; dark is the default. */
+export type Theme = "light" | "dark";
+
 export interface User {
   id: string;
   email: string;
   role: UserRole;
   profilePictureUrl?: string;
+  theme: Theme;
   createdAt: string;
   updatedAt: string;
 }

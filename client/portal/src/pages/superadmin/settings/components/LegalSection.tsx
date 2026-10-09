@@ -1,4 +1,4 @@
-import { Scale } from "lucide-react";
+import { IconScale } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -90,7 +90,7 @@ export function LegalSection() {
             notice only once at least one link is set.
           </p>
         </div>
-        <Scale className="size-5 shrink-0 text-zinc-500" />
+        <IconScale className="size-5 shrink-0 text-zinc-500" />
       </div>
 
       <div className="space-y-1">

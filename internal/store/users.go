@@ -26,6 +26,14 @@ const (
 	AuthMethodGoogle       AuthMethod = "google"
 )
 
+// Theme is the user's portal colour scheme. Dark is the default for every role.
+type Theme string
+
+const (
+	ThemeLight Theme = "light"
+	ThemeDark  Theme = "dark"
+)
+
 type User struct {
 	ID                string     `json:"id"`
 	SuperTokensUserID string     `json:"supertokens_user_id" validate:"required"`
@@ -33,6 +41,7 @@ type User struct {
 	Role              UserRole   `json:"role" validate:"required,oneof=hacker admin super_admin"`
 	AuthMethod        AuthMethod `json:"auth_method" validate:"required,oneof=passwordless google"`
 	ProfilePictureURL *string    `json:"profile_picture_url,omitempty"`
+	Theme             Theme      `json:"theme"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
@@ -41,27 +50,32 @@ type UsersStore struct {
 	db *sql.DB
 }
 
-func (s *UsersStore) GetBySuperTokensID(ctx context.Context, supertokensUserID string) (*User, error) {
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
+// userSelectCols is the standard column list for loading a full User.
+const userSelectCols = `id, supertokens_user_id, email, role, auth_method, profile_picture_url, theme, created_at, updated_at`
 
-	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
-		FROM users
-		WHERE supertokens_user_id = $1
-	`
-
-	var user User
-	err := s.db.QueryRowContext(ctx, query, supertokensUserID).Scan(
+// scanUser scans a row selected with userSelectCols into a User.
+func scanUser(row interface{ Scan(dest ...any) error }, user *User) error {
+	return row.Scan(
 		&user.ID,
 		&user.SuperTokensUserID,
 		&user.Email,
 		&user.Role,
 		&user.AuthMethod,
 		&user.ProfilePictureURL,
+		&user.Theme,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
+}
+
+func (s *UsersStore) GetBySuperTokensID(ctx context.Context, supertokensUserID string) (*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `SELECT ` + userSelectCols + ` FROM users WHERE supertokens_user_id = $1`
+
+	var user User
+	err := scanUser(s.db.QueryRowContext(ctx, query, supertokensUserID), &user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -76,23 +90,10 @@ func (s *UsersStore) GetByID(ctx context.Context, id string) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
-		FROM users
-		WHERE id = $1
-	`
+	query := `SELECT ` + userSelectCols + ` FROM users WHERE id = $1`
 
 	var user User
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&user.ID,
-		&user.SuperTokensUserID,
-		&user.Email,
-		&user.Role,
-		&user.AuthMethod,
-		&user.ProfilePictureURL,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	err := scanUser(s.db.QueryRowContext(ctx, query, id), &user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -124,7 +125,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		)
 		INSERT INTO users (supertokens_user_id, email, role, auth_method, profile_picture_url, referral_id)
 		VALUES ($1, $2, $3, $4, $5, (SELECT referral_id FROM claimed WHERE created_at > $6))
-		RETURNING id, created_at, updated_at
+		RETURNING id, theme, created_at, updated_at
 	`
 
 	err = tx.QueryRowContext(
@@ -136,7 +137,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		user.AuthMethod,
 		user.ProfilePictureURL,
 		time.Now().Add(-pendingReferralTTL),
-	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Theme, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "users_email_key") {
@@ -207,23 +208,10 @@ func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
-		FROM users
-		WHERE email = $1
-	`
+	query := `SELECT ` + userSelectCols + ` FROM users WHERE email = $1`
 
 	var user User
-	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID,
-		&user.SuperTokensUserID,
-		&user.Email,
-		&user.Role,
-		&user.AuthMethod,
-		&user.ProfilePictureURL,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	err := scanUser(s.db.QueryRowContext(ctx, query, email), &user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -319,20 +307,10 @@ func (s *UsersStore) UpdateRole(ctx context.Context, userID string, role UserRol
 		UPDATE users
 		SET role = $2, updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
-	`
+		RETURNING ` + userSelectCols
 
 	var user User
-	err := s.db.QueryRowContext(ctx, query, userID, role).Scan(
-		&user.ID,
-		&user.SuperTokensUserID,
-		&user.Email,
-		&user.Role,
-		&user.AuthMethod,
-		&user.ProfilePictureURL,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	err := scanUser(s.db.QueryRowContext(ctx, query, userID, role), &user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -355,20 +333,10 @@ func (s *UsersStore) UpdateSuperTokensID(ctx context.Context, userID string, sup
 		UPDATE users
 		SET supertokens_user_id = $2, updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
-	`
+		RETURNING ` + userSelectCols
 
 	var user User
-	err := s.db.QueryRowContext(ctx, query, userID, supertokensUserID).Scan(
-		&user.ID,
-		&user.SuperTokensUserID,
-		&user.Email,
-		&user.Role,
-		&user.AuthMethod,
-		&user.ProfilePictureURL,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	err := scanUser(s.db.QueryRowContext(ctx, query, userID, supertokensUserID), &user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -390,6 +358,34 @@ func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID
 	`
 
 	result, err := s.db.ExecContext(ctx, query, pictureURL, supertokensUserID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateTheme stores the user's portal colour scheme.
+func (s *UsersStore) UpdateTheme(ctx context.Context, userID string, theme Theme) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `
+		UPDATE users
+		SET theme = $2, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := s.db.ExecContext(ctx, query, userID, theme)
 	if err != nil {
 		return err
 	}
@@ -493,7 +489,7 @@ func (s *UsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, erro
 	defer cancel()
 
 	query := `
-		SELECT id, supertokens_user_id, email, role, auth_method, profile_picture_url, created_at, updated_at
+		SELECT ` + userSelectCols + `
 		FROM users
 		WHERE role = $1
 		ORDER BY created_at DESC
@@ -508,7 +504,7 @@ func (s *UsersStore) GetByRole(ctx context.Context, role UserRole) ([]User, erro
 	users := make([]User, 0)
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.ID, &user.SuperTokensUserID, &user.Email, &user.Role, &user.AuthMethod, &user.ProfilePictureURL, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		if err := scanUser(rows, &user); err != nil {
 			return nil, err
 		}
 		users = append(users, user)

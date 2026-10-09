@@ -67,7 +67,7 @@ export function InstallGuideDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex h-[min(45vh,24rem)] items-center justify-center overflow-hidden rounded-xl border border-[#E5E5E5]">
+        <div className="flex h-[min(45vh,24rem)] items-center justify-center overflow-hidden rounded-xl border border-ink/10">
           <img
             src={current.src}
             alt={current.caption}
@@ -81,7 +81,7 @@ export function InstallGuideDialog({
               key={s.src}
               className={cn(
                 "size-1.5 rounded-full transition-colors",
-                i === step ? "bg-black" : "bg-[#E5E5E5]",
+                i === step ? "bg-tide" : "bg-ink/25",
               )}
             />
           ))}

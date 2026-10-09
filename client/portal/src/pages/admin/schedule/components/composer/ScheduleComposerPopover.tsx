@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -177,7 +177,7 @@ export function ScheduleComposerPopover({
               aria-label="Delete schedule item"
               className="text-red-500 hover:text-red-600 hover:bg-red-50"
             >
-              <Trash2
+              <IconTrash
                 className={cn("size-4", deletingItem && "animate-pulse")}
               />
             </Button>

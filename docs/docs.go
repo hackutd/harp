@@ -11629,6 +11629,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/theme": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the authenticated user's portal colour scheme (light or dark). Applies to the hacker and admin portals.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Set my theme",
+                "parameters": [
+                    {
+                        "description": "Theme",
+                        "name": "theme",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateThemePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/wallet/apple-pass": {
             "get": {
                 "security": [
@@ -13642,6 +13725,25 @@ const docTemplate = `{
                 }
             }
         },
+        "main.UpdateThemePayload": {
+            "type": "object",
+            "required": [
+                "theme"
+            ],
+            "properties": {
+                "theme": {
+                    "enum": [
+                        "light",
+                        "dark"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.Theme"
+                        }
+                    ]
+                }
+            }
+        },
         "main.UpdateTravelRSVPSchemaPayload": {
             "type": "object",
             "required": [
@@ -13673,6 +13775,9 @@ const docTemplate = `{
                 },
                 "role": {
                     "$ref": "#/definitions/store.UserRole"
+                },
+                "theme": {
+                    "$ref": "#/definitions/store.Theme"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -14873,6 +14978,17 @@ const docTemplate = `{
                 }
             }
         },
+        "store.Theme": {
+            "type": "string",
+            "enum": [
+                "light",
+                "dark"
+            ],
+            "x-enum-varnames": [
+                "ThemeLight",
+                "ThemeDark"
+            ]
+        },
         "store.Track": {
             "type": "object",
             "properties": {
@@ -15027,6 +15143,9 @@ const docTemplate = `{
                 },
                 "supertokens_user_id": {
                     "type": "string"
+                },
+                "theme": {
+                    "$ref": "#/definitions/store.Theme"
                 },
                 "updated_at": {
                     "type": "string"

@@ -1,11 +1,13 @@
 import {
-  DoorOpen,
-  Gift,
-  MoreHorizontal,
-  ShoppingCart,
-  UserCheck,
-  Utensils,
-} from "lucide-react";
+  IconDoorEnter,
+  IconDots,
+  IconGift,
+  IconShoppingCart,
+  IconToolsKitchen2,
+  IconUserCheck,
+} from "@tabler/icons-react";
+
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 
 import type { ScanType, ScanTypeCategory } from "./types";
 
@@ -56,22 +58,22 @@ export function formatPointsDelta(scanType: ScanType): string {
     : `+${scanType.points}`;
 }
 
-export const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
-  check_in: UserCheck,
-  meal: Utensils,
-  swag: Gift,
-  other: MoreHorizontal,
-  walk_in: DoorOpen,
-  shop: ShoppingCart,
+export const categoryIcons: Record<ScanTypeCategory, typeof IconUserCheck> = {
+  check_in: IconUserCheck,
+  meal: IconToolsKitchen2,
+  swag: IconGift,
+  other: IconDots,
+  walk_in: IconDoorEnter,
+  shop: IconShoppingCart,
 };
 
 export const categoryColors: Record<ScanTypeCategory, string> = {
-  check_in: "bg-blue-100 text-blue-800",
-  meal: "bg-orange-100 text-orange-800",
-  swag: "bg-purple-100 text-purple-800",
-  other: "bg-gray-100 text-gray-800",
-  walk_in: "bg-violet-100 text-violet-700",
-  shop: "bg-rose-100 text-rose-800",
+  check_in: BADGE_COLORS.blue,
+  meal: BADGE_COLORS.orange,
+  swag: BADGE_COLORS.purple,
+  other: BADGE_COLORS.neutral,
+  walk_in: BADGE_COLORS.green,
+  shop: BADGE_COLORS.red,
 };
 
 export const categoryOptions = [

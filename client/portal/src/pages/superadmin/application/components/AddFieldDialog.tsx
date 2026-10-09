@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -106,7 +106,7 @@ export function AddFieldDialog({
           variant="outline"
           className="w-full border-dashed cursor-pointer"
         >
-          <Plus className="size-4 mr-2" />
+          <IconPlus className="size-4 mr-2" />
           Add Field
         </Button>
       </DialogTrigger>

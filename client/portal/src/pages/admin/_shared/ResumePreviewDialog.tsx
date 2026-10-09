@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { IconExternalLink } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 
 import {
@@ -70,7 +70,7 @@ export function ResumePreviewDialog({
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground mr-8 inline-flex items-center gap-1.5 text-xs transition-colors"
             >
-              <ExternalLink className="size-3.5" />
+              <IconExternalLink className="size-3.5" />
               Open in new tab
             </a>
           )}

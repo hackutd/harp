@@ -1,4 +1,4 @@
-import { RotateCcw, Save } from "lucide-react";
+import { IconDeviceFloppy, IconRotate } from "@tabler/icons-react";
 import { useEffect } from "react";
 
 import {
@@ -56,7 +56,7 @@ export default function RSVPPage() {
       {/* Left: RSVP Form Preview */}
       <Card className="w-1/2 rounded-r-none overflow-hidden flex flex-col h-full">
         <CardHeader className="shrink-0 border-b px-6 pb-2!">
-          <CardDescription className="font-semibold text-slate-900">
+          <CardDescription className="font-semibold text-foreground">
             RSVP Form Preview
           </CardDescription>
         </CardHeader>
@@ -72,7 +72,7 @@ export default function RSVPPage() {
       {/* Right: Schema Editor */}
       <Card className="w-1/2 rounded-l-none border-l-0 overflow-hidden flex flex-col h-full">
         <CardHeader className="shrink-0 border-b px-6 pb-2!">
-          <CardDescription className="font-semibold text-slate-900">
+          <CardDescription className="font-semibold text-foreground">
             RSVP Schema
           </CardDescription>
         </CardHeader>
@@ -97,7 +97,7 @@ export default function RSVPPage() {
                   disabled={!dirty || saving}
                   onClick={discardChanges}
                 >
-                  <RotateCcw className="size-4" />
+                  <IconRotate className="size-4" />
                   Discard
                 </Button>
                 {dirty && <Badge variant="secondary">Unsaved changes</Badge>}
@@ -108,7 +108,7 @@ export default function RSVPPage() {
                       disabled={!dirty}
                       className="ml-auto cursor-pointer"
                     >
-                      {!saving && <Save className="size-4 mr-2" />}
+                      {!saving && <IconDeviceFloppy className="size-4 mr-2" />}
                       Save Schema
                     </Button>
                   </AlertDialogTrigger>

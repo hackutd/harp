@@ -1,4 +1,9 @@
-import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import {
+  IconPencil,
+  IconPlus,
+  IconTrash,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -158,7 +163,7 @@ export default function ReferralsPage() {
           </CardDescription>
           <CardAction>
             <Button size="sm" onClick={handleStartCreate} disabled={saving}>
-              <Plus className="size-4" />
+              <IconPlus className="size-4" />
               New referral
             </Button>
           </CardAction>
@@ -208,7 +213,7 @@ export default function ReferralsPage() {
                             setSignupsOpen(true);
                           }}
                         >
-                          <Users className="size-4" />
+                          <IconUsers className="size-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -217,7 +222,7 @@ export default function ReferralsPage() {
                           onClick={() => handleStartEdit(referral)}
                           disabled={saving}
                         >
-                          <Pencil className="size-4" />
+                          <IconPencil className="size-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -229,7 +234,7 @@ export default function ReferralsPage() {
                           }}
                           disabled={saving}
                         >
-                          <Trash2 className="size-4 text-destructive" />
+                          <IconTrash className="size-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>

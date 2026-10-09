@@ -986,3 +986,48 @@ func TestIntegrationGetEmailsByStatusRSVP(t *testing.T) {
 		}
 	}
 }
+
+func TestIntegrationUserTheme(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+
+	s := &UsersStore{db: db}
+	ctx := context.Background()
+	const aliceID = "11111111-1111-1111-1111-111111111111"
+
+	// Every user starts in dark mode, including ones created through Create.
+	alice, err := s.GetByID(ctx, aliceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if alice.Theme != ThemeDark {
+		t.Errorf("seeded user theme = %q, want %q", alice.Theme, ThemeDark)
+	}
+	created := &User{SuperTokensUserID: "st-theme", Email: "theme@example.com", Role: RoleHacker, AuthMethod: AuthMethodPasswordless}
+	if err := s.Create(ctx, created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Theme != ThemeDark {
+		t.Errorf("created user theme = %q, want %q", created.Theme, ThemeDark)
+	}
+
+	if err := s.UpdateTheme(ctx, aliceID, ThemeLight); err != nil {
+		t.Fatal(err)
+	}
+	alice, err = s.GetBySuperTokensID(ctx, "st-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if alice.Theme != ThemeLight {
+		t.Errorf("theme after update = %q, want %q", alice.Theme, ThemeLight)
+	}
+
+	if err := s.UpdateTheme(ctx, "99999999-9999-9999-9999-999999999999", ThemeLight); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown user: got %v, want ErrNotFound", err)
+	}
+
+	if err := s.UpdateTheme(ctx, aliceID, Theme("blue")); err == nil {
+		t.Error("an unknown theme should violate users_theme_check")
+	}
+}

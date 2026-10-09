@@ -1,4 +1,9 @@
-import { Check, Pencil, Sparkles, X } from "lucide-react";
+import {
+  IconCheck,
+  IconPencil,
+  IconSparkles,
+  IconX,
+} from "@tabler/icons-react";
 import { memo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -119,13 +124,11 @@ export const AIAssessmentField = memo(function AIAssessmentField({
               loading={pending === "calculate"}
               onClick={() => void calculate()}
             >
-              <Sparkles className="size-3.5" />{" "}
+              <IconSparkles className="size-3.5" />{" "}
               {pending === "calculate" ? "Calculating…" : "Calculate"}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            Overwrites the current AI score and breakdown
-          </TooltipContent>
+          <TooltipContent>Overwrites the current AI score</TooltipContent>
         </Tooltip>
       </div>
       {editing ? (
@@ -175,7 +178,7 @@ export const AIAssessmentField = memo(function AIAssessmentField({
               disabled={disabled}
               loading={pending === "save"}
             >
-              <Check className="size-4" />
+              <IconCheck className="size-4" />
             </Button>
             <Button
               type="button"
@@ -185,7 +188,7 @@ export const AIAssessmentField = memo(function AIAssessmentField({
               disabled={disabled}
               onClick={() => setEditing(false)}
             >
-              <X className="size-4" />
+              <IconX className="size-4" />
             </Button>
           </div>
         </form>
@@ -202,7 +205,7 @@ export const AIAssessmentField = memo(function AIAssessmentField({
                 onClick={startEditing}
                 className="text-muted-foreground"
               >
-                <Pencil className="size-3.5" />
+                <IconPencil className="size-3.5" />
               </Button>
             }
           />

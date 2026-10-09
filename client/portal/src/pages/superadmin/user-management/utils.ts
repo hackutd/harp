@@ -1,3 +1,4 @@
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import type { UserRole } from "@/types";
 
 export const MIN_SEARCH_LENGTH = 2;
@@ -11,9 +12,9 @@ export const roleLabels: Record<UserRole, string> = {
 export const allRoles: UserRole[] = ["super_admin", "admin", "hacker"];
 
 export const roleActiveStyles: Record<UserRole, string> = {
-  hacker: "bg-gray-200 text-gray-800 hover:bg-gray-300",
-  admin: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-  super_admin: "bg-indigo-400 text-white hover:bg-indigo-500",
+  hacker: `${BADGE_COLORS.neutral} hover:opacity-90`,
+  admin: `${BADGE_COLORS.blue} hover:opacity-90`,
+  super_admin: `${BADGE_COLORS.purple} hover:opacity-90`,
 };
 
 export const roleInactiveStyles =

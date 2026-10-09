@@ -1,4 +1,8 @@
-import { CalendarCheck, ClipboardList, Plane } from "lucide-react";
+import {
+  IconCalendarCheck,
+  IconClipboardList,
+  IconPlane,
+} from "@tabler/icons-react";
 
 import type { FormKey } from "./types";
 
@@ -8,21 +12,21 @@ export const FORM_CONFIG = {
     pluralTitle: "Applications",
     audience: "All hackers",
     description: "Application intake, admissions, and travel requests.",
-    icon: ClipboardList,
+    icon: IconClipboardList,
   },
   rsvp: {
     title: "RSVP",
     pluralTitle: "RSVPs",
     audience: "Accepted hackers",
     description: "Spot confirmation and event attendance details.",
-    icon: CalendarCheck,
+    icon: IconCalendarCheck,
   },
   travel: {
     title: "Travel form",
     pluralTitle: "Travel forms",
     audience: "Approved travelers with a confirmed RSVP",
     description: "Travel details, committed awards, and receipt collection.",
-    icon: Plane,
+    icon: IconPlane,
   },
 } satisfies Record<FormKey, object>;
 

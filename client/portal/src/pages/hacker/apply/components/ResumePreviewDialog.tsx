@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { IconExternalLink } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 
 import {
@@ -64,15 +64,15 @@ export function ResumePreviewDialog({ trigger }: ResumePreviewDialogProps) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mr-8 inline-flex items-center gap-1.5 text-xs font-light text-[#8A8A8A] transition-colors hover:text-black"
+              className="mr-8 inline-flex items-center gap-1.5 text-xs font-light text-ink/65 transition-colors hover:text-ink"
             >
-              <ExternalLink className="size-3.5" strokeWidth={1.5} />
+              <IconExternalLink className="size-3.5" strokeWidth={1.5} />
               Open in new tab
             </a>
           )}
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[#E5E5E5] bg-[#FAFAFA]">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-ink/10 bg-surface">
           {loading && (
             <div className="h-full space-y-3 p-6">
               <Skeleton className="h-6 w-1/2" />
@@ -84,7 +84,7 @@ export function ResumePreviewDialog({ trigger }: ResumePreviewDialogProps) {
           )}
           {!loading && error && (
             <div className="flex h-full items-center justify-center px-6 text-center">
-              <p className="text-sm font-light text-red-500">{error}</p>
+              <p className="text-sm font-light text-red-400">{error}</p>
             </div>
           )}
           {!loading && !error && url && (

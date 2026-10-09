@@ -1,4 +1,4 @@
-import { EyeOff, RotateCw, Send } from "lucide-react";
+import { IconEyeOff, IconRotateClockwise, IconSend } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -47,7 +47,7 @@ export function ReleaseDecisionsButton({ stats }: ReleaseDecisionsButtonProps) {
         onClick={() => void fetchReleased()}
         title={error ?? undefined}
       >
-        {!loading && <RotateCw className="size-3.5" />}
+        {!loading && <IconRotateClockwise className="size-3.5" />}
         {loading ? "Loading release status" : "Retry release status"}
       </Button>
     );
@@ -75,12 +75,12 @@ export function ReleaseDecisionsButton({ stats }: ReleaseDecisionsButtonProps) {
       >
         {released ? (
           <>
-            <EyeOff className="size-3.5" />
+            <IconEyeOff className="size-3.5" />
             Hide Decisions
           </>
         ) : (
           <>
-            <Send className="size-3.5" />
+            <IconSend className="size-3.5" />
             Release Decisions
           </>
         )}

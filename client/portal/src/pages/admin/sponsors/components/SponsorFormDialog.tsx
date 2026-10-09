@@ -1,4 +1,4 @@
-import { ImagePlus, X } from "lucide-react";
+import { IconPhotoPlus, IconX } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -173,7 +173,7 @@ function SponsorForm({
               </>
             ) : (
               <>
-                <ImagePlus className="size-4 text-muted-foreground" />
+                <IconPhotoPlus className="size-4 text-muted-foreground" />
                 <span className="text-sm font-medium">
                   {isDraggingLogo
                     ? "Drop to upload"
@@ -194,7 +194,7 @@ function SponsorForm({
               aria-label="Remove selected logo"
               className="absolute right-1.5 top-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
             >
-              <X className="size-4" />
+              <IconX className="size-4" />
             </Button>
           )}
         </div>

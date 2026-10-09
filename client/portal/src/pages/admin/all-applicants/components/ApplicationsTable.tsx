@@ -1,4 +1,4 @@
-import { Maximize2 } from "lucide-react";
+import { IconArrowsMaximize } from "@tabler/icons-react";
 import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -38,9 +38,9 @@ export const ApplicationsTable = memo(function ApplicationsTable({
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
       {loading && (
-        <div className="absolute inset-0 bg-white/50 z-10 animate-pulse" />
+        <div className="absolute inset-0 bg-background/50 z-10 animate-pulse" />
       )}
-      <Table className="border-collapse table-fixed min-w-[1760px] [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
+      <Table className="border-collapse table-fixed min-w-[1760px] [&_th]:border-r [&_th]:border-border [&_td]:border-r [&_td]:border-border [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0 [&_th]:overflow-hidden [&_th]:text-ellipsis [&_td]:overflow-hidden [&_td]:text-ellipsis">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-46">Status</TableHead>
@@ -69,7 +69,10 @@ export const ApplicationsTable = memo(function ApplicationsTable({
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={19} className="text-center text-gray-500">
+              <TableCell
+                colSpan={19}
+                className="text-center text-muted-foreground"
+              >
                 No applications found
               </TableCell>
             </TableRow>
@@ -98,7 +101,7 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                       <PriorityBadge submittedAt={app.submitted_at} />
                     </div>
                     <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
-                      <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                      <IconArrowsMaximize className="h-4 w-4 text-muted-foreground" />
                     </span>
                   </TableCell>
                   <TableCell>

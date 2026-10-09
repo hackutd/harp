@@ -1,4 +1,4 @@
-import { Rocket } from "lucide-react";
+import { IconRocket } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -129,7 +129,7 @@ export default function HackathonTab() {
                 : "Some required settings are still missing."}
             </p>
           </div>
-          <Rocket className="size-5 text-zinc-500" />
+          <IconRocket className="size-5 text-zinc-500" />
         </div>
 
         <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">

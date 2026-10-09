@@ -1,11 +1,11 @@
 import {
-  Pencil,
-  Plus,
-  RefreshCw,
-  ScanLine,
-  Trash2,
-  UserCheck,
-} from "lucide-react";
+  IconPencil,
+  IconPlus,
+  IconRefresh,
+  IconScan,
+  IconTrash,
+  IconUserCheck,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -184,14 +184,14 @@ export function ScanTypesTable({
             loading={rebalancing}
             onClick={() => setRebalanceOpen(true)}
           >
-            {!rebalancing && <RefreshCw className="size-3.5" />}
+            {!rebalancing && <IconRefresh className="size-3.5" />}
             Rebalance
           </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0 flex-1 overflow-hidden">
         <div className="relative overflow-auto h-full p-6 pt-0 pb-3">
-          <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+          <Table className="border-collapse [&_th]:border-r [&_th]:border-border [&_td]:border-r [&_td]:border-border [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
                 <TableHead className="w-24">Action</TableHead>
@@ -205,7 +205,7 @@ export function ScanTypesTable({
             </TableHeader>
             <TableBody>
               {displayTypes.map((scanType, index) => {
-                const Icon = categoryIcons[scanType.category] ?? UserCheck;
+                const Icon = categoryIcons[scanType.category] ?? IconUserCheck;
                 const count = statsMap.get(scanType.name) ?? 0;
 
                 return (
@@ -221,7 +221,8 @@ export function ScanTypesTable({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button
-                          className="cursor-pointer"
+                          variant="outline"
+                          className="cursor-pointer bg-admin-panel hover:bg-surface-2"
                           size="sm"
                           disabled={!scanType.is_active}
                           onClick={(e) => {
@@ -229,7 +230,7 @@ export function ScanTypesTable({
                             onSelect(scanType);
                           }}
                         >
-                          <ScanLine className="mr-1 size-3" />
+                          <IconScan className="mr-1 size-3" />
                           Scan
                         </Button>
                       </div>
@@ -238,7 +239,7 @@ export function ScanTypesTable({
                       <div className="flex items-center justify-between gap-4">
                         <span>{scanType.display_name || "-"}</span>
                         {isSuperAdmin && (
-                          <Pencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <IconPencil className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     </TableCell>
@@ -246,7 +247,6 @@ export function ScanTypesTable({
                       <div className="flex items-center gap-2">
                         <Icon className="size-4 text-muted-foreground" />
                         <Badge
-                          variant="secondary"
                           className={`text-xs px-1.5 py-0 ${categoryColors[scanType.category]}`}
                         >
                           {scanType.category.replace("_", " ")}
@@ -263,12 +263,8 @@ export function ScanTypesTable({
                     {isSuperAdmin && (
                       <TableCell>
                         <Badge
-                          variant="secondary"
-                          className={`text-xs px-1.5 py-0 ${
-                            scanType.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                          variant={scanType.is_active ? "green" : "red"}
+                          className="text-xs px-1.5 py-0"
                         >
                           {scanType.is_active ? "Yes" : "No"}
                         </Badge>
@@ -286,7 +282,7 @@ export function ScanTypesTable({
                           }}
                           title="Delete"
                         >
-                          <Trash2 className="size-4" />
+                          <IconTrash className="size-4" />
                         </Button>
                       </TableCell>
                     )}
@@ -302,7 +298,7 @@ export function ScanTypesTable({
               onClick={openCreate}
               className="w-full mt-3 border-dashed cursor-pointer"
             >
-              <Plus className="size-4 mr-2" />
+              <IconPlus className="size-4 mr-2" />
               Add Scan Type
             </Button>
           )}

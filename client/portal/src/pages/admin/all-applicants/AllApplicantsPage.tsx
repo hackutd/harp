@@ -193,13 +193,13 @@ export default function AllApplicantsPage() {
         />
       </div>
 
-      <div className="shrink-0 flex flex-wrap items-center gap-3">
+      {/* @container: the filter tabs fold into a dropdown when this row
+          is narrow (see FilterTabs). */}
+      <div className="@container shrink-0 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-3">
-          <FilterModeToggle
-            mode={filterMode}
-            disabled={loading}
-            onModeChange={handleModeChange}
-          />
+          {/* Filters stay live while the table reloads: only the table
+              shows loading, and the store drops superseded responses. */}
+          <FilterModeToggle mode={filterMode} onModeChange={handleModeChange} />
           <div className="h-5 w-px bg-border shrink-0" />
           {isInitialLoad ? (
             <div className="flex gap-2">
@@ -210,14 +210,12 @@ export default function AllApplicantsPage() {
           ) : filterMode === "status" ? (
             <StatusFilterTabs
               stats={stats}
-              loading={loading}
               currentStatus={currentStatus}
               onStatusChange={handleStatusFilter}
             />
           ) : (
             <AttendanceFilterTabs
               stats={stats}
-              loading={loading}
               currentView={currentView}
               onViewChange={handleViewChange}
             />

@@ -118,7 +118,7 @@ Tests live in `cmd/api/` (`_test.go` files, same package as handlers):
 
 ### Frontend (React 19 + TypeScript + Vite)
 
-- **UI:** Tailwind CSS v4 + shadcn/ui (New York style, Radix-based, Lucide icons)
+- **UI:** Tailwind CSS v4 + shadcn/ui (New York style, Radix-based, Tabler icons via `@tabler/icons-react`)
 - **Routing:** React Router v7, guards in `shared/auth/guards/`
 - **State:** Zustand — global stores in `shared/stores/`, page-local stores co-located in page directories
 - **Forms:** React Hook Form + Zod validation
@@ -204,7 +204,7 @@ PRs that change `cmd/migrate/migrations/` also get a reminder comment (`.github/
 
 **Auth:** `GET /v1/auth/check-email`, `GET /v1/auth/me`
 **Unauthenticated:** `POST /v1/referrals/{code}/visit` (counts a landing on a `/?s=<code>` referral link; rate-limited by IP)
-**Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`, `GET /v1/points-config`
+**Hacker:** `GET|PATCH /v1/applications/me`, `POST /v1/applications/me/submit`, `GET /v1/points-config`, `DELETE /v1/users/me`, `PATCH /v1/users/me/theme` (light/dark portal theme, any role; defaults to dark)
 **Admin:** `GET /v1/admin/applications`, `GET /v1/admin/applications/stats`, `GET /v1/admin/applications/{id}`, `GET /v1/admin/applications/{id}/notes`, `GET /v1/admin/reviews/pending`, `GET /v1/admin/reviews/completed`, `GET /v1/admin/reviews/leaderboard`, `POST /v1/admin/reviews/claim`, `PUT /v1/admin/reviews/{id}`, `GET /v1/admin/scans/types`, `POST /v1/admin/scans`, `GET /v1/admin/scans/user/{userID}`, `GET /v1/admin/scans/stats`, `POST /v1/admin/scans/rebalance-stats`
 **Super Admin:** `GET|PUT /v1/superadmin/settings/saquestions`, `GET|POST /v1/superadmin/settings/reviews-per-app`, `GET|POST /v1/superadmin/settings/review-assignment-toggle`, `GET|POST /v1/superadmin/settings/admin-schedule-edit-toggle`, `POST /v1/superadmin/applications/assign`, `PATCH /v1/superadmin/applications/{id}/status`, `PATCH /v1/superadmin/applications/{id}`, `POST /v1/superadmin/applications/{id}/resume-upload-url`, `DELETE /v1/superadmin/applications/{id}/resume`, `GET /v1/superadmin/applications/emails`, `PUT /v1/superadmin/settings/scan-types`, `POST /v1/superadmin/settings/points-name`, `GET|POST /v1/superadmin/settings/points-enabled`, `POST /v1/superadmin/scans/rebalance-stats`, `POST /v1/superadmin/emails/decisions`, `GET /v1/superadmin/emails/decisions/stats`, `GET /v1/superadmin/walk-ins`, `POST /v1/superadmin/walk-ins/promote`, `GET|POST /v1/superadmin/referrals`, `PUT|DELETE /v1/superadmin/referrals/{id}`, `GET /v1/superadmin/referrals/{id}/signups`
 **Infra (Basic Auth):** `GET /v1/health`, `GET /v1/debug/vars`, `GET /v1/swagger/*`

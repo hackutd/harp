@@ -1,4 +1,4 @@
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { IconAlertTriangle, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -185,7 +185,7 @@ export function ResetHackathonCard() {
     <Card className="bg-zinc-900 border-zinc-800 border-0 rounded-md">
       <CardHeader>
         <CardTitle className="text-red-400 flex items-center gap-2">
-          <AlertTriangle className="size-5" />
+          <IconAlertTriangle className="size-5" />
           Danger Zone
         </CardTitle>
         <CardDescription className="text-zinc-400">
@@ -196,14 +196,14 @@ export function ResetHackathonCard() {
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto cursor-pointer bg-white text-black hover:bg-zinc-200">
-              <Trash2 className="mr-2 size-4" />
+              <IconTrash className="mr-2 size-4" />
               Reset Options
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-3xl lg:max-w-5xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-800 text-zinc-100">
             <DialogHeader>
               <DialogTitle className="text-red-400 flex items-center gap-2">
-                <AlertTriangle className="size-5" />
+                <IconAlertTriangle className="size-5" />
                 Reset Hackathon Data
               </DialogTitle>
               <DialogDescription className="text-zinc-400">

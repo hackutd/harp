@@ -113,17 +113,25 @@ export const ApplicationsOverview = memo(function ApplicationsOverview({
           onValueChange={(v) => setTimeRange(v as TimelineRange)}
         >
           <SelectTrigger
-            className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex"
+            className="hidden w-40 cursor-pointer bg-card font-light sm:ml-auto sm:flex"
             aria-label="Select a time range"
           >
             <SelectValue placeholder="Last 30 days" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl">
+          {/* Drops below the trigger, like the filter dropdown (FilterTabs),
+              rather than overlaying it, at the trigger's width. The trigger's
+              fixed width fits the longest label, "Last 3 months". */}
+          <SelectContent
+            position="popper"
+            align="end"
+            matchTriggerHeight={false}
+            className="w-(--radix-select-trigger-width) min-w-0"
+          >
             {RANGE_OPTIONS.map((option) => (
               <SelectItem
                 key={option.value}
                 value={option.value}
-                className="rounded-lg"
+                className="font-light focus:bg-admin-panel data-[state=checked]:bg-admin-panel"
               >
                 {option.label}
               </SelectItem>
@@ -213,13 +221,13 @@ export const ApplicationsOverview = memo(function ApplicationsOverview({
                   so a stacked total would mean nothing. */}
                 <Area
                   dataKey="started"
-                  type="natural"
+                  type="monotone"
                   fill="url(#fillStarted)"
                   stroke="var(--color-started)"
                 />
                 <Area
                   dataKey="submitted"
-                  type="natural"
+                  type="monotone"
                   fill="url(#fillSubmitted)"
                   stroke="var(--color-submitted)"
                 />

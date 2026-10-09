@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowUpFromLine } from "lucide-react";
+import { IconArrowBarUp } from "@tabler/icons-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -75,7 +75,7 @@ export function PromoteDialog({ pending, onSuccess }: PromoteDialogProps) {
           className="cursor-pointer font-light"
           disabled={pending === 0}
         >
-          <ArrowUpFromLine className="size-3.5" />
+          <IconArrowBarUp className="size-3.5" />
           Promote next walk-ins
         </Button>
       </DialogTrigger>

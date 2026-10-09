@@ -91,3 +91,55 @@ func (app *application) deleteMyAccountHandler(w http.ResponseWriter, r *http.Re
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+type UpdateThemePayload struct {
+	Theme store.Theme `json:"theme" validate:"required,oneof=light dark"`
+}
+
+// updateMyThemeHandler stores the caller's portal colour scheme.
+//
+//	@Summary		Set my theme
+//	@Description	Sets the authenticated user's portal colour scheme (light or dark). Applies to the hacker and admin portals.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			theme	body		UpdateThemePayload	true	"Theme"
+//	@Success		200		{object}	UserResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		404		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/users/me/theme [patch]
+func (app *application) updateMyThemeHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		app.unauthorizedErrorResponse(w, r, errors.New("user not in context"))
+		return
+	}
+
+	var req UpdateThemePayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := app.store.Users.UpdateTheme(r.Context(), user.ID, req.Theme); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			app.notFoundResponse(w, r, errors.New("user not found"))
+			return
+		}
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	updated := *user
+	updated.Theme = req.Theme
+	if err := app.jsonResponse(w, http.StatusOK, newUserResponse(&updated)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}

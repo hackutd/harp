@@ -1,4 +1,4 @@
-import { ChevronLeft, Eye } from "lucide-react";
+import { IconChevronLeft, IconEye } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -11,7 +11,7 @@ import { ResumePreviewDialog } from "../apply/components/ResumePreviewDialog";
 import {
   STATUS_LABELS,
   STATUS_MESSAGES,
-  STATUS_PILL_COLORS,
+  STATUS_PILL_CLASSES,
 } from "../components/applicationStatus";
 import { StatusDetailSkeleton } from "../components/StatusDetailSkeleton";
 
@@ -56,7 +56,13 @@ export default function ApplicationDetailPage() {
   }, [navigate]);
 
   if (loading) {
-    return <StatusDetailSkeleton label="Application" />;
+    return (
+      <StatusDetailSkeleton
+        label="Application"
+        className="hacker-card-surfaces"
+        cardClassName="border-0"
+      />
+    );
   }
 
   if (!application) return null;
@@ -66,28 +72,26 @@ export default function ApplicationDetailPage() {
   const resumeSectionId = resolveResumeSectionId(schema);
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-3 px-5 pt-4 pb-8 md:max-w-5xl md:flex-row md:items-start md:gap-2 md:px-8">
+    <div className="hacker-card-surfaces mx-auto flex max-w-2xl flex-col gap-3 px-5 pt-4 pb-8 md:max-w-5xl md:flex-row md:items-start md:gap-2 md:px-8">
       <button
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
       >
-        <ChevronLeft className="size-5" strokeWidth={1.75} />
+        <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
 
       <div className="min-w-0 flex-1">
         {/* Result card */}
-        <div className="rounded-xl border border-[#E5E5E5] p-5">
-          <span
-            className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${STATUS_PILL_COLORS[application.status]}`}
-          >
+        <div className="hacker-application-card rounded-xl bg-surface p-5">
+          <span className={STATUS_PILL_CLASSES[application.status]}>
             {STATUS_LABELS[application.status]}
           </span>
-          <h1 className="mt-3 text-xl font-light tracking-tight text-black">
+          <h1 className="mt-3 text-xl font-light tracking-tight text-ink">
             {STATUS_HEADLINES[application.status]}
           </h1>
-          <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+          <p className="mt-2 text-sm font-light text-ink/65">
             {STATUS_MESSAGES[application.status]}
           </p>
         </div>
@@ -95,7 +99,7 @@ export default function ApplicationDetailPage() {
         {/* Full application answers */}
         {schema.length > 0 && (
           <section className="mt-5">
-            <h2 className="mb-3 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
+            <h2 className="mb-3 text-xs font-light text-ink/65">
               Your submission
             </h2>
             <ApplicationSummary
@@ -103,6 +107,7 @@ export default function ApplicationDetailPage() {
               responses={application.responses ?? {}}
               hasResume={hasResume}
               resumeSectionId={resumeSectionId}
+              cardClassName="border-0 bg-surface"
             />
           </section>
         )}
@@ -110,22 +115,20 @@ export default function ApplicationDetailPage() {
         {/* Resume quick view */}
         {hasResume && (
           <section className="mt-5">
-            <h2 className="mb-3 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
-              Resume
-            </h2>
+            <h2 className="mb-3 text-xs font-light text-ink/65">Resume</h2>
             <ResumePreviewDialog
               trigger={
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-xl border border-[#E5E5E5] px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]"
+                  className="flex w-full items-center justify-between rounded-xl bg-surface px-5 py-4 text-left transition-colors hover:bg-surface-2"
                 >
                   <div>
-                    <p className="text-sm font-normal text-black">Resume</p>
-                    <p className="text-xs font-light text-[#8A8A8A]">
+                    <p className="text-sm font-normal text-ink">Resume</p>
+                    <p className="text-xs font-light text-ink/65">
                       Tap to preview
                     </p>
                   </div>
-                  <Eye className="size-4.5 text-[#8A8A8A]" strokeWidth={1.5} />
+                  <IconEye className="size-4.5 text-ink/65" strokeWidth={1.5} />
                 </button>
               }
             />

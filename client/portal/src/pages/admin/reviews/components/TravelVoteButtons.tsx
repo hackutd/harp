@@ -1,4 +1,4 @@
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { IconThumbDown, IconThumbUp } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { SELECTED_BUTTON } from "@/pages/admin/_shared/grading";
@@ -11,8 +11,8 @@ interface TravelVoteButtonsProps {
 }
 
 const OPTIONS = [
-  { vote: false, label: "No", icon: ThumbsDown },
-  { vote: true, label: "Yes", icon: ThumbsUp },
+  { vote: false, label: "No", icon: IconThumbDown },
+  { vote: true, label: "Yes", icon: IconThumbUp },
 ] as const;
 
 export function TravelVoteButtons({

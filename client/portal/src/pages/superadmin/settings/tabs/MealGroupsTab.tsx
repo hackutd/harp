@@ -1,4 +1,4 @@
-import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import { IconPlus, IconToolsKitchen, IconTrash } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -128,7 +128,7 @@ export default function MealGroupsTab() {
               Each group shows the number of hackers currently assigned to it.
             </p>
           </div>
-          <UtensilsCrossed className="size-5 text-zinc-500" />
+          <IconToolsKitchen className="size-5 text-zinc-500" />
         </div>
 
         <div className="space-y-2">
@@ -148,10 +148,7 @@ export default function MealGroupsTab() {
                 placeholder="Group name"
                 className="border-zinc-800 bg-zinc-950 text-zinc-100"
               />
-              <Badge
-                variant="secondary"
-                className="shrink-0 bg-zinc-800 text-zinc-300"
-              >
+              <Badge variant="neutral" className="shrink-0">
                 {stats[group.trim()] ?? 0} assigned
               </Badge>
               <Button
@@ -162,7 +159,7 @@ export default function MealGroupsTab() {
                 aria-label="Remove group"
                 className="shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
               >
-                <Trash2 className="size-4" />
+                <IconTrash className="size-4" />
               </Button>
             </div>
           ))}
@@ -174,7 +171,7 @@ export default function MealGroupsTab() {
           disabled={loading || saving || groups.length >= MAX_GROUPS}
           className="w-full border-zinc-800 bg-zinc-950 text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
         >
-          <Plus className="size-4" />
+          <IconPlus className="size-4" />
           Add Group
         </Button>
 

@@ -103,6 +103,7 @@ func TestGetCurrentUser(t *testing.T) {
 		assert.Equal(t, user.ID, body.Data.ID)
 		assert.Equal(t, user.Email, body.Data.Email)
 		assert.Equal(t, user.Role, body.Data.Role)
+		assert.Equal(t, store.ThemeDark, body.Data.Theme)
 	})
 
 	t.Run("should return 401 when no user in context", func(t *testing.T) {

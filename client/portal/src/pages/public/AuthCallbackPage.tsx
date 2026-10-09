@@ -1,18 +1,13 @@
+import { IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import Session, { signOut } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
 
+import zeroDayTitle from "@/assets/title-login.webp";
 import { AuthFlowSkeleton } from "@/components/AuthFlowSkeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SkyBackdrop } from "@/components/SkyBackdrop";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { completePortalLogin, isGoogleAuthEnabled } from "@/shared/auth";
 import { isMobileViewport } from "@/shared/hooks";
 import { useUserStore } from "@/shared/stores";
@@ -78,56 +73,70 @@ export default function AuthCallback() {
     const isGoogleRequired = authError.message.includes("Google");
 
     return (
-      <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-amber-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-            </div>
-            <CardTitle>Different Sign-In Method Required</CardTitle>
-            <CardDescription>
-              This email is already registered with a different sign-in method
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertDescription>{authError.message}</AlertDescription>
-            </Alert>
+      <main className="zero-login relative isolate min-h-svh overflow-hidden bg-black text-white">
+        <SkyBackdrop />
 
-            <div className="space-y-2 pt-2">
-              {isGoogleRequired && isGoogleAuthEnabled ? (
-                <Button className="w-full" onClick={handleGoogleLogin}>
-                  Continue with Google
-                </Button>
-              ) : (
-                <Button className="w-full" onClick={handleGoToLogin}>
-                  Sign in with Magic Link
-                </Button>
-              )}
+        <div className="relative z-30 flex min-h-svh items-center justify-center px-5 py-16">
+          <div className="w-full max-w-[520px]">
+            <img
+              src={zeroDayTitle}
+              alt="HackUTD Zero Day"
+              className="mx-auto mb-5 w-full max-w-[430px] object-contain"
+            />
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleGoToLogin}
-              >
-                Back to Sign In
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <section className="zero-login-panel relative p-px">
+              <div className="zero-login-panel-inner px-5 py-6 sm:px-8 sm:py-8">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <p className="font-mono text-[10px] tracking-[0.28em] text-ice uppercase">
+                    Access exception // Sign-in method
+                  </p>
+                  <span className="h-1.5 w-1.5 bg-ice" />
+                </div>
+
+                <div className="pt-6">
+                  <div className="flex size-11 items-center justify-center border border-amber-400/40 bg-amber-400/10 text-amber-300">
+                    <IconAlertTriangle aria-hidden className="size-5" />
+                  </div>
+                  <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-white">
+                    Different sign-in method required
+                  </h1>
+                  <p className="mt-2 text-sm text-white/60">
+                    This email is already registered with a different sign-in
+                    method.
+                  </p>
+                </div>
+
+                <div className="my-6 border-l-2 border-ice bg-ice/10 px-4 py-3.5 text-sm leading-6 text-white/75">
+                  {authError.message}
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    className="zero-cut-button h-12 w-full bg-tide text-xs font-semibold tracking-[0.18em] text-white uppercase hover:bg-tide-hover focus-visible:ring-ice/50"
+                    onClick={
+                      isGoogleRequired && isGoogleAuthEnabled
+                        ? handleGoogleLogin
+                        : handleGoToLogin
+                    }
+                  >
+                    {isGoogleRequired && isGoogleAuthEnabled
+                      ? "Continue with Google"
+                      : "Sign in with magic link"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="zero-cut-button h-12 w-full border-ice/50 bg-transparent text-xs font-medium tracking-[0.16em] text-white uppercase hover:border-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-ice/50"
+                    onClick={handleGoToLogin}
+                  >
+                    <IconArrowLeft aria-hidden className="size-4" />
+                    Back to sign in
+                  </Button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
     );
   }
 

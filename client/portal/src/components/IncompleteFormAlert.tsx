@@ -1,4 +1,4 @@
-import { AlertCircle } from "lucide-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 
 import { type IncompleteSection, joinNames } from "@/shared/lib/form-errors";
 import { cn } from "@/shared/lib/utils";
@@ -45,14 +45,14 @@ export function IncompleteFormAlert({
         className,
       )}
     >
-      <AlertCircle
+      <IconAlertCircle
         className="mt-0.5 size-4 shrink-0 text-destructive"
         strokeWidth={1.75}
       />
       <div className="min-w-0 flex-1 space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-normal text-destructive">{title}</p>
-          <p className="text-xs font-light text-[#8A8A8A]">{description}</p>
+          <p className="text-xs font-light text-ink/65">{description}</p>
         </div>
 
         <ul className="space-y-3">
@@ -60,14 +60,14 @@ export function IncompleteFormAlert({
             <li key={section.id} className="space-y-1.5">
               {showSectionHeadings && (
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[11px] font-light tracking-widest text-[#8A8A8A] uppercase">
+                  <span className="text-[11px] font-light tracking-widest text-ink/65 uppercase">
                     {section.label}
                   </span>
                   {onJumpToSection && (
                     <button
                       type="button"
                       onClick={() => onJumpToSection(section.id)}
-                      className="shrink-0 text-xs font-light text-black underline underline-offset-2 transition-colors hover:text-[#8A8A8A]"
+                      className="shrink-0 text-xs font-light text-ink underline underline-offset-2 transition-colors hover:text-ink/65"
                     >
                       Go to section
                     </button>
@@ -78,9 +78,9 @@ export function IncompleteFormAlert({
                 {section.fieldLabels.map((label) => (
                   <li
                     key={label}
-                    className="flex gap-2 text-sm font-light text-black"
+                    className="flex gap-2 text-sm font-light text-ink"
                   >
-                    <span aria-hidden className="text-[#B8B8B8]">
+                    <span aria-hidden className="text-ink/65">
                       &bull;
                     </span>
                     <span className="min-w-0">{label}</span>

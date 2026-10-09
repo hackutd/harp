@@ -1,12 +1,14 @@
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
+
 import type { ScheduleItem } from "./types";
 
 export const TAG_COLOR_STYLES: Record<string, string> = {
-  Required: "bg-red-100 border-red-200 text-red-700",
-  "Company Events": "bg-amber-100 border-amber-200 text-amber-700",
-  Food: "bg-emerald-100 border-emerald-200 text-emerald-700",
-  Workshops: "bg-sky-100 border-sky-200 text-sky-700",
-  "For Fun": "bg-violet-100 border-violet-200 text-violet-700",
-  Other: "bg-zinc-200 border-zinc-300 text-zinc-700",
+  Required: BADGE_COLORS.red,
+  "Company Events": BADGE_COLORS.orange,
+  Food: BADGE_COLORS.green,
+  Workshops: BADGE_COLORS.blue,
+  "For Fun": BADGE_COLORS.purple,
+  Other: BADGE_COLORS.neutral,
 };
 
 export const EVENT_COLOR_STYLES: Record<
@@ -15,27 +17,27 @@ export const EVENT_COLOR_STYLES: Record<
 > = {
   Required: {
     background: "bg-red-400/25",
-    text: "text-red-900",
+    text: "text-red-900 theme-dark:text-red-200",
   },
   "Company Events": {
     background: "bg-amber-400/25",
-    text: "text-amber-900",
+    text: "text-amber-900 theme-dark:text-amber-200",
   },
   Food: {
     background: "bg-emerald-400/25",
-    text: "text-emerald-900",
+    text: "text-emerald-900 theme-dark:text-emerald-200",
   },
   Workshops: {
     background: "bg-sky-400/25",
-    text: "text-sky-900",
+    text: "text-sky-900 theme-dark:text-sky-200",
   },
   "For Fun": {
     background: "bg-violet-400/25",
-    text: "text-violet-900",
+    text: "text-violet-900 theme-dark:text-violet-200",
   },
   Other: {
     background: "bg-zinc-400/25",
-    text: "text-zinc-900",
+    text: "text-zinc-900 theme-dark:text-zinc-200",
   },
 };
 

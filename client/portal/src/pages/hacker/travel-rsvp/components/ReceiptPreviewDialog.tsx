@@ -63,9 +63,9 @@ export function ReceiptPreviewDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="flex h-[85vh] max-h-[760px] w-full flex-col gap-3 rounded-xl border-[#E5E5E5] p-4 sm:max-w-4xl sm:p-6">
+      <DialogContent className="flex h-[85vh] max-h-[760px] w-full flex-col gap-3 rounded-xl border-ink/10 p-4 sm:max-w-4xl sm:p-6">
         <DialogHeader className="text-left">
-          <DialogTitle className="truncate pr-10 text-base font-light tracking-tight text-black">
+          <DialogTitle className="truncate pr-10 text-base font-light tracking-tight text-ink">
             {receipt.name}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -73,11 +73,11 @@ export function ReceiptPreviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-[#E5E5E5] bg-[#FAFAFA]">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-ink/10 bg-surface">
           {loading && <Skeleton className="size-full rounded-none" />}
           {!loading && error && (
             <div className="flex size-full items-center justify-center px-6 text-center">
-              <p className="text-sm font-light text-[#8A8A8A]">{error}</p>
+              <p className="text-sm font-light text-ink/65">{error}</p>
             </div>
           )}
           {!loading &&

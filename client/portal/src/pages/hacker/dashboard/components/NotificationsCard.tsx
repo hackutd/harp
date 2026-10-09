@@ -50,7 +50,7 @@ export function NotificationsCard() {
       </CardHeader>
       <CardContent>
         {!supported ? (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink/65">
             Push notifications aren't supported in this browser.
           </p>
         ) : (
@@ -60,7 +60,7 @@ export function NotificationsCard() {
                 Enable push notifications
               </Label>
               {blocked && (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink/65">
                   Notifications are blocked. Allow them for this site in your
                   browser settings to turn them on.
                 </p>

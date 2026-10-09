@@ -1,4 +1,10 @@
-import { Code, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  IconCode,
+  IconPencil,
+  IconPhotoPlus,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -210,13 +216,13 @@ export function TracksTable({
           />
           {canEdit && (
             <div className="absolute inset-0 rounded bg-black/50 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center">
-              <ImagePlus className="size-4 text-white" />
+              <IconPhotoPlus className="size-4 text-white" />
             </div>
           )}
         </div>
       ) : (
         <div className="size-10 rounded border border-dashed flex items-center justify-center text-muted-foreground hover:border-foreground hover:text-foreground transition-colors">
-          <ImagePlus className="size-4" />
+          <IconPhotoPlus className="size-4" />
         </div>
       )}
     </button>
@@ -245,7 +251,7 @@ export function TracksTable({
             >
               <PopoverTrigger asChild>
                 <Button size="sm" variant="outline" className="cursor-pointer">
-                  <Code className="mr-1 size-4" />
+                  <IconCode className="mr-1 size-4" />
                   Preview API
                 </Button>
               </PopoverTrigger>
@@ -274,7 +280,7 @@ export function TracksTable({
               disabled={!canEdit}
               className="cursor-pointer"
             >
-              <Plus className="mr-1 size-4" />
+              <IconPlus className="mr-1 size-4" />
               Add Track
             </Button>
           </div>
@@ -328,7 +334,7 @@ export function TracksTable({
                             <span className="font-medium">{track.title}</span>
                           </div>
                           {canEdit && (
-                            <Pencil className="mt-1 size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            <IconPencil className="mt-1 size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                           )}
                         </div>
                       </TableCell>
@@ -367,7 +373,7 @@ export function TracksTable({
                             }}
                             title="Delete"
                           >
-                            <Trash2 className="size-4" />
+                            <IconTrash className="size-4" />
                           </Button>
                         )}
                       </TableCell>

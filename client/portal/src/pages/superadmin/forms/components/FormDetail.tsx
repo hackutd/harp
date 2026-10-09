@@ -1,13 +1,13 @@
 import {
-  AlertTriangle,
-  ArrowLeft,
-  BarChart3,
-  CircleDollarSign,
-  FilePenLine,
-  Inbox,
-  Settings2,
-  Users,
-} from "lucide-react";
+  IconAdjustments,
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconChartBar,
+  IconCoin,
+  IconFilePencil,
+  IconInbox,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -166,7 +166,7 @@ function FormMetrics({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-light">
-            <CircleDollarSign className="size-5 text-muted-foreground" />
+            <IconCoin className="size-5 text-muted-foreground" />
             Funding position
           </CardTitle>
           <CardDescription className="font-light">
@@ -241,7 +241,7 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Button variant="ghost" size="icon" asChild className="shrink-0">
               <Link to="/admin/sa/forms" aria-label="Back to all forms">
-                <ArrowLeft className="size-4" />
+                <IconArrowLeft className="size-4" />
               </Link>
             </Button>
             {/* pb-2/-mb-2: overflow-x-auto makes this a scroll container on
@@ -252,16 +252,16 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
                 the negative margin keeps the row's height unchanged. */}
             <TabsList className="-mb-2 h-auto min-w-0 flex-1 justify-start overflow-x-auto rounded-none border-0 bg-transparent p-0 pb-2">
               <TabsTrigger value="overview" className={detailTabClassName}>
-                <BarChart3 /> Overview
+                <IconChartBar /> Overview
               </TabsTrigger>
               <TabsTrigger value="responses" className={detailTabClassName}>
-                <Inbox /> Responses
+                <IconInbox /> Responses
               </TabsTrigger>
               <TabsTrigger value="builder" className={detailTabClassName}>
-                <FilePenLine /> Builder
+                <IconFilePencil /> Builder
               </TabsTrigger>
               <TabsTrigger value="settings" className={detailTabClassName}>
-                <Settings2 /> Settings
+                <IconAdjustments /> Settings
               </TabsTrigger>
             </TabsList>
           </div>
@@ -333,7 +333,7 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
                     </p>
                     {availability.enabled && !effectiveOpen && (
                       <p className="mt-2 flex items-start gap-2 text-xs text-amber-700">
-                        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                        <IconAlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                         Permission is enabled, but the deadline has passed, so
                         the form is effectively closed.
                       </p>
@@ -346,7 +346,7 @@ export function FormDetail({ form, data, onRefresh }: FormDetailProps) {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-sm font-light">
-                  <Users className="size-3.5" /> Eligibility
+                  <IconUsers className="size-3.5" /> Eligibility
                 </CardTitle>
                 <CardDescription className="text-xs font-light">
                   Who can reach this form when its permission is enabled.

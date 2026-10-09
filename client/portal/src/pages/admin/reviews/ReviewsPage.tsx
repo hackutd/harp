@@ -1,9 +1,9 @@
 import {
-  ChevronLeft,
-  ChevronRight,
-  ClipboardPen,
-  ListPlus,
-} from "lucide-react";
+  IconChevronLeft,
+  IconChevronRight,
+  IconClipboardText,
+  IconPlaylistAdd,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -286,12 +286,11 @@ export default function ReviewsPage() {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="outline"
             size="sm"
             className="cursor-pointer font-light"
             onClick={() => navigate("/admin/reviews/grade")}
           >
-            <ClipboardPen className="h-4 w-4 mr-1.5" />
+            <IconClipboardText className="h-4 w-4 mr-1.5" />
             Start Grading
           </Button>
         </TooltipTrigger>
@@ -314,7 +313,7 @@ export default function ReviewsPage() {
         loading={claiming}
         onClick={() => void claimMore()}
       >
-        <ListPlus className="h-4 w-4 mr-1.5" />
+        <IconPlaylistAdd className="h-4 w-4 mr-1.5" />
         Get more reviews
       </Button>
     ) : undefined;
@@ -405,7 +404,7 @@ export default function ReviewsPage() {
               disabled={!canPrevious}
               onClick={handlePreviousReview}
             >
-              <ChevronLeft className="size-4" />
+              <IconChevronLeft className="size-4" />
               Previous person
             </Button>
             <Button
@@ -415,7 +414,7 @@ export default function ReviewsPage() {
               onClick={handleNextReview}
             >
               Next person
-              <ChevronRight className="size-4" />
+              <IconChevronRight className="size-4" />
             </Button>
           </div>
 
@@ -476,11 +475,9 @@ export default function ReviewsPage() {
       <Card className="overflow-hidden flex flex-col h-full w-full">
         <CardHeader className="shrink-0 flex flex-row items-center pb-2 justify-between">
           <div className="flex items-center gap-4">
-            <ReviewsTabToggle
-              activeTab={tab}
-              onTabChange={handleTabChange}
-              disabled={loading}
-            />
+            {/* Stays live while the table reloads: the store drops
+                superseded responses, so only the table shows loading. */}
+            <ReviewsTabToggle activeTab={tab} onTabChange={handleTabChange} />
             <CardDescription className="font-light">
               {description}
             </CardDescription>
