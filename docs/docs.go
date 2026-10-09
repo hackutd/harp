@@ -12996,6 +12996,10 @@ const docTemplate = `{
                 "hackathon_name": {
                     "type": "string"
                 },
+                "priority_deadline": {
+                    "description": "PriorityDeadline is the instant an application must be submitted by to\ncount as priority. Null when unset.",
+                    "type": "string"
+                },
                 "start_date": {
                     "type": "string"
                 }

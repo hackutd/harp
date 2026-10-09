@@ -1454,6 +1454,9 @@ type HackathonConfigResponse struct {
 	ApplicationDueDate string  `json:"application_due_date"`
 	StartDate          *string `json:"start_date"`
 	EndDate            *string `json:"end_date"`
+	// PriorityDeadline is the instant an application must be submitted by to
+	// count as priority. Null when unset.
+	PriorityDeadline *time.Time `json:"priority_deadline"`
 }
 
 // parseDateOnly validates a YYYY-MM-DD date string.
@@ -1876,12 +1879,19 @@ func (app *application) getHackathonConfigHandler(w http.ResponseWriter, r *http
 		return
 	}
 
+	priorityDeadline, err := app.store.Settings.GetPriorityDeadline(ctx)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	response := HackathonConfigResponse{
 		HackathonName:      name,
 		ContactEmail:       contactEmail,
 		ApplicationDueDate: appDue,
 		StartDate:          dateRange.StartDate,
 		EndDate:            dateRange.EndDate,
+		PriorityDeadline:   priorityDeadline,
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {

@@ -19,6 +19,8 @@ export interface HackathonConfig {
   application_due_date: string;
   start_date: string | null;
   end_date: string | null;
+  // RFC 3339 instant; null when no priority deadline is set.
+  priority_deadline: string | null;
 }
 
 export async function fetchHackathonConfig(

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { CelebrationEffect } from "@/components/CelebrationEffect";
 import { HackerPageLoader } from "@/components/HackerPageLoader";
 import { getRequest } from "@/shared/lib/api";
-import { parseDateOnly } from "@/shared/lib/datetime";
+import { parseDateOnly, startOfDay } from "@/shared/lib/datetime";
 import { hackerLinkIcon } from "@/shared/lib/hacker-link-icons";
 import type { Application, HackerLink, NotificationFeedItem } from "@/types";
 
@@ -48,24 +48,31 @@ const MONTHS = [
 ];
 
 // Unconfigured dates are simply omitted rather than shown as placeholders.
+// The priority deadline is an instant, so it lands on the hacker's local
+// calendar day; the others are date-only settings.
 function importantDates(config: HackathonConfig | null): ImportantDate[] {
   if (!config) return [];
-  return (
-    [
-      { value: config.application_due_date, label: "App due" },
-      { value: config.start_date ?? "", label: "Kickoff" },
-    ] as const
-  ).flatMap(({ value, label }) => {
-    const date = parseDateOnly(value);
-    if (!date) return [];
-    return [
-      {
-        month: MONTHS[date.getMonth()],
-        day: String(date.getDate()).padStart(2, "0"),
-        label,
-      },
-    ];
-  });
+  const priority = config.priority_deadline
+    ? new Date(config.priority_deadline)
+    : null;
+  return [
+    {
+      date:
+        priority && !Number.isNaN(priority.getTime())
+          ? startOfDay(priority)
+          : null,
+      label: "Priority deadline",
+    },
+    { date: parseDateOnly(config.application_due_date), label: "App due" },
+    { date: parseDateOnly(config.start_date), label: "Kickoff" },
+  ]
+    .flatMap(({ date, label }) => (date ? [{ date, label }] : []))
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(({ date, label }) => ({
+      month: MONTHS[date.getMonth()],
+      day: String(date.getDate()).padStart(2, "0"),
+      label,
+    }));
 }
 
 interface QuickLink {
