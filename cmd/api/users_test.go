@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -105,15 +104,6 @@ func TestDeleteMyAccount(t *testing.T) {
 		rr := executeRequest(req, http.HandlerFunc(app.deleteMyAccountHandler))
 		checkResponseCode(t, http.StatusUnauthorized, rr.Code)
 	})
-}
-
-func decodeUserResponse(t *testing.T, body *strings.Reader) UserResponse {
-	t.Helper()
-	var resp struct {
-		Data UserResponse `json:"data"`
-	}
-	require.NoError(t, json.NewDecoder(body).Decode(&resp))
-	return resp.Data
 }
 
 func TestUpdateMyTheme(t *testing.T) {

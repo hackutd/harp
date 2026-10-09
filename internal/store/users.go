@@ -41,9 +41,12 @@ type User struct {
 	Role              UserRole   `json:"role" validate:"required,oneof=hacker admin super_admin"`
 	AuthMethod        AuthMethod `json:"auth_method" validate:"required,oneof=passwordless google"`
 	ProfilePictureURL *string    `json:"profile_picture_url,omitempty"`
-	Theme             Theme      `json:"theme"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	// PhotoPath is an uploaded profile photo, which wins over the Google
+	// picture wherever the user is shown.
+	PhotoPath *string   `json:"-"`
+	Theme     Theme     `json:"theme"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type UsersStore struct {
@@ -51,7 +54,7 @@ type UsersStore struct {
 }
 
 // userSelectCols is the standard column list for loading a full User.
-const userSelectCols = `id, supertokens_user_id, email, role, auth_method, profile_picture_url, theme, created_at, updated_at`
+const userSelectCols = `id, supertokens_user_id, email, role, auth_method, profile_picture_url, photo_path, theme, created_at, updated_at`
 
 // scanUser scans a row selected with userSelectCols into a User.
 func scanUser(row interface{ Scan(dest ...any) error }, user *User) error {
@@ -62,6 +65,7 @@ func scanUser(row interface{ Scan(dest ...any) error }, user *User) error {
 		&user.Role,
 		&user.AuthMethod,
 		&user.ProfilePictureURL,
+		&user.PhotoPath,
 		&user.Theme,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -347,6 +351,26 @@ func (s *UsersStore) UpdateSuperTokensID(ctx context.Context, userID string, sup
 	return &user, nil
 }
 
+// SetPhoto stores (or, with nil, clears) the user's uploaded profile photo and
+// returns the path it replaced so the caller can delete that object.
+func (s *UsersStore) SetPhoto(ctx context.Context, userID string, photoPath *string) (*string, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var previous *string
+	err := s.db.QueryRowContext(ctx, `
+		WITH old AS (SELECT photo_path FROM users WHERE id = $1 FOR UPDATE)
+		UPDATE users SET photo_path = $2, updated_at = NOW()
+		WHERE id = $1
+		RETURNING (SELECT photo_path FROM old)`,
+		userID, photoPath,
+	).Scan(&previous)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return previous, err
+}
+
 func (s *UsersStore) UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -407,6 +431,7 @@ func (s *UsersStore) UpdateTheme(ctx context.Context, userID string, theme Theme
 type DeletedUserPaths struct {
 	Resumes        []string
 	TravelReceipts []string
+	Photos         []string
 }
 
 // Delete permanently removes a user and everything belonging to them, returning
@@ -452,6 +477,16 @@ func (s *UsersStore) Delete(ctx context.Context, userID string) (*DeletedUserPat
 		if path != "" {
 			paths.TravelReceipts = append(paths.TravelReceipts, path)
 		}
+	}
+
+	var photoPath *string
+	if err := tx.QueryRowContext(ctx,
+		`SELECT photo_path FROM users WHERE id = $1`, userID,
+	).Scan(&photoPath); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if photoPath != nil && *photoPath != "" {
+		paths.Photos = append(paths.Photos, *photoPath)
 	}
 
 	if err := removeReviewAssignmentEntry(ctx, tx, userID); err != nil {
