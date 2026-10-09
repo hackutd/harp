@@ -6028,7 +6028,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 until decisions are released, or while a previous run is still sending.",
+                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. With send_push, recipients who enabled push notifications also get a neutral \"decisions are out\" push after the emails go out. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued and how many will also be pushed. Returns 409 until decisions are released, or while a previous run is still sending.",
                 "consumes": [
                     "application/json"
                 ],
@@ -12890,6 +12890,10 @@ const docTemplate = `{
                 "resend_all": {
                     "type": "boolean"
                 },
+                "send_push": {
+                    "description": "SendPush also sends a Web Push alert to every recipient who has enabled\nnotifications. The alert never includes the outcome.",
+                    "type": "boolean"
+                },
                 "statuses": {
                     "type": "array",
                     "items": {
@@ -12903,6 +12907,10 @@ const docTemplate = `{
             "properties": {
                 "mode": {
                     "type": "string"
+                },
+                "push_recipients": {
+                    "description": "PushRecipients is how many of the queued applicants will also get a push\nalert. Zero when send_push is off or no recipient has a subscription.",
+                    "type": "integer"
                 },
                 "queued": {
                     "type": "integer"
