@@ -14,6 +14,8 @@ export interface ApplicationSchemaField {
   type: FieldType;
   label: string;
   required: boolean;
+  /** Withheld from applicants without deleting it; admins still see answers. */
+  hidden?: boolean;
   section: string;
   section_label?: string;
   section_order?: number;

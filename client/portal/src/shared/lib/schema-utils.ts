@@ -154,6 +154,39 @@ export function isFieldVisible(
 }
 
 /**
+ * Ids of the fields applicants are not shown: every field marked hidden plus
+ * the fields that are only shown or required through one of them. Mirrors
+ * hiddenFieldIDs on the server so the editor preview matches the live form.
+ */
+export function hiddenFieldIds(fields: ApplicationSchemaField[]): Set<string> {
+  const ids = new Set(fields.filter((f) => f.hidden).map((f) => f.id));
+  let changed = ids.size > 0;
+  while (changed) {
+    changed = false;
+    for (const f of fields) {
+      if (ids.has(f.id)) continue;
+      const controllers = [
+        getFieldCondition(f, "show_if")?.field,
+        getFieldCondition(f, "required_if")?.field,
+      ];
+      if (controllers.some((id) => id !== undefined && ids.has(id))) {
+        ids.add(f.id);
+        changed = true;
+      }
+    }
+  }
+  return ids;
+}
+
+/** The schema as applicants see it, with hidden fields withheld. */
+export function applicantVisibleFields(
+  fields: ApplicationSchemaField[],
+): ApplicationSchemaField[] {
+  const hidden = hiddenFieldIds(fields);
+  return hidden.size === 0 ? fields : fields.filter((f) => !hidden.has(f.id));
+}
+
+/**
  * Number fields answered as a whole count, with a floor the stored schema can
  * raise but not lower. Keyed by field id (not type) so it applies to exactly the
  * well-known fields — the same approach as getFieldPresets in field-presets.ts.
