@@ -250,7 +250,7 @@ export function ApplicationStatusCards({
               </span>
               {travelCard.amountCents != null && (
                 <span className="mt-4 block rounded-lg bg-ink/[0.03] p-4">
-                  <span className="block text-[11px] font-medium tracking-wide text-ink/55 uppercase">
+                  <span className="block text-[11px] font-medium text-ink/55">
                     Approved amount
                   </span>
                   <span className="mt-1 block text-2xl font-light tracking-tight text-ink">
@@ -277,7 +277,7 @@ export function ApplicationStatusCards({
             </p>
             {travelCard.amountCents != null && (
               <div className="mt-4 rounded-lg bg-ink/[0.03] p-4">
-                <p className="text-[11px] font-medium tracking-wide text-ink/55 uppercase">
+                <p className="text-[11px] font-medium text-ink/55">
                   Approved amount
                 </p>
                 <p className="mt-1 text-2xl font-light tracking-tight text-ink">

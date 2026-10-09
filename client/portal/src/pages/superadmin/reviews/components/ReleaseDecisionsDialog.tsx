@@ -176,8 +176,9 @@ function ReleaseDecisionsBody({
           Release decisions
         </DialogTitle>
         <DialogDescription>
-          Hackers only see decisions you release. Anything you change afterwards
-          stays hidden until a later release covers it.
+          Hackers only see decisions you release. A decision you change
+          afterwards stays hidden until a later release covers it; moving an
+          applicant back to under review or draft shows right away.
         </DialogDescription>
       </DialogHeader>
 

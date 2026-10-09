@@ -71,9 +71,7 @@ export default function NotificationsPage() {
         <div className="mt-4 space-y-6">
           {groups.map(([label, groupItems]) => (
             <section key={label}>
-              <h2 className="mb-2 text-xs font-light tracking-widest text-ink/65 uppercase">
-                {label}
-              </h2>
+              <h2 className="mb-2 text-xs font-light text-ink/65">{label}</h2>
               <div className="space-y-3">
                 {groupItems.map((item) => {
                   const content = (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import sky from "@/assets/sky.webp";
 import { cn } from "@/shared/lib/utils";
@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   buildCityLayout,
   modulesToSvgPath,
-  PLATE_COLOR,
+  PLATE_CORNER_RADIUS,
   QUIET_ZONE,
   ROOF_COLOR,
 } from "../city/qrCity";
@@ -18,6 +18,15 @@ import {
 } from "../city/tween";
 
 const TRANSITION_MS = 900;
+/** Movement past this many pixels turns a press into a drag, not a tap. */
+const DRAG_THRESHOLD_PX = 6;
+
+interface DragState {
+  pointerId: number;
+  x: number;
+  y: number;
+  moved: boolean;
+}
 
 type SceneStatus = "loading" | "ready" | "unsupported";
 type ViewMode = "city" | "qr";
@@ -31,7 +40,8 @@ interface QrCityProps {
  * The hacker's QR code as a neon city: every dark module is a building, so
  * looking straight down turns the skyline into the code. A tap tweens the
  * camera between the two views; the real vector QR fades in on top at the end
- * so scanners always read a crisp code rather than a shaded render.
+ * so scanners always read a crisp code rather than a shaded render. Dragging
+ * in the city view turns the camera around it instead.
  */
 export function QrCity({ value, className }: QrCityProps) {
   const layout = useMemo(() => buildCityLayout(value), [value]);
@@ -47,6 +57,8 @@ export function QrCity({ value, className }: QrCityProps) {
   const sceneRef = useRef<QrCityScene | null>(null);
   const progressRef = useRef(0);
   const cancelTweenRef = useRef<() => void>(() => {});
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClickRef = useRef(false);
 
   const [status, setStatus] = useState<SceneStatus>("loading");
   const [mode, setMode] = useState<ViewMode>("city");
@@ -109,7 +121,53 @@ export function QrCity({ value, className }: QrCityProps) {
     return () => cancelTween.current();
   }, []);
 
+  const canOrbit = status === "ready" && mode === "city";
+
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    suppressClickRef.current = false;
+    if (!canOrbit || !event.isPrimary || event.button !== 0) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      moved: false,
+    };
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+      drag.moved = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    // A drag across the whole frame turns the city half way round.
+    const radiansPerPx = Math.PI / Math.max(event.currentTarget.clientWidth, 1);
+    sceneRef.current?.orbitBy(-dx * radiansPerPx, dy * radiansPerPx);
+  };
+
+  const handlePointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    // The click that follows a drag must not toggle to the QR.
+    suppressClickRef.current = drag.moved;
+    dragRef.current = null;
+  };
+
+  const handlePointerCancel = () => {
+    dragRef.current = null;
+  };
+
   const handleToggle = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     if (status !== "ready") return;
     const next: ViewMode = mode === "city" ? "qr" : "city";
     setMode(next);
@@ -129,7 +187,7 @@ export function QrCity({ value, className }: QrCityProps) {
       : showStaticCode
         ? "Show this at check-in, meals, and events"
         : mode === "city"
-          ? "Tap the city to show your QR code"
+          ? "Drag to look around, tap to show your QR code"
           : "Tap to return to the city";
 
   return (
@@ -137,19 +195,29 @@ export function QrCity({ value, className }: QrCityProps) {
       <button
         type="button"
         onClick={handleToggle}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         disabled={status !== "ready"}
         aria-pressed={mode === "qr"}
         aria-label={
           mode === "qr" ? "Return to the city view" : "Show my QR code"
         }
-        className="relative block aspect-square w-full max-w-[440px] overflow-hidden rounded-xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+        className={cn(
+          "relative block aspect-square w-full max-w-[440px] overflow-hidden outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
+          // Vertical swipes still scroll the page on touch screens.
+          canOrbit && "cursor-grab touch-pan-y active:cursor-grabbing",
+        )}
+        style={{ borderRadius: `${PLATE_CORNER_RADIUS * 100}%` }}
       >
         <img
           ref={skyRef}
           src={sky}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[60%_0%]"
+          draggable={false}
+          className="absolute inset-0 h-full w-full -scale-x-100 object-cover object-[60%_0%] mask-x-from-75% mask-t-from-85% mask-b-from-65%"
           style={{ opacity: showStaticCode ? 0 : 1 }}
         />
         <div ref={frameRef} className="absolute inset-0">
@@ -172,7 +240,7 @@ export function QrCity({ value, className }: QrCityProps) {
           <rect
             width={layout.plateSize}
             height={layout.plateSize}
-            fill={PLATE_COLOR}
+            fill="#ffffff"
           />
           <path d={svgPath} fill={ROOF_COLOR} />
         </svg>

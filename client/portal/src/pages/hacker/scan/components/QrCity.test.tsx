@@ -10,6 +10,7 @@ const { sceneState } = vi.hoisted(() => ({
     instances: [] as {
       setProgress: ReturnType<typeof vi.fn>;
       setSize: ReturnType<typeof vi.fn>;
+      orbitBy: ReturnType<typeof vi.fn>;
       dispose: ReturnType<typeof vi.fn>;
     }[],
   },
@@ -19,6 +20,7 @@ vi.mock("../city/QrCityScene", () => ({
   QrCityScene: class {
     setProgress = vi.fn();
     setSize = vi.fn();
+    orbitBy = vi.fn();
     dispose = vi.fn();
     constructor() {
       if (sceneState.shouldThrow) throw new Error("no webgl");
@@ -59,7 +61,7 @@ describe("QrCity", () => {
     await waitFor(() => expect(button).toBeEnabled());
     expect(button).toHaveAttribute("aria-pressed", "false");
     expect(
-      screen.getByText("Tap the city to show your QR code"),
+      screen.getByText("Drag to look around, tap to show your QR code"),
     ).toBeInTheDocument();
     const svg = screen.getByRole("img", { name: "Your QR code" });
     expect(svg.style.opacity).toBe("0");
@@ -76,6 +78,31 @@ describe("QrCity", () => {
     expect(button).toHaveAttribute("aria-pressed", "false");
     expect(svg.style.opacity).toBe("0");
     expect(scene.setProgress).toHaveBeenLastCalledWith(0);
+  });
+
+  it("orbits the city on drag without showing the QR", async () => {
+    stubReducedMotion(true);
+    HTMLElement.prototype.setPointerCapture = vi.fn();
+    const user = userEvent.setup();
+    render(<QrCity value={USER_ID} />);
+
+    const button = await screen.findByRole("button", {
+      name: "Show my QR code",
+    });
+    await waitFor(() => expect(button).toBeEnabled());
+    const scene = sceneState.instances[0];
+
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: button, coords: { x: 10, y: 10 } },
+      { target: button, coords: { x: 60, y: 20 } },
+      { keys: "[/MouseLeft]", target: button },
+    ]);
+
+    expect(scene.orbitBy).toHaveBeenCalled();
+    expect(button).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "true");
   });
 
   it("falls back to the plain QR when WebGL is unavailable", async () => {

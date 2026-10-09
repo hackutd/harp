@@ -74,8 +74,12 @@ export default function GradingPage() {
 
   // Initialize from URL params and reset stale state
   useEffect(() => {
+    // "all" is the reviews page's All tab: no status filter.
+    const statusParam = searchParams.get("status");
     const status =
-      (searchParams.get("status") as ApplicationStatus) || "submitted";
+      statusParam === "all"
+        ? null
+        : (statusParam as ApplicationStatus) || "submitted";
     const sort_by =
       (searchParams.get("sort_by") as ApplicationSortBy) || "accept_votes";
     const search = searchParams.get("search") || "";
