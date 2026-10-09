@@ -33,6 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AIAssessmentSummary } from "@/pages/admin/_shared/AIAssessmentSummary";
 import {
   GradingActionButtons,
   ReviewerNotesList,
@@ -43,7 +44,6 @@ import {
 import type { ApplicationListItem } from "@/pages/admin/all-applicants/types";
 import { getStatusColor } from "@/pages/admin/all-applicants/utils";
 import type { ReviewNote } from "@/pages/admin/reviews/types";
-import { formatAIScore } from "@/shared/lib/ai-assessment";
 import { cn } from "@/shared/lib/utils";
 import type { ApplicationStatus, RSVPStatus, TravelStatus } from "@/types";
 
@@ -236,6 +236,11 @@ export const GradingPanel = memo(function GradingPanel({
 
   return (
     <div className="divide-y">
+      <section aria-label="AI assessment" className="space-y-3 px-5 py-4">
+        <h3 className={SECTION_TITLE}>AI assessment</h3>
+        <AIAssessmentSummary assessment={listItem} />
+      </section>
+
       {/* Reviewer votes — application and travel together */}
       <section aria-label="Reviewer votes">
         <SectionHeader
@@ -244,11 +249,6 @@ export const GradingPanel = memo(function GradingPanel({
             <>
               {listItem.reviews_completed} of {listItem.reviews_assigned}{" "}
               complete
-              {listItem.ai_score != null && (
-                <span className="ml-3 border px-3.5 py-1.5 text-base text-foreground">
-                  AI {formatAIScore(listItem.ai_score)}
-                </span>
-              )}
             </>
           }
         />

@@ -54,11 +54,11 @@ type DecisionEmailStatsResponse struct {
 	Stats *store.DecisionEmailStats `json:"stats"`
 }
 
-// sendDecisionEmailsHandler emails applicants their decision, or a neutral
-// "decisions are out" announcement.
+// sendDecisionEmailsHandler emails applicants their released decision, or a
+// neutral "decisions are out" announcement.
 //
 //	@Summary		Send decision emails (Super Admin)
-//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. With send_push, recipients who enabled push notifications also get a neutral "decisions are out" push after the emails go out. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued and how many will also be pushed. Returns 409 until decisions are released, or while a previous run is still sending.
+//	@Description	Emails applicants whose released decision is in the selected statuses; a decision not yet released is never emailed. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every applicant with a released decision without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. With send_push, recipients who enabled push notifications also get a neutral "decisions are out" push after the emails go out. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued and how many will also be pushed. Returns 409 while a previous run is still sending.
 //	@Tags			superadmin/emails
 //	@Accept			json
 //	@Produce		json
@@ -89,35 +89,56 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// The announcement reveals nothing, so it always goes to every decided
-	// applicant — a per-status audience would leak the outcome by omission.
-	var (
-		kind     store.DecisionEmailKind
-		statuses []store.ApplicationStatus
-	)
-	switch payload.Mode {
-	case decisionEmailModeAnnouncement:
-		kind = store.DecisionEmailKindAnnouncement
-		statuses = store.DecisionEmailStatuses
-	default:
-		if len(payload.Statuses) == 0 {
-			app.badRequestResponse(w, r, errors.New("at least one status is required in decision mode"))
-			return
-		}
-		kind = store.DecisionEmailKindDecision
-		statuses = payload.Statuses
+	if payload.Mode == decisionEmailModeDecision && len(payload.Statuses) == 0 {
+		app.badRequestResponse(w, r, errors.New("at least one status is required in decision mode"))
+		return
 	}
 
-	// Both modes send applicants to the portal, which shows no decision until
-	// results are released, so an email sent first would point at nothing.
-	released, err := app.store.Settings.GetDecisionsReleased(r.Context())
+	response, err := app.queueDecisionEmails(r, decisionEmailRun{
+		mode:      payload.Mode,
+		statuses:  payload.Statuses,
+		resendAll: payload.ResendAll,
+		sendPush:  payload.SendPush,
+	})
 	if err != nil {
+		if errors.Is(err, errDecisionEmailsInFlight) {
+			app.conflictResponse(w, r, err)
+			return
+		}
 		app.internalServerError(w, r, err)
 		return
 	}
-	if !released {
-		app.conflictResponse(w, r, errors.New("release decisions before emailing applicants"))
-		return
+
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+var errDecisionEmailsInFlight = errors.New("decision emails are already being sent")
+
+// decisionEmailRun selects who a decision email run reaches.
+type decisionEmailRun struct {
+	mode string
+	// statuses are the released decisions to email in decision mode; the
+	// announcement always goes to every released decision.
+	statuses  []store.ApplicationStatus
+	resendAll bool
+	// releaseID narrows the run to the applicants one release published.
+	releaseID string
+	sendPush  bool
+}
+
+// queueDecisionEmails starts a decision email run in the background and
+// reports how many recipients it queued. Only released decisions are emailed,
+// so a message never describes something the portal does not show yet.
+// Returns errDecisionEmailsInFlight while another run is still sending.
+func (app *application) queueDecisionEmails(r *http.Request, run decisionEmailRun) (*SendDecisionEmailsResponse, error) {
+	// The announcement reveals nothing, so it always goes to every decided
+	// applicant in scope — a per-status audience would leak the outcome by
+	// omission.
+	kind, statuses := store.DecisionEmailKindDecision, run.statuses
+	if run.mode == decisionEmailModeAnnouncement {
+		kind, statuses = store.DecisionEmailKindAnnouncement, store.DecisionEmailStatuses
 	}
 
 	// The send runs in the background and can take minutes. Recipients are
@@ -128,8 +149,7 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 	// the recipient query so a second request cannot snapshot recipients the
 	// current run is still working through.
 	if !app.decisionEmailInFlight.CompareAndSwap(false, true) {
-		app.conflictResponse(w, r, errors.New("decision emails are already being sent"))
-		return
+		return nil, errDecisionEmailsInFlight
 	}
 	handedOff := false
 	defer func() {
@@ -138,56 +158,50 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		}
 	}()
 
-	recipients, err := app.store.Application.GetDecisionEmailRecipients(r.Context(), statuses, kind, !payload.ResendAll)
+	recipients, err := app.store.Application.GetDecisionEmailRecipients(r.Context(), statuses, kind, !run.resendAll, run.releaseID)
 	if err != nil {
-		app.internalServerError(w, r, err)
-		return
+		return nil, err
 	}
 
 	skipped := 0
-	if !payload.ResendAll {
-		all, err := app.store.Application.GetDecisionEmailRecipients(r.Context(), statuses, kind, false)
+	if !run.resendAll {
+		all, err := app.store.Application.GetDecisionEmailRecipients(r.Context(), statuses, kind, false, run.releaseID)
 		if err != nil {
-			app.internalServerError(w, r, err)
-			return
+			return nil, err
 		}
 		skipped = len(all) - len(recipients)
 	}
 
 	if len(recipients) == 0 {
-		if err := app.jsonResponse(w, http.StatusOK, SendDecisionEmailsResponse{
-			Mode:    payload.Mode,
-			Queued:  0,
-			Skipped: skipped,
-		}); err != nil {
-			app.internalServerError(w, r, err)
-		}
-		return
+		return &SendDecisionEmailsResponse{Mode: run.mode, Skipped: skipped}, nil
 	}
 
 	// Subscriptions are resolved before the hand-off so the response can say how
 	// many applicants will also hear about this on their phone or desktop.
 	var pushSubs []store.PushSubscription
-	if payload.SendPush && app.pushConfigured() {
+	if run.sendPush && app.pushConfigured() {
 		userIDs := make([]string, len(recipients))
 		for i, recipient := range recipients {
 			userIDs[i] = recipient.UserID
 		}
 		pushSubs, err = app.store.PushSubscriptions.ListByUserIDs(r.Context(), userIDs)
 		if err != nil {
-			app.internalServerError(w, r, err)
-			return
+			return nil, err
 		}
 	}
 	pushRecipients := countDistinctUsers(pushSubs)
 
-	app.requestLogger(r).Infow("dispatching decision emails",
-		"mode", payload.Mode,
+	logFields := []any{
+		"mode", run.mode,
 		"queued", len(recipients),
 		"skipped", skipped,
 		"push_recipients", pushRecipients,
-		"admin_id", admin.ID,
-	)
+		"release_id", run.releaseID,
+	}
+	if admin := getUserFromContext(r.Context()); admin != nil {
+		logFields = append(logFields, "admin_id", admin.ID)
+	}
+	app.requestLogger(r).Infow("dispatching decision emails", logFields...)
 
 	handedOff = true
 	app.backgroundJobs.Add(1)
@@ -200,14 +214,12 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		app.dispatchDecisionPush(pushSubs, kind)
 	}()
 
-	if err := app.jsonResponse(w, http.StatusOK, SendDecisionEmailsResponse{
-		Mode:           payload.Mode,
+	return &SendDecisionEmailsResponse{
+		Mode:           run.mode,
 		Queued:         len(recipients),
 		Skipped:        skipped,
 		PushRecipients: pushRecipients,
-	}); err != nil {
-		app.internalServerError(w, r, err)
-	}
+	}, nil
 }
 
 // dispatchDecisionEmails sends to every recipient with bounded concurrency,

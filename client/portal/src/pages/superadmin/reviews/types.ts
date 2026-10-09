@@ -95,6 +95,67 @@ export interface SendDecisionEmailsResponse {
   push_recipients: number;
 }
 
-export interface DecisionsReleasedResponse {
-  released: boolean;
+/** Who a decision release covers, by submission time against the priority deadline. */
+export type DecisionReleaseAudience = "priority" | "non_priority" | "everyone";
+
+/** Emails sent to a release's applicants once it is saved. */
+export type DecisionReleaseEmail = "none" | DecisionEmailMode;
+
+/** One decision release (a "wave"): what it covered and who it published. */
+export interface DecisionRelease {
+  id: string;
+  released_by: string | null;
+  released_by_email: string | null;
+  audience: DecisionReleaseAudience;
+  statuses: DecidedStatus[];
+  /** The priority deadline the audience was resolved against. */
+  priority_deadline: string | null;
+  released_count: number;
+  created_at: string;
+  undone_at: string | null;
+  undone_by_email: string | null;
+  /** Applicants emailed since the release went out; undo cannot recall these. */
+  emailed_count: number;
+}
+
+export interface DecisionReleasesResponse {
+  releases: DecisionRelease[];
+}
+
+/** What a release would do to the applicants in one status. */
+export interface DecisionReleaseCounts {
+  /** Never had a decision released. */
+  new: number;
+  /** Had a different decision released. */
+  changed: number;
+  /** Already see this decision, but their travel decision changed since. */
+  travel_only: number;
+  /** Already see exactly this decision. */
+  unchanged: number;
+  /** The changed applicants who already RSVP'd to what they see. */
+  rsvp_changed: number;
+}
+
+export interface DecisionReleasePreviewResponse {
+  audience: DecisionReleaseAudience;
+  priority_deadline: string | null;
+  preview: {
+    by_status: Record<DecidedStatus, DecisionReleaseCounts>;
+    /** Applicants in the audience with no decision yet, left out of any release. */
+    under_review: number;
+  };
+}
+
+export interface CreateDecisionReleasePayload {
+  audience: DecisionReleaseAudience;
+  statuses: DecidedStatus[];
+  email: DecisionReleaseEmail;
+  send_push: boolean;
+}
+
+export interface CreateDecisionReleaseResponse {
+  release: DecisionRelease;
+  emails?: SendDecisionEmailsResponse;
+  /** Set when emails were asked for but did not start; the release stands. */
+  email_error?: string;
 }

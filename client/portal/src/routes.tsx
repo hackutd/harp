@@ -219,7 +219,7 @@ export const router = createBrowserRouter([
         path: "/admin",
         element: (
           <RequireAdmin>
-            <Suspense fallback={<PageLoader />}>
+            <Suspense fallback={<PageLoader fullscreen />}>
               <AdminLayout />
             </Suspense>
           </RequireAdmin>

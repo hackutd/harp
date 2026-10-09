@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -224,7 +225,45 @@ func (app *application) applicantSchema(r *http.Request) ([]store.ApplicationSch
 	if err != nil {
 		return nil, nil, err
 	}
+	return app.withholdApplicantFields(r, schema)
+}
 
+// ownApplicationSchema returns the schema shown alongside an applicant's own
+// application. A draft gets the applicant schema. A submitted application also
+// keeps every withheld field it holds an answer for, so hiding a question or
+// closing travel applications after the fact does not erase it from the
+// applicant's view of what they submitted; withheld fields they never answered
+// stay out.
+func (app *application) ownApplicationSchema(r *http.Request, a *store.Application) ([]store.ApplicationSchemaField, error) {
+	schema, err := app.store.Settings.GetApplicationSchema(r.Context())
+	if err != nil {
+		return nil, err
+	}
+	visible, withheld, err := app.withholdApplicantFields(r, schema)
+	if err != nil {
+		return nil, err
+	}
+	if a.Status == store.StatusDraft || len(withheld) == 0 || len(a.Responses) == 0 {
+		return visible, nil
+	}
+
+	var responses map[string]json.RawMessage
+	if err := json.Unmarshal(a.Responses, &responses); err != nil {
+		return visible, nil
+	}
+	for id := range withheld {
+		if v, ok := responses[id]; ok && string(v) != "null" {
+			delete(withheld, id)
+		}
+	}
+	shown, _ := withholdFields(schema, withheld)
+	return shown, nil
+}
+
+// withholdApplicantFields splits a full application schema into the fields
+// applicants are shown and the ids withheld from them: fields a super admin
+// marked hidden and, while travel applications are closed, the travel questions.
+func (app *application) withholdApplicantFields(r *http.Request, schema []store.ApplicationSchemaField) ([]store.ApplicationSchemaField, map[string]bool, error) {
 	withheld := hiddenFieldIDs(schema)
 
 	travelIDs := travelQuestionIDs(schema)

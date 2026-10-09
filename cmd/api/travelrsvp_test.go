@@ -26,7 +26,8 @@ const testTravelApprovedAmountCents = int64(12345)
 // RSVP, approved travel, and a pending travel RSVP.
 func newTravelEligibleApplication(userID string) *store.Application {
 	approvedAmount := testTravelApprovedAmountCents
-	return &store.Application{
+	// Released, as it must be for the hacker to act on it.
+	return markReleased(&store.Application{
 		ID:                        "app-1",
 		UserID:                    userID,
 		Status:                    store.StatusAccepted,
@@ -39,7 +40,7 @@ func newTravelEligibleApplication(userID string) *store.Application {
 		TravelRSVPResponses:       json.RawMessage(`{}`),
 		CreatedAt:                 time.Now(),
 		UpdatedAt:                 time.Now(),
-	}
+	})
 }
 
 func newTravelRSVPSchema() []store.ApplicationSchemaField {
@@ -56,7 +57,6 @@ func validTestReceiptPath(userID string) string {
 
 func TestGetMyTravelRSVP(t *testing.T) {
 	app := newTestApplication(t)
-	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
@@ -93,6 +93,7 @@ func TestGetMyTravelRSVP(t *testing.T) {
 		user := newTestUser()
 		submitted := newTravelEligibleApplication(user.ID)
 		submitted.Status = store.StatusSubmitted
+		submitted.ReleasedStatus = nil
 
 		mockApps.On("GetByUserID", user.ID).Return(submitted, nil).Once()
 
@@ -127,6 +128,7 @@ func TestGetMyTravelRSVP(t *testing.T) {
 		user := newTestUser()
 		notApproved := newTravelEligibleApplication(user.ID)
 		notApproved.TravelStatus = store.TravelPending
+		rerelease(notApproved)
 
 		mockApps.On("GetByUserID", user.ID).Return(notApproved, nil).Once()
 
@@ -158,7 +160,6 @@ func TestGetMyTravelRSVP(t *testing.T) {
 
 func TestSubmitMyTravelRSVP(t *testing.T) {
 	app := newTestApplication(t)
-	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
@@ -330,6 +331,7 @@ func TestSubmitMyTravelRSVP(t *testing.T) {
 		user := newTestUser()
 		notApproved := newTravelEligibleApplication(user.ID)
 		notApproved.TravelStatus = store.TravelRejected
+		rerelease(notApproved)
 
 		mockApps.On("GetByUserID", user.ID).Return(notApproved, nil).Once()
 
@@ -379,7 +381,6 @@ func TestSubmitMyTravelRSVP(t *testing.T) {
 
 func TestGenerateTravelReceiptUploadURL(t *testing.T) {
 	app := newTestApplication(t)
-	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 	mockGCS := app.gcsClient.(*gcs.MockClient)
@@ -468,6 +469,7 @@ func TestGenerateTravelReceiptUploadURL(t *testing.T) {
 		user := newTestUser()
 		notApproved := newTravelEligibleApplication(user.ID)
 		notApproved.TravelStatus = store.TravelPending
+		rerelease(notApproved)
 
 		mockApps.On("GetByUserID", user.ID).Return(notApproved, nil).Once()
 

@@ -17,6 +17,7 @@ import {
 } from "@tabler/icons-react";
 import { Link, useLocation, useNavigate } from "react-router";
 
+import harpMark from "@/assets/harp-mark.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -187,6 +188,22 @@ function SidebarToggle() {
   );
 }
 
+/** The Harp mark, masked so it takes the ink colour: black on light, white on dark. */
+function HarpMark({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("shrink-0 bg-ink", className)}
+      style={{
+        maskImage: `url(${harpMark})`,
+        maskSize: "contain",
+        maskRepeat: "no-repeat",
+        maskPosition: "center",
+      }}
+    />
+  );
+}
+
 /**
  * The header's product switcher: the portal you are in (checked), the other
  * portal for admins and super admins, and the Zero Day event site.
@@ -205,15 +222,8 @@ function ZeroDaySwitcher({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-surface-2">
-        <img
-          src={ZERODAY_LOGO}
-          alt=""
-          aria-hidden
-          className="size-6 shrink-0 object-contain"
-        />
-        <span className="truncate text-[15px] font-normal text-ink">
-          Zero Day
-        </span>
+        <HarpMark className="size-[18px]" />
+        <span className="truncate text-[15px] font-normal text-ink">Harp</span>
         <IconChevronDown
           aria-hidden
           className="size-3.5 shrink-0 text-ink/55"
@@ -235,7 +245,11 @@ function ZeroDaySwitcher({
               onClick={current ? undefined : () => switchPortal(config.home)}
               className="items-center gap-2.5 rounded-lg focus:bg-surface-2"
             >
-              <PortalIcon aria-hidden className="size-5" strokeWidth={1.5} />
+              {p === "hacker" ? (
+                <HarpMark className="size-5" />
+              ) : (
+                <PortalIcon aria-hidden className="size-5" strokeWidth={1.5} />
+              )}
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="text-[13px] text-ink">{config.name}</span>
                 <span className="mt-1 text-xs text-ink/55">{config.host}</span>

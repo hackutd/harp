@@ -9,11 +9,12 @@ import {
 import {
   AI_CLASS_KEYS,
   AI_CLASS_LABELS,
+  aiOnlyScore,
   formatAIScore,
 } from "@/shared/lib/ai-assessment";
 import type { AIAssessment } from "@/types";
 
-/** Shows the AI score; hovering or focusing it reveals the verdict and class breakdown. */
+/** Shows the AI-only score; hovering or focusing it reveals the verdict and class breakdown. */
 export function AIAssessmentSummary({
   assessment,
   action,
@@ -22,6 +23,7 @@ export function AIAssessmentSummary({
   /** Rendered beside the score, e.g. an edit button. */
   action?: ReactNode;
 }) {
+  const score = formatAIScore(aiOnlyScore(assessment));
   return (
     <div className="text-sm">
       <p className="text-xs text-muted-foreground">AI score</p>
@@ -30,10 +32,10 @@ export function AIAssessmentSummary({
           <TooltipTrigger asChild>
             <button
               type="button"
-              aria-label={`AI score ${formatAIScore(assessment.ai_score)}, show breakdown`}
+              aria-label={`AI score ${score}, show breakdown`}
               className="inline-flex cursor-help items-center gap-1.5 rounded-sm text-base font-semibold tabular-nums underline decoration-muted-foreground/50 decoration-dotted underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {formatAIScore(assessment.ai_score)}
+              {score}
               <IconInfoCircle className="size-3.5 text-muted-foreground" />
             </button>
           </TooltipTrigger>

@@ -2310,6 +2310,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/settings/priority-deadline": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the instant an application must have been submitted by to count as priority, or null when none is set.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin/settings"
+                ],
+                "summary": "Get priority deadline (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PriorityDeadlineResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/sponsors": {
             "get": {
                 "security": [
@@ -6021,6 +6079,323 @@ const docTemplate = `{
                 }
             }
         },
+        "/superadmin/decisions/releases": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns every decision release, newest first, with who released it, the audience and statuses it covered, how many applicants it published, how many of them have been emailed since, and whether it was undone.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/decisions"
+                ],
+                "summary": "List decision releases (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DecisionReleasesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Publishes the current decision of every applicant in the audience whose status is one of statuses and whose hacker does not see it yet, including decisions changed since an earlier release. Hackers see only released decisions, so anything changed afterwards stays hidden until the next release. A changed decision has its email markers cleared so it is emailed again. With email set, the release's applicants are then emailed (and pushed, with send_push); if that cannot start, the release still stands and email_error says why. Returns 409 when nothing would change, or when emails were asked for while a previous email run is still sending (nothing is released then).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/decisions"
+                ],
+                "summary": "Release decisions (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Audience, statuses, and emails",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateDecisionReleasePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateDecisionReleaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/decisions/releases/preview": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "For every decided status in the audience, counts the applicants a release would publish for the first time, whose released decision would change (and of those, who already RSVP'd), whose travel decision alone would change, and who already see their current decision; plus how many are still under review and would be left out. priority and non_priority need a priority deadline.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/decisions"
+                ],
+                "summary": "Preview a decision release (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "priority, non_priority, or everyone",
+                        "name": "audience",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DecisionReleasePreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/decisions/releases/{releaseID}/undo": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Reverts the most recent release still in effect: each applicant it published goes back to what they could see before (under review, or their earlier released decision), and their email markers are restored. Current decisions are untouched, and emails already sent cannot be recalled. Applicants reopened to draft since are left alone. Returns the updated release list. 409 for any release but the most recent one in effect.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/decisions"
+                ],
+                "summary": "Undo a decision release (Super Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Release ID",
+                        "name": "releaseID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DecisionReleasesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/superadmin/emails/decisions": {
             "post": {
                 "security": [
@@ -6028,7 +6403,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Emails applicants in the selected statuses. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. With send_push, recipients who enabled push notifications also get a neutral \"decisions are out\" push after the emails go out. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued and how many will also be pushed. Returns 409 until decisions are released, or while a previous run is still sending.",
+                "description": "Emails applicants whose released decision is in the selected statuses; a decision not yet released is never emailed. Mode \"decision\" sends the per-status accept/waitlist/reject email; mode \"announcement\" sends a neutral decisions-are-out email to every applicant with a released decision without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. With send_push, recipients who enabled push notifications also get a neutral \"decisions are out\" push after the emails go out. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued and how many will also be pushed. Returns 409 while a previous run is still sending.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8654,145 +9029,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/superadmin/settings/decisions-released": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Returns whether hackers can currently see their final application decision. While unreleased, decided applications read as submitted on every hacker endpoint.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Get decisions released status (Super Admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DecisionsReleasedResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Releases final application decisions to hackers, or hides them again. Requires SuperAdmin privileges.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "superadmin/settings"
-                ],
-                "summary": "Set decisions released status (Super Admin)",
-                "parameters": [
-                    {
-                        "description": "Release or hide decisions",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.SetDecisionsReleasedPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.DecisionsReleasedResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/superadmin/settings/from-email": {
             "get": {
                 "security": [
@@ -9777,6 +10013,145 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.PointsNameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/superadmin/settings/priority-deadline": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns the priority deadline and how many applications were submitted by it, by current status, so the cutoff can be checked before decisions are released against it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Get priority deadline stats (Super Admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PriorityDeadlineStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the instant an application must have been submitted by to count as priority (RFC 3339, kept in the offset it is sent with), or clears it with null. Returns the applications the new deadline covers.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "superadmin/settings"
+                ],
+                "summary": "Set priority deadline (Super Admin)",
+                "parameters": [
+                    {
+                        "description": "Priority deadline",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetPriorityDeadlinePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PriorityDeadlineStatsResponse"
                         }
                     },
                     "400": {
@@ -12121,6 +12496,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "decision_released_at": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -12133,6 +12511,20 @@ const docTemplate = `{
                 },
                 "reject_votes": {
                     "type": "integer"
+                },
+                "released_status": {
+                    "description": "The decision the hacker can see, copied from the fields above by the last\ndecision release that covered the application. Nil until one has; the\ntravel fields stay nil while travel is undecided. Hacker endpoints\nreplace the live fields with these and then drop them.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.ApplicationStatus"
+                        }
+                    ]
+                },
+                "released_travel_amount_cents": {
+                    "type": "integer"
+                },
+                "released_travel_status": {
+                    "$ref": "#/definitions/store.TravelStatus"
                 },
                 "responses": {
                     "type": "array",
@@ -12264,6 +12656,67 @@ const docTemplate = `{
                 }
             }
         },
+        "main.CreateDecisionReleasePayload": {
+            "type": "object",
+            "required": [
+                "audience",
+                "statuses"
+            ],
+            "properties": {
+                "audience": {
+                    "enum": [
+                        "priority",
+                        "non_priority",
+                        "everyone"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.DecisionReleaseAudience"
+                        }
+                    ]
+                },
+                "email": {
+                    "description": "Email sends the release's applicants an email once it is saved: none, a\nneutral \"announcement\", or each applicant's \"decision\".",
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "announcement",
+                        "decision"
+                    ]
+                },
+                "send_push": {
+                    "description": "SendPush also sends the neutral push alert to emailed applicants.",
+                    "type": "boolean"
+                },
+                "statuses": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationStatus"
+                    }
+                }
+            }
+        },
+        "main.CreateDecisionReleaseResponse": {
+            "type": "object",
+            "properties": {
+                "email_error": {
+                    "description": "EmailError explains why requested emails were not started. The release\nitself still went out; send them from the Send Emails dialog.",
+                    "type": "string"
+                },
+                "emails": {
+                    "description": "Emails reports the email run started for the release, when one was asked for.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/main.SendDecisionEmailsResponse"
+                        }
+                    ]
+                },
+                "release": {
+                    "$ref": "#/definitions/store.DecisionRelease"
+                }
+            }
+        },
         "main.CreateReferralPayload": {
             "type": "object",
             "required": [
@@ -12382,11 +12835,28 @@ const docTemplate = `{
                 }
             }
         },
-        "main.DecisionsReleasedResponse": {
+        "main.DecisionReleasePreviewResponse": {
             "type": "object",
             "properties": {
-                "released": {
-                    "type": "boolean"
+                "audience": {
+                    "$ref": "#/definitions/store.DecisionReleaseAudience"
+                },
+                "preview": {
+                    "$ref": "#/definitions/store.DecisionReleasePreview"
+                },
+                "priority_deadline": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.DecisionReleasesResponse": {
+            "type": "object",
+            "properties": {
+                "releases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.DecisionRelease"
+                    }
                 }
             }
         },
@@ -12726,6 +13196,30 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.PriorityDeadlineResponse": {
+            "type": "object",
+            "properties": {
+                "deadline": {
+                    "description": "Deadline is the instant an application must have been submitted by to\ncount as priority, in the offset it was saved with. Null when unset.",
+                    "type": "string"
+                }
+            }
+        },
+        "main.PriorityDeadlineStatsResponse": {
+            "type": "object",
+            "properties": {
+                "counts": {
+                    "description": "Counts is how many applications were submitted by the deadline, keyed by\ncurrent status. Empty when no deadline is set.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "deadline": {
                     "type": "string"
                 }
             }
@@ -13301,14 +13795,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.SetDecisionsReleasedPayload": {
-            "type": "object",
-            "properties": {
-                "released": {
-                    "type": "boolean"
-                }
-            }
-        },
         "main.SetEmailSettingPayload": {
             "type": "object",
             "required": [
@@ -13379,6 +13865,15 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 30,
                     "minLength": 1
+                }
+            }
+        },
+        "main.SetPriorityDeadlinePayload": {
+            "type": "object",
+            "properties": {
+                "deadline": {
+                    "description": "Deadline is an RFC 3339 timestamp; null clears it.",
+                    "type": "string"
                 }
             }
         },
@@ -14247,6 +14742,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "decision_released_at": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -14255,6 +14753,20 @@ const docTemplate = `{
                 },
                 "reject_votes": {
                     "type": "integer"
+                },
+                "released_status": {
+                    "description": "The decision the hacker can see, copied from the fields above by the last\ndecision release that covered the application. Nil until one has; the\ntravel fields stay nil while travel is undecided. Hacker endpoints\nreplace the live fields with these and then drop them.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.ApplicationStatus"
+                        }
+                    ]
+                },
+                "released_travel_amount_cents": {
+                    "type": "integer"
+                },
+                "released_travel_status": {
+                    "$ref": "#/definitions/store.TravelStatus"
                 },
                 "responses": {
                     "type": "array",
@@ -14438,6 +14950,14 @@ const docTemplate = `{
                 },
                 "reject_votes": {
                     "type": "integer"
+                },
+                "released_status": {
+                    "description": "ReleasedStatus is the decision the hacker can see; nil until a decision\nrelease covers the application. A status that differs from it is an\nunreleased change.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.ApplicationStatus"
+                        }
+                    ]
                 },
                 "reviews_assigned": {
                     "type": "integer"
@@ -14807,6 +15327,101 @@ const docTemplate = `{
                 },
                 "waitlisted": {
                     "$ref": "#/definitions/store.EmailSendCounts"
+                }
+            }
+        },
+        "store.DecisionRelease": {
+            "type": "object",
+            "properties": {
+                "audience": {
+                    "$ref": "#/definitions/store.DecisionReleaseAudience"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "emailed_count": {
+                    "description": "EmailedCount is how many of the release's applicants have been emailed\n(decision or announcement) since it went out. Undo cannot recall those.",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority_deadline": {
+                    "type": "string"
+                },
+                "released_by": {
+                    "type": "string"
+                },
+                "released_by_email": {
+                    "type": "string"
+                },
+                "released_count": {
+                    "type": "integer"
+                },
+                "statuses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.ApplicationStatus"
+                    }
+                },
+                "undone_at": {
+                    "type": "string"
+                },
+                "undone_by_email": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.DecisionReleaseAudience": {
+            "type": "string",
+            "enum": [
+                "priority",
+                "non_priority",
+                "everyone"
+            ],
+            "x-enum-varnames": [
+                "AudiencePriority",
+                "AudienceNonPriority",
+                "AudienceEveryone"
+            ]
+        },
+        "store.DecisionReleaseCounts": {
+            "type": "object",
+            "properties": {
+                "changed": {
+                    "description": "Changed had a different decision released.",
+                    "type": "integer"
+                },
+                "new": {
+                    "description": "New have never had a decision released.",
+                    "type": "integer"
+                },
+                "rsvp_changed": {
+                    "description": "RSVPChanged are the Changed applicants who have already RSVP'd to the\ndecision they can see.",
+                    "type": "integer"
+                },
+                "travel_only": {
+                    "description": "TravelOnly have this decision released already, but their travel\ndecision has changed since.",
+                    "type": "integer"
+                },
+                "unchanged": {
+                    "description": "Unchanged already see exactly this decision.",
+                    "type": "integer"
+                }
+            }
+        },
+        "store.DecisionReleasePreview": {
+            "type": "object",
+            "properties": {
+                "by_status": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/store.DecisionReleaseCounts"
+                    }
+                },
+                "under_review": {
+                    "description": "UnderReview is how many applicants in the audience have no decision yet\nand so are left out of any release.",
+                    "type": "integer"
                 }
             }
         },

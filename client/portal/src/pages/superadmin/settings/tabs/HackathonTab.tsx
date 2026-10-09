@@ -17,6 +17,7 @@ import {
 } from "../api";
 import { LegalSection } from "../components/LegalSection";
 import { OnboardingDialog } from "../components/OnboardingDialog";
+import { PriorityDeadlineSection } from "../components/PriorityDeadlineSection";
 import type { OnboardingStatus } from "../types";
 
 const CHECKLIST: { key: keyof OnboardingStatus; label: string }[] = [
@@ -157,6 +158,8 @@ export default function HackathonTab() {
           {status?.complete ? "Edit hackathon setup" : "Finish setup"}
         </Button>
       </div>
+
+      <PriorityDeadlineSection />
 
       {/* Points system — the toggle hides points from the hacker portal
           entirely, so the name only matters while it is on. */}

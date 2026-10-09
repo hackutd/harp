@@ -45,10 +45,9 @@
     var(--hacker-ice)
   );
   --hacker-blue: #0081e6;
-  /* Dashboard accents: the month on Important dates, and the unread dot on
-     notifications. Light mode deepens the purple to read on white. */
-  --date-accent: #c651ff;
-  --notify-accent: #3b30ff;
+  /* Dashboard accent: the unread dot on
+     notifications (the light blue of the custom cursor). */
+  --notify-accent: #5ef6ff;
   --hacker-navy: #001e4d;
 
   /* Badge green (shared/lib/badge-colors.ts): the schedule green, a step
@@ -756,7 +755,6 @@ body.admin-portal.theme-light {
    blue for actions. Ice is used for small accent text, so it is darkened
    enough to read on white. */
 .theme-light {
-  --date-accent: #9a1fd6;
   --hacker-canvas: #ffffff;
   --hacker-surface: var(--admin-panel);
   --hacker-surface-2: #ededeb;

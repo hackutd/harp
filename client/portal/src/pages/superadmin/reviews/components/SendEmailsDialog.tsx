@@ -45,7 +45,6 @@ import {
   fetchDecisionEmailStats,
   sendDecisionEmails,
 } from "../api";
-import { useDecisionReleaseStore } from "../releaseStore";
 import type {
   DecidedStatus,
   DecisionEmailMode,
@@ -171,14 +170,8 @@ function SendEmailsDialogBody({
           return sum + (resendAll ? counts.total : counts.pending);
         }, 0);
 
-  // The server refuses to email anyone before decisions are released, since
-  // the portal would still show their application as under review.
-  const decisionsReleased = useDecisionReleaseStore((s) => s.released);
-  const releaseBlocked = decisionsReleased === false;
-
   const canSend =
     !statsLoading &&
-    !releaseBlocked &&
     recipientCount > 0 &&
     (mode === "announcement" || selected.length > 0);
 
@@ -393,11 +386,10 @@ function SendEmailsDialogBody({
                 )}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Goes to everyone marked accepted, waitlisted, or rejected. The
-                email says decisions are out and links to the portal — it does
-                not reveal the outcome. Applicants still in{" "}
-                <strong>submitted</strong> are excluded, since they have no
-                decision to look up yet.
+                Goes to everyone whose decision has been released. The email
+                says decisions are out and links to the portal — it does not
+                reveal the outcome. Applicants without a released decision are
+                excluded, since they have nothing to look up yet.
               </p>
               {!statsLoading && (emailStats?.announcement.sent ?? 0) > 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -548,19 +540,11 @@ function SendEmailsDialogBody({
               />
             </div>
 
-            {releaseBlocked && (
-              <div
-                className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800"
-                role="alert"
-              >
-                <IconAlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                <p className="text-xs">
-                  Decisions have not been released. Release them from the
-                  reviews page before emailing applicants, or the portal will
-                  still show their application as under review.
-                </p>
-              </div>
-            )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Only released decisions are emailed, so an email never shows
+              something the portal does not. Counts here cover released
+              decisions only.
+            </p>
 
             {resendAll && (
               <div className="mt-2 flex items-start gap-1.5 rounded-md bg-yellow-50 p-2 text-yellow-800">

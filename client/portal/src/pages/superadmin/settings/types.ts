@@ -1,3 +1,5 @@
+import type { ApplicationStatus } from "@/types";
+
 export interface ResetHackathonOptions {
   reset_applications: boolean;
   reset_scans: boolean;
@@ -52,6 +54,12 @@ export interface FromNameResult {
 export interface DateSettingResult {
   date: string;
   configured: boolean;
+}
+
+/** Applications submitted by the deadline, keyed by their current status. */
+export interface PriorityDeadlineStats {
+  deadline: string | null;
+  counts: Partial<Record<ApplicationStatus, number>>;
 }
 
 export interface HackathonDateRangeResult {

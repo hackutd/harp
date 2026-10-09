@@ -124,6 +124,64 @@ func TestApplicantSchemaWithHiddenFields(t *testing.T) {
 		assert.Equal(t, []string{"first_name"}, schemaIDs(envelope.Data.ApplicationSchema))
 	})
 
+	t.Run("keeps hidden questions a submitted application answered", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		user := newTestUser()
+
+		submitted := &store.Application{
+			ID: "app-1", UserID: user.ID, Status: store.StatusSubmitted,
+			Responses: json.RawMessage(`{"first_name":"Ada","interview_opt_in":"Yes","interview_ack":true}`),
+		}
+		mockApps.On("GetByUserID", user.ID).Return(submitted, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(newHiddenSchema(), nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getOrCreateApplicationHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data ApplicationWithSchema `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, []string{"first_name", "interview_opt_in", "interview_ack"}, schemaIDs(envelope.Data.ApplicationSchema))
+	})
+
+	t.Run("leaves hidden questions out of a submitted application that never answered them", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockApps := app.store.Application.(*store.MockApplicationStore)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockScans := app.store.Scans.(*store.MockScansStore)
+		user := newTestUser()
+
+		submitted := &store.Application{
+			ID: "app-1", UserID: user.ID, Status: store.StatusSubmitted,
+			Responses: json.RawMessage(`{"first_name":"Ada"}`),
+		}
+		mockApps.On("GetByUserID", user.ID).Return(submitted, nil).Once()
+		mockSettings.On("GetApplicationSchema").Return(newHiddenSchema(), nil).Once()
+		mockScans.On("GetTotalPointsByUserID", user.ID).Return(0, nil).Once()
+
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req = setUserContext(req, user)
+
+		rr := executeRequest(req, http.HandlerFunc(app.getOrCreateApplicationHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var envelope struct {
+			Data ApplicationWithSchema `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &envelope))
+		assert.Equal(t, []string{"first_name"}, schemaIDs(envelope.Data.ApplicationSchema))
+	})
+
 	t.Run("admins still get the full schema", func(t *testing.T) {
 		app := newTestApplication(t)
 		mockSettings := app.store.Settings.(*store.MockSettingsStore)
@@ -206,7 +264,6 @@ func TestRSVPSchemaWithHiddenFields(t *testing.T) {
 		user := newTestUser()
 
 		mockApps.On("GetByUserID", user.ID).Return(newAcceptedApplication(user.ID), nil).Once()
-		mockSettings.On("GetDecisionsReleased").Return(true, nil).Maybe()
 		mockSettings.On("GetRSVPEnabled").Return(true, nil).Maybe()
 		mockSettings.On("GetRSVPSchema").Return([]store.ApplicationSchemaField{
 			{ID: "shirt", Type: "text", Label: "Shirt size", Required: true},

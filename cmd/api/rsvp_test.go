@@ -18,7 +18,8 @@ import (
 
 // newAcceptedApplication returns an accepted application with a pending RSVP
 func newAcceptedApplication(userID string) *store.Application {
-	return &store.Application{
+	// Released, as it must be for the hacker to act on it.
+	return markReleased(&store.Application{
 		ID:            "app-1",
 		UserID:        userID,
 		Status:        store.StatusAccepted,
@@ -27,7 +28,7 @@ func newAcceptedApplication(userID string) *store.Application {
 		RSVPResponses: json.RawMessage(`{}`),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
-	}
+	})
 }
 
 func newRSVPSchema() []store.ApplicationSchemaField {
@@ -39,7 +40,6 @@ func newRSVPSchema() []store.ApplicationSchemaField {
 
 func TestGetMyRSVP(t *testing.T) {
 	app := newTestApplication(t)
-	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 
@@ -104,7 +104,6 @@ func TestGetMyRSVP(t *testing.T) {
 
 func TestSubmitMyRSVP(t *testing.T) {
 	app := newTestApplication(t)
-	stubDecisionsReleased(app, true)
 	mockApps := app.store.Application.(*store.MockApplicationStore)
 	mockSettings := app.store.Settings.(*store.MockSettingsStore)
 

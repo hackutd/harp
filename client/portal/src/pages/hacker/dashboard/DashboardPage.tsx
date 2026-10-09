@@ -369,7 +369,7 @@ export default function DashboardPage() {
               key={d.label}
               className="rounded-lg bg-surface p-4 theme-light:border theme-light:border-ink/10"
             >
-              <p className="text-xs font-medium text-(--date-accent)">
+              <p className="text-xs font-medium text-primary">
                 {d.month}
               </p>
               <p className="mt-1 text-2xl font-semibold text-ink">{d.day}</p>

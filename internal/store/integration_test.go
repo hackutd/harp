@@ -351,6 +351,54 @@ func TestIntegrationSettingsCache(t *testing.T) {
 	}
 }
 
+// TestIntegrationPriorityDeadline covers the stored deadline round trip and the
+// per-status count of applications submitted by it.
+func TestIntegrationPriorityDeadline(t *testing.T) {
+	db := integrationDB(t)
+	defer db.Close()
+	seedIntegration(t, db)
+	settings := newSettingsStore(db)
+	apps := &ApplicationsStore{db: db}
+	ctx := context.Background()
+
+	deadline := time.Now().Add(time.Hour).In(time.FixedZone("CDT", -5*60*60)).Truncate(time.Millisecond)
+	if err := settings.SetPriorityDeadline(ctx, &deadline); err != nil {
+		t.Fatal(err)
+	}
+	got, err := settings.GetPriorityDeadline(ctx)
+	if err != nil || got == nil || !got.Equal(deadline) {
+		t.Fatalf("round trip: got %v err %v, want %v", got, err, deadline)
+	}
+	if _, offset := got.Zone(); offset != -5*60*60 {
+		t.Errorf("offset = %d, want the saved -05:00", offset)
+	}
+
+	counts, err := apps.CountSubmittedByStatus(ctx, deadline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[ApplicationStatus]int{StatusAccepted: 1, StatusSubmitted: 1}
+	if !reflect.DeepEqual(counts, want) {
+		t.Errorf("counts = %v, want %v (the draft has never been submitted)", counts, want)
+	}
+
+	counts, err = apps.CountSubmittedByStatus(ctx, time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(counts) != 0 {
+		t.Errorf("counts before every submission = %v, want none", counts)
+	}
+
+	if err := settings.SetPriorityDeadline(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	got, err = settings.GetPriorityDeadline(ctx)
+	if err != nil || got != nil {
+		t.Fatalf("after clear: got %v err %v, want nil", got, err)
+	}
+}
+
 // TestIntegrationRestoreDefaultFormSchema covers the write behind the
 // resetschema command: the upsert reaches a key that has no row yet, replaces
 // one that does, and drops the cached copy on the way out.

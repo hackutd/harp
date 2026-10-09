@@ -10,9 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PriorityBadge } from "@/pages/admin/_shared";
+import { PriorityBadge, UnreleasedBadge } from "@/pages/admin/_shared";
 import { useRedactApplicants } from "@/shared/hooks";
-import { formatAIScore } from "@/shared/lib/ai-assessment";
+import { aiOnlyScore, formatAIScore } from "@/shared/lib/ai-assessment";
 import { formatApplicantLabel, maskEmail } from "@/shared/lib/redaction";
 import { usePointsConfigStore } from "@/shared/stores";
 
@@ -99,6 +99,10 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                         {app.status}
                       </Badge>
                       <PriorityBadge submittedAt={app.submitted_at} />
+                      <UnreleasedBadge
+                        status={app.status}
+                        releasedStatus={app.released_status}
+                      />
                     </div>
                     <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-md p-1 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
                       <IconArrowsMaximize className="h-4 w-4 text-muted-foreground" />
@@ -171,7 +175,9 @@ export const ApplicationsTable = memo(function ApplicationsTable({
                     {new Date(app.updated_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {app.ai_score != null ? formatAIScore(app.ai_score) : "-"}
+                    {aiOnlyScore(app) != null
+                      ? formatAIScore(aiOnlyScore(app))
+                      : "-"}
                   </TableCell>
                   <TableCell className="tabular-nums">{app.points}</TableCell>
                 </TableRow>
