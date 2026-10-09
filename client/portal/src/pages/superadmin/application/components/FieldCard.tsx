@@ -1,4 +1,11 @@
-import { ChevronDown, ChevronUp, Lock, Settings2, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  EyeOff,
+  Lock,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -118,6 +125,16 @@ export function FieldCard({
             System
           </Badge>
         )}
+        {field.hidden && (
+          <Badge
+            variant="outline"
+            className="text-[10px] shrink-0 bg-amber-50 text-amber-700 border-amber-200"
+            title="Applicants no longer see this field. Answers already given stay visible to admins."
+          >
+            <EyeOff className="size-2.5 mr-1" />
+            Hidden
+          </Badge>
+        )}
         <Input
           value={field.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
@@ -190,21 +207,40 @@ export function FieldCard({
         </div>
       </div>
 
-      {/* Required toggle + details expand */}
+      {/* Required / hidden toggles + details expand */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Switch
-            id={`required-${field.id}`}
-            checked={field.required}
-            onCheckedChange={(checked) => onUpdate({ required: checked })}
-            className="cursor-pointer"
-          />
-          <Label
-            htmlFor={`required-${field.id}`}
-            className="text-xs cursor-pointer"
-          >
-            Required
-          </Label>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`required-${field.id}`}
+              checked={field.required}
+              onCheckedChange={(checked) => onUpdate({ required: checked })}
+              className="cursor-pointer"
+            />
+            <Label
+              htmlFor={`required-${field.id}`}
+              className="text-xs cursor-pointer"
+            >
+              Required
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`hidden-${field.id}`}
+              checked={!!field.hidden}
+              onCheckedChange={(checked) =>
+                onUpdate({ hidden: checked || undefined })
+              }
+              className="cursor-pointer"
+            />
+            <Label
+              htmlFor={`hidden-${field.id}`}
+              className="text-xs cursor-pointer"
+              title="Take the question off the applicant form without deleting it. Fields shown only through this one hide too, and answers already given stay visible to admins."
+            >
+              Hidden from applicants
+            </Label>
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -216,6 +252,10 @@ export function FieldCard({
           {detailsOpen ? "Hide" : "Details"}
         </Button>
       </div>
+
+      {field.hidden && contract && (
+        <p className="text-xs text-amber-700">{contract.hidden_warning}</p>
+      )}
 
       {/* Expandable details */}
       <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>

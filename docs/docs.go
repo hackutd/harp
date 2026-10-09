@@ -12849,6 +12849,10 @@ const docTemplate = `{
                     "description": "FieldID is the response key the backend reads.",
                     "type": "string"
                 },
+                "hidden_warning": {
+                    "description": "HiddenWarning explains what stops working while the field is hidden\nfrom applicants.",
+                    "type": "string"
+                },
                 "inactive_warning": {
                     "description": "InactiveWarning explains what stops working when the field is removed.",
                     "type": "string"
@@ -14222,6 +14226,10 @@ const docTemplate = `{
             "properties": {
                 "display_order": {
                     "type": "integer"
+                },
+                "hidden": {
+                    "description": "Hidden withholds the field from applicants without deleting it, so\nanswers already given keep rendering for admins.",
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"

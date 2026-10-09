@@ -15,6 +15,8 @@ export interface SchemaFieldContract {
   purpose: string;
   /** What stops working if the field is removed entirely. */
   inactive_warning: string;
+  /** What stops working while the field is hidden from applicants. */
+  hidden_warning: string;
 }
 
 export interface SchemaContractResponse {
