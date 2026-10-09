@@ -32,7 +32,7 @@ export function SkyCardStack({ children }: { children: ReactNode }) {
   }, [children]);
 
   return (
-    <div ref={stackRef} className="flow-root">
+    <div ref={stackRef} className="sky-card-stack flow-root">
       {children}
     </div>
   );

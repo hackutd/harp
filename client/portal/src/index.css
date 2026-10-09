@@ -834,6 +834,14 @@ body.theme-light:not(.admin-portal) {
   mix-blend-mode: screen;
 }
 
+/* Only the top ~37% of sky.webp has stars; the rest is black. Inside a stack
+   the shared image is sized so that starry band spans the whole stack, so the
+   RSVP and travel cards sit under stars too instead of the empty bottom. */
+.sky-card-stack .hacker-application-card::before {
+  background-size: max(100%, calc(var(--sky-stack-height, 100%) * 1.6)) auto;
+  background-position: 60% 0;
+}
+
 /* The status cards stay a slice of the night sky in light mode: the dark
    tokens are rebound on the card (with .theme-dark above), so its text, pills
    and buttons read on the sky art. */
