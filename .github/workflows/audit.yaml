@@ -66,7 +66,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.27.x"
+          go-version-file: go.mod
           cache: false
 
       - name: Restore Go cache
@@ -113,7 +113,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.27.x"
+          go-version-file: go.mod
           cache: false
 
       # Also carries staticcheck's own analysis cache and the installed tools.
@@ -138,9 +138,16 @@ jobs:
         run: go vet ./...
 
       # Keep the swag version in step with github.com/swaggo/swag in go.mod.
+      # staticcheck v0.8.1 pins an x/tools too old to read Go 1.27.2 export
+      # data ("export data version 5 is greater than maximum supported version
+      # 4"), so build it against a newer x/tools instead of `go install`ing it.
       - name: Install tools
         run: |
-          go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
+          (cd "$(mktemp -d)" \
+            && go mod init tools >/dev/null \
+            && go get -tool honnef.co/go/tools/cmd/staticcheck@v0.8.1 \
+            && go get golang.org/x/tools@v0.51.0 \
+            && go install tool)
           go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
           go install github.com/swaggo/swag/cmd/swag@v1.16.6
 
@@ -213,7 +220,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.27.x"
+          go-version-file: go.mod
           cache: false
 
       # Read-only: backend-audit's race build covers this package, and saving

@@ -171,6 +171,9 @@ export default defineConfig({
           // Auth — only needed on auth pages + session checks
           if (id.includes("supertokens")) return "vendor-auth";
 
+          // 3D — only the hacker QR city loads it
+          if (id.includes("/node_modules/three/")) return "vendor-three";
+
           // Charts — only used on admin dashboard/stats pages
           if (id.includes("recharts") || id.includes("d3-"))
             return "vendor-charts";
