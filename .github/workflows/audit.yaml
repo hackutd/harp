@@ -66,7 +66,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.27.x"
+          go-version-file: go.mod
           cache: false
 
       - name: Restore Go cache
@@ -113,7 +113,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.27.x"
+          go-version-file: go.mod
           cache: false
 
       # Also carries staticcheck's own analysis cache and the installed tools.
@@ -213,7 +213,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.27.x"
+          go-version-file: go.mod
           cache: false
 
       # Read-only: backend-audit's race build covers this package, and saving
