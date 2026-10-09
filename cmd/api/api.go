@@ -50,6 +50,8 @@ type application struct {
 	// decisionEmailInFlight is set while a decision email run is sending, so
 	// a concurrent request cannot start a second run over the same recipients.
 	decisionEmailInFlight atomic.Bool
+	// photoURLs caches signed profile photo URLs across requests.
+	photoURLs signedURLCache
 	// dbPinger backs the health check's database probe; nil skips the probe.
 	dbPinger dbPinger
 }
@@ -254,6 +256,10 @@ func (app *application) mount() http.Handler {
 			r.Get("/hackathon-config", app.getHackathonConfigHandler)
 			r.Delete("/users/me", app.deleteMyAccountHandler)
 			r.Patch("/users/me/theme", app.updateMyThemeHandler)
+			r.Get("/users/me/photo", app.getMyPhotoHandler)
+			r.Put("/users/me/photo", app.setMyPhotoHandler)
+			r.Delete("/users/me/photo", app.deleteMyPhotoHandler)
+			r.Post("/users/me/photo-upload-url", app.generateMyPhotoUploadURLHandler)
 			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
 			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
 

@@ -40,6 +40,7 @@ type Storage struct {
 		GetByEmail(ctx context.Context, email string) (*User, error)
 		Create(ctx context.Context, user *User) error
 		UpdateProfilePicture(ctx context.Context, supertokensUserID string, pictureURL *string) error
+		SetPhoto(ctx context.Context, userID string, photoPath *string) (*string, error)
 		UpdateTheme(ctx context.Context, userID string, theme Theme) error
 		UpdateSuperTokensID(ctx context.Context, userID string, supertokensUserID string) (*User, error)
 		Search(ctx context.Context, query string, limit int, offset int) (*UserSearchResult, error)

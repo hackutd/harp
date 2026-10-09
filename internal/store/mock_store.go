@@ -52,6 +52,14 @@ func (m *MockUsersStore) UpdateTheme(ctx context.Context, userID string, theme T
 	return args.Error(0)
 }
 
+func (m *MockUsersStore) SetPhoto(ctx context.Context, userID string, photoPath *string) (*string, error) {
+	args := m.Called(userID, photoPath)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*string), args.Error(1)
+}
+
 func (m *MockUsersStore) UpdateSuperTokensID(ctx context.Context, userID string, supertokensUserID string) (*User, error) {
 	args := m.Called(userID, supertokensUserID)
 	if args.Get(0) == nil {

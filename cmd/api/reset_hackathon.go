@@ -143,6 +143,7 @@ func (app *application) resetHackathonHandler(w http.ResponseWriter, r *http.Req
 
 // isHackathonUploadPath reports whether a stored object is a per-cycle hacker
 // upload — a resume or a travel receipt — and so belongs to a reset's cleanup.
+// Profile photos are not: they belong to the user.
 func isHackathonUploadPath(objectPath string) bool {
 	if _, ok := resumeStoragePrefixFromPath(objectPath); ok {
 		return true

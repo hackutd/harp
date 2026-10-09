@@ -11629,6 +11629,245 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/photo": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Redirects to a signed URL for the caller's uploaded profile photo. 404 when none is uploaded.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "View my profile photo",
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets the caller's profile photo to an image uploaded through POST /users/me/photo-upload-url. It is shown on the profile and in the sidebar.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Set my profile photo",
+                "parameters": [
+                    {
+                        "description": "Uploaded photo path",
+                        "name": "photo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.SetUserPhotoPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Removes the caller's uploaded profile photo. The Google picture from sign-in, if any, is shown instead.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Remove my profile photo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/photo-upload-url": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Generates a signed GCS upload URL for the caller's profile photo. Upload the image, then pass the returned photo_path to PUT /users/me/photo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get profile photo upload URL",
+                "parameters": [
+                    {
+                        "description": "Content type",
+                        "name": "upload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.UserPhotoUploadURLPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UserPhotoUploadURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/theme": {
             "patch": {
                 "security": [
@@ -13235,6 +13474,18 @@ const docTemplate = `{
                 }
             }
         },
+        "main.SetUserPhotoPayload": {
+            "type": "object",
+            "required": [
+                "photo_path"
+            ],
+            "properties": {
+                "photo_path": {
+                    "type": "string",
+                    "maxLength": 300
+                }
+            }
+        },
         "main.SponsorListResponse": {
             "type": "object",
             "properties": {
@@ -13758,19 +14009,56 @@ const docTemplate = `{
                 }
             }
         },
+        "main.UserPhotoUploadURLPayload": {
+            "type": "object",
+            "required": [
+                "content_type"
+            ],
+            "properties": {
+                "content_type": {
+                    "type": "string",
+                    "enum": [
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp"
+                    ]
+                }
+            }
+        },
+        "main.UserPhotoUploadURLResponse": {
+            "type": "object",
+            "properties": {
+                "photo_path": {
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
+                }
+            }
+        },
         "main.UserResponse": {
             "type": "object",
             "properties": {
+                "authMethod": {
+                    "$ref": "#/definitions/store.AuthMethod"
+                },
                 "createdAt": {
                     "type": "string"
                 },
+                "customPhoto": {
+                    "type": "boolean"
+                },
                 "email": {
+                    "type": "string"
+                },
+                "googlePictureUrl": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
                 "profilePictureUrl": {
+                    "description": "ProfilePictureUrl is the picture to show: the uploaded photo if there is\none, otherwise the Google picture.",
                     "type": "string"
                 },
                 "role": {
