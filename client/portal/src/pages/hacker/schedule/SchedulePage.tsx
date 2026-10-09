@@ -1,12 +1,12 @@
-import { format } from "date-fns";
 import {
-  ChevronUp,
-  Clock,
-  MapPin,
-  SlidersHorizontal,
-  Tag,
-  X,
-} from "lucide-react";
+  IconAdjustmentsHorizontal,
+  IconChevronUp,
+  IconClock,
+  IconMapPin,
+  IconTag,
+  IconX,
+} from "@tabler/icons-react";
+import { format } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,7 +49,7 @@ const MIN_EVENT_PX = 24;
 // the first line lands one hour down instead of at y=0 — the sticky header's
 // bottom border already provides the top boundary, and drawing over it would
 // make the very top line read as double-thick.
-const GRID_LINE_COLOR = "rgba(33, 255, 240, 0.1)";
+const GRID_LINE_COLOR = "color-mix(in srgb, var(--hacker-ink) 8%, transparent)";
 const HOUR_LINES = `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, ${GRID_LINE_COLOR} ${HOUR_PX - 1}px, ${GRID_LINE_COLOR} ${HOUR_PX}px)`;
 
 const FILTER_OPTIONS = [
@@ -110,56 +110,59 @@ function EventDetailsCard({
     <>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-[#9B9B9B]">Event</span>
+        <span className="text-xs font-medium text-ink/65">Event</span>
         <button
           type="button"
           aria-label="Close event details"
           onClick={onClose}
-          className="flex size-6 items-center justify-center rounded-md text-[#9B9B9B] transition-colors hover:bg-[#F2F2F2] hover:text-black"
+          className="flex size-6 items-center justify-center rounded-md text-ink/65 transition-colors hover:bg-ink/5 hover:text-ink"
         >
-          <X className="size-3.5" strokeWidth={2} />
+          <IconX className="size-3.5" strokeWidth={2} />
         </button>
       </div>
 
       {/* Title */}
-      <h2 className="mt-1 text-[15px] leading-snug font-medium text-black">
+      <h2 className="mt-1 text-[15px] leading-snug font-medium text-ink">
         {item.event_name}
       </h2>
 
       {/* Time */}
-      <div className="mt-2.5 border-t border-[#F0F0F0] pt-2.5">
+      <div className="mt-2.5 border-t border-ink/10 pt-2.5">
         <div className="flex items-center gap-2.5">
-          <Clock className="size-3.5 shrink-0 text-[#B4B4B4]" strokeWidth={2} />
-          <p className="text-[13px] text-black tabular-nums">
+          <IconClock
+            className="size-3.5 shrink-0 text-ink/65"
+            strokeWidth={2}
+          />
+          <p className="text-[13px] text-ink tabular-nums">
             {formatMinutesClock(startMin)}
-            <span className="mx-1.5 text-[#B4B4B4]">→</span>
+            <span className="mx-1.5 text-ink/65">→</span>
             {formatMinutesClock(endMin)}
-            <span className="ml-2 text-[#9B9B9B]">
+            <span className="ml-2 text-ink/65">
               {formatDuration(endMin - startMin)}
             </span>
           </p>
         </div>
         {dateLabel && (
-          <p className="mt-1 pl-6 text-[13px] text-black">{dateLabel}</p>
+          <p className="mt-1 pl-6 text-[13px] text-ink">{dateLabel}</p>
         )}
       </div>
 
       {/* Location + tag */}
-      <div className="mt-2.5 space-y-2 border-t border-[#F0F0F0] pt-2.5">
+      <div className="mt-2.5 space-y-2 border-t border-ink/10 pt-2.5">
         <div className="flex items-center gap-2.5">
-          <MapPin
-            className="size-3.5 shrink-0 text-[#B4B4B4]"
+          <IconMapPin
+            className="size-3.5 shrink-0 text-ink/65"
             strokeWidth={2}
           />
           {item.location ? (
-            <p className="text-[13px] text-black">{item.location}</p>
+            <p className="text-[13px] text-ink">{item.location}</p>
           ) : (
-            <p className="text-[13px] text-[#B4B4B4]">Location</p>
+            <p className="text-[13px] text-ink/65">Location</p>
           )}
         </div>
         <div className="flex items-center gap-2.5">
-          <Tag className="size-3.5 shrink-0 text-[#B4B4B4]" strokeWidth={2} />
-          <p className="flex items-center gap-2 text-[13px] text-black">
+          <IconTag className="size-3.5 shrink-0 text-ink/65" strokeWidth={2} />
+          <p className="flex items-center gap-2 text-[13px] text-ink">
             <span
               className="size-2.5 rounded-[3px]"
               style={{ backgroundColor: color.color }}
@@ -170,13 +173,13 @@ function EventDetailsCard({
       </div>
 
       {/* Description */}
-      <div className="mt-2.5 border-t border-[#F0F0F0] pt-2.5">
+      <div className="mt-2.5 border-t border-ink/10 pt-2.5">
         {item.description ? (
-          <p className="text-[13px] leading-relaxed whitespace-pre-line text-[#3D3D3D]">
+          <p className="text-[13px] leading-relaxed whitespace-pre-line text-ink/85">
             {item.description}
           </p>
         ) : (
-          <p className="text-[13px] text-[#B4B4B4]">Description</p>
+          <p className="text-[13px] text-ink/65">Description</p>
         )}
       </div>
     </>
@@ -327,7 +330,7 @@ export default function SchedulePage() {
 
       {/* Header */}
       <div className="flex items-center">
-        <h1 className="text-[26px] leading-none font-light tracking-tight text-black">
+        <h1 className="text-[26px] leading-none font-light tracking-tight text-ink">
           {days.length > 0 ? formatMonthTitle(days) : "Schedule"}
         </h1>
       </div>
@@ -343,27 +346,30 @@ export default function SchedulePage() {
                 type="button"
                 aria-label="Filter events"
                 className={cn(
-                  "pointer-events-auto flex size-10 items-center justify-center rounded-full bg-[#101321] text-[#21FFF0] shadow-[0_0_0_1px_rgba(33,255,240,0.18),0_8px_24px_rgba(0,0,0,0.35)] transition-all duration-200 hover:bg-[#171A2C] hover:shadow-[0_0_0_1px_rgba(33,255,240,0.45),0_0_20px_rgba(33,255,240,0.12)]",
+                  "pointer-events-auto flex size-10 items-center justify-center rounded-full bg-surface-2 text-ink transition-all duration-200 hover:bg-surface-2",
                   scrolled && !filterOpen
                     ? "opacity-55 hover:opacity-100"
                     : "opacity-100",
                 )}
               >
                 {filterOpen ? (
-                  <ChevronUp className="size-4.5" strokeWidth={1.75} />
+                  <IconChevronUp className="size-4.5" strokeWidth={1.75} />
                 ) : (
-                  <SlidersHorizontal className="size-4.5" strokeWidth={1.75} />
+                  <IconAdjustmentsHorizontal
+                    className="size-4.5"
+                    strokeWidth={1.75}
+                  />
                 )}
               </button>
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="pointer-events-auto w-56 rounded-2xl border border-white/15 !bg-[#292B35] p-1.5 text-white shadow-[0_18px_45px_rgba(0,0,0,0.48)]"
+              className="pointer-events-auto w-56 rounded-2xl border border-ink/15 !bg-surface-2 p-1.5 text-ink"
             >
               {FILTER_OPTIONS.map(({ key, label, color }) => (
                 <label
                   key={key}
-                  className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/10"
+                  className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-ink/5"
                 >
                   <span className="flex items-center gap-3">
                     <span
@@ -376,7 +382,7 @@ export default function SchedulePage() {
                     checked={selectedTags.has(key)}
                     onCheckedChange={() => toggleTag(key)}
                     aria-label={`Filter by ${label}`}
-                    className="border-white/30 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-black"
+                    className="border-ink/25 data-[state=checked]:border-tide data-[state=checked]:bg-tide data-[state=checked]:text-ink"
                   />
                 </label>
               ))}
@@ -391,7 +397,7 @@ export default function SchedulePage() {
           <Skeleton className="h-72 w-full rounded-lg" />
         </div>
       ) : days.length === 0 ? (
-        <p className="pt-16 text-center text-sm font-light text-[#8A8A8A]">
+        <p className="pt-16 text-center text-sm font-light text-ink/65">
           The schedule hasn't been posted yet. Check back soon.
         </p>
       ) : (
@@ -399,7 +405,7 @@ export default function SchedulePage() {
           {/* Calendar grid */}
           <div className="relative mt-3">
             {/* Sticky header — day strip + column labels stay pinned on scroll */}
-            <div className="sticky top-0 z-30 bg-[#030409]/95 pt-2 backdrop-blur-md">
+            <div className="sticky top-0 z-30 bg-canvas/95 pt-2 backdrop-blur-md">
               {/* Day strip — one cell per hackathon day, today circled. Offset by
                   the hour-gutter width so it lines up with the columns below. */}
               <div className="flex">
@@ -413,13 +419,13 @@ export default function SchedulePage() {
                   {days.map((day) => (
                     <span
                       key={`${day.dateKey}-weekday`}
-                      className="text-center text-[10px] font-medium tracking-wide text-[#282828] uppercase"
+                      className="text-center text-[10px] font-medium tracking-wide text-ink/85 uppercase"
                     >
                       {format(day.date, "EEEEE")}
                     </span>
                   ))}
                   <div
-                    className="col-span-full grid rounded-full border border-[#21FFF0]/15 bg-[#101321] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_28px_rgba(0,0,0,0.20)]"
+                    className="col-span-full grid rounded-full border border-ink/10 bg-surface-2 p-1"
                     style={{
                       gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
                     }}
@@ -435,8 +441,8 @@ export default function SchedulePage() {
                             className={cn(
                               "flex size-8 items-center justify-center rounded-full text-sm transition-colors",
                               isToday
-                                ? "bg-[#5900FF] font-medium text-white ring-1 ring-[#21FFF0]/60 shadow-[0_0_18px_rgba(33,255,240,0.28)]"
-                                : "font-light text-white/55",
+                                ? "bg-ice/10 font-medium text-ice ring-1 ring-ice/25"
+                                : "font-light text-ink/65",
                             )}
                           >
                             {format(day.date, "d")}
@@ -450,9 +456,9 @@ export default function SchedulePage() {
 
               {/* Column headers — timezone label sits in the hour gutter, on
                   the same row as the date headers. */}
-              <div className="mt-3 flex border-b border-[#21FFF0]/15">
+              <div className="mt-3 flex border-b border-ink/10">
                 <div className="flex w-14 shrink-0 items-end justify-end pr-2 pb-2">
-                  <span className="text-[11px] font-semibold text-[#8A8A8A]">
+                  <span className="text-[11px] font-semibold text-ink/65">
                     {localTimeZone.abbrev || localTimeZone.iana}
                   </span>
                 </div>
@@ -461,14 +467,12 @@ export default function SchedulePage() {
                   return (
                     <div
                       key={day.dateKey}
-                      className="min-w-0 flex-1 border-l border-[#21FFF0]/10 px-2 pt-1 pb-2 text-center"
+                      className="min-w-0 flex-1 border-l border-ink/10 px-2 pt-1 pb-2 text-center"
                     >
                       <span
                         className={cn(
                           "block truncate text-xs font-medium",
-                          isToday
-                            ? "font-semibold text-black"
-                            : "text-[#282828]",
+                          isToday ? "font-semibold text-ink" : "text-ink/85",
                         )}
                       >
                         {format(day.date, "EEE")} – {format(day.date, "MMM d")}
@@ -489,13 +493,13 @@ export default function SchedulePage() {
                     <span
                       key={hour}
                       className={cn(
-                        "absolute right-2 text-[11px] font-light text-[#B8B8B8]",
+                        "absolute right-2 text-[11px] font-light text-ink/65",
                         hour !== 0 && "-translate-y-1/2",
                       )}
                       style={{ top: hour * HOUR_PX }}
                     >
                       {value}
-                      <span className="ml-0.5 text-[8px] text-[#C4C4C4]">
+                      <span className="ml-0.5 text-[8px] text-ink/65">
                         {suffix}
                       </span>
                     </span>
@@ -519,7 +523,7 @@ export default function SchedulePage() {
                 return (
                   <div
                     key={day.dateKey}
-                    className="relative min-w-0 flex-1 border-l border-[#21FFF0]/10"
+                    className="relative min-w-0 flex-1 border-l border-ink/10"
                     style={{ backgroundImage: HOUR_LINES }}
                   >
                     {dayEvents.map((positioned) => {
@@ -581,12 +585,13 @@ export default function SchedulePage() {
                               backgroundColor: isSelected
                                 ? color.color
                                 : withAlpha(color.color, 0.18),
+                              color: isSelected ? color.ink : undefined,
                             }}
                           >
                             <p
                               className={cn(
                                 "truncate text-[11px] leading-tight font-medium",
-                                isSelected ? "text-white" : "text-[#1A1A1A]",
+                                !isSelected && "text-ink/85",
                               )}
                             >
                               {item.event_name}
@@ -595,9 +600,7 @@ export default function SchedulePage() {
                               <p
                                 className={cn(
                                   "mt-0.5 truncate text-[10px] leading-tight font-light",
-                                  isSelected
-                                    ? "text-white/80"
-                                    : "text-[#6B6B6B]",
+                                  isSelected ? "opacity-80" : "text-ink/65",
                                 )}
                               >
                                 {item.location}
@@ -657,7 +660,7 @@ export default function SchedulePage() {
                     <>
                       <div
                         data-event-card
-                        className="absolute z-40 hidden w-64 rounded-lg border border-white/15 bg-[#292B35] p-3.5 shadow-[0_18px_45px_rgba(0,0,0,0.48)] md:block"
+                        className="absolute z-40 hidden w-64 rounded-lg border border-ink/15 bg-surface-2 p-3.5 md:block"
                         style={{ top: cardTop, ...horizontal }}
                       >
                         <EventDetailsCard
@@ -669,7 +672,7 @@ export default function SchedulePage() {
                           (fixed bottom-4 + ~4.5rem tall). */}
                       <div
                         data-event-card
-                        className="fixed inset-x-4 bottom-[5.5rem] z-50 rounded-lg border border-white/15 bg-[#292B35] p-3.5 shadow-[0_18px_45px_rgba(0,0,0,0.48)] md:hidden"
+                        className="fixed inset-x-4 bottom-[5.5rem] z-50 rounded-lg border border-ink/15 bg-surface-2 p-3.5 md:hidden"
                       >
                         <EventDetailsCard
                           positioned={positioned}

@@ -1,3 +1,4 @@
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import type { RSVPStatus } from "@/types";
 
 import type { ApplicationStatus, AttendanceView, FetchParams } from "./types";
@@ -5,23 +6,25 @@ import type { ApplicationStatus, AttendanceView, FetchParams } from "./types";
 export function getStatusColor(status: string): string {
   switch (status) {
     case "accepted":
-      return "bg-green-100 text-green-800";
+      return BADGE_COLORS.green;
     case "rejected":
-      return "bg-red-100 text-red-800";
+      return BADGE_COLORS.red;
     case "waitlisted":
-      return "bg-yellow-100 text-yellow-800";
+      return BADGE_COLORS.orange;
     case "submitted":
-      return "bg-blue-100 text-blue-800";
+      return BADGE_COLORS.blue;
     case "draft":
-      return "bg-gray-100 text-gray-800";
+      return BADGE_COLORS.neutral;
     case "confirmed":
-      return "bg-green-100 text-green-800";
+      return BADGE_COLORS.green;
     case "declined":
-      return "bg-yellow-100 text-yellow-800";
+      return BADGE_COLORS.orange;
     case "pending":
-      return "bg-gray-100 text-gray-800";
+      return BADGE_COLORS.neutral;
+    case "approved":
+      return BADGE_COLORS.green;
     default:
-      return "bg-gray-100 text-gray-800";
+      return BADGE_COLORS.neutral;
   }
 }
 

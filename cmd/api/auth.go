@@ -14,8 +14,21 @@ type UserResponse struct {
 	Email             string         `json:"email"`
 	Role              store.UserRole `json:"role"`
 	ProfilePictureUrl *string        `json:"profilePictureUrl,omitempty"`
+	Theme             store.Theme    `json:"theme"`
 	CreatedAt         time.Time      `json:"createdAt"`
 	UpdatedAt         time.Time      `json:"updatedAt"`
+}
+
+func newUserResponse(user *store.User) UserResponse {
+	return UserResponse{
+		ID:                user.ID,
+		Email:             user.Email,
+		Role:              user.Role,
+		ProfilePictureUrl: user.ProfilePictureURL,
+		Theme:             user.Theme,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
+	}
 }
 
 // getCurrentUserHandler returns the authenticated user's profile
@@ -35,16 +48,7 @@ func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	response := UserResponse{
-		ID:                user.ID,
-		Email:             user.Email,
-		Role:              user.Role,
-		ProfilePictureUrl: user.ProfilePictureURL,
-		CreatedAt:         user.CreatedAt,
-		UpdatedAt:         user.UpdatedAt,
-	}
-
-	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, newUserResponse(user)); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

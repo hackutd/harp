@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -69,13 +69,13 @@ export default function WalkInQueuePage() {
           <div className="flex items-center justify-between gap-2">
             <CardDescription className="font-light flex flex-wrap items-center gap-1.5">
               <span>Walk-ins in arrival order &mdash; position 1 is next</span>
-              <Badge className="text-xs font-light bg-yellow-100 text-yellow-800">
+              <Badge variant="orange" className="text-xs font-light">
                 {pending} waiting
               </Badge>
-              <Badge className="text-xs font-light bg-green-100 text-green-800">
+              <Badge variant="green" className="text-xs font-light">
                 {total - pending} promoted
               </Badge>
-              <Badge className="text-xs font-light bg-gray-100 text-gray-800">
+              <Badge variant="neutral" className="text-xs font-light">
                 {total} total
               </Badge>
               {queue.length > PAGE_SIZE && (
@@ -95,7 +95,7 @@ export default function WalkInQueuePage() {
                   onClick={() => setPage(safePage - 1)}
                   disabled={safePage === 0}
                 >
-                  <ChevronLeft className="size-4 mr-1" />
+                  <IconChevronLeft className="size-4 mr-1" />
                   Prev
                 </Button>
                 <Button
@@ -106,7 +106,7 @@ export default function WalkInQueuePage() {
                   disabled={safePage >= totalPages - 1}
                 >
                   Next
-                  <ChevronRight className="size-4 ml-1" />
+                  <IconChevronRight className="size-4 ml-1" />
                 </Button>
               </div>
             </div>

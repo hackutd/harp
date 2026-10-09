@@ -1,4 +1,4 @@
-import { FileText, Trash2, Upload } from "lucide-react";
+import { IconFileText, IconTrash, IconUpload } from "@tabler/icons-react";
 import { type ChangeEvent, memo, useRef, useState } from "react";
 
 import {
@@ -210,7 +210,7 @@ function ResumeEditor({
   return (
     <div className="rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <FileText className="h-4 w-4 text-muted-foreground" />
+        <IconFileText className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm">
           {hasResume ? "Resume on file" : "No resume uploaded"}
         </span>
@@ -231,7 +231,7 @@ function ResumeEditor({
             disabled={disabled}
             onClick={() => inputRef.current?.click()}
           >
-            <Upload className="h-3.5 w-3.5" />
+            <IconUpload className="h-3.5 w-3.5" />
             {hasResume ? "Replace PDF" : "Upload PDF"}
           </Button>
           {hasResume && (
@@ -244,7 +244,7 @@ function ResumeEditor({
                   className="cursor-pointer text-destructive"
                   disabled={disabled}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <IconTrash className="h-3.5 w-3.5" />
                   Remove
                 </Button>
               </AlertDialogTrigger>

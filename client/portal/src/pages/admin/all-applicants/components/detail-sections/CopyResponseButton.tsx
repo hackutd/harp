@@ -1,4 +1,4 @@
-import { Check, Copy } from "lucide-react";
+import { IconCheck, IconCopy } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -38,9 +38,9 @@ export function CopyResponseButton({ text, label }: CopyResponseButtonProps) {
       title={copied ? "Copied" : `Copy ${label}`}
     >
       {copied ? (
-        <Check className="size-3.5 text-green-600" />
+        <IconCheck className="size-3.5 text-green-600" />
       ) : (
-        <Copy className="size-3.5" />
+        <IconCopy className="size-3.5" />
       )}
     </Button>
   );

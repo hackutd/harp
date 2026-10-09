@@ -1,12 +1,13 @@
 import {
-  CalendarClock,
-  Pencil,
-  Plus,
-  Trash2,
-  TriangleAlert,
-} from "lucide-react";
+  IconAlertTriangle,
+  IconCalendarTime,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
+import { SegmentedHighlight } from "@/components/SegmentedHighlight";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,7 +78,7 @@ function formatDateTime(iso: string): string {
 const SENT_PAGE_SIZE = 20;
 
 const tableClasses =
-  "border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0";
+  "border-collapse [&_th]:border-r [&_th]:border-border [&_td]:border-r [&_td]:border-border [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0";
 
 export function NotificationsTable({
   notifications,
@@ -134,25 +135,26 @@ export function NotificationsTable({
         <CardHeader className="shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <TabsList className="h-9 gap-0 rounded-md border p-0.5">
+              <TabsList className="relative h-9 gap-0 rounded-md border bg-toggle-track p-0.5">
+                <SegmentedHighlight />
                 <TabsTrigger
                   value="scheduled"
-                  className="cursor-pointer rounded-sm font-light"
+                  className="cursor-pointer rounded-sm font-light text-muted-foreground hover:text-foreground relative data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                 >
                   Scheduled ({scheduled.length})
                 </TabsTrigger>
                 {failed.length > 0 && (
                   <TabsTrigger
                     value="failed"
-                    className="cursor-pointer rounded-sm font-light text-red-600"
+                    className="cursor-pointer rounded-sm font-light text-red-600 relative data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                   >
-                    <TriangleAlert className="mr-1 size-3.5" />
+                    <IconAlertTriangle className="mr-1 size-3.5" />
                     Failed ({failed.length})
                   </TabsTrigger>
                 )}
                 <TabsTrigger
                   value="sent"
-                  className="cursor-pointer rounded-sm font-light"
+                  className="cursor-pointer rounded-sm font-light text-muted-foreground hover:text-foreground relative data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                 >
                   Sent ({sent.length})
                 </TabsTrigger>
@@ -173,7 +175,7 @@ export function NotificationsTable({
                     <span>
                       Showing {visibleSent.length} of {sent.length} sent
                     </span>
-                    <Badge className="bg-green-100 text-xs font-light text-green-800">
+                    <Badge variant="green" className="text-xs font-light">
                       {sent.reduce((acc, n) => acc + n.recipient_count, 0)}{" "}
                       recipients
                     </Badge>
@@ -189,7 +191,7 @@ export function NotificationsTable({
                 disabled={saving}
                 className="cursor-pointer font-light"
               >
-                <CalendarClock className="mr-1 size-4" />
+                <IconCalendarTime className="mr-1 size-4" />
                 From schedule
               </Button>
               <Button
@@ -198,7 +200,7 @@ export function NotificationsTable({
                 disabled={saving}
                 className="cursor-pointer"
               >
-                <Plus className="mr-1 size-4" />
+                <IconPlus className="mr-1 size-4" />
                 Create
               </Button>
             </div>
@@ -253,7 +255,7 @@ export function NotificationsTable({
                               className="cursor-pointer text-muted-foreground"
                               aria-label="Edit"
                             >
-                              <Pencil className="size-4" />
+                              <IconPencil className="size-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -263,7 +265,7 @@ export function NotificationsTable({
                               className="cursor-pointer text-muted-foreground hover:text-red-500"
                               aria-label="Delete"
                             >
-                              <Trash2 className="size-4" />
+                              <IconTrash className="size-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -335,7 +337,7 @@ export function NotificationsTable({
                               className="cursor-pointer text-muted-foreground"
                               aria-label="Edit and retry"
                             >
-                              <Pencil className="size-4" />
+                              <IconPencil className="size-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -345,7 +347,7 @@ export function NotificationsTable({
                               className="cursor-pointer text-muted-foreground hover:text-red-500"
                               aria-label="Delete"
                             >
-                              <Trash2 className="size-4" />
+                              <IconTrash className="size-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -398,7 +400,7 @@ export function NotificationsTable({
                           {formatDateTime(n.sent_at ?? n.scheduled_at)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Badge className="bg-green-100 font-light text-green-800">
+                          <Badge variant="green" className="font-light">
                             {n.recipient_count}
                           </Badge>
                         </TableCell>
@@ -412,7 +414,7 @@ export function NotificationsTable({
                               className="cursor-pointer text-muted-foreground hover:text-red-500"
                               aria-label="Delete"
                             >
-                              <Trash2 className="size-4" />
+                              <IconTrash className="size-4" />
                             </Button>
                           </div>
                         </TableCell>

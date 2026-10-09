@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { IconChevronLeft } from "@tabler/icons-react";
 
 interface StepIndicatorProps {
   currentStep: number;
@@ -19,17 +19,17 @@ export function StepIndicator({
         type="button"
         onClick={onBack}
         aria-label="Back"
-        className="-ml-2 flex size-9 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1"
+        className="-ml-2 flex size-9 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1"
       >
-        <ChevronLeft className="size-5" strokeWidth={1.75} />
+        <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
-      <div className="h-1 flex-1 overflow-hidden rounded-full bg-[#EDEDED]">
+      <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface">
         <div
-          className="h-full rounded-full bg-black transition-all duration-300 ease-out"
+          className="h-full rounded-full bg-tide transition-all duration-300 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <span className="text-xs font-light tabular-nums text-[#8A8A8A]">
+      <span className="text-xs font-light tabular-nums text-ink/65">
         {currentStep + 1}/{totalSteps}
       </span>
     </div>

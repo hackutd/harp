@@ -1,5 +1,7 @@
 import type { ApplicationStatus } from "@/types";
 
+import { pillClass } from "./tones";
+
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   draft: "In progress",
   submitted: "Under review",
@@ -19,12 +21,12 @@ export const STATUS_MESSAGES: Record<ApplicationStatus, string> = {
     "Your application is on the waitlist. We'll notify you if a spot becomes available.",
 };
 
-// Muted, desaturated tints so the pill reads as an outcome without shouting
-// over the card behind it. Pre-decision states stay neutral gray.
-export const STATUS_PILL_COLORS: Record<ApplicationStatus, string> = {
-  draft: "bg-[#7A7973]",
-  submitted: "bg-[#7A7973]",
-  accepted: "bg-emerald-700",
-  rejected: "bg-red-700",
-  waitlisted: "bg-amber-800",
+// Pre-decision states stay inside the palette; only outcomes take a status
+// colour.
+export const STATUS_PILL_CLASSES: Record<ApplicationStatus, string> = {
+  draft: pillClass("neutral"),
+  submitted: pillClass("info"),
+  accepted: pillClass("success"),
+  rejected: pillClass("danger"),
+  waitlisted: pillClass("warning"),
 };

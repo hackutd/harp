@@ -1,5 +1,9 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { AlertTriangle, CalendarDays, Rocket } from "lucide-react";
+import {
+  IconAlertTriangle,
+  IconCalendarMonth,
+  IconRocket,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -123,7 +127,7 @@ function DateField({
             )}
           >
             {formatPickerDate(parsed)}
-            <CalendarDays className="size-4 text-zinc-400" />
+            <IconCalendarMonth className="size-4 text-zinc-400" />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto p-0">
@@ -340,7 +344,7 @@ export function OnboardingDialog({
           <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
             <div className="flex shrink-0 items-start gap-3 border-b border-zinc-800 px-6 py-4">
               <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-900">
-                <Rocket className="size-4 text-zinc-300" />
+                <IconRocket className="size-4 text-zinc-300" />
               </span>
               <div className="space-y-1">
                 <DialogTitle className="text-lg font-normal text-zinc-100">
@@ -559,7 +563,7 @@ export function OnboardingDialog({
         <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-100 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-zinc-100">
-              <AlertTriangle className="size-5 text-amber-400" />
+              <IconAlertTriangle className="size-5 text-amber-400" />
               Change hackathon dates?
             </DialogTitle>
             <DialogDescription className="text-zinc-400">

@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { IconArrowLeft } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -223,13 +223,13 @@ export default function GradingPage() {
                     {currentApp.reviews_assigned} reviews completed
                   </p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge variant="green">
                       {currentApp.accept_votes} accept
                     </Badge>
-                    <Badge className="bg-red-100 text-red-800">
+                    <Badge variant="red">
                       {currentApp.reject_votes} reject
                     </Badge>
-                    <Badge className="bg-yellow-100 text-yellow-800">
+                    <Badge variant="orange">
                       {currentApp.waitlist_votes} waitlist
                     </Badge>
                     {currentApp.ai_score != null && (
@@ -240,13 +240,13 @@ export default function GradingPage() {
                   </div>
                   {currentApp.travel_status !== "not_requested" && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-blue-100 text-blue-800">
+                      <Badge variant="blue">
                         travel: {currentApp.travel_status}
                       </Badge>
-                      <Badge className="bg-green-100 text-green-800">
+                      <Badge variant="green">
                         {currentApp.travel_yes_votes} travel yes
                       </Badge>
-                      <Badge className="bg-red-100 text-red-800">
+                      <Badge variant="red">
                         {currentApp.travel_no_votes} travel no
                       </Badge>
                     </div>
@@ -283,7 +283,7 @@ export default function GradingPage() {
               className="cursor-pointer"
               onClick={() => navigate("/admin/sa/reviews")}
             >
-              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              <IconArrowLeft className="h-4 w-4 mr-1.5" />
               Back to Reviews
             </Button>
           </div>

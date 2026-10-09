@@ -1,4 +1,4 @@
-import { Lock, Plus, X } from "lucide-react";
+import { IconLock, IconPlus, IconX } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ export function OptionsEditor({
           />
           {locked.has(option) ? (
             <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
-              <Lock className="size-3.5" />
+              <IconLock className="size-3.5" />
             </span>
           ) : (
             <Button
@@ -63,7 +63,7 @@ export function OptionsEditor({
               onClick={() => removeOption(index)}
               className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-red-500 cursor-pointer"
             >
-              <X className="size-3.5" />
+              <IconX className="size-3.5" />
             </Button>
           )}
         </div>
@@ -74,7 +74,7 @@ export function OptionsEditor({
         onClick={addOption}
         className="w-full border-dashed cursor-pointer h-8 text-xs"
       >
-        <Plus className="size-3 mr-1.5" />
+        <IconPlus className="size-3 mr-1.5" />
         Add Option
       </Button>
     </div>

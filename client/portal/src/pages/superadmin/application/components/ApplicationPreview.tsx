@@ -1,6 +1,12 @@
-import { CheckCircle2, ReceiptText, Trash2, Upload } from "lucide-react";
+import {
+  IconCircleCheck,
+  IconReceipt,
+  IconTrash,
+  IconUpload,
+} from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import {
   applicantVisibleFields,
   groupFieldsBySection,
@@ -28,7 +34,7 @@ function PreviewSection({
     <div className="space-y-4">
       <div className="space-y-1">
         <h3 className="text-sm font-medium">{title}</h3>
-        <div className="h-px bg-gray-200" />
+        <div className="h-px bg-border" />
       </div>
       <div className="space-y-3">{children}</div>
     </div>
@@ -46,12 +52,12 @@ function PreviewField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-gray-700">
+      <label className="text-xs font-medium text-foreground/80">
         {label}
-        {required && <span className="text-gray-400 ml-1">*</span>}
+        {required && <span className="text-muted-foreground ml-1">*</span>}
       </label>
-      <div className="h-9 rounded-md border border-gray-200 bg-gray-50 px-3 flex items-center">
-        <span className="text-xs text-gray-400">{placeholder}</span>
+      <div className="h-9 rounded-md border border-border bg-muted/50 px-3 flex items-center">
+        <span className="text-xs text-muted-foreground">{placeholder}</span>
       </div>
     </div>
   );
@@ -68,12 +74,12 @@ function PreviewTextarea({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-gray-700">
+      <label className="text-xs font-medium text-foreground/80">
         {label}
-        {required && <span className="text-gray-400 ml-1">*</span>}
+        {required && <span className="text-muted-foreground ml-1">*</span>}
       </label>
-      <div className="min-h-[80px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2 flex items-start">
-        <span className="text-xs text-gray-400">{placeholder}</span>
+      <div className="min-h-[80px] rounded-md border border-border bg-muted/50 px-3 py-2 flex items-start">
+        <span className="text-xs text-muted-foreground">{placeholder}</span>
       </div>
     </div>
   );
@@ -82,8 +88,10 @@ function PreviewTextarea({
 function PreviewCheckbox({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="size-4 rounded border border-gray-300 bg-white shrink-0" />
-      <span className="text-xs text-gray-500">{renderLabel(label)}</span>
+      <div className="size-4 rounded border border-border bg-background shrink-0" />
+      <span className="text-xs text-muted-foreground">
+        {renderLabel(label)}
+      </span>
     </div>
   );
 }
@@ -102,12 +110,12 @@ function PreviewResumeCard() {
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled>
-          <Upload className="w-4 h-4 mr-2" />
+          <IconUpload className="w-4 h-4 mr-2" />
           Upload Resume
         </Button>
 
         <Button type="button" variant="outline" disabled>
-          <Trash2 className="w-4 h-4 mr-2" />
+          <IconTrash className="w-4 h-4 mr-2" />
           Delete Resume
         </Button>
       </div>
@@ -155,10 +163,12 @@ function renderField(field: ApplicationSchemaField) {
     case "multi_select":
       return (
         <div key={field.id} className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-700">
+          <label className="text-xs font-medium text-foreground/80">
             {field.label}
-            {field.required && <span className="text-gray-400 ml-1">*</span>}
-            <span className="text-gray-400 ml-1 font-normal">
+            {field.required && (
+              <span className="text-muted-foreground ml-1">*</span>
+            )}
+            <span className="text-muted-foreground ml-1 font-normal">
               — select all that apply
             </span>
           </label>
@@ -195,7 +205,7 @@ export function ApplicationPreview({
         {stepPills.map((label) => (
           <span
             key={label}
-            className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
+            className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
           >
             {label}
           </span>
@@ -217,9 +227,11 @@ export function ApplicationPreview({
       {systemBlock === "rsvp_decision" && (
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 text-muted-foreground" />
+            <IconCircleCheck className="size-4 text-muted-foreground" />
             <h3 className="font-medium">Attendance decision</h3>
-            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+            <span
+              className={`ml-auto rounded-full px-2 py-0.5 text-[10px] ${BADGE_COLORS.neutral}`}
+            >
               Built in
             </span>
           </div>
@@ -241,9 +253,11 @@ export function ApplicationPreview({
       {systemBlock === "travel_receipts" && (
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center gap-2">
-            <ReceiptText className="size-4 text-muted-foreground" />
+            <IconReceipt className="size-4 text-muted-foreground" />
             <h3 className="font-medium">Travel receipts</h3>
-            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+            <span
+              className={`ml-auto rounded-full px-2 py-0.5 text-[10px] ${BADGE_COLORS.neutral}`}
+            >
               Built in
             </span>
           </div>
@@ -252,7 +266,7 @@ export function ApplicationPreview({
             always included and cannot be removed from the schema.
           </p>
           <Button type="button" variant="outline" disabled className="w-full">
-            <Upload className="size-4" />
+            <IconUpload className="size-4" />
             Add receipts
           </Button>
         </div>

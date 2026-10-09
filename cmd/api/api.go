@@ -253,6 +253,7 @@ func (app *application) mount() http.Handler {
 			r.Get("/points-config", app.getPointsConfigHandler)
 			r.Get("/hackathon-config", app.getHackathonConfigHandler)
 			r.Delete("/users/me", app.deleteMyAccountHandler)
+			r.Patch("/users/me/theme", app.updateMyThemeHandler)
 			r.Get("/wallet/apple-pass/status", app.getAppleWalletStatusHandler)
 			r.Get("/wallet/apple-pass", app.getAppleWalletPassHandler)
 

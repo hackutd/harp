@@ -1,7 +1,6 @@
 import { memo } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FilterTabs } from "@/pages/admin/_shared";
 
 import type { ApplicationStats, AttendanceView } from "../types";
 import { ATTENDANCE_VIEW_LABELS } from "../utils";
@@ -18,57 +17,32 @@ const VIEWS = Object.keys(VIEW_COUNTS) as AttendanceView[];
 
 interface AttendanceFilterTabsProps {
   stats: ApplicationStats | null;
-  loading: boolean;
   currentView: AttendanceView | null;
   onViewChange: (view: AttendanceView | null) => void;
 }
 
 export const AttendanceFilterTabs = memo(function AttendanceFilterTabs({
   stats,
-  loading,
   currentView,
   onViewChange,
 }: AttendanceFilterTabsProps) {
+  const options = [
+    { value: "any", label: "All", count: stats?.total_applications },
+    ...VIEWS.map((view) => ({
+      value: view,
+      label: ATTENDANCE_VIEW_LABELS[view],
+      count: stats?.[VIEW_COUNTS[view]],
+    })),
+  ];
+
   return (
-    <Tabs
+    <FilterTabs
+      aria-label="RSVP and attendance"
+      options={options}
       value={currentView ?? "any"}
       onValueChange={(value) =>
         onViewChange(value === "any" ? null : (value as AttendanceView))
       }
-      className="min-w-0"
-    >
-      <TabsList
-        aria-label="RSVP and attendance"
-        className="h-auto w-auto inline-flex flex-wrap rounded-md border justify-start gap-1 p-1 lg:h-9 lg:flex-nowrap lg:gap-0 lg:p-0.5"
-      >
-        <TabsTrigger
-          value="any"
-          disabled={loading}
-          className="font-light cursor-pointer rounded-sm"
-        >
-          All
-          {stats && (
-            <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
-              {stats.total_applications}
-            </Badge>
-          )}
-        </TabsTrigger>
-        {VIEWS.map((view) => (
-          <TabsTrigger
-            key={view}
-            value={view}
-            disabled={loading}
-            className="font-light cursor-pointer"
-          >
-            {ATTENDANCE_VIEW_LABELS[view]}
-            {stats && (
-              <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
-                {stats[VIEW_COUNTS[view]]}
-              </Badge>
-            )}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    />
   );
 });

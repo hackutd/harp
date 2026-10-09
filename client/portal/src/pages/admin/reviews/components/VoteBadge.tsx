@@ -9,16 +9,12 @@ interface VoteBadgeProps {
 export function VoteBadge({ vote }: VoteBadgeProps) {
   switch (vote) {
     case "accept":
-      return <Badge className="bg-green-100 text-green-800">Accept</Badge>;
+      return <Badge variant="green">Accept</Badge>;
     case "waitlist":
-      return <Badge className="bg-yellow-100 text-yellow-800">Waitlist</Badge>;
+      return <Badge variant="orange">Waitlist</Badge>;
     case "reject":
-      return <Badge className="bg-red-100 text-red-800">Reject</Badge>;
+      return <Badge variant="red">Reject</Badge>;
     default:
-      return (
-        <Badge variant="outline" className="text-muted-foreground">
-          Pending
-        </Badge>
-      );
+      return <Badge variant="neutral">Pending</Badge>;
   }
 }

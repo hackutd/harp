@@ -1,3 +1,4 @@
+import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import { cn } from "@/shared/lib/utils";
 
 import type { ScanType } from "../types";
@@ -30,7 +31,7 @@ export function PointsDelta({
       title={`${spends ? "Costs" : "Awards"} ${scanType.points} ${pointsName}`}
       className={cn(
         "inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums",
-        spends ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700",
+        spends ? BADGE_COLORS.red : BADGE_COLORS.green,
         className,
       )}
     >

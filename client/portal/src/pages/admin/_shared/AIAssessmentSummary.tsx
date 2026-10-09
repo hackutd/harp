@@ -1,4 +1,4 @@
-import { Info } from "lucide-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 import {
@@ -34,7 +34,7 @@ export function AIAssessmentSummary({
               className="inline-flex cursor-help items-center gap-1.5 rounded-sm text-base font-semibold tabular-nums underline decoration-muted-foreground/50 decoration-dotted underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {formatAIScore(assessment.ai_score)}
-              <Info className="size-3.5 text-muted-foreground" />
+              <IconInfoCircle className="size-3.5 text-muted-foreground" />
             </button>
           </TooltipTrigger>
           <TooltipContent

@@ -1,4 +1,9 @@
-import { ArrowLeft, Check, ChevronDown, X } from "lucide-react";
+import {
+  IconArrowLeft,
+  IconCheck,
+  IconChevronDown,
+  IconX,
+} from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 import {
   type ControllerRenderProps,
@@ -54,18 +59,18 @@ type ApplicationFormValues = FieldValues & Record<string, unknown>;
 type FormContext = ReturnType<typeof useFormContext<ApplicationFormValues>>;
 
 const underlineField =
-  "h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 pt-3.5 pb-1 text-base font-light shadow-none transition-colors focus-visible:border-black focus-visible:ring-0 dark:bg-transparent";
+  "h-11 rounded-none border-0 border-b border-ink/10 bg-transparent px-0 pt-3.5 pb-1 text-base font-light shadow-none transition-colors focus-visible:border-ice/50 focus-visible:ring-0 dark:bg-transparent";
 
-const fieldLabel = "text-sm font-light text-white/90";
+const fieldLabel = "text-sm font-light text-ink/85";
 
 // Soft charcoal dropdown panel. It is lighter than the portal surface for
 // visibility while remaining part of the dark theme. It slides down out of the
 // trigger with zoom/scale neutralized so the motion stays directional.
 const selectContent =
-  "origin-top overflow-hidden rounded-lg border border-white/15 !bg-[#292B35] p-0 !text-white shadow-[0_18px_45px_rgba(0,0,0,0.48)] ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:duration-[400ms] data-[state=closed]:duration-200 data-[state=open]:!zoom-in-100 data-[state=closed]:!zoom-out-100 data-[side=bottom]:!slide-in-from-top-3 data-[side=top]:!slide-in-from-bottom-3";
+  "origin-top overflow-hidden rounded-lg border border-ink/15 !bg-surface-2 p-0 !text-ink ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:duration-[400ms] data-[state=closed]:duration-200 data-[state=open]:!zoom-in-100 data-[state=closed]:!zoom-out-100 data-[side=bottom]:!slide-in-from-top-3 data-[side=top]:!slide-in-from-bottom-3";
 
 const selectItem =
-  "flex w-full cursor-pointer items-center justify-between gap-2 border-b border-white/10 px-5 py-3.5 text-left text-sm font-light text-white/90 transition-colors last:border-b-0 hover:bg-white/10 hover:text-white focus-visible:bg-white/10 focus-visible:text-white focus-visible:outline-none";
+  "flex w-full cursor-pointer items-center justify-between gap-2 border-b border-ink/10 px-5 py-3.5 text-left text-sm font-light text-ink/85 transition-colors last:border-b-0 hover:bg-ink/5 hover:text-ink focus-visible:bg-ink/5 focus-visible:text-ink focus-visible:outline-none";
 
 interface SchemaStepRendererProps {
   sectionLabel: string;
@@ -143,7 +148,7 @@ export function SchemaStepRenderer({
     <div className="space-y-7">
       <h1
         className={cn(
-          "text-3xl font-light tracking-tight text-black",
+          "text-3xl font-light tracking-tight text-ink",
           headingClassName,
         )}
       >
@@ -153,19 +158,17 @@ export function SchemaStepRenderer({
       {header}
 
       {visibleFields.length === 0 && (
-        <p className="text-sm font-light text-[#8A8A8A]">
-          No fields configured.
-        </p>
+        <p className="text-sm font-light text-ink/65">No fields configured.</p>
       )}
 
       {visibleFields.map((field, index) => (
         <div key={field.id} className="space-y-7">
           {index === firstOptionalIndex && (
             <div className="flex items-center gap-3 pt-1">
-              <span className="text-[11px] font-light tracking-[0.2em] text-[#B8B8B8]">
+              <span className="text-[11px] font-light tracking-[0.2em] text-ink/65">
                 OPTIONAL
               </span>
-              <span className="h-px flex-1 bg-[#EDEDED]" />
+              <span className="h-px flex-1 bg-surface" />
             </div>
           )}
           <SchemaFormField field={field} form={form} />
@@ -316,7 +319,7 @@ function SchemaFormField({
               </FormLabel>
               <FormControl>
                 <Textarea
-                  className="min-h-[120px] rounded-md border-[#D9D9D9] bg-transparent text-base font-light shadow-none focus-visible:border-black focus-visible:ring-0"
+                  className="min-h-[120px] rounded-md border-ink/10 bg-transparent text-base font-light shadow-none focus-visible:border-ice/50 focus-visible:ring-0"
                   placeholder="Type your answer here..."
                   {...formField}
                   value={formField.value ?? ""}
@@ -368,7 +371,7 @@ function SchemaFormField({
               {getObsoleteOptions(field, selectedField.value).map((option) => (
                 <div
                   key={option}
-                  className="flex items-baseline justify-between gap-3 text-xs font-light text-[#8A8A8A]"
+                  className="flex items-baseline justify-between gap-3 text-xs font-light text-ink/65"
                 >
                   <span className="min-w-0 break-words">
                     {option} — No longer available
@@ -376,7 +379,7 @@ function SchemaFormField({
                   <button
                     type="button"
                     aria-label={`Remove unavailable choice ${option}`}
-                    className="shrink-0 underline underline-offset-2 hover:text-black"
+                    className="shrink-0 underline underline-offset-2 hover:text-ink"
                     onClick={() =>
                       selectedField.onChange(
                         (selectedField.value as string[]).filter(
@@ -451,7 +454,7 @@ function SchemaFormField({
                 </FormControl>
               </div>
               <div className="min-w-0 flex-1 space-y-1">
-                <FormLabel className="block text-sm leading-6 font-extralight text-white/90">
+                <FormLabel className="block text-sm leading-6 font-extralight text-ink/85">
                   {renderLabel(field.label)}
                   {requiredMark}
                 </FormLabel>
@@ -495,7 +498,7 @@ function PhoneInput({
   return (
     <div className="space-y-2">
       <div className="flex items-end gap-4">
-        <div className="flex w-16 shrink-0 items-baseline border-b border-[#D9D9D9] focus-within:border-black">
+        <div className="flex w-16 shrink-0 items-baseline border-b border-ink/10 focus-within:border-ink">
           <span aria-hidden className="text-base font-light">
             +
           </span>
@@ -612,13 +615,13 @@ function SchemaSelect({
             className={cn(
               underlineField,
               "flex w-full items-center justify-between gap-2 outline-none",
-              !value && "text-[#8A8A8A]",
+              !value && "text-ink/65",
             )}
           >
             <span className={cn("min-w-0 truncate", !value && "text-sm")}>
               {value || `Select ${field.label.toLowerCase()}`}
             </span>
-            <ChevronDown
+            <IconChevronDown
               className={cn(
                 "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
                 open && "rotate-180",
@@ -646,7 +649,7 @@ function SchemaSelect({
               }}
             >
               <span className="min-w-0 truncate">{opt}</span>
-              {opt === value && <Check className="size-4 shrink-0" />}
+              {opt === value && <IconCheck className="size-4 shrink-0" />}
             </button>
           ))}
         </PopoverContent>
@@ -659,7 +662,7 @@ function SchemaSelect({
       {value && (obsolete || !field.required) && (
         <button
           type="button"
-          className="text-xs font-light text-[#8A8A8A] underline underline-offset-2 hover:text-black"
+          className="text-xs font-light text-ink/65 underline underline-offset-2 hover:text-ink"
           onClick={() => formField.onChange("")}
         >
           Clear answer
@@ -713,14 +716,14 @@ function SchemaCombobox({
         </FormControl>
         <button
           type="button"
-          className="flex items-center gap-1.5 text-xs font-light text-[#8A8A8A] transition-colors hover:text-black"
+          className="flex items-center gap-1.5 text-xs font-light text-ink/65 transition-colors hover:text-ink"
           onClick={() => {
             setOtherMode(false);
             setQuery("");
             formField.onChange("");
           }}
         >
-          <ArrowLeft className="size-3.5" />
+          <IconArrowLeft className="size-3.5" />
           Choose from list
         </button>
       </div>
@@ -740,13 +743,13 @@ function SchemaCombobox({
             className={cn(
               underlineField,
               "flex w-full items-center justify-between gap-2 outline-none",
-              !value && "text-[#8A8A8A]",
+              !value && "text-ink/65",
             )}
           >
             <span className={cn("min-w-0 truncate", !value && "text-sm")}>
               {value || `Select ${field.label.toLowerCase()}`}
             </span>
-            <ChevronDown
+            <IconChevronDown
               className={cn(
                 "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
                 open && "rotate-180",
@@ -759,19 +762,19 @@ function SchemaCombobox({
           <DialogContent
             showCloseButton={false}
             data-hacker-form-dropdown
-            className="fixed inset-0 z-50 flex max-h-dvh w-full max-w-full translate-x-0 translate-y-0 flex-col rounded-none border-0 !bg-[#292B35] p-0 !text-white"
+            className="fixed inset-0 z-50 flex max-h-dvh w-full max-w-full translate-x-0 translate-y-0 flex-col rounded-none border-0 !bg-surface-2 p-0 !text-ink"
           >
             {/* Close button */}
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <span className="text-sm font-light text-white/70">
+            <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
+              <span className="text-sm font-light text-ink/75">
                 {field.label}
               </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex size-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-8 items-center justify-center rounded-full text-ink/65 transition-colors hover:bg-ink/5 hover:text-ink"
               >
-                <X className="size-5" />
+                <IconX className="size-5" />
               </button>
             </div>
             <div className="flex-1 overflow-hidden">
@@ -802,13 +805,13 @@ function SchemaCombobox({
           className={cn(
             underlineField,
             "flex w-full items-center justify-between gap-2 outline-none",
-            !value && "text-[#8A8A8A]",
+            !value && "text-ink/65",
           )}
         >
           <span className={cn("min-w-0 truncate", !value && "text-sm")}>
             {value || `Select ${field.label.toLowerCase()}`}
           </span>
-          <ChevronDown
+          <IconChevronDown
             className={cn(
               "size-4 shrink-0 opacity-50 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
               open && "rotate-180",
@@ -879,12 +882,12 @@ function ComboboxContent({
   }, [setOtherMode, formField, query, setOpen]);
 
   return (
-    <Command className="bg-transparent text-white [&_[data-slot=command-input-wrapper]]:border-white/10">
+    <Command className="bg-transparent text-ink [&_[data-slot=command-input-wrapper]]:border-ink/10">
       <CommandInput
         value={query}
         onValueChange={setQuery}
         placeholder={`Search ${field.label.toLowerCase()}...`}
-        className="text-white placeholder:text-white/40"
+        className="text-ink placeholder:text-ink/55"
       />
       <CommandList
         className={cn(
@@ -892,7 +895,7 @@ function ComboboxContent({
           fullHeight ? "max-h-none flex-1" : "max-h-[300px]",
         )}
       >
-        <CommandEmpty className="px-5 py-3 text-left text-sm font-light text-white/60">
+        <CommandEmpty className="px-5 py-3 text-left text-sm font-light text-ink/65">
           No matches — choose "Other" below to enter it manually.
         </CommandEmpty>
         <CommandGroup className="p-0">
@@ -901,11 +904,11 @@ function ComboboxContent({
               key={opt}
               value={opt}
               onSelect={() => handleSelect(opt)}
-              className="cursor-pointer justify-between rounded-none border-b border-white/10 px-5 py-3.5 text-sm font-light text-white/90 data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
+              className="cursor-pointer justify-between rounded-none border-b border-ink/10 px-5 py-3.5 text-sm font-light text-ink/85 data-[selected=true]:bg-ink/5 data-[selected=true]:text-ink"
             >
               <span className="min-w-0 truncate">{opt}</span>
               {opt === value && (
-                <Check className="size-4 shrink-0 text-[#21FFF0]" />
+                <IconCheck className="size-4 shrink-0 text-ink" />
               )}
             </CommandItem>
           ))}
@@ -914,7 +917,7 @@ function ComboboxContent({
       {/* Outside CommandList so it's never hidden by the search filter. */}
       <button
         type="button"
-        className="flex w-full items-center gap-2 border-t border-white/10 px-5 py-3.5 text-left text-sm font-light text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+        className="flex w-full items-center gap-2 border-t border-ink/10 px-5 py-3.5 text-left text-sm font-light text-ink/75 transition-colors hover:bg-ink/5 hover:text-ink"
         onClick={handleOther}
       >
         Other (enter manually)

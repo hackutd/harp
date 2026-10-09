@@ -1,4 +1,4 @@
-import { CalendarClock } from "lucide-react";
+import { IconCalendarTime } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -211,7 +211,7 @@ function GenerateFromScheduleForm({
                     row.skipped ? "opacity-50" : ""
                   }`}
                 >
-                  <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
+                  <IconCalendarTime className="size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">
                       {row.eventName}

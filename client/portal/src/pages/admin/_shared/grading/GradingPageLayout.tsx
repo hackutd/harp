@@ -1,4 +1,8 @@
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  IconArrowLeft,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 
@@ -42,16 +46,17 @@ export function GradingPageLayout({
 
   return (
     <div className="-m-4 flex flex-col h-[calc(100%+2rem)] min-h-0">
-      {/* Header. Sized like the sidebar header (p-2 around the h-12 user
-          button, plus its border) so the two bottom borders line up. */}
-      <div className="box-content h-12 shrink-0 flex items-center gap-3 border-b bg-background px-4 py-2">
+      {/* Header. Sized like the sidebar header (0.75rem above and below its
+          32px switcher, plus its border; see [data-sidebar="header"] in
+          index.css) so the two bottom borders line up. */}
+      <div className="box-content h-14 shrink-0 flex items-center gap-3 border-b bg-background px-4">
         <Button
           variant="ghost"
           size="icon-sm"
           className="cursor-pointer"
           onClick={() => navigate(backUrl)}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <IconArrowLeft className="h-4 w-4" />
         </Button>
 
         {loading ? <Skeleton className="h-5 w-40" /> : headerContent}
@@ -64,7 +69,7 @@ export function GradingPageLayout({
             onClick={onNavigatePrev}
             disabled={!canNavigatePrev}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <IconChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm text-muted-foreground tabular-nums">
             {totalCount > 0 ? `${currentIndex + 1} of ${totalCount}` : "-"}
@@ -76,7 +81,7 @@ export function GradingPageLayout({
             onClick={onNavigateNext}
             disabled={!canNavigateNext}
           >
-            <ChevronRight className="h-4 w-4" />
+            <IconChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>

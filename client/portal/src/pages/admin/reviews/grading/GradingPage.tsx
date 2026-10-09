@@ -1,4 +1,4 @@
-import { ArrowLeft, ListPlus } from "lucide-react";
+import { IconArrowLeft, IconPlaylistAdd } from "@tabler/icons-react";
 import { useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -247,7 +247,7 @@ export default function GradingPage() {
               loading={claiming}
               onClick={() => void claimMore()}
             >
-              <ListPlus className="h-4 w-4 mr-1.5" />
+              <IconPlaylistAdd className="h-4 w-4 mr-1.5" />
               Get more reviews
             </Button>
           )}
@@ -256,7 +256,7 @@ export default function GradingPage() {
             className="cursor-pointer"
             onClick={() => navigate("/admin/reviews")}
           >
-            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            <IconArrowLeft className="h-4 w-4 mr-1.5" />
             Back to Reviews
           </Button>
         </div>

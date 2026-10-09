@@ -1,4 +1,4 @@
-import { Eye } from "lucide-react";
+import { IconEye } from "@tabler/icons-react";
 import { useFormContext } from "react-hook-form";
 
 import {
@@ -35,13 +35,13 @@ function ReviewSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-[#E5E5E5] p-4">
+    <div className="rounded-lg border border-ink/10 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-black">{title}</h3>
+        <h3 className="text-sm font-medium text-ink">{title}</h3>
         <button
           type="button"
           onClick={() => onEdit(stepIndex)}
-          className="text-xs font-light text-[#8A8A8A] underline underline-offset-2 transition-colors hover:text-black"
+          className="text-xs font-light text-ink/65 underline underline-offset-2 transition-colors hover:text-ink"
         >
           Edit
         </button>
@@ -67,8 +67,8 @@ function ReviewField({
   if (stacked) {
     return (
       <div className="space-y-1">
-        <span className="block text-xs font-light text-[#8A8A8A]">{label}</span>
-        <p className="text-sm font-light break-words whitespace-pre-wrap text-black">
+        <span className="block text-xs font-light text-ink/65">{label}</span>
+        <p className="text-sm font-light break-words whitespace-pre-wrap text-ink">
           {value || "Not provided"}
         </p>
       </div>
@@ -85,8 +85,8 @@ function ReviewField({
         title={truncateLabel ? label : undefined}
         className={
           truncateLabel
-            ? "min-w-0 flex-1 truncate text-xs font-light text-[#8A8A8A]"
-            : "max-w-full text-xs font-light break-words text-[#8A8A8A]"
+            ? "min-w-0 flex-1 truncate text-xs font-light text-ink/65"
+            : "max-w-full text-xs font-light break-words text-ink/65"
         }
       >
         {label}
@@ -94,8 +94,8 @@ function ReviewField({
       <span
         className={
           truncateLabel
-            ? "shrink-0 text-right text-sm font-light text-black"
-            : "ml-auto max-w-full text-right text-sm font-light break-words text-black"
+            ? "shrink-0 text-right text-sm font-light text-ink"
+            : "ml-auto max-w-full text-right text-sm font-light break-words text-ink"
         }
       >
         {value || "Not provided"}
@@ -120,10 +120,8 @@ export function ReviewStep({
   return (
     <div className="space-y-7">
       <div className="space-y-1">
-        <h1 className="text-3xl font-light tracking-tight text-black">
-          Review
-        </h1>
-        <p className="text-sm font-light text-[#8A8A8A]">
+        <h1 className="text-3xl font-light tracking-tight text-ink">Review</h1>
+        <p className="text-sm font-light text-ink/65">
           Check your answers before submitting. Once you submit, your
           application can no longer be edited.
         </p>
@@ -163,7 +161,7 @@ export function ReviewStep({
               })}
               {sectionId === resumeSectionId && (
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <span className="shrink-0 text-xs font-light text-[#8A8A8A]">
+                  <span className="shrink-0 text-xs font-light text-ink/65">
                     Resume
                   </span>
                   {hasResume ? (
@@ -171,15 +169,15 @@ export function ReviewStep({
                       trigger={
                         <button
                           type="button"
-                          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-light text-black underline underline-offset-2 transition-colors hover:text-[#8A8A8A]"
+                          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-light text-ink underline underline-offset-2 transition-colors hover:text-ink/65"
                         >
-                          <Eye className="size-3.5" strokeWidth={1.5} />
+                          <IconEye className="size-3.5" strokeWidth={1.5} />
                           View resume
                         </button>
                       }
                     />
                   ) : (
-                    <span className="shrink-0 text-right text-sm font-light text-black">
+                    <span className="shrink-0 text-right text-sm font-light text-ink">
                       Not provided
                     </span>
                   )}

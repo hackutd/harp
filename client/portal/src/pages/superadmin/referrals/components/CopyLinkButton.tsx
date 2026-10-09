@@ -1,4 +1,4 @@
-import { Check, Copy } from "lucide-react";
+import { IconCheck, IconCopy } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -33,7 +33,11 @@ export function CopyLinkButton({ code }: CopyLinkButtonProps) {
       aria-label={`Copy link for ${code}`}
       onClick={handleCopy}
     >
-      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+      {copied ? (
+        <IconCheck className="size-4" />
+      ) : (
+        <IconCopy className="size-4" />
+      )}
     </Button>
   );
 }

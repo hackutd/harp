@@ -1,6 +1,7 @@
-import { ArrowLeft, Home, RefreshCw } from "lucide-react";
+import { IconArrowLeft, IconHome, IconRefresh } from "@tabler/icons-react";
 import { isRouteErrorResponse, useNavigate, useRouteError } from "react-router";
 
+import { SkyBackdrop } from "@/components/SkyBackdrop";
 import { Button } from "@/components/ui/button";
 import { isChunkLoadError } from "@/shared/lib/stale-chunk-reload";
 
@@ -85,26 +86,19 @@ export function ErrorPage() {
 
   return (
     <main className="zero-login relative isolate flex min-h-svh flex-col overflow-hidden bg-black text-white">
-      <div
-        aria-hidden
-        className="zero-login-grid pointer-events-none absolute inset-0"
-      />
-      <div
-        aria-hidden
-        className="zero-login-scanlines pointer-events-none absolute inset-0 z-20"
-      />
+      <SkyBackdrop />
 
       {/* HUD rail — atmosphere only, never the carrier of meaning. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-5 top-5 z-30 flex items-center justify-between font-mono text-[9px] tracking-[0.28em] text-white/45 uppercase sm:inset-x-8 sm:text-[10px] lg:inset-x-12"
+        className="pointer-events-none absolute inset-x-5 top-5 z-30 flex items-center justify-between font-mono text-[9px] tracking-[0.28em] text-white/55 uppercase sm:inset-x-8 sm:text-[10px] lg:inset-x-12"
       >
         <span>HackUTD // Secure portal</span>
         <span>MMXXVI</span>
       </div>
       <div
         aria-hidden
-        className="pointer-events-none absolute top-1/2 left-4 z-30 hidden -translate-y-1/2 font-mono text-[9px] tracking-[0.4em] text-white/25 uppercase [writing-mode:vertical-rl] lg:block"
+        className="pointer-events-none absolute top-1/2 left-4 z-30 hidden -translate-y-1/2 font-mono text-[9px] tracking-[0.4em] text-white/40 uppercase [writing-mode:vertical-rl] lg:block"
       >
         HACKUTD // ZERO DAY
       </div>
@@ -113,13 +107,13 @@ export function ErrorPage() {
         <div className="zero-login-panel relative w-full max-w-[560px] p-px">
           <div className="zero-login-panel-inner px-5 py-6 sm:px-8 sm:py-9">
             <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
-              <p className="font-mono text-[10px] tracking-[0.28em] text-[#21FFF0] uppercase">
+              <p className="font-mono text-[10px] tracking-[0.28em] text-ice uppercase">
                 {label} // {status}
               </p>
               <div className="flex items-center gap-1" aria-hidden>
-                <span className="h-1 w-5 bg-[#5900FF]" />
-                <span className="h-1 w-2 bg-[#F62BE8]" />
-                <span className="h-1 w-1 bg-[#21FFF0]" />
+                <span className="h-1 w-5 bg-ice" />
+                <span className="h-1 w-2 bg-ice" />
+                <span className="h-1 w-1 bg-ice" />
               </div>
             </div>
 
@@ -127,24 +121,24 @@ export function ErrorPage() {
               {/* Chromatic split — one deliberate glitch artifact, held still. */}
               <p
                 aria-hidden
-                className="text-6xl leading-none font-semibold tracking-[-0.06em] text-white [text-shadow:3px_0_16px_rgba(246,43,232,0.55),-3px_0_16px_rgba(33,255,240,0.45)] sm:text-7xl"
+                className="text-6xl leading-none font-semibold tracking-[-0.06em] text-white sm:text-7xl"
               >
                 {status}
               </p>
               <h1 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-white sm:mt-5 sm:text-3xl">
                 {title}
               </h1>
-              <p className="mt-2 max-w-md text-xs leading-5 text-white/55 sm:mt-3 sm:text-sm sm:leading-6">
+              <p className="mt-2 max-w-md text-xs leading-5 text-white/65 sm:mt-3 sm:text-sm sm:leading-6">
                 {message}
               </p>
             </div>
 
             {detail && (
-              <div className="zero-cut-sm mt-5 border border-[#F62BE8]/30 bg-[#F62BE8]/[0.06] px-3.5 py-3 sm:mt-6">
-                <p className="font-mono text-[10px] tracking-[0.22em] text-[#ff9af8] uppercase">
+              <div className="zero-cut-sm mt-5 border border-ice/30 bg-ice/10 px-3.5 py-3 sm:mt-6">
+                <p className="font-mono text-[10px] tracking-[0.22em] text-ice uppercase">
                   Trace
                 </p>
-                <p className="mt-1.5 font-mono text-[11px] leading-5 break-words text-white/70">
+                <p className="mt-1.5 font-mono text-[11px] leading-5 break-words text-white/75">
                   {detail}
                 </p>
               </div>
@@ -152,11 +146,11 @@ export function ErrorPage() {
 
             {staleBuild && (
               <Button
-                className="zero-cut-button mt-6 h-11 w-full bg-[#21FFF0] text-xs font-medium tracking-[0.18em] text-black uppercase shadow-[0_0_20px_rgba(33,255,240,0.28)] hover:bg-[#5cfff4] focus-visible:ring-[#21FFF0]/50 sm:mt-7 sm:h-12"
+                className="zero-cut-button mt-6 h-11 w-full bg-tide text-xs font-medium tracking-[0.18em] text-white uppercase hover:bg-tide-hover focus-visible:ring-ice/50 sm:mt-7 sm:h-12"
                 onClick={() => window.location.reload()}
               >
-                <RefreshCw aria-hidden className="mr-1.5 size-4" />A new version
-                is available — reload
+                <IconRefresh aria-hidden className="mr-1.5 size-4" />A new
+                version is available — reload
               </Button>
             )}
 
@@ -165,32 +159,32 @@ export function ErrorPage() {
             >
               <Button
                 variant="outline"
-                className="zero-cut-button h-11 w-full border-[#21FFF0]/45 bg-transparent text-xs font-medium tracking-[0.18em] text-white uppercase hover:border-[#21FFF0] hover:bg-[#21FFF0]/10 hover:text-white focus-visible:ring-[#21FFF0]/50 sm:h-12 sm:flex-1"
+                className="zero-cut-button h-11 w-full border-ice/50 bg-transparent text-xs font-medium tracking-[0.18em] text-white uppercase hover:border-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-ice/50 sm:h-12 sm:flex-1"
                 onClick={() => navigate(-1)}
               >
-                <ArrowLeft aria-hidden className="mr-1.5 size-4" />
+                <IconArrowLeft aria-hidden className="mr-1.5 size-4" />
                 Go back
               </Button>
               <Button
-                className="zero-cut-button h-11 w-full bg-[#5900FF] text-xs font-medium tracking-[0.18em] text-white uppercase shadow-[0_0_20px_rgba(89,0,255,0.28)] hover:bg-[#6D1CFF] focus-visible:ring-[#5900FF]/50 sm:h-12 sm:flex-1"
+                className="zero-cut-button h-11 w-full bg-tide text-xs font-medium tracking-[0.18em] text-white uppercase hover:bg-tide-hover focus-visible:ring-ice/50 sm:h-12 sm:flex-1"
                 onClick={() => navigate("/")}
               >
-                <Home aria-hidden className="mr-1.5 size-4" />
+                <IconHome aria-hidden className="mr-1.5 size-4" />
                 Go home
               </Button>
             </div>
 
             <div className="mt-5 border-t border-white/10 pt-4 sm:mt-6 sm:pt-5">
-              <p className="font-mono text-[10px] tracking-[0.22em] text-white/40 uppercase">
+              <p className="font-mono text-[10px] tracking-[0.22em] text-white/55 uppercase">
                 Still stuck?
               </p>
-              <p className="mt-1.5 text-xs leading-5 text-white/55 sm:text-sm sm:leading-6">
+              <p className="mt-1.5 text-xs leading-5 text-white/65 sm:text-sm sm:leading-6">
                 If you think this is a real issue, reach out at{" "}
                 <a
                   href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
                     `Portal error ${status}`,
                   )}`}
-                  className="zero-login-legal-link text-[#21FFF0]"
+                  className="zero-login-legal-link text-ice"
                 >
                   {SUPPORT_EMAIL}
                 </a>{" "}

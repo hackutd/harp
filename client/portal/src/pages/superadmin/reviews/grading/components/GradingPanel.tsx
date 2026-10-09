@@ -1,4 +1,9 @@
-import { Pencil, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  IconPencil,
+  IconRotate,
+  IconThumbDown,
+  IconThumbUp,
+} from "@tabler/icons-react";
 import { memo, type ReactNode, useState } from "react";
 
 import {
@@ -140,7 +145,7 @@ function ConfirmResetButton({
           className="-ml-2 cursor-pointer font-normal text-muted-foreground"
           disabled={disabled}
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+          <IconRotate className="h-3.5 w-3.5" />
           {label}
         </Button>
       </AlertDialogTrigger>
@@ -369,7 +374,7 @@ export const GradingPanel = memo(function GradingPanel({
                 disabled={grading}
                 onClick={onEdit}
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <IconPencil className="h-3.5 w-3.5" />
                 Edit
               </Button>
             </div>
@@ -426,7 +431,7 @@ export const GradingPanel = memo(function GradingPanel({
                 }
                 onClick={() => onGradeTravel("rejected")}
               >
-                <ThumbsDown className="h-4 w-4" />
+                <IconThumbDown className="h-4 w-4" />
                 Reject
               </Button>
               <Button
@@ -441,7 +446,7 @@ export const GradingPanel = memo(function GradingPanel({
                 }
                 onClick={openApproval}
               >
-                <ThumbsUp className="h-4 w-4" />
+                <IconThumbUp className="h-4 w-4" />
                 {listItem.travel_status === "approved"
                   ? "Edit amount"
                   : "Approve"}
@@ -458,7 +463,7 @@ export const GradingPanel = memo(function GradingPanel({
                     disabled={grading || travelDecisionLocked}
                     onClick={() => onGradeTravel("pending")}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <IconRotate className="h-3.5 w-3.5" />
                     Reset to pending
                   </Button>
                 )}

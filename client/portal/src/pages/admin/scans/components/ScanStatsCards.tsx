@@ -1,11 +1,11 @@
 import {
-  DoorOpen,
-  Gift,
-  MoreHorizontal,
-  ShoppingBag,
-  UserCheck,
-  Utensils,
-} from "lucide-react";
+  IconDoorEnter,
+  IconDots,
+  IconGift,
+  IconShoppingBag,
+  IconToolsKitchen2,
+  IconUserCheck,
+} from "@tabler/icons-react";
 
 import {
   Card,
@@ -16,13 +16,13 @@ import {
 
 import type { ScanStat, ScanType, ScanTypeCategory } from "../types";
 
-const categoryIcons: Record<ScanTypeCategory, typeof UserCheck> = {
-  check_in: UserCheck,
-  meal: Utensils,
-  swag: Gift,
-  shop: ShoppingBag,
-  other: MoreHorizontal,
-  walk_in: DoorOpen,
+const categoryIcons: Record<ScanTypeCategory, typeof IconUserCheck> = {
+  check_in: IconUserCheck,
+  meal: IconToolsKitchen2,
+  swag: IconGift,
+  shop: IconShoppingBag,
+  other: IconDots,
+  walk_in: IconDoorEnter,
 };
 
 interface ScanStatsCardsProps {
@@ -60,7 +60,7 @@ export function ScanStatsCards({
   return (
     <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
       {scanTypes.map((scanType) => {
-        const Icon = categoryIcons[scanType.category] ?? UserCheck;
+        const Icon = categoryIcons[scanType.category] ?? IconUserCheck;
         const count = statsMap.get(scanType.name) ?? 0;
 
         return (

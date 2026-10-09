@@ -1,8 +1,9 @@
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { IconChevronLeft, IconExternalLink } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTheme } from "@/shared/hooks";
 import { notionOpenURL } from "@/shared/lib/notion-embed";
 import type { HackerLink } from "@/types";
 
@@ -13,6 +14,7 @@ import { fetchHackerLinks } from "../dashboard/api";
 export default function NotionPage() {
   const navigate = useNavigate();
   const { linkId } = useParams<{ linkId: string }>();
+  const theme = useTheme();
   const [link, setLink] = useState<HackerLink | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,18 +46,18 @@ export default function NotionPage() {
           type="button"
           onClick={() => navigate("/app")}
           aria-label="Back"
-          className="-ml-1 flex size-9 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1"
+          className="-ml-1 flex size-9 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1"
         >
-          <ChevronLeft className="size-5" strokeWidth={1.75} />
+          <IconChevronLeft className="size-5" strokeWidth={1.75} />
         </button>
         {url && (
           <a
             href={notionOpenURL(url)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#E5E5E5] px-3.5 py-1.5 text-xs font-light text-[#6B6B6B] transition-colors hover:text-black"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-ink/10 px-3.5 py-1.5 text-xs font-light text-ink/65 transition-colors hover:text-ink"
           >
-            <ExternalLink className="size-3.5" strokeWidth={1.5} />
+            <IconExternalLink className="size-3.5" strokeWidth={1.5} />
             Open in Notion
           </a>
         )}
@@ -65,18 +67,18 @@ export default function NotionPage() {
         {loading ? (
           <Skeleton className="h-full min-h-[60vh] w-full rounded-sm" />
         ) : !url ? (
-          <div className="flex flex-1 items-center justify-center rounded-sm border border-[#E5E5E5] bg-[#FAFAFA] px-6 py-16 text-center">
-            <p className="text-sm font-light text-[#8A8A8A]">
+          <div className="flex flex-1 items-center justify-center rounded-sm border border-ink/10 bg-surface px-6 py-16 text-center">
+            <p className="text-sm font-light text-ink/65">
               This page isn't available. Check back soon.
             </p>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-hidden rounded-sm border border-[#E5E5E5] bg-[#FAFAFA]">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-sm border border-ink/10 bg-surface">
             <iframe
               src={url}
               title={link?.label ?? "Notion page"}
               className="h-full w-full"
-              style={{ colorScheme: "dark" }}
+              style={{ colorScheme: theme }}
               allowFullScreen
             />
           </div>

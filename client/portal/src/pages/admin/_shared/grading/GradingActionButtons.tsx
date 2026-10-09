@@ -1,5 +1,10 @@
-import type { LucideIcon } from "lucide-react";
-import { Check, Minus, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  IconCheck,
+  IconMinus,
+  IconThumbDown,
+  IconThumbUp,
+  type TablerIcon,
+} from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,11 +37,11 @@ const ACTIONS: {
   key: GradingAction;
   label: string;
   shortcut: string;
-  icon: LucideIcon;
+  icon: TablerIcon;
 }[] = [
-  { key: "reject", label: "Reject", shortcut: "⌘J", icon: ThumbsDown },
-  { key: "waitlist", label: "Waitlist", shortcut: "⌘K", icon: Minus },
-  { key: "accept", label: "Accept", shortcut: "⌘L", icon: ThumbsUp },
+  { key: "reject", label: "Reject", shortcut: "⌘J", icon: IconThumbDown },
+  { key: "waitlist", label: "Waitlist", shortcut: "⌘K", icon: IconMinus },
+  { key: "accept", label: "Accept", shortcut: "⌘L", icon: IconThumbUp },
 ];
 
 export function GradingActionButtons({
@@ -94,7 +99,7 @@ export function GradingActionButtons({
                   {!isRow && (
                     <span className="ml-auto flex items-center gap-2">
                       {isSelected && (
-                        <Check className="h-4 w-4" aria-label="Selected" />
+                        <IconCheck className="h-4 w-4" aria-label="Selected" />
                       )}
                       <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                         {shortcut}

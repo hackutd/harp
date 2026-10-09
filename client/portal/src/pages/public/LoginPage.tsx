@@ -1,4 +1,9 @@
-import { ArrowLeft, ArrowRight, ArrowUpRight, Mail } from "lucide-react";
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowUpRight,
+  IconMail,
+} from "@tabler/icons-react";
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import { Navigate, useSearchParams } from "react-router";
 import { createCode } from "supertokens-auth-react/recipe/passwordless";
@@ -6,9 +11,8 @@ import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { redirectToThirdPartyLogin } from "supertokens-auth-react/recipe/thirdparty";
 
 import googleIcon from "@/assets/google_icon.webp";
-import mascots from "@/assets/mascots.webp";
-import sky from "@/assets/sky.webp";
 import wordmark from "@/assets/zero-day-wordmark.webp";
+import { SkyBackdrop } from "@/components/SkyBackdrop";
 import { Button } from "@/components/ui/button";
 import { checkEmailAuthMethod } from "@/shared/lib/api";
 import { captureReferral, REFERRAL_PARAM } from "@/shared/lib/referral";
@@ -32,28 +36,15 @@ const NOTCH_LG =
 const BUTTON =
   "h-14 w-full rounded-none text-[13px] font-medium tracking-[0.1em] uppercase focus-visible:ring-0 focus-visible:shadow-[inset_0_0_0_2px_#fff]";
 
-const LEGAL_LINK = "login-sweep-link text-[#8b93a1]";
+const LEGAL_LINK = "login-sweep-link text-white/55";
 
-// The night sky from zeroday.hackutd.co behind a single card. The art is
-// portrait and fades to black below the stars, so it is pinned to the top and
-// the page's own black carries on underneath at any height. The art is
-// mirrored so the moon sits on the left, and from `lg` the card moves right to
-// leave the moon and the brightest clouds in view.
+// The night sky from zeroday.hackutd.co (SkyBackdrop) behind a single card.
+// The moon sits on the left, so from `lg` the card moves right to leave the
+// moon and the brightest clouds in view.
 function ZeroDayShell({ children }: { children: ReactNode }) {
   return (
-    <main className="zero-cursor font-satoshi relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden bg-black px-5 pt-20 pb-12 text-[#f4f2ff] sm:px-8 lg:items-end lg:px-[9%]">
-      <img
-        src={sky}
-        alt=""
-        aria-hidden
-        className="absolute inset-0 -z-10 size-full -scale-x-100 object-cover object-[60%_0%]"
-      />
-      <div aria-hidden className="star-field -z-10">
-        <span className="shooting-star" />
-      </div>
-      <div aria-hidden className="star-field star-field-reverse -z-10">
-        <span className="shooting-star [--star-delay:7s] [--star-top:12%]" />
-      </div>
+    <main className="zero-cursor font-satoshi relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden bg-black px-5 pt-20 pb-12 text-white sm:px-8 lg:items-end lg:px-[9%]">
+      <SkyBackdrop />
 
       <a
         href={ZERODAY_URL}
@@ -61,7 +52,7 @@ function ZeroDayShell({ children }: { children: ReactNode }) {
         className="group absolute top-6 left-5 flex size-11 items-center justify-center bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/25 focus-visible:shadow-[inset_0_0_0_2px_#fff] focus-visible:outline-none sm:left-8 lg:left-[9%]"
         style={{ clipPath: NOTCH_SM }}
       >
-        <ArrowLeft
+        <IconArrowLeft
           aria-hidden
           strokeWidth={2.5}
           className="size-5 transition-transform group-hover:-translate-x-0.5"
@@ -80,17 +71,6 @@ function ZeroDayShell({ children }: { children: ReactNode }) {
           style={{ "--notch": NOTCH_LG } as CSSProperties}
         >
           <div className="login-glow-card relative isolate flex flex-col justify-center overflow-hidden px-7 py-10 sm:px-14 sm:py-16 lg:min-h-[min(640px,70svh)]">
-            {/* The mascots peek up from the card's bottom-right corner, cut off
-              by its edge. Luminosity blending recolours them in the card's
-              violet, and the mask fades them out before they reach the form.
-              Only from `lg`, where the card is taller than its content and
-              leaves them room. */}
-            <img
-              src={mascots}
-              alt=""
-              aria-hidden
-              className="pointer-events-none absolute right-0 bottom-0 -z-10 hidden w-[60%] translate-x-[8%] translate-y-[14%] opacity-25 mix-blend-luminosity [mask-image:linear-gradient(to_top,black_35%,transparent_85%)] lg:block"
-            />
             {children}
           </div>
         </div>
@@ -99,10 +79,10 @@ function ZeroDayShell({ children }: { children: ReactNode }) {
           href="https://github.com/hackutd/harp"
           target="_blank"
           rel="noreferrer"
-          className="login-harp-link inline-flex items-center gap-1.5 text-[12px] tracking-[0.12em] text-[#b4b9c4] uppercase hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          className="login-harp-link inline-flex items-center gap-1.5 text-[12px] tracking-[0.12em] text-white/70 uppercase hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
         >
           Powered by HARP
-          <ArrowUpRight aria-hidden className="size-3" />
+          <IconArrowUpRight aria-hidden className="size-3" />
         </a>
       </div>
     </main>
@@ -111,7 +91,7 @@ function ZeroDayShell({ children }: { children: ReactNode }) {
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="text-[11px] tracking-[0.18em] text-[#dbc4ff] uppercase sm:text-[12px]">
+    <p className="text-[11px] tracking-[0.18em] text-ice uppercase sm:text-[12px]">
       {children}
     </p>
   );
@@ -229,11 +209,11 @@ export default function Login() {
   if (state === "sent") {
     return (
       <ZeroDayShell>
-        <Mail aria-hidden className="size-6 text-[#dbc4ff]" />
+        <IconMail aria-hidden className="size-6 text-ice" />
         <div className="mt-6">
           <Eyebrow>Link dispatched</Eyebrow>
           <Heading>Check your inbox</Heading>
-          <p className="mt-4 text-[15px] leading-[1.7] text-[#8b93a1]">
+          <p className="mt-4 text-[15px] leading-[1.7] text-white/55">
             We sent a secure sign-in link to{" "}
             <span className="font-medium break-all text-white">{email}</span>.
             Open it within 15 minutes to enter the hacker portal.
@@ -257,16 +237,16 @@ export default function Login() {
     <ZeroDayShell>
       <Eyebrow>Hacker access</Eyebrow>
       <Heading>
-        Enter Zero <span className="text-[#7828ff]">Day</span>
+        Enter Zero <span className="text-ice">Day</span>
       </Heading>
-      <p className="mt-4 text-[15px] leading-[1.7] text-[#8b93a1]">
+      <p className="mt-4 text-[15px] leading-[1.7] text-white/55">
         Sign in or create your hacker account with a secure magic link.
       </p>
 
       {state === "error" && error && (
         <p
           role="alert"
-          className="mt-6 border-l-2 border-[#ff6467] bg-[#ff6467]/10 px-4 py-3 text-[13px] leading-[1.6] text-[#ffc7c8]"
+          className="mt-6 border-l-2 border-red-400 bg-red-400/10 px-4 py-3 text-[13px] leading-[1.6] text-red-200"
         >
           {error}
         </p>
@@ -275,7 +255,7 @@ export default function Login() {
       <form onSubmit={handleEmailSubmit} className="mt-8">
         <label
           htmlFor="email"
-          className="block text-[11px] tracking-[0.12em] text-[#8b93a1] uppercase"
+          className="block text-[11px] tracking-[0.12em] text-white/55 uppercase"
         >
           Email address
         </label>
@@ -289,18 +269,18 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           required
           disabled={state === "sending"}
-          className="mt-2 block h-14 w-full border-b border-white/15 bg-transparent text-[16px] text-white caret-[#dbc4ff] transition-colors placeholder:text-[#5a6270] hover:border-white/30 focus:border-[#7828ff] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 block h-14 w-full border-b border-white/15 bg-transparent text-[16px] text-white caret-ice transition-colors placeholder:text-white/40 hover:border-white/30 focus:border-ice focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         />
         <Button
           type="submit"
-          className={`${BUTTON} group mt-6 bg-[#7828ff] text-[#f2f2f2] hover:bg-[#7828ff]/90`}
+          className={`${BUTTON} group mt-6 bg-tide text-white hover:bg-tide-hover`}
           style={{ clipPath: NOTCH }}
           disabled={!email}
           loading={state === "sending"}
         >
           {state === "sending" ? "Sending magic link..." : "Send magic link"}
           {state !== "sending" && (
-            <ArrowRight
+            <IconArrowRight
               aria-hidden
               className="size-4 transition-transform group-hover:translate-x-0.5"
             />
@@ -313,7 +293,7 @@ export default function Login() {
           "@/shared/auth" (set by VITE_GOOGLE_AUTH_ENABLED=true in
           client/portal/.env), or the button errors on click wherever Google
           sign-in is not configured. */}
-      <div className="my-5 flex items-center gap-4 text-[11px] tracking-[0.12em] text-[#5a6270] uppercase">
+      <div className="my-5 flex items-center gap-4 text-[11px] tracking-[0.12em] text-white/40 uppercase">
         <span className="h-px flex-1 bg-white/10" />
         alternate route
         <span className="h-px flex-1 bg-white/10" />
@@ -332,7 +312,7 @@ export default function Login() {
           links until the Terms and Privacy Policy URLs are saved in the super
           admin settings. Before shipping, restore the gate that hides it (and
           each link) when no URL is configured. */}
-      <p className="mt-8 text-[12px] leading-[1.6] text-[#5a6270]">
+      <p className="mt-8 text-[12px] leading-[1.6] text-white/40">
         By continuing, you agree to our{" "}
         <a
           href={legal?.terms_url || "#"}

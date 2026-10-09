@@ -34,7 +34,7 @@ export const NotesTextarea = forwardRef<
         setValue(e.target.value);
         onNotesChange(reviewId, e.target.value);
       }}
-      className="mt-1 resize-none bg-white"
+      className="mt-1 resize-none bg-background"
       rows={rows}
       disabled={disabled}
     />

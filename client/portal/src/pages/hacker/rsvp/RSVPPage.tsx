@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { IconChevronLeft } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
@@ -34,6 +34,7 @@ import type { RSVPStatus } from "@/types";
 import { ApplicationSummary } from "../apply/components/ApplicationSummary";
 import { SchemaStepRenderer } from "../apply/steps/SchemaStepRenderer";
 import { StatusDetailSkeleton } from "../components/StatusDetailSkeleton";
+import { pillClass } from "../components/tones";
 import { fetchMyRSVP, submitMyRSVP } from "./api";
 import type { RSVPInfo } from "./types";
 
@@ -41,18 +42,14 @@ function RSVPResult({ status }: { status: Exclude<RSVPStatus, "pending"> }) {
   const confirmed = status === "confirmed";
 
   return (
-    <div className="rounded-xl border border-[#E5E5E5] p-5">
-      <span
-        className={`inline-block rounded-full px-3 py-1 text-[11px] font-medium tracking-wide text-white ${
-          confirmed ? "bg-emerald-700" : "bg-[#7A7973]"
-        }`}
-      >
+    <div className="rounded-xl border border-ink/10 p-5">
+      <span className={pillClass(confirmed ? "success" : "neutral")}>
         {confirmed ? "Spot claimed" : "Spot declined"}
       </span>
-      <h1 className="mt-3 text-xl font-light tracking-tight text-black">
+      <h1 className="mt-3 text-xl font-light tracking-tight text-ink">
         {confirmed ? "You're in!" : "RSVP received"}
       </h1>
-      <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+      <p className="mt-2 text-sm font-light text-ink/65">
         {confirmed
           ? "Your RSVP is confirmed. We can't wait to see you at the event!"
           : "You've declined your spot. Sorry you can't make it — we hope to see you next time!"}
@@ -157,9 +154,9 @@ export default function RSVPPage() {
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
       >
-        <ChevronLeft className="size-5" strokeWidth={1.75} />
+        <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
 
       <div className="min-w-0 flex-1">
@@ -168,7 +165,7 @@ export default function RSVPPage() {
             <RSVPResult status={rsvp.rsvp_status} />
             {rsvp.rsvp_status === "confirmed" && schema.length > 0 && (
               <section className="mt-5">
-                <h2 className="mb-3 text-xs font-light tracking-widest text-[#8A8A8A] uppercase">
+                <h2 className="mb-3 text-xs font-light tracking-widest text-ink/65 uppercase">
                   Your submission
                 </h2>
                 <ApplicationSummary
@@ -181,24 +178,24 @@ export default function RSVPPage() {
             )}
           </>
         ) : !rsvp.rsvp_enabled ? (
-          <div className="rounded-xl border border-[#E5E5E5] p-5">
-            <span className="inline-block rounded-full bg-[#7A7973] px-3 py-1 text-[11px] font-medium tracking-wide text-white">
+          <div className="rounded-xl border border-ink/10 p-5">
+            <span className="inline-block rounded-full bg-ink/5 px-3 py-1 text-[11px] font-medium tracking-wide text-ink">
               RSVPs closed
             </span>
-            <h1 className="mt-3 text-xl font-light tracking-tight text-black">
+            <h1 className="mt-3 text-xl font-light tracking-tight text-ink">
               RSVPs are closed
             </h1>
-            <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+            <p className="mt-2 text-sm font-light text-ink/65">
               The RSVP window has ended. If you think this is a mistake, please
               reach out to the organizing team.
             </p>
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-light tracking-tight text-black">
+            <h1 className="text-2xl font-light tracking-tight text-ink">
               Claim your spot
             </h1>
-            <p className="mt-2 text-sm font-light text-[#8A8A8A]">
+            <p className="mt-2 text-sm font-light text-ink/65">
               Congratulations on being accepted! Fill this out to confirm
               you&apos;re coming. You can only submit once.
             </p>
@@ -220,7 +217,7 @@ export default function RSVPPage() {
                   <Button
                     type="submit"
                     loading={submitting}
-                    className="h-12 w-full rounded-full bg-black text-sm font-normal text-white hover:bg-black/85"
+                    className="h-12 w-full rounded-full bg-tide text-sm font-normal text-white hover:bg-tide-hover"
                   >
                     Confirm my spot
                   </Button>
@@ -231,28 +228,28 @@ export default function RSVPPage() {
                         type="button"
                         variant="ghost"
                         disabled={submitting}
-                        className="h-12 w-full rounded-full text-sm font-light text-[#8A8A8A] hover:text-black"
+                        className="h-12 w-full rounded-full text-sm font-light text-ink/65 hover:text-ink"
                       >
                         I can&apos;t make it, decline my spot
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent className="rounded-xl border-[#E5E5E5]">
+                    <AlertDialogContent className="rounded-xl border-ink/10">
                       <AlertDialogHeader>
-                        <AlertDialogTitle className="font-light tracking-tight text-black">
+                        <AlertDialogTitle className="font-light tracking-tight text-ink">
                           Decline your spot?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="font-light text-[#8A8A8A]">
+                        <AlertDialogDescription className="font-light text-ink/65">
                           Your spot will be released and this cannot be undone.
                           Are you sure you can&apos;t make it?
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter className="gap-3">
-                        <AlertDialogCancel className="h-11 rounded-full border-[#D9D9D9] px-6 font-normal hover:bg-[#F5F5F5]">
+                        <AlertDialogCancel className="h-11 rounded-full border-ink/10 px-6 font-normal hover:bg-ink/5">
                           Keep my spot
                         </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => submitDecision("declined")}
-                          className="h-11 rounded-full bg-destructive px-6 font-normal text-white hover:bg-destructive-hover"
+                          className="h-11 rounded-full bg-destructive px-6 font-normal text-ink hover:bg-destructive-hover"
                         >
                           Decline
                         </AlertDialogAction>

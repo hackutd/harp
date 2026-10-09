@@ -1,24 +1,27 @@
 import {
-  CircleCheckIcon,
-  InfoIcon,
-  OctagonXIcon,
-  TriangleAlertIcon,
-} from "lucide-react";
-import { useTheme } from "next-themes";
+  IconAlertOctagon,
+  IconAlertTriangle,
+  IconCircleCheck,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
+import { useTheme } from "@/shared/hooks/use-theme";
+
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  // Colours come from the body theme class through the CSS variables below;
+  // this only keeps sonner's own chrome (close button, icons) in step.
+  const theme = useTheme();
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
+        success: <IconCircleCheck className="size-4" />,
+        info: <IconInfoCircle className="size-4" />,
+        warning: <IconAlertTriangle className="size-4" />,
+        error: <IconAlertOctagon className="size-4" />,
         loading: (
           <span className="size-3 animate-pulse rounded-full bg-current" />
         ),

@@ -47,6 +47,11 @@ func (m *MockUsersStore) UpdateProfilePicture(ctx context.Context, supertokensUs
 	return args.Error(0)
 }
 
+func (m *MockUsersStore) UpdateTheme(ctx context.Context, userID string, theme Theme) error {
+	args := m.Called(userID, theme)
+	return args.Error(0)
+}
+
 func (m *MockUsersStore) UpdateSuperTokensID(ctx context.Context, userID string, supertokensUserID string) (*User, error) {
 	args := m.Called(userID, supertokensUserID)
 	if args.Get(0) == nil {

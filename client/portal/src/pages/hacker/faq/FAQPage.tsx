@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { IconChevronLeft } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -41,14 +41,14 @@ export default function FAQPage() {
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
       >
-        <ChevronLeft className="size-5" strokeWidth={1.75} />
+        <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
 
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl font-light tracking-tight text-black">FAQ</h1>
-        <p className="mt-1 text-sm font-light text-[#6B6B6B]">
+        <h1 className="text-2xl font-light tracking-tight text-ink">FAQ</h1>
+        <p className="mt-1 text-sm font-light text-ink/65">
           Answers to common questions about the event.
         </p>
 
@@ -59,7 +59,7 @@ export default function FAQPage() {
             <Skeleton className="h-14 w-full rounded-lg" />
           </div>
         ) : faqs.length === 0 ? (
-          <p className="pt-12 text-center text-sm font-light text-[#8A8A8A]">
+          <p className="pt-12 text-center text-sm font-light text-ink/65">
             No FAQs yet. Check back soon.
           </p>
         ) : (
@@ -68,12 +68,12 @@ export default function FAQPage() {
               <AccordionItem
                 key={faq.id}
                 value={faq.id}
-                className="border-[#E5E5E5]"
+                className="border-ink/10"
               >
-                <AccordionTrigger className="text-base font-normal text-black hover:no-underline">
+                <AccordionTrigger className="text-base font-normal text-ink hover:no-underline">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-sm font-light whitespace-pre-line text-[#6B6B6B]">
+                <AccordionContent className="text-sm font-light whitespace-pre-line text-ink/65">
                   {renderLabel(faq.answer)}
                 </AccordionContent>
               </AccordionItem>

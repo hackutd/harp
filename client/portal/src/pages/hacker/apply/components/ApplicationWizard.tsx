@@ -1,4 +1,4 @@
-import { AlertCircle } from "lucide-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router";
@@ -671,10 +671,10 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   if (!applicationsEnabled) {
     return (
       <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
-        <h1 className="text-3xl font-light tracking-tight text-white">
+        <h1 className="text-3xl font-light tracking-tight text-ink">
           Applications closed
         </h1>
-        <p className="text-sm font-light text-white/60">
+        <p className="text-sm font-light text-ink/65">
           The application portal is not currently accepting submissions. Please
           check back later.
           {application &&
@@ -689,10 +689,10 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
   if (application && application.status !== "draft") {
     return (
       <div className="mx-auto max-w-md space-y-4 px-5 py-10 md:max-w-5xl">
-        <h1 className="text-3xl font-light tracking-tight text-white">
+        <h1 className="text-3xl font-light tracking-tight text-ink">
           Application submitted
         </h1>
-        <p className="text-sm font-light text-white/60">
+        <p className="text-sm font-light text-ink/65">
           {application.status === "submitted" &&
             "Your application is being reviewed."}
           {application.status === "accepted" &&
@@ -705,7 +705,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
         <button
           type="button"
           onClick={() => navigate("/app")}
-          className="text-sm font-light text-white underline underline-offset-2"
+          className="text-sm font-light text-ink underline underline-offset-2"
         >
           View status
         </button>
@@ -754,13 +754,13 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
     const header =
       section === "personal" && userEmail ? (
         <div className="space-y-1.5">
-          <label className="text-xs font-light text-[#8A8A8A]">Email</label>
+          <label className="text-xs font-light text-ink/65">Email</label>
           <Input
             value={userEmail}
             disabled
-            className="h-11 rounded-none border-0 border-b border-[#D9D9D9] bg-transparent px-0 text-base font-light text-[#8A8A8A] shadow-none dark:bg-transparent"
+            className="h-11 rounded-none border-0 border-b border-ink/10 bg-transparent px-0 text-base font-light text-ink/65 shadow-none dark:bg-transparent"
           />
-          <p className="text-xs font-light text-[#B8B8B8]">
+          <p className="text-xs font-light text-ink/65">
             Email is from your account and cannot be changed here
           </p>
         </div>
@@ -848,7 +848,7 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
 
         {apiError && (
           <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
+            <IconAlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{apiError}</AlertDescription>
           </Alert>
@@ -858,10 +858,10 @@ export function ApplicationWizard({ userEmail }: ApplicationWizardProps) {
           aria-live="polite"
           className={`mb-4 min-h-4 text-xs font-light ${
             autosaveState === "error"
-              ? "text-red-500"
+              ? "text-red-400"
               : autosaveState === "saved"
-                ? "text-emerald-600"
-                : "text-[#8A8A8A]"
+                ? "text-emerald-400"
+                : "text-ink/65"
           }`}
         >
           {autosaveState === "saving" && "Saving..."}

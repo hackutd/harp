@@ -15,9 +15,8 @@ interface HackerSkeletonProps extends React.ComponentProps<"div"> {
 }
 
 /**
- * Zero Day placeholder block for hacker-side loading states: a dim panel
- * with a slow cyan sweep. Pair with `HackerSkeletonStatus` so every loading
- * screen opens with the same HUD line.
+ * Placeholder block for hacker-side loading states: a faint white panel that
+ * breathes (`.zero-skeleton` in index.css).
  */
 export function HackerSkeleton({
   className,
@@ -48,13 +47,13 @@ export function HackerSkeletonStatus({
   return (
     <p
       className={cn(
-        "flex items-center gap-2.5 font-mono text-[10px] tracking-[0.28em] text-[#21FFF0]/80 uppercase",
+        "flex items-center gap-2.5 font-mono text-[10px] tracking-[0.28em] text-ice uppercase",
         className,
       )}
     >
       <span
         aria-hidden
-        className="h-1.5 w-1.5 shrink-0 animate-pulse bg-[#21FFF0] shadow-[0_0_10px_#21FFF0]"
+        className="h-1.5 w-1.5 shrink-0 animate-pulse bg-tide"
       />
       Loading // {label}
     </p>
@@ -84,8 +83,8 @@ export function HackerSkeletonEmbed({
       )}
     >
       <HackerSkeletonStatus label={label} />
-      <div className="zero-scan-track h-px w-full max-w-[220px] overflow-hidden bg-white/10">
-        <div className="zero-scan-line h-px w-1/4 bg-[#21FFF0] shadow-[0_0_10px_#21FFF0]" />
+      <div className="zero-scan-track h-px w-full max-w-[220px] overflow-hidden bg-ink/5">
+        <div className="zero-scan-line h-px w-1/4 bg-tide" />
       </div>
     </div>
   );

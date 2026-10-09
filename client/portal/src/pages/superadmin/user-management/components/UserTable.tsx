@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { IconTrash } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,7 +78,7 @@ export function UserTable({
 
   return (
     <div className="relative overflow-auto h-full p-6 pt-0">
-      <Table className="border-collapse [&_th]:border-r [&_th]:border-gray-200 [&_td]:border-r [&_td]:border-gray-200 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+      <Table className="border-collapse [&_th]:border-r [&_th]:border-border [&_td]:border-r [&_td]:border-border [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-10"></TableHead>
@@ -278,7 +278,7 @@ export function UserTable({
                           });
                         }}
                       >
-                        <Trash2 className="size-4" />
+                        <IconTrash className="size-4" />
                       </Button>
                     )}
                   </TableCell>
