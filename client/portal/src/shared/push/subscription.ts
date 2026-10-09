@@ -41,6 +41,9 @@ export async function enablePushSubscription(): Promise<EnablePushResult> {
   });
 
   if (subRes.status !== 204 && subRes.status !== 200) {
+    // Leave no orphan behind: a browser subscription the server never stored
+    // would make the toggle read "on" after a reload while nothing can reach it.
+    await subscription.unsubscribe().catch(() => undefined);
     return "error";
   }
 

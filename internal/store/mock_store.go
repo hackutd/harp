@@ -926,6 +926,14 @@ func (m *MockPushSubscriptionsStore) ListByRole(ctx context.Context, role *UserR
 	return args.Get(0).([]PushSubscription), args.Error(1)
 }
 
+func (m *MockPushSubscriptionsStore) ListByUserIDs(ctx context.Context, userIDs []string) ([]PushSubscription, error) {
+	args := m.Called(userIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]PushSubscription), args.Error(1)
+}
+
 // MockScheduledNotificationsStore is a mock implementation of the ScheduledNotifications interface
 type MockScheduledNotificationsStore struct {
 	mock.Mock

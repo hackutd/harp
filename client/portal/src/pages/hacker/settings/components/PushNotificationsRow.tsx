@@ -2,10 +2,12 @@ import { IconBell } from "@tabler/icons-react";
 import { toast } from "sonner";
 
 import { Switch } from "@/components/ui/switch";
+import { useInstallPrompt } from "@/shared/install";
 import { usePushSubscription } from "@/shared/push/usePushSubscription";
 
 export function PushNotificationsRow() {
   const push = usePushSubscription();
+  const install = useInstallPrompt();
 
   const handleToggle = async (checked: boolean) => {
     if (checked) {
@@ -40,7 +42,9 @@ export function PushNotificationsRow() {
           <p className="text-xs font-light text-ink/65">
             {push.supported
               ? "Decision & event alerts"
-              : "Not supported in this browser"}
+              : install.platform === "ios" && !install.installed
+                ? "Add to Home Screen to enable on iPhone"
+                : "Not supported in this browser"}
           </p>
         </div>
       </div>

@@ -20,6 +20,13 @@ const decisionEmailConcurrency = 10
 // follows each successful send.
 const decisionEmailMarkTimeout = 10 * time.Second
 
+// decisionPushTimeout bounds the push fan-out that follows a decision email run.
+const decisionPushTimeout = 90 * time.Second
+
+// decisionPushTTL is how long push services hold the alert for a device that
+// is offline. Decisions stay relevant for days, unlike schedule reminders.
+const decisionPushTTL = 24 * time.Hour
+
 const (
 	decisionEmailModeDecision     = "decision"
 	decisionEmailModeAnnouncement = "announcement"
@@ -29,12 +36,18 @@ type SendDecisionEmailsPayload struct {
 	Mode      string                    `json:"mode" validate:"required,oneof=decision announcement"`
 	Statuses  []store.ApplicationStatus `json:"statuses" validate:"omitempty,dive,oneof=accepted waitlisted rejected"`
 	ResendAll bool                      `json:"resend_all"`
+	// SendPush also sends a Web Push alert to every recipient who has enabled
+	// notifications. The alert never includes the outcome.
+	SendPush bool `json:"send_push"`
 }
 
 type SendDecisionEmailsResponse struct {
 	Mode    string `json:"mode"`
 	Queued  int    `json:"queued"`
 	Skipped int    `json:"skipped"`
+	// PushRecipients is how many of the queued applicants will also get a push
+	// alert. Zero when send_push is off or no recipient has a subscription.
+	PushRecipients int `json:"push_recipients"`
 }
 
 type DecisionEmailStatsResponse struct {
@@ -45,7 +58,7 @@ type DecisionEmailStatsResponse struct {
 // "decisions are out" announcement.
 //
 //	@Summary		Send decision emails (Super Admin)
-//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued. Returns 409 until decisions are released, or while a previous run is still sending.
+//	@Description	Emails applicants in the selected statuses. Mode "decision" sends the per-status accept/waitlist/reject email; mode "announcement" sends a neutral decisions-are-out email to every decided applicant without revealing the outcome. Recipients already emailed for that mode are skipped unless resend_all is set. With send_push, recipients who enabled push notifications also get a neutral "decisions are out" push after the emails go out. Sending happens in the background and each recipient is marked as emailed only after their message is accepted by the mail provider; the response reports how many were queued and how many will also be pushed. Returns 409 until decisions are released, or while a previous run is still sending.
 //	@Tags			superadmin/emails
 //	@Accept			json
 //	@Produce		json
@@ -152,10 +165,27 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Subscriptions are resolved before the hand-off so the response can say how
+	// many applicants will also hear about this on their phone or desktop.
+	var pushSubs []store.PushSubscription
+	if payload.SendPush && app.pushConfigured() {
+		userIDs := make([]string, len(recipients))
+		for i, recipient := range recipients {
+			userIDs[i] = recipient.UserID
+		}
+		pushSubs, err = app.store.PushSubscriptions.ListByUserIDs(r.Context(), userIDs)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+	}
+	pushRecipients := countDistinctUsers(pushSubs)
+
 	app.requestLogger(r).Infow("dispatching decision emails",
 		"mode", payload.Mode,
 		"queued", len(recipients),
 		"skipped", skipped,
+		"push_recipients", pushRecipients,
 		"admin_id", admin.ID,
 	)
 
@@ -165,12 +195,16 @@ func (app *application) sendDecisionEmailsHandler(w http.ResponseWriter, r *http
 		defer app.backgroundJobs.Done()
 		defer app.decisionEmailInFlight.Store(false)
 		app.dispatchDecisionEmails(recipients, kind)
+		// Pushed after the emails so the message is already in the inbox when
+		// the alert sends someone to look for it.
+		app.dispatchDecisionPush(pushSubs, kind)
 	}()
 
 	if err := app.jsonResponse(w, http.StatusOK, SendDecisionEmailsResponse{
-		Mode:    payload.Mode,
-		Queued:  len(recipients),
-		Skipped: skipped,
+		Mode:           payload.Mode,
+		Queued:         len(recipients),
+		Skipped:        skipped,
+		PushRecipients: pushRecipients,
 	}); err != nil {
 		app.internalServerError(w, r, err)
 	}
@@ -242,6 +276,57 @@ func (app *application) dispatchDecisionEmails(recipients []store.DecisionEmailR
 		"sent", len(recipients)-failed,
 		"failed", failed,
 		"sent_but_unmarked", unmarked,
+	)
+}
+
+func countDistinctUsers(subs []store.PushSubscription) int {
+	seen := make(map[string]struct{}, len(subs))
+	for _, sub := range subs {
+		seen[sub.UserID] = struct{}{}
+	}
+	return len(seen)
+}
+
+// decisionPushPayload is the alert every decision recipient gets, whichever
+// email kind triggered it. It deliberately says nothing about the outcome: a
+// lock screen is not where someone should learn they were rejected, and the
+// email that just went out has the details.
+func decisionPushPayload(kind store.DecisionEmailKind) pushPayload {
+	url := "/app"
+	return pushPayload{
+		ID:    "decision-" + string(kind),
+		Title: "Decisions are out",
+		Body:  "Your application decision is ready. Open the portal to see it.",
+		URL:   &url,
+	}
+}
+
+// dispatchDecisionPush sends the neutral decisions-are-out alert to the given
+// subscriptions. Like the emails it runs outside the request; unlike them it
+// is best effort, since the email is the record of delivery.
+func (app *application) dispatchDecisionPush(subs []store.PushSubscription, kind store.DecisionEmailKind) {
+	if len(subs) == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), decisionPushTimeout)
+	defer cancel()
+
+	delivered, err := app.sendPushToSubscriptions(ctx, subs, decisionPushPayload(kind), app.webpushOptions(decisionPushTTL))
+	if err != nil {
+		app.logger.Errorw("decision push failed",
+			"error", err,
+			"kind", kind,
+			"subscriptions", len(subs),
+			"delivered", delivered,
+		)
+		return
+	}
+
+	app.logger.Infow("finished dispatching decision push",
+		"kind", kind,
+		"subscriptions", len(subs),
+		"delivered", delivered,
 	)
 }
 

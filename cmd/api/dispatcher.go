@@ -49,8 +49,26 @@ type pushPayload struct {
 	URL   *string `json:"url,omitempty"`
 }
 
+// pushConfigured reports whether the server holds a VAPID keypair and can
+// therefore send Web Push at all.
+func (app *application) pushConfigured() bool {
+	return app.config.vapid.publicKey != "" && app.config.vapid.privateKey != ""
+}
+
+// webpushOptions builds the signing/transport options every push send uses.
+// ttl is how long the push service may hold the message for an offline device.
+func (app *application) webpushOptions(ttl time.Duration) *webpush.Options {
+	return &webpush.Options{
+		VAPIDPublicKey:  app.config.vapid.publicKey,
+		VAPIDPrivateKey: app.config.vapid.privateKey,
+		Subscriber:      app.config.vapid.subject,
+		TTL:             int(ttl / time.Second),
+		HTTPClient:      app.pushClient,
+	}
+}
+
 func (app *application) runNotificationDispatcher(ctx context.Context) {
-	if app.config.vapid.publicKey == "" || app.config.vapid.privateKey == "" {
+	if !app.pushConfigured() {
 		app.logger.Infow("push dispatcher disabled (VAPID not configured)")
 		return
 	}
@@ -91,13 +109,7 @@ func (app *application) dispatchDueNotifications(ctx context.Context) {
 
 	app.logger.Infow("dispatching due notifications", "count", len(due))
 
-	options := &webpush.Options{
-		VAPIDPublicKey:  app.config.vapid.publicKey,
-		VAPIDPrivateKey: app.config.vapid.privateKey,
-		Subscriber:      app.config.vapid.subject,
-		TTL:             60 * 60, // 1 hour
-		HTTPClient:      app.pushClient,
-	}
+	options := app.webpushOptions(time.Hour)
 
 	// The whole batch has to finish inside the lease taken above, or a slow tail
 	// could be claimed by a second instance while this one is still sending.
@@ -210,17 +222,23 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 		return 0, fmt.Errorf("list subscriptions: %w", err)
 	}
 
+	return app.sendPushToSubscriptions(ctx, subs, pushPayload{
+		ID:    n.ID,
+		Title: n.Title,
+		Body:  n.Body,
+		URL:   n.URL,
+	}, options)
+}
+
+// sendPushToSubscriptions fans one payload out to the given subscriptions,
+// pruning the ones their push service reports dead. It returns how many were
+// delivered; the error semantics are those of deliverNotification.
+func (app *application) sendPushToSubscriptions(ctx context.Context, subs []store.PushSubscription, payload pushPayload, options *webpush.Options) (int, error) {
 	if len(subs) == 0 {
 		return 0, nil
 	}
 
-	payloadURL := n.URL
-	body, err := json.Marshal(pushPayload{
-		ID:    n.ID,
-		Title: n.Title,
-		Body:  n.Body,
-		URL:   payloadURL,
-	})
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return 0, fmt.Errorf("%w: marshal push payload: %v", errDeliveryPermanent, err)
 	}
@@ -264,7 +282,7 @@ func (app *application) deliverNotification(ctx context.Context, n store.Schedul
 	// certainly a server-side VAPID misconfig, not individually stale subs — don't nuke the
 	// whole table; leave the rows for the operator and retry once the config is fixed.
 	if delivered == 0 && authFailures > 0 && authFailures == len(subs) {
-		app.logger.Warnw("all push sends failed VAPID auth; skipping prune (check VAPID config)", "id", n.ID, "count", len(subs))
+		app.logger.Warnw("all push sends failed VAPID auth; skipping prune (check VAPID config)", "id", payload.ID, "count", len(subs))
 		return delivered, errors.New("all push sends failed VAPID auth (check VAPID config)")
 	}
 

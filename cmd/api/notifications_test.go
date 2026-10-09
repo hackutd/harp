@@ -113,6 +113,31 @@ func TestSubscribePush(t *testing.T) {
 		mockSubs.AssertExpectations(t)
 	})
 
+	t.Run("accepts every push service browsers hand out by default", func(t *testing.T) {
+		for _, endpoint := range []string{
+			"https://fcm.googleapis.com/fcm/send/abc",
+			"https://jmt17.google.com/fcm/send/abc",
+			"https://updates.push.services.mozilla.com/wpush/v2/abc",
+			"https://web.push.apple.com/abc",
+			"https://wns2-bl2p.notify.windows.com/w/?token=abc",
+		} {
+			app := newTestApplication(t)
+			app.config.vapid.publicKey = "test-public-key"
+			mockSubs := app.store.PushSubscriptions.(*store.MockPushSubscriptionsStore)
+			mockSubs.On("Upsert", mock.AnythingOfType("*store.PushSubscription")).Return(nil).Once()
+
+			body := `{"endpoint":"` + endpoint + `","p256dh":"key","auth":"auth-secret"}`
+			req, err := http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			req = setUserContext(req, newTestUser())
+
+			rr := executeRequest(req, http.HandlerFunc(app.subscribePushHandler))
+			checkResponseCode(t, http.StatusNoContent, rr.Code)
+			mockSubs.AssertExpectations(t)
+		}
+	})
+
 	t.Run("returns 400 for endpoints off the push-service allowlist", func(t *testing.T) {
 		for _, endpoint := range []string{
 			"http://fcm.googleapis.com/fcm/send/abc",

@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BADGE_COLORS } from "@/shared/lib/badge-colors";
 import {
+  applicantVisibleFields,
   groupFieldsBySection,
   renderLabel,
   type SectionDef,
@@ -188,7 +189,7 @@ export function ApplicationPreview({
   sections,
   systemBlock,
 }: ApplicationPreviewProps) {
-  const grouped = groupFieldsBySection(fields);
+  const grouped = groupFieldsBySection(applicantVisibleFields(fields));
 
   const previewSections = sections.filter(
     (section) =>

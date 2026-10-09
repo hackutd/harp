@@ -200,6 +200,7 @@ type Storage struct {
 		DeleteByEndpoint(ctx context.Context, userID, endpoint string) error
 		DeleteByEndpointAdmin(ctx context.Context, endpoint string) error
 		ListByRole(ctx context.Context, role *UserRole) ([]PushSubscription, error)
+		ListByUserIDs(ctx context.Context, userIDs []string) ([]PushSubscription, error)
 	}
 	ScheduledNotifications interface {
 		Create(ctx context.Context, n *ScheduledNotification) error
