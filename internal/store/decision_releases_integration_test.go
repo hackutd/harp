@@ -160,4 +160,19 @@ func TestIntegrationDecisionReleases(t *testing.T) {
 	if a := seen(); a.ReleasedStatus != nil {
 		t.Fatalf("after reopen: released %s, want nil", *a.ReleasedStatus)
 	}
+
+	// So does moving a released decision back to under review, which no
+	// release would ever publish.
+	if _, err := apps.SetStatus(ctx, alice, StatusAccepted); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := releases.Create(ctx, everyone(StatusAccepted), admin); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := apps.SetStatus(ctx, alice, StatusSubmitted); err != nil {
+		t.Fatal(err)
+	}
+	if a := seen(); a.ReleasedStatus != nil || a.ReleasedTravelStatus != nil {
+		t.Fatalf("after moving back to submitted: released %+v %+v, want nothing released", a.ReleasedStatus, a.ReleasedTravelStatus)
+	}
 }

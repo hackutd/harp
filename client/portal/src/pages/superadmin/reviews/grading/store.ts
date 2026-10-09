@@ -36,7 +36,8 @@ const STATUS_TOASTS: Record<AnyStatus, string> = {
 };
 
 interface FilterParams {
-  status?: ApplicationStatus;
+  /** null is every status (the reviews page's All tab). */
+  status?: ApplicationStatus | null;
   sort_by?: ApplicationSortBy;
   search?: string;
 }
@@ -125,7 +126,10 @@ export const useGradingStore = create<GradingState>((set, get) => ({
 
     const state = get();
     const mergedParams: FetchParams = {
-      status: state.filterParams.status ?? "submitted",
+      status:
+        state.filterParams.status === undefined
+          ? "submitted"
+          : state.filterParams.status,
       sort_by: state.filterParams.sort_by ?? "accept_votes",
       search: state.filterParams.search || undefined,
       ...params,
@@ -140,7 +144,7 @@ export const useGradingStore = create<GradingState>((set, get) => ({
         prevCursor: res.data.prev_cursor,
         loading: false,
         filterParams: {
-          status: mergedParams.status ?? undefined,
+          status: mergedParams.status ?? null,
           sort_by: mergedParams.sort_by,
           search: mergedParams.search,
         },

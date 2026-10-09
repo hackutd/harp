@@ -41,7 +41,7 @@ export default function FAQPage() {
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 2xl:-ml-10"
       >
         <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>

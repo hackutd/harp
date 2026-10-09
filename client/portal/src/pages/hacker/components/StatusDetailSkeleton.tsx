@@ -1,12 +1,7 @@
-import {
-  HackerSkeleton,
-  HackerSkeletonStatus,
-} from "@/components/HackerSkeleton";
+import { HackerSkeleton } from "@/components/HackerSkeleton";
 import { cn } from "@/shared/lib/utils";
 
 interface StatusDetailSkeletonProps {
-  /** What is loading, e.g. "Application". */
-  label: string;
   className?: string;
   cardClassName?: string;
 }
@@ -25,31 +20,24 @@ const SUMMARY_ROWS = [
  * submission" summary panel — so the page fills in rather than reflowing.
  */
 export function StatusDetailSkeleton({
-  label,
   className,
   cardClassName,
 }: StatusDetailSkeletonProps) {
   return (
     <div
       role="status"
+      aria-label="Loading"
       className={cn(
         "mx-auto flex max-w-2xl flex-col gap-3 px-5 pt-4 pb-8 md:max-w-5xl md:flex-row md:items-start md:gap-2 md:px-8",
         className,
       )}
     >
-      <div className="-ml-3 flex size-9 shrink-0 items-center justify-center md:-ml-10">
+      <div className="-ml-3 flex size-9 shrink-0 items-center justify-center 2xl:-ml-10">
         <HackerSkeleton className="size-4" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <HackerSkeletonStatus label={label} />
-
-        <div
-          className={cn(
-            "mt-4 rounded-xl border border-ice/30 bg-surface p-5",
-            cardClassName,
-          )}
-        >
+        <div className={cn("rounded-xl bg-surface p-5", cardClassName)}>
           <HackerSkeleton className="h-6 w-28 rounded-full bg-ice/15" />
           <HackerSkeleton className="mt-4 h-6 w-3/5" />
           <HackerSkeleton className="mt-3 h-3 w-full" />
@@ -57,7 +45,7 @@ export function StatusDetailSkeleton({
         </div>
 
         <section className="mt-6">
-          <HackerSkeleton className="h-2.5 w-28" />
+          <HackerSkeleton className="h-3.5 w-28" />
           <div
             className={cn(
               "mt-3 rounded-xl border border-ink/10 bg-surface p-4",

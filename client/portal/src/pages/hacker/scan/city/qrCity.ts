@@ -6,9 +6,18 @@ import type { Module } from "./footprint";
 export const QUIET_ZONE = 4;
 export const FINDER_SIZE = 7;
 
-/** Light plate + plaza tiles: the QR's light modules seen from above. */
-export const PLATE_COLOR = "#ece9f3";
-export const PLAZA_COLORS = ["#f5f3f9", "#e4e1ee"] as const;
+/**
+ * Light plate + plaza tiles: the QR's light modules seen from above. Kept just
+ * under pure white so the lit plate stays below the bloom threshold and reads
+ * as solid rather than glowing; the top-down exposure boost whitens it.
+ */
+export const PLATE_COLOR = "#ebebeb";
+export const PLAZA_COLORS = ["#f4f4f4", "#e3e3e3"] as const;
+/**
+ * Plate corner radius as a fraction of its side. The 3D plate and the frame's
+ * CSS radius both use it, so the corners line up in the top-down view.
+ */
+export const PLATE_CORNER_RADIUS = 0.03;
 /** Rooftops: the QR's dark modules seen from above. */
 export const ROOF_COLOR = "#0b0c15";
 export const NEON = { magenta: "#ff2ee6", cyan: "#22e0ff", violet: "#7828ff" };

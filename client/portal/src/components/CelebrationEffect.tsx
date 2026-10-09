@@ -168,7 +168,7 @@ function ReducedMotionCelebration({
     >
       <div
         className={cn(
-          "flex items-center gap-3 rounded-full px-6 py-3 text-base font-semibold tracking-wider uppercase",
+          "flex items-center gap-3 rounded-full px-6 py-3 text-base font-semibold",
           isAccepted ? "bg-tide text-white" : "bg-surface text-ink",
         )}
       >

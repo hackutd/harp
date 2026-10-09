@@ -13,6 +13,7 @@ import {
   hashSeed,
   NEON,
   PLATE_COLOR,
+  PLATE_CORNER_RADIUS,
   PLAZA_COLORS,
   QUIET_ZONE,
   ROOF_COLOR,
@@ -26,6 +27,9 @@ const CAMERA_DISTANCE = 160;
 /** Fraction of the plate size used as the ortho half-extent in the iso view. */
 const ISO_FRAME_SCALE = 0.72;
 const ISO_TARGET_Y = 6.5;
+/** How far the hacker can tilt the city view by dragging. */
+const MIN_ELEVATION = THREE.MathUtils.degToRad(20);
+const MAX_ELEVATION = THREE.MathUtils.degToRad(60);
 
 /** Gap between a block and the edge of the modules it covers. */
 const BUILDING_GAP = 0.16;
@@ -36,6 +40,13 @@ const BLOOM_STRENGTH = 0.85;
 const BLOOM_RADIUS = 0.55;
 const BLOOM_THRESHOLD = 0.55;
 const EMISSIVE_INTENSITY = 1.6;
+const EXPOSURE = 1.05;
+/**
+ * Extra exposure in the top-down view. Filmic tone mapping and the lavender
+ * sky light leave a white plate greyish, so the descent brightens it to read
+ * as the same white as the vector QR that fades in over it.
+ */
+const TOP_EXPOSURE_BOOST = 3;
 
 /** Window rows per unit of building height, and columns per face. */
 const WINDOW_ROWS_PER_UNIT = 2;
@@ -50,9 +61,6 @@ const HELI_RADIUS = 10;
 const HELI_SPEED = 0.45;
 const HELI_SCALE = 1.8;
 const SIGN_GLOW = 1.2;
-
-const UP_ISO = new THREE.Vector3(0, 1, 0);
-const UP_TOP = new THREE.Vector3(0, 0, -1);
 
 function paintWindowTexture(palette: WindowPalette, seed: number) {
   const canvas = document.createElement("canvas");
@@ -133,6 +141,32 @@ function roofModule(cell: CityCell): [number, number] {
   );
 }
 
+/** A square slab with rounded corners, centred on x/z, top face at y = 0. */
+function createRoundedPlateGeometry(
+  size: number,
+  radius: number,
+): THREE.BufferGeometry {
+  const h = size / 2;
+  const shape = new THREE.Shape()
+    .moveTo(-h + radius, -h)
+    .lineTo(h - radius, -h)
+    .quadraticCurveTo(h, -h, h, -h + radius)
+    .lineTo(h, h - radius)
+    .quadraticCurveTo(h, h, h - radius, h)
+    .lineTo(-h + radius, h)
+    .quadraticCurveTo(-h, h, -h, h - radius)
+    .lineTo(-h, -h + radius)
+    .quadraticCurveTo(-h, -h, -h + radius, -h);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: PLATE_THICKNESS,
+    bevelEnabled: false,
+    curveSegments: 8,
+  });
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate(0, -PLATE_THICKNESS, 0);
+  return geometry;
+}
+
 /**
  * Extrudes a footprint straight up. Group 0 is the caps (roof), group 1 the
  * walls, whose UVs are rescaled so one repeating window texture fits any
@@ -196,6 +230,8 @@ export class QrCityScene {
   private readonly plateSize: number;
   private readonly animate: boolean;
   private progress = 0;
+  private azimuth = ISO_AZIMUTH;
+  private elevation = ISO_ELEVATION;
   private frame = 0;
   private loopFrame = 0;
   private disposed = false;
@@ -217,7 +253,7 @@ export class QrCityScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = EXPOSURE;
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
 
@@ -272,8 +308,8 @@ export class QrCityScene {
     this.camera.bottom = -half;
     this.camera.updateProjectionMatrix();
 
-    const elevation = THREE.MathUtils.lerp(ISO_ELEVATION, TOP_ELEVATION, t);
-    const azimuth = THREE.MathUtils.lerp(ISO_AZIMUTH, 0, t);
+    const elevation = THREE.MathUtils.lerp(this.elevation, TOP_ELEVATION, t);
+    const azimuth = THREE.MathUtils.lerp(this.azimuth, 0, t);
     const target = new THREE.Vector3(
       0,
       THREE.MathUtils.lerp(ISO_TARGET_Y, 0, t),
@@ -285,7 +321,12 @@ export class QrCityScene {
       Math.cos(elevation) * Math.cos(azimuth) * CAMERA_DISTANCE,
     );
     this.camera.position.add(target);
-    this.camera.up.copy(UP_ISO).lerp(UP_TOP, t).normalize();
+    // Blend world up into the camera's horizontal heading, which is (0, 0, -1)
+    // once azimuth reaches 0, so the code lands upright. The two never point
+    // along the view, whatever angle the hacker dragged to.
+    this.camera.up
+      .set(-Math.sin(azimuth) * t, 1 - t, -Math.cos(azimuth) * t)
+      .normalize();
     this.camera.lookAt(target);
 
     const glow = 1 - t;
@@ -296,6 +337,13 @@ export class QrCityScene {
       material.emissiveIntensity = EMISSIVE_INTENSITY * SIGN_GLOW * glow;
     }
     this.bloom.strength = BLOOM_STRENGTH * glow;
+    this.renderer.toneMappingExposure =
+      EXPOSURE *
+      THREE.MathUtils.lerp(
+        1,
+        TOP_EXPOSURE_BOOST,
+        THREE.MathUtils.smoothstep(t, 0.4, 1),
+      );
 
     // Props may overhang neighbouring modules, so they shrink to nothing
     // before the view becomes the QR code.
@@ -307,6 +355,26 @@ export class QrCityScene {
 
     if (glow > 0) this.startLoop();
     this.requestRender();
+  }
+
+  /**
+   * Turns the city view by a drag: yaw spins it freely, pitch tilts it within
+   * limits. The top-down QR view is unaffected, since setProgress eases
+   * whatever angle this leaves back to straight down.
+   */
+  orbitBy(yaw: number, pitch: number) {
+    if (this.disposed) return;
+    this.azimuth =
+      THREE.MathUtils.euclideanModulo(
+        this.azimuth + yaw + Math.PI,
+        Math.PI * 2,
+      ) - Math.PI;
+    this.elevation = THREE.MathUtils.clamp(
+      this.elevation + pitch,
+      MIN_ELEVATION,
+      MAX_ELEVATION,
+    );
+    this.setProgress(this.progress);
   }
 
   getProgress() {
@@ -379,7 +447,10 @@ export class QrCityScene {
 
   private buildPlate(layout: CityLayout) {
     const plateGeometry = this.track(
-      new THREE.BoxGeometry(this.plateSize, PLATE_THICKNESS, this.plateSize),
+      createRoundedPlateGeometry(
+        this.plateSize,
+        this.plateSize * PLATE_CORNER_RADIUS,
+      ),
     );
     const plateMaterial = this.track(
       new THREE.MeshStandardMaterial({
@@ -387,9 +458,7 @@ export class QrCityScene {
         roughness: 0.95,
       }),
     );
-    const plate = new THREE.Mesh(plateGeometry, plateMaterial);
-    plate.position.y = -PLATE_THICKNESS / 2;
-    this.scene.add(plate);
+    this.scene.add(new THREE.Mesh(plateGeometry, plateMaterial));
 
     const n = layout.moduleCount;
     const lightCells: [number, number][] = [];

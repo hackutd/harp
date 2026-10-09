@@ -386,7 +386,7 @@ export function PhotoCropDialog({
                 placeholder
               )}
             </div>
-            <figcaption className="text-[11px] font-light tracking-widest text-ink/55 uppercase">
+            <figcaption className="text-[11px] font-light text-ink/55">
               Profile
             </figcaption>
           </figure>

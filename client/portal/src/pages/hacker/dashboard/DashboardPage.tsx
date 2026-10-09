@@ -376,7 +376,9 @@ export default function DashboardPage() {
               key={d.label}
               className="rounded-lg bg-surface p-4 theme-light:border theme-light:border-ink/10"
             >
-              <p className="text-xs font-medium text-primary">{d.month}</p>
+              <p className="text-xs font-medium text-(--portal-purple)">
+                {d.month}
+              </p>
               <p className="mt-1 text-2xl font-semibold text-ink">{d.day}</p>
               <p className="mt-1 text-xs font-light text-ink/55">{d.label}</p>
             </div>
