@@ -247,6 +247,27 @@ func (app *application) mount() http.Handler {
 				r.Delete("/subscribe", app.unsubscribePushHandler)
 			})
 
+			// Attendee directory. Eligibility (confirmed RSVP, own card) is
+			// checked per handler so /me can report it instead of failing.
+			r.Route("/directory", func(r chi.Router) {
+				r.Get("/me", app.getMyDirectoryProfileHandler)
+				r.Put("/me", app.upsertMyDirectoryProfileHandler)
+				r.Patch("/me/discoverable", app.updateMyDirectoryDiscoverableHandler)
+				r.Post("/me/confirm-status", app.confirmMyDirectoryStatusHandler)
+
+				r.Get("/profiles", app.listDirectoryHandler)
+				r.Post("/profiles/{userID}/poke", app.pokeDirectoryProfileHandler)
+				r.Get("/pokes", app.listDirectoryPokesHandler)
+				r.Get("/pokes/sent", app.listDirectorySentPokesHandler)
+				r.Get("/pokes/unseen", app.getUnseenDirectoryPokesHandler)
+				r.Post("/pokes/seen", app.markDirectoryPokesSeenHandler)
+				r.Get("/contacts", app.listDirectoryContactsHandler)
+				r.Put("/contacts/{userID}", app.addDirectoryContactHandler)
+				r.Delete("/contacts/{userID}", app.removeDirectoryContactHandler)
+				r.Put("/hidden/{userID}", app.hideDirectoryProfileHandler)
+				r.Delete("/hidden/{userID}", app.unhideDirectoryProfileHandler)
+			})
+
 			// Hacker Routes
 			r.Get("/schedule", app.getHackerScheduleHandler)
 			r.Get("/schedule/date-range", app.getHackerScheduleDateRange)
@@ -300,6 +321,12 @@ func (app *application) mount() http.Handler {
 				r.Use(app.RequireRoleMiddleware(store.RoleAdmin))
 				// Admin routes
 				r.Route("/admin", func(r chi.Router) {
+
+					// Attendee directory moderation
+					r.Route("/directory", func(r chi.Router) {
+						r.Get("/profiles", app.listAdminDirectoryProfilesHandler)
+						r.Patch("/profiles/{userID}/moderation", app.moderateDirectoryProfileHandler)
+					})
 
 					// Applications
 					r.Route("/applications", func(r chi.Router) {
@@ -457,6 +484,8 @@ func (app *application) mount() http.Handler {
 						r.Put("/scan-types", app.updateScanTypesHandler)
 						r.Get("/meal-groups", app.getMealGroups)
 						r.Put("/meal-groups", app.updateMealGroups)
+						r.Get("/directory-interest-tags", app.getDirectoryInterestTagsHandler)
+						r.Put("/directory-interest-tags", app.updateDirectoryInterestTagsHandler)
 						r.Get("/meal-groups/stats", app.getMealGroupStats)
 						r.Put("/applications-enabled", app.setApplicationsEnabled)
 					})

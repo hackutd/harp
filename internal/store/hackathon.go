@@ -77,6 +77,12 @@ func (s *HackathonStore) Reset(ctx context.Context, opts ResetOptions) (*ResetPa
 			return nil, err
 		}
 
+		// Directory cards are gated on a confirmed RSVP, so they go with the
+		// applications that made them eligible.
+		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE attendee_directory_profiles, pokes, directory_contacts, directory_hidden_profiles"); err != nil {
+			return nil, err
+		}
+
 		// The decisions they gated are gone, so the next cycle's start hidden.
 		if err := hideDecisions(ctx, tx); err != nil {
 			return nil, err

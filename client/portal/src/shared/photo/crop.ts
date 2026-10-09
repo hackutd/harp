@@ -1,7 +1,8 @@
-// Framing a profile photo. The photo is stored already cropped to a 4:5
-// card frame; round avatars show its centre square, so one crop serves both.
+// Framing a profile photo. The photo is stored already cropped to the
+// directory card's 4:5 frame; round avatars show its centre square, so one
+// crop serves both.
 
-/** Width over height of the stored photo. */
+/** Width over height of the directory card's photo. */
 export const CARD_PHOTO_ASPECT = 4 / 5;
 
 export const MAX_PHOTO_ZOOM = 4;

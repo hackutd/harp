@@ -1385,6 +1385,77 @@ func (app *application) updateMealGroups(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+type DirectoryInterestTagsResponse struct {
+	Tags []string `json:"tags"`
+}
+
+type UpdateDirectoryInterestTagsPayload struct {
+	Tags []string `json:"tags" validate:"max=50,unique,dive,required,max=30"`
+}
+
+// getDirectoryInterestTagsHandler returns the directory interest tag list.
+//
+//	@Summary		Get directory interest tags (Super Admin)
+//	@Description	Returns the fixed list of interest tags hackers can pick for their directory card.
+//	@Tags			superadmin/settings
+//	@Produce		json
+//	@Success		200	{object}	DirectoryInterestTagsResponse
+//	@Failure		401	{object}	object{error=string}
+//	@Failure		403	{object}	object{error=string}
+//	@Failure		500	{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/directory-interest-tags [get]
+func (app *application) getDirectoryInterestTagsHandler(w http.ResponseWriter, r *http.Request) {
+	tags, err := app.store.Settings.GetDirectoryInterestTags(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	if err := app.jsonResponse(w, http.StatusOK, DirectoryInterestTagsResponse{Tags: tags}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// updateDirectoryInterestTagsHandler replaces the directory interest tag list.
+//
+//	@Summary		Update directory interest tags (Super Admin)
+//	@Description	Replaces the interest tag list. Cards keep tags that were removed until they are next saved.
+//	@Tags			superadmin/settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			tags	body		UpdateDirectoryInterestTagsPayload	true	"Tags"
+//	@Success		200		{object}	DirectoryInterestTagsResponse
+//	@Failure		400		{object}	object{error=string}
+//	@Failure		401		{object}	object{error=string}
+//	@Failure		403		{object}	object{error=string}
+//	@Failure		500		{object}	object{error=string}
+//	@Security		CookieAuth
+//	@Router			/superadmin/settings/directory-interest-tags [put]
+func (app *application) updateDirectoryInterestTagsHandler(w http.ResponseWriter, r *http.Request) {
+	var req UpdateDirectoryInterestTagsPayload
+	if err := readJSON(w, r, &req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	for i := range req.Tags {
+		req.Tags[i] = strings.TrimSpace(req.Tags[i])
+	}
+	if req.Tags == nil {
+		req.Tags = []string{}
+	}
+	if err := Validate.Struct(req); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	if err := app.store.Settings.SetDirectoryInterestTags(r.Context(), req.Tags); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	if err := app.jsonResponse(w, http.StatusOK, DirectoryInterestTagsResponse(req)); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 // getMealGroupStats returns the number of hackers assigned to each meal group
 //
 //	@Summary		Get meal group stats (Super Admin)

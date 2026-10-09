@@ -13,8 +13,8 @@ import (
 )
 
 // A user's profile photo is the one picture shown for them everywhere: the
-// Profile page and the sidebar. An uploaded photo wins; without one, the
-// Google picture from sign-in is used.
+// Profile page, the sidebar, and their attendee directory card. An uploaded
+// photo wins; without one, the Google picture from sign-in is used.
 //
 // Photos belong to the user rather than to a hackathon, so they live outside
 // hackathons/{slug}/ and survive a hackathon reset.
@@ -172,7 +172,7 @@ func (app *application) generateMyPhotoUploadURLHandler(w http.ResponseWriter, r
 // setMyPhotoHandler makes an uploaded image the caller's profile photo.
 //
 //	@Summary		Set my profile photo
-//	@Description	Sets the caller's profile photo to an image uploaded through POST /users/me/photo-upload-url. It is shown on the profile and in the sidebar.
+//	@Description	Sets the caller's profile photo to an image uploaded through POST /users/me/photo-upload-url. It is shown on the profile and the attendee directory card.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json

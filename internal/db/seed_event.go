@@ -124,6 +124,8 @@ func seedWalkIns(db *sql.DB, superAdminIDs []string, byIndex map[int]seededApp, 
 
 // seedScans records door traffic for everyone who actually showed up: accepted
 // hackers who confirmed their RSVP, plus the walk-ins who were let in.
+// Confirmed hackers 120..129 haven't arrived yet, so the directory's "Checked
+// in" filter narrows the list rather than matching everyone.
 func seedScans(db *sql.DB, staffIDs []string, byIndex map[int]seededApp, promoted []seededApp, tl timeline) []seededApp {
 	tx := mustBegin(db)
 

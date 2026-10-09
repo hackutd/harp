@@ -6,6 +6,7 @@ import {
   IconClipboardList,
   IconDoorEnter,
   IconHeartHandshake,
+  IconId,
   IconLink,
   IconMessage,
   IconScan,
@@ -54,6 +55,7 @@ const EVENT_NAV: SidebarNavItem[] = [
   },
   { label: "FAQ", to: "/admin/faq", icon: IconMessage, end: false },
   { label: "Tracks", to: "/admin/tracks", icon: IconTrophy, end: false },
+  { label: "Directory", to: "/admin/directory", icon: IconId, end: false },
 ];
 
 const SUPER_ADMIN_NAV: SidebarNavItem[] = [

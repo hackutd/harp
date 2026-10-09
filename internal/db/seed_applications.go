@@ -68,10 +68,13 @@ func planFor(i int) appPlan {
 
 	case i < 150:
 		p.Status = "accepted"
+		// Confirmed is the widest RSVP bucket because it is also the attendee
+		// directory's population. 80..119 have checked in; 120..129 confirmed
+		// but haven't arrived yet (see seedScans).
 		switch {
-		case i < 120:
-			p.RSVPStatus = "confirmed"
 		case i < 130:
+			p.RSVPStatus = "confirmed"
+		case i < 140:
 			p.RSVPStatus = "declined"
 		default:
 			p.RSVPStatus = "pending"
@@ -94,15 +97,15 @@ func planFor(i int) appPlan {
 			p.TravelRequested, p.TravelStatus = true, "pending"
 		case i < 110:
 			p.TravelRequested, p.TravelStatus = true, "rejected"
-		case i >= 120 && i < 122:
+		case i >= 130 && i < 132:
 			p.TravelRequested, p.TravelStatus, p.TravelAward = true, "approved", true
-		case i >= 122 && i < 124:
+		case i >= 132 && i < 134:
 			p.TravelRequested, p.TravelStatus = true, "rejected"
-		case i >= 130 && i < 134:
+		case i >= 140 && i < 144:
 			p.TravelRequested, p.TravelStatus, p.TravelAward = true, "approved", true
-		case i >= 134 && i < 136:
+		case i >= 144 && i < 146:
 			p.TravelRequested, p.TravelStatus = true, "pending"
-		case i >= 136 && i < 138:
+		case i >= 146 && i < 148:
 			p.TravelRequested, p.TravelStatus = true, "rejected"
 		}
 
@@ -229,8 +232,7 @@ func rsvpStatusOrPending(p appPlan) string {
 // (migration 000006). Drafts get a partial set, which is what an abandoned
 // half-finished form actually looks like.
 func buildApplicationResponses(i int, p appPlan) map[string]any {
-	first := firstNames[i%len(firstNames)]
-	last := lastNames[(i*7)%len(lastNames)]
+	first, last := hackerName(i)
 	submitted := p.Status != "draft"
 
 	r := map[string]any{
@@ -301,6 +303,14 @@ func buildApplicationResponses(i int, p appPlan) map[string]any {
 	}
 
 	return r
+}
+
+// hackerName is the name on application i. The i/len(firstNames) term shifts
+// the surname every lap through the first names, so full names stay unique
+// across all 200 hackers instead of repeating every 30 -- the attendee
+// directory lists them side by side.
+func hackerName(i int) (first, last string) {
+	return firstNames[i%len(firstNames)], lastNames[(i*7+i/len(firstNames))%len(lastNames)]
 }
 
 // buildRSVPResponses mirrors the field ids in rsvp_schema (migration 000035).

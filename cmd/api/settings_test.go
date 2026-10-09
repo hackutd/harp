@@ -8,6 +8,7 @@ import (
 
 	"github.com/hackutd/harp/internal/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1043,4 +1044,99 @@ func TestLegalConfigRouteIsUnauthenticated(t *testing.T) {
 	assert.Empty(t, respBody.Data.TermsURL)
 
 	mockSettings.AssertExpectations(t)
+}
+
+func TestDirectoryInterestTagsSettings(t *testing.T) {
+	t.Run("returns the tag list", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockSettings.On("GetDirectoryInterestTags").Return([]string{"AI/ML", "Design"}, nil).Once()
+
+		req, _ := http.NewRequest(http.MethodGet, "/", nil)
+		req = setUserContext(req, newSuperAdminUser())
+		rr := executeRequest(req, http.HandlerFunc(app.getDirectoryInterestTagsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data DirectoryInterestTagsResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, []string{"AI/ML", "Design"}, body.Data.Tags)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("returns 500 when the store fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockSettings.On("GetDirectoryInterestTags").Return(nil, assert.AnError).Once()
+
+		req, _ := http.NewRequest(http.MethodGet, "/", nil)
+		req = setUserContext(req, newSuperAdminUser())
+		rr := executeRequest(req, http.HandlerFunc(app.getDirectoryInterestTagsHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+	})
+
+	t.Run("trims and saves tags", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockSettings.On("SetDirectoryInterestTags", []string{"AI/ML", "Robotics"}).Return(nil).Once()
+
+		req, _ := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"tags":[" AI/ML ","Robotics"]}`))
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rr := executeRequest(req, http.HandlerFunc(app.updateDirectoryInterestTagsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+
+		var body struct {
+			Data DirectoryInterestTagsResponse `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rr.Body).Decode(&body))
+		assert.Equal(t, []string{"AI/ML", "Robotics"}, body.Data.Tags)
+		mockSettings.AssertExpectations(t)
+	})
+
+	t.Run("saves an empty list when tags are omitted", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockSettings.On("SetDirectoryInterestTags", []string{}).Return(nil).Once()
+
+		req, _ := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rr := executeRequest(req, http.HandlerFunc(app.updateDirectoryInterestTagsHandler))
+		checkResponseCode(t, http.StatusOK, rr.Code)
+		mockSettings.AssertExpectations(t)
+	})
+
+	for name, payload := range map[string]string{
+		"duplicate tags":         `{"tags":["AI/ML"," AI/ML"]}`,
+		"blank tag":              `{"tags":["  "]}`,
+		"tag over 30 characters": `{"tags":["` + strings.Repeat("a", 31) + `"]}`,
+		"more than 50 tags":      `{"tags":[` + strings.TrimSuffix(strings.Repeat(`"x",`, 51), ",") + `]}`,
+		"malformed body":         `{"tags":`,
+	} {
+		t.Run("rejects "+name, func(t *testing.T) {
+			app := newTestApplication(t)
+			mockSettings := app.store.Settings.(*store.MockSettingsStore)
+
+			req, _ := http.NewRequest(http.MethodPut, "/", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			req = setUserContext(req, newSuperAdminUser())
+			rr := executeRequest(req, http.HandlerFunc(app.updateDirectoryInterestTagsHandler))
+			checkResponseCode(t, http.StatusBadRequest, rr.Code)
+			mockSettings.AssertNotCalled(t, "SetDirectoryInterestTags", mock.Anything)
+		})
+	}
+
+	t.Run("returns 500 when saving fails", func(t *testing.T) {
+		app := newTestApplication(t)
+		mockSettings := app.store.Settings.(*store.MockSettingsStore)
+		mockSettings.On("SetDirectoryInterestTags", []string{"AI/ML"}).Return(assert.AnError).Once()
+
+		req, _ := http.NewRequest(http.MethodPut, "/", strings.NewReader(`{"tags":["AI/ML"]}`))
+		req.Header.Set("Content-Type", "application/json")
+		req = setUserContext(req, newSuperAdminUser())
+		rr := executeRequest(req, http.HandlerFunc(app.updateDirectoryInterestTagsHandler))
+		checkResponseCode(t, http.StatusInternalServerError, rr.Code)
+	})
 }

@@ -27,8 +27,9 @@ export interface UseProfilePhotoResult {
   remove: () => Promise<void>;
 }
 
-// The one place a user's photo changes. The user store is updated in place,
-// so every avatar reading it (the Profile page, the sidebar) follows.
+// The one place a user's photo changes. It is shared by the Profile page and
+// the directory card, so both always show the same picture: the user store is
+// updated in place and every avatar reading it follows.
 export function useProfilePhoto(): UseProfilePhotoResult {
   const user = useUserStore((s) => s.user);
   const setUser = useUserStore((s) => s.setUser);

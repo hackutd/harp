@@ -4,6 +4,7 @@ import {
   IconAlertTriangle,
   IconRocket,
   IconShieldCheck,
+  IconTags,
   IconToolsKitchen,
 } from "@tabler/icons-react";
 import * as React from "react";
@@ -21,17 +22,24 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/shared/lib/utils";
 
+import DirectoryTagsTab from "../tabs/DirectoryTagsTab";
 import HackathonTab from "../tabs/HackathonTab";
 import MealGroupsTab from "../tabs/MealGroupsTab";
 import PermissionsTab from "../tabs/PermissionsTab";
 import { ResetHackathonCard } from "../tabs/ResetHackathonCard";
 
-type SettingsTab = "hackathon" | "permissions" | "meal-groups" | "reset";
+type SettingsTab =
+  | "hackathon"
+  | "permissions"
+  | "meal-groups"
+  | "directory-tags"
+  | "reset";
 
 const settingsTabs = [
   { id: "hackathon" as const, label: "Hackathon", icon: IconRocket },
   { id: "permissions" as const, label: "Permissions", icon: IconShieldCheck },
   { id: "meal-groups" as const, label: "Meal Groups", icon: IconToolsKitchen },
+  { id: "directory-tags" as const, label: "Directory Tags", icon: IconTags },
   { id: "reset" as const, label: "Danger Zone", icon: IconAlertTriangle },
 ];
 
@@ -98,6 +106,7 @@ export function SettingsDialog({
                 {activeTab === "hackathon" && <HackathonTab />}
                 {activeTab === "permissions" && <PermissionsTab />}
                 {activeTab === "meal-groups" && <MealGroupsTab />}
+                {activeTab === "directory-tags" && <DirectoryTagsTab />}
                 {activeTab === "reset" && <ResetHackathonCard />}
               </div>
             </ScrollArea>

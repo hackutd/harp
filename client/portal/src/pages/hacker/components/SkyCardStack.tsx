@@ -25,7 +25,7 @@ export function SkyCardStack({ children }: { children: ReactNode }) {
     };
 
     alignBackgrounds();
-    // Includes text wrapping and font loading.
+    // Includes text wrapping, font loading, and the async directory prompt.
     const observer = new ResizeObserver(alignBackgrounds);
     observer.observe(stack);
     return () => observer.disconnect();

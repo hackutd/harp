@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/hackutd/harp/internal/store"
 )
 
 const (
@@ -14,6 +16,9 @@ const (
 	// photoURLCacheMax bounds the cache; one entry per uploaded photo
 	// comfortably covers an event.
 	photoURLCacheMax = 5000
+	// photoSignConcurrency caps parallel signing per request. On Cloud Run
+	// each signature is a call to the IAM signBlob API.
+	photoSignConcurrency = 8
 )
 
 type signedURLEntry struct {
@@ -21,8 +26,8 @@ type signedURLEntry struct {
 	expires time.Time
 }
 
-// signedURLCache remembers signed download URLs by object path, so showing
-// the same photos again doesn't re-sign every one. The zero value is ready
+// signedURLCache remembers signed download URLs by object path, so browsing
+// the same cards again doesn't re-sign every photo. The zero value is ready
 // to use.
 type signedURLCache struct {
 	mu      sync.Mutex
@@ -77,4 +82,34 @@ func (app *application) photoURL(ctx context.Context, photoPath, profilePictureU
 		return profilePictureURL
 	}
 	return nil
+}
+
+// forEachBounded calls fn for every index in [0, n), at most limit at a time.
+func forEachBounded(n, limit int, fn func(i int)) {
+	sem := make(chan struct{}, limit)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			fn(i)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func (app *application) withCardPhotos(ctx context.Context, cards []store.DirectoryCard) []store.DirectoryCard {
+	forEachBounded(len(cards), photoSignConcurrency, func(i int) {
+		cards[i].HeadshotURL = app.photoURL(ctx, cards[i].HeadshotPath, cards[i].ProfilePictureURL)
+	})
+	return cards
+}
+
+func (app *application) withAdminPhotos(ctx context.Context, profiles []store.DirectoryAdminProfile) []store.DirectoryAdminProfile {
+	forEachBounded(len(profiles), photoSignConcurrency, func(i int) {
+		profiles[i].HeadshotURL = app.photoURL(ctx, profiles[i].HeadshotPath, profiles[i].ProfilePictureURL)
+	})
+	return profiles
 }

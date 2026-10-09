@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useSettingsDialogStore, useUserStore } from "@/shared/stores";
+import {
+  useAttendeeStore,
+  useSettingsDialogStore,
+  useUserStore,
+} from "@/shared/stores";
 import type { Application, User } from "@/types";
 
 import { UserSettingsDialog } from "./UserSettingsDialog";
@@ -65,6 +69,8 @@ beforeEach(() => {
     true,
   );
   useSettingsDialogStore.setState({ open: false });
+  // Already resolved for this user, so the dialog doesn't refetch it.
+  useAttendeeStore.setState({ userId: "user-1", confirmed: false, name: null });
   api.getRequest.mockResolvedValue({ status: 200, data: application() });
 });
 
@@ -98,6 +104,10 @@ describe("UserSettingsDialog", () => {
     expect(
       screen.getByRole("button", { name: "Delete account" }),
     ).toBeInTheDocument();
+    // Not a confirmed attendee, so no directory visibility.
+    expect(
+      screen.queryByText("Show me in Who's Attending"),
+    ).not.toBeInTheDocument();
   });
 
   it("offers an upload while the application is a draft without a resume", async () => {

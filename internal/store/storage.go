@@ -128,6 +128,8 @@ type Storage struct {
 		GetScanStats(ctx context.Context) (map[string]int, error)
 		GetMealGroups(ctx context.Context) ([]string, error)
 		SetMealGroups(ctx context.Context, groups []string) error
+		GetDirectoryInterestTags(ctx context.Context) ([]string, error)
+		SetDirectoryInterestTags(ctx context.Context, tags []string) error
 		GetMealGroupStats(ctx context.Context) (map[string]int, error)
 		GetApplicationsEnabled(ctx context.Context) (bool, error)
 		SetApplicationsEnabled(ctx context.Context, enabled bool) error
@@ -203,6 +205,28 @@ type Storage struct {
 		ListByRole(ctx context.Context, role *UserRole) ([]PushSubscription, error)
 		ListByUserIDs(ctx context.Context, userIDs []string) ([]PushSubscription, error)
 	}
+	AttendeeDirectory interface {
+		IsEligible(ctx context.Context, userID string) (bool, error)
+		GetProfile(ctx context.Context, userID string) (*DirectoryProfile, error)
+		UpsertProfile(ctx context.Context, p *DirectoryProfile) (*DirectoryProfile, error)
+		SetDiscoverable(ctx context.Context, userID string, discoverable bool) error
+		ConfirmStatus(ctx context.Context, userID string) error
+		SetModeration(ctx context.Context, userID, adminID string, hidden bool, reason *string) error
+		List(ctx context.Context, viewer DirectoryViewer, filters DirectoryFilters, cursor *DirectoryCursor, limit int) (*DirectoryListResult, error)
+		ListContacts(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error)
+		ListPokedMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error)
+		ListPokedByMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error)
+		GetCard(ctx context.Context, viewer DirectoryViewer, targetID string) (*DirectoryCard, error)
+		GetTarget(ctx context.Context, viewerID, targetID string) (*DirectoryTarget, error)
+		Poke(ctx context.Context, pokerID, pokeeID string) (*PokeResult, error)
+		ListUnseenPokes(ctx context.Context, userID string, limit int) (*UnseenPokes, error)
+		MarkPokesSeen(ctx context.Context, userID string, through time.Time) error
+		AddContact(ctx context.Context, ownerID, contactID string) error
+		RemoveContact(ctx context.Context, ownerID, contactID string) error
+		Hide(ctx context.Context, ownerID, hiddenID string) error
+		Unhide(ctx context.Context, ownerID, hiddenID string) error
+		AdminList(ctx context.Context, search string, cursor *DirectoryAdminCursor, limit int) (*DirectoryAdminListResult, error)
+	}
 	ScheduledNotifications interface {
 		Create(ctx context.Context, n *ScheduledNotification) error
 		GetByID(ctx context.Context, id string) (*ScheduledNotification, error)
@@ -253,5 +277,6 @@ func NewStorage(db *sql.DB) Storage {
 		ScheduledNotifications: &ScheduledNotificationsStore{db: db},
 		WalkIns:                &WalkInsStore{db: db},
 		Referrals:              &ReferralsStore{db: db},
+		AttendeeDirectory:      &AttendeeDirectoryStore{db: db},
 	}
 }
