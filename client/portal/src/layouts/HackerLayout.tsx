@@ -5,19 +5,25 @@ import {
   IconCalendarMonthFilled,
   IconHome,
   IconHomeFilled,
+  IconId,
+  IconIdFilled,
   IconTicket,
   IconTicketFilled,
   IconUser,
   IconUserFilled,
+  IconUsers,
 } from "@tabler/icons-react";
+import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
+import { IconUsersFilled } from "@/components/icons/IconUsersFilled";
 import { InstallPromptHost } from "@/components/InstallPromptHost";
 import { PushPromptHost } from "@/components/PushPromptHost";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { UserSettingsDialog } from "@/pages/hacker/settings";
 import { themeClass, useApplyPortalTheme, useTheme } from "@/shared/hooks";
 import { cn } from "@/shared/lib/utils";
+import { useAttendeeStore, useUserStore } from "@/shared/stores";
 
 import { PortalSidebar, type SidebarNavItem as NavItem } from "./PortalSidebar";
 
@@ -44,6 +50,13 @@ const NAV_ITEMS: NavItem[] = [
     end: false,
   },
   {
+    label: "People",
+    to: "/app/directory",
+    icon: IconUsers,
+    activeIcon: IconUsersFilled,
+    end: false,
+  },
+  {
     label: "Notifications",
     to: "/app/notifications",
     icon: IconBell,
@@ -59,9 +72,37 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+// Attendee-only destinations, hidden until the hacker's RSVP is confirmed.
+const DIRECTORY_PATH = "/app/directory";
+
 // The mobile tab bar drops Notifications (the dashboard feed links to it), so
 // the remaining tabs keep room for their labels.
 const NOTIFICATIONS_PATH = "/app/notifications";
+
+function navItemsFor(attendee: boolean): NavItem[] {
+  return attendee
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.to !== DIRECTORY_PATH);
+}
+
+// The sidebar has room to list the directory's two destinations separately;
+// the mobile tab bar folds both into "People".
+function sidebarNavFor(items: NavItem[]) {
+  return items.flatMap((item) =>
+    item.to === DIRECTORY_PATH
+      ? [
+          { ...item, label: "Directory", end: true },
+          {
+            label: "My contacts",
+            to: "/app/directory/contacts",
+            icon: IconId,
+            activeIcon: IconIdFilled,
+            end: false,
+          },
+        ]
+      : [item],
+  );
+}
 
 // Uniform inset (rem) applied on every side of the bottom-nav bubble so the
 // gap around the active bubble is identical top/bottom/left/right. Matches the
@@ -76,12 +117,30 @@ function activeIndex(items: NavItem[], pathname: string): number {
   );
 }
 
+// The directory's tabs are one page, so moving between them must not replay
+// the page entrance; the directory animates its own list instead.
+function pageKey(pathname: string): string {
+  return pathname === `${DIRECTORY_PATH}/contacts` ? DIRECTORY_PATH : pathname;
+}
+
 export default function HackerLayout() {
   const location = useLocation();
+  const userId = useUserStore((s) => s.user?.id ?? null);
+  const attendeeFor = useAttendeeStore((s) => s.userId);
+  const confirmed = useAttendeeStore((s) => s.confirmed);
+  const fetchAttendee = useAttendeeStore((s) => s.fetchAttendee);
   const theme = useTheme();
   useApplyPortalTheme(theme);
 
-  const tabItems = NAV_ITEMS.filter((item) => item.to !== NOTIFICATIONS_PATH);
+  useEffect(() => {
+    if (!userId) return;
+    const controller = new AbortController();
+    fetchAttendee(userId, controller.signal);
+    return () => controller.abort();
+  }, [userId, fetchAttendee]);
+
+  const navItems = navItemsFor(attendeeFor === userId && confirmed);
+  const tabItems = navItems.filter((item) => item.to !== NOTIFICATIONS_PATH);
   const index = activeIndex(tabItems, location.pathname);
   const hasActive = index >= 0;
 
@@ -101,7 +160,7 @@ export default function HackerLayout() {
       <PortalSidebar
         portal="hacker"
         theme={theme}
-        sections={[{ items: NAV_ITEMS }]}
+        sections={[{ items: sidebarNavFor(navItems) }]}
       />
 
       {/* Page content */}
@@ -113,7 +172,7 @@ export default function HackerLayout() {
             : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0",
         )}
       >
-        <div key={location.pathname} className="animate-page-enter">
+        <div key={pageKey(location.pathname)} className="animate-page-enter">
           <Outlet />
         </div>
       </SidebarInset>

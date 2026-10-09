@@ -49,6 +49,8 @@ interface PhotoCropDialogProps {
   onClose: () => void;
   /** The current photo, offered for reframing when the browser can read it. */
   currentUrl: string | null;
+  /** Shown on the Directory preview. */
+  name: string;
   fallback: string;
   busy: boolean;
   onSave: (file: File) => Promise<boolean>;
@@ -101,12 +103,14 @@ function CroppedImage({ source, crop }: CroppedImageProps) {
   );
 }
 
-// Picks and frames the profile photo. The crop is 4:5; round avatars show its
-// centre square, outlined here as the circle.
+// Picks and frames the profile photo. One 4:5 crop serves both places it
+// shows: the Directory card shows all of it, and round avatars show its centre
+// square, outlined here as the circle.
 // Render it only while open, so every opening starts fresh.
 export function PhotoCropDialog({
   onClose,
   currentUrl,
+  name,
   fallback,
   busy,
   onSave,
@@ -294,7 +298,7 @@ export function PhotoCropDialog({
           </DialogTitle>
           <DialogDescription className="text-sm font-light text-ink/65">
             {source
-              ? "Drag to center yourself, pinch or use the slider to zoom. The circle is your profile picture."
+              ? "Drag to center yourself, pinch or use the slider to zoom. The circle is your profile picture; the whole frame is your Directory card."
               : "Pick a photo, then drag to center yourself."}
           </DialogDescription>
         </DialogHeader>
@@ -374,7 +378,7 @@ export function PhotoCropDialog({
           </div>
         )}
 
-        {/* How the photo reads as an avatar. */}
+        {/* How the photo reads in each place it shows. */}
         <div className="flex items-end justify-center gap-8">
           <figure className="flex flex-col items-center gap-2">
             <div className="relative size-16 overflow-hidden rounded-full border border-ink/15 bg-surface-2">
@@ -388,6 +392,23 @@ export function PhotoCropDialog({
             </div>
             <figcaption className="text-[11px] font-light tracking-widest text-ink/55 uppercase">
               Profile
+            </figcaption>
+          </figure>
+          <figure className="flex flex-col items-center gap-2">
+            <div className="directory-postcard w-[4.5rem] rounded-[2px] p-1 pb-2">
+              <div className="relative aspect-[4/5] overflow-hidden bg-surface-2">
+                {source ? (
+                  <CroppedImage source={source} crop={crop} />
+                ) : (
+                  placeholder
+                )}
+              </div>
+              <p className="mt-1 truncate text-[7px] font-medium text-ink">
+                {name}
+              </p>
+            </div>
+            <figcaption className="text-[11px] font-light tracking-widest text-ink/55 uppercase">
+              Directory
             </figcaption>
           </figure>
         </div>

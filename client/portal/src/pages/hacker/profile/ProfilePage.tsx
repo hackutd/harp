@@ -1,16 +1,20 @@
-import { IconSettings } from "@tabler/icons-react";
+import { IconPencil, IconSettings } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 
 import { AdminPortalButton } from "@/components/AdminPortalButton";
 import { ProfilePhotoEditor } from "@/components/ProfilePhotoEditor";
 import { getRequest } from "@/shared/lib/api";
 import {
+  useAttendeeStore,
   usePointsConfigStore,
   useSettingsDialogStore,
   useUserStore,
 } from "@/shared/stores";
 import type { Application } from "@/types";
 
+import { ProfileAbout } from "../directory/components/ProfileAbout";
+import { useDirectoryStore } from "../directory/store";
 import { AccountRows, SettingsGroup } from "../settings";
 
 function displayName(application: Application | null): string | null {
@@ -44,6 +48,27 @@ export default function ProfilePage() {
   const fetchPointsConfig = usePointsConfigStore((s) => s.fetchPointsConfig);
 
   const [application, setApplication] = useState<Application | null>(null);
+  const attendee = useAttendeeStore(
+    (s) => s.confirmed && s.userId != null && s.userId === user?.id,
+  );
+  const directoryMe = useDirectoryStore((s) => s.me);
+  const fetchDirectoryMe = useDirectoryStore((s) => s.fetchMe);
+  // Status, skills, links and the rest only exist once the RSVP is confirmed.
+  const about = attendee && directoryMe?.eligible ? directoryMe : null;
+
+  // Editing lives in the URL so the Directory and the dashboard nudge can
+  // link straight into it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editing = about != null && searchParams.get("edit") === "1";
+  const setEditing = (on: boolean) =>
+    setSearchParams(on ? { edit: "1" } : {}, { replace: true });
+
+  useEffect(() => {
+    if (!attendee) return;
+    const controller = new AbortController();
+    fetchDirectoryMe(controller.signal);
+    return () => controller.abort();
+  }, [attendee, fetchDirectoryMe]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -63,7 +88,8 @@ export default function ProfilePage() {
     return () => controller.abort();
   }, [fetchPointsConfig]);
 
-  const name = displayName(application);
+  const name = about?.profile?.display_name || displayName(application);
+  const pronouns = about?.profile?.pronouns;
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-6 pb-8 md:max-w-5xl md:px-8 md:pt-10">
@@ -79,11 +105,33 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* Identity */}
+      {/* Identity and profile details, in one card. This is the same profile
+          The Directory shows. */}
       <div className="rounded-xl bg-surface px-5 py-4 theme-light:border theme-light:border-ink/10">
-        <ProfilePhotoEditor fallback={initials(name, user?.email)}>
+        <ProfilePhotoEditor
+          fallback={initials(name, user?.email)}
+          name={name}
+          action={
+            about?.profile &&
+            !editing && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex shrink-0 items-center gap-1.5 self-start -mr-1 rounded-full border border-ink/15 px-4 py-1.5 text-sm font-light text-ink/85 transition-colors hover:border-ink/30 hover:text-ink"
+              >
+                <IconPencil className="size-3.5" strokeWidth={1.75} />
+                Edit profile
+              </button>
+            )
+          }
+        >
           <p className="truncate text-lg font-normal text-ink">
             {name ?? "Hacker"}
+            {pronouns && (
+              <span className="ml-2 text-sm font-light text-ink/65">
+                {pronouns}
+              </span>
+            )}
           </p>
           {user?.email && (
             <p className="truncate text-sm font-light text-ink/65">
@@ -91,6 +139,15 @@ export default function ProfilePage() {
             </p>
           )}
         </ProfilePhotoEditor>
+
+        {about && (
+          <ProfileAbout
+            me={about}
+            editing={editing}
+            onEdit={() => setEditing(true)}
+            onDone={() => setEditing(false)}
+          />
+        )}
       </div>
 
       {/* Points — hidden entirely when super admins turn the system off */}

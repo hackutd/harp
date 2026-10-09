@@ -164,6 +164,7 @@ const SettingsKeyAdminFAQEditEnabled = "admin_faq_edit_enabled"
 const SettingsKeyAdminTrackEditEnabled = "admin_track_edit_enabled"
 const SettingsKeyHackathonDateRange = "hackathon_date_range"
 const SettingsKeyMealGroups = "meal_groups"
+const SettingsKeyDirectoryInterestTags = "directory_interest_tags"
 const SettingsKeyApplicationsEnabled = "applications_enabled"
 const SettingsKeyPointsName = "points_name"
 const SettingsKeyPointsEnabled = "points_enabled"
@@ -999,6 +1000,48 @@ func (s *SettingsStore) SetPointsEnabled(ctx context.Context, enabled bool) erro
 	`
 
 	_, err = s.db.ExecContext(ctx, query, SettingsKeyPointsEnabled, string(jsonValue))
+	return err
+}
+
+// GetDirectoryInterestTags returns the fixed list of interest tags hackers can
+// put on their attendee directory card.
+func (s *SettingsStore) GetDirectoryInterestTags(ctx context.Context) ([]string, error) {
+	raw, found, err := s.getCachedRaw(ctx, SettingsKeyDirectoryInterestTags)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return []string{}, nil
+	}
+
+	var tags []string
+	if err := json.Unmarshal(raw, &tags); err != nil {
+		return nil, err
+	}
+	if tags == nil {
+		tags = []string{}
+	}
+	return tags, nil
+}
+
+// SetDirectoryInterestTags replaces the directory interest tag list.
+func (s *SettingsStore) SetDirectoryInterestTags(ctx context.Context, tags []string) error {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	value, err := json.Marshal(tags)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+	`, SettingsKeyDirectoryInterestTags, value)
+	if err == nil {
+		s.invalidate(SettingsKeyDirectoryInterestTags)
+	}
 	return err
 }
 

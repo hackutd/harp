@@ -21,6 +21,10 @@ export interface MealGroupsResult {
   groups: string[];
 }
 
+export interface DirectoryInterestTagsResult {
+  tags: string[];
+}
+
 export interface MealGroupStatsResult {
   stats: Record<string, number>;
 }

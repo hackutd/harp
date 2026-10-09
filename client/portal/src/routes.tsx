@@ -43,6 +43,15 @@ const HackerProfilePage = lazy(
 const HackerNotificationsPage = lazy(
   () => import("@/pages/hacker/notifications/NotificationsPage"),
 );
+const HackerDirectoryLayout = lazy(
+  () => import("@/pages/hacker/directory/DirectoryLayout"),
+);
+const HackerDirectoryPage = lazy(
+  () => import("@/pages/hacker/directory/DirectoryPage"),
+);
+const HackerDirectoryContactsPage = lazy(
+  () => import("@/pages/hacker/directory/ContactsPage"),
+);
 const HackerFAQPage = lazy(() => import("@/pages/hacker/faq/FAQPage"));
 const HackerNotionPage = lazy(() => import("@/pages/hacker/notion/NotionPage"));
 const SuperAdminUserManagementPage = lazy(
@@ -78,6 +87,9 @@ const AdminGradingPage = lazy(
 const SponsorsPage = lazy(() => import("@/pages/admin/sponsors/SponsorsPage"));
 const FAQAdminPage = lazy(() => import("@/pages/admin/faq/FAQPage"));
 const TracksPage = lazy(() => import("@/pages/admin/tracks/TracksPage"));
+const DirectoryModerationPage = lazy(
+  () => import("@/pages/admin/directory/DirectoryModerationPage"),
+);
 
 export const router = createBrowserRouter([
   {
@@ -196,6 +208,25 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            // The tabs share one layout so switching swaps only the list.
+            path: "directory",
+            element: (
+              <Suspense fallback={<HackerPageLoader />}>
+                <HackerDirectoryLayout />
+              </Suspense>
+            ),
+            children: [
+              { index: true, element: <HackerDirectoryPage /> },
+              { path: "contacts", element: <HackerDirectoryContactsPage /> },
+            ],
+          },
+          {
+            // The card is edited on the Profile page now; keep old links
+            // (installed apps, notifications) working.
+            path: "directory/card",
+            element: <Navigate to="/app/profile?edit=1" replace />,
+          },
+          {
             path: "faq",
             element: (
               <Suspense fallback={<HackerPageLoader />}>
@@ -290,6 +321,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <TracksPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "directory",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <DirectoryModerationPage />
               </Suspense>
             ),
           },

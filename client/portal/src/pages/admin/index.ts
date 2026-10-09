@@ -1,4 +1,5 @@
 export { default as AllApplicantsPage } from "./all-applicants/AllApplicantsPage";
+export { default as DirectoryModerationPage } from "./directory/DirectoryModerationPage";
 export { default as FAQPage } from "./faq/FAQPage";
 export { default as ReviewsPage } from "./reviews/ReviewsPage";
 export { default as ScansPage } from "./scans/ScansPage";

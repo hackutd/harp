@@ -220,3 +220,186 @@ var scheduleTemplate = []seedScheduleItem{
 	{"Closing Ceremony & Prizes", "Finalist demos on the main stage, then awards.", "Main Stage", []string{"Ceremony"}, 41.5, 45},
 	{"Teardown", "Help us fold tables and we will love you forever.", "Everywhere", []string{"Logistics"}, 42, 60},
 }
+
+// directoryPersona keeps one attendee card internally consistent: an ML person
+// lists ML skills, ML interests, and past ML roles, and goes looking for the
+// roles that complement them. Interest tags must come from the
+// directory_interest_tags setting (migration 000066) and roles from
+// store.DirectoryRoles; seedDirectory drops anything that isn't on either list.
+type directoryPersona struct {
+	skills    []string // free-form, at most 40 characters each
+	tags      []string
+	seeks     []string
+	titles    []string // at most 60 characters each
+	companies []string // at most 60 characters each
+	builds    []string // at most 100 characters each
+}
+
+var directoryPersonas = []directoryPersona{
+	{
+		skills:    []string{"Python", "PyTorch", "TensorFlow", "LangChain", "OpenCV", "pandas"},
+		tags:      []string{"AI/ML", "Data Science", "HealthTech", "Social Good", "EdTech"},
+		seeks:     []string{"frontend", "design", "backend", "pitch"},
+		titles:    []string{"ML Engineering Intern", "Undergraduate Researcher", "Data Science Intern"},
+		companies: []string{"Texas Instruments", "UTD Machine Learning Lab", "Capital One", "Toyota Connected", "Microsoft"},
+		builds: []string{
+			"An AI study buddy that quizzes you from your own lecture notes",
+			"A model that flags skin conditions from a phone photo",
+			"Sign language to text, live, in the browser",
+			"A RAG chatbot over every UTD course syllabus",
+		},
+	},
+	{
+		skills:    []string{"React", "TypeScript", "Next.js", "Tailwind", "Svelte", "Three.js"},
+		tags:      []string{"Web Dev", "Design", "EdTech", "FinTech", "Social Good"},
+		seeks:     []string{"backend", "ml_ai", "design", "data"},
+		titles:    []string{"Frontend Engineering Intern", "Software Engineering Intern", "Web Developer"},
+		companies: []string{"State Farm", "Tyler Technologies", "Salesforce", "Charles Schwab", "ACM UTD"},
+		builds: []string{
+			"A group trip planner that settles who owes who automatically",
+			"A browser extension that turns any article into flashcards",
+			"Live captions for every talk at this hackathon",
+			"A portfolio generator straight from your GitHub",
+		},
+	},
+	{
+		skills:    []string{"Go", "Node.js", "PostgreSQL", "Docker", "AWS", "Rust"},
+		tags:      []string{"Web Dev", "FinTech", "Cybersecurity", "Data Science"},
+		seeks:     []string{"frontend", "design", "product", "mobile"},
+		titles:    []string{"Backend Engineering Intern", "Site Reliability Intern", "Software Engineering Intern"},
+		companies: []string{"AT&T", "JPMorgan Chase", "Goldman Sachs", "American Airlines", "Amazon"},
+		builds: []string{
+			"A real-time API for campus parking availability",
+			"Splitwise, but it settles up over Venmo for you",
+			"A status page for every Discord bot I run",
+			"A queue system so food truck lines stop wrapping the building",
+		},
+	},
+	{
+		skills:    []string{"Swift", "Kotlin", "Flutter", "React Native", "Firebase"},
+		tags:      []string{"Mobile", "HealthTech", "Social Good", "EdTech", "Sustainability"},
+		seeks:     []string{"backend", "design", "ml_ai"},
+		titles:    []string{"iOS Engineering Intern", "Android Developer Intern", "Mobile Developer"},
+		companies: []string{"Fidelity", "Southwest Airlines", "Toyota North America", "Match Group", "Google"},
+		builds: []string{
+			"An app that reminds you to drink water by guilt-tripping your plant",
+			"A carpool matcher for commuter students",
+			"Offline-first first aid guides for hikers",
+			"A habit tracker your friends can see",
+		},
+	},
+	{
+		skills:    []string{"Arduino", "Embedded C", "ROS", "C++", "KiCad", "Raspberry Pi"},
+		tags:      []string{"Hardware", "Robotics", "Sustainability", "AR/VR", "HealthTech"},
+		seeks:     []string{"fullstack", "ml_ai", "mobile", "frontend"},
+		titles:    []string{"Embedded Systems Intern", "Hardware Engineering Intern", "Robotics Team Lead"},
+		companies: []string{"Lockheed Martin", "Raytheon", "Texas Instruments", "UTD Robotics", "Bell Textron"},
+		builds: []string{
+			"A smart trash can that sorts recycling with a camera",
+			"A glove that turns hand gestures into MIDI",
+			"A plant monitor that texts you when the soil is dry",
+			"An e-ink door sign that shows if your roommate is in a meeting",
+		},
+	},
+	{
+		skills:    []string{"Figma", "UX research", "Prototyping", "Framer", "Illustration"},
+		tags:      []string{"Design", "EdTech", "Social Good", "HealthTech", "Web Dev"},
+		seeks:     []string{"frontend", "fullstack", "pitch", "backend"},
+		titles:    []string{"Product Design Intern", "UX Design Intern", "Graphic Designer"},
+		companies: []string{"Dell Technologies", "Capital One", "Indeed", "HackUTD", "Bumble"},
+		builds: []string{
+			"An accessible campus map for wheelchair routes",
+			"A calmer way to show your grades without the panic",
+			"A design system generator for hackathon teams",
+			"A journaling app that actually looks nice",
+		},
+	},
+	{
+		skills:    []string{"Rust", "Wireshark", "Reverse engineering", "C", "Burp Suite", "Linux"},
+		tags:      []string{"Cybersecurity", "Blockchain", "FinTech", "Hardware"},
+		seeks:     []string{"frontend", "design", "fullstack"},
+		titles:    []string{"Security Engineering Intern", "Penetration Testing Intern", "SOC Analyst Intern"},
+		companies: []string{"CrowdStrike", "Palo Alto Networks", "USAA", "Lockheed Martin", "Toyota"},
+		builds: []string{
+			"A phishing simulator for student orgs",
+			"A password manager that lives on a YubiKey",
+			"A CTF trainer that adapts to your skill level",
+			"A scanner that catches leaked API keys before you push",
+		},
+	},
+	{
+		skills:    []string{"Unity", "C#", "Blender", "Unreal Engine", "Three.js"},
+		tags:      []string{"Game Dev", "AR/VR", "Design", "EdTech"},
+		seeks:     []string{"design", "backend", "pitch", "fullstack"},
+		titles:    []string{"Game Developer", "XR Developer Intern", "Technical Artist Intern"},
+		companies: []string{"id Software", "Gearbox", "Meta", "UTD Game Dev Club", "Unity"},
+		builds: []string{
+			"A co-op puzzle game you play over a phone call",
+			"A VR walkthrough of the ECSW building for new students",
+			"A rhythm game where the beatmap comes from your Spotify",
+			"An AR scavenger hunt across campus",
+		},
+	},
+	{
+		skills:    []string{"SQL", "Tableau", "Python", "Excel modeling", "Notion"},
+		tags:      []string{"FinTech", "Data Science", "Sustainability", "Social Good"},
+		seeks:     []string{"fullstack", "ml_ai", "frontend", "design"},
+		titles:    []string{"Business Analyst Intern", "Product Management Intern", "Data Analyst Intern"},
+		companies: []string{"Deloitte", "PwC", "Fidelity", "Charles Schwab", "7-Eleven"},
+		builds: []string{
+			"A dashboard that tracks your carbon footprint from bank statements",
+			"Budgeting for students, built around financial aid dates",
+			"A tool that finds the cheapest textbook across every store",
+			"Rent splitting that accounts for room size",
+		},
+	},
+}
+
+// directoryIcebreakers pairs each prompt in directoryIcebreakerPrompts
+// (cmd/api/directory.go) with answers. The prompt text must match exactly or
+// the card editor shows the answer under no prompt.
+var directoryIcebreakers = map[string][]string{
+	"The best hack I've ever seen was...": {
+		"A team that built a working Braille printer out of a 3D printer and a lot of hot glue.",
+		"Someone controlled a drone with their eyebrows. It crashed. It still won.",
+		"A Chrome extension that replaced every ad with pictures of the dev's cat.",
+	},
+	"Ask me about...": {
+		"The time I accidentally DDoSed my own Raspberry Pi.",
+		"My 40-tab Notion setup for tracking every internship application.",
+		"Competitive Pokemon. I will talk for hours.",
+		"Why I think Go is the best first language.",
+	},
+	"My hot take on tech is...": {
+		"Tabs over spaces, and I will die on this hill.",
+		"Most apps would be better as a spreadsheet.",
+		"Dark mode is overrated. Fight me.",
+		"Vim keybindings should be taught in intro CS.",
+	},
+	"After this hackathon I want to...": {
+		"Turn our project into something people actually use.",
+		"Sleep for 14 hours, then start another side project.",
+		"Finally ship my portfolio site.",
+	},
+	"The snack that fuels my code is...": {
+		"Takis and an iced matcha. Do not judge me.",
+		"Whatever is left at the sponsor tables at 3am.",
+		"Frozen grapes. Underrated.",
+		"Hot Cheetos with a Celsius. Peak performance.",
+	},
+	"My go-to debugging move is...": {
+		"Explaining it to my rubber duck, who has never once been wrong.",
+		"console.log on every single line until something makes sense.",
+		"Going for a walk. It is always a missing semicolon.",
+		"Deleting the code and rewriting it from memory.",
+	},
+}
+
+var (
+	directoryPronouns = []string{"she/her", "he/him", "they/them", "she/they", "he/they"}
+
+	directoryModerationReasons = []string{
+		"Icebreaker answer reported as inappropriate.",
+		"Display name impersonates an organizer.",
+	}
+)

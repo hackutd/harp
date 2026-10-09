@@ -1,3 +1,5 @@
+export type { AttendeeState } from "./attendee";
+export { useAttendeeStore } from "./attendee";
 export type { PointsConfigState } from "./pointsConfig";
 export { usePointsConfigStore } from "./pointsConfig";
 export type { SettingsDialogState } from "./settingsDialog";

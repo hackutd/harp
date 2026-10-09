@@ -11,6 +11,8 @@ import { PhotoCropDialog } from "./PhotoCropDialog";
 interface ProfilePhotoEditorProps {
   /** Shown when there is no photo at all, e.g. initials. */
   fallback: string;
+  /** The name on the Directory card preview while framing the photo. */
+  name?: string | null;
   /** Content beside the photo (name, email, a hint). */
   children?: ReactNode;
   /** Trailing control, vertically centred against the photo and text. */
@@ -18,10 +20,11 @@ interface ProfilePhotoEditorProps {
   className?: string;
 }
 
-// The user's one photo, edited on the Profile page. The sidebar shows the
+// The user's one photo, edited on the Profile page. The Directory shows the
 // same photo, so changing it here changes it everywhere.
 export function ProfilePhotoEditor({
   fallback,
+  name,
   children,
   action,
   className,
@@ -64,6 +67,7 @@ export function ProfilePhotoEditor({
         <PhotoCropDialog
           onClose={() => setFraming(false)}
           currentUrl={photoUrl}
+          name={name || "You"}
           fallback={fallback}
           busy={busy}
           onSave={upload}

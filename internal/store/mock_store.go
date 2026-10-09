@@ -585,6 +585,19 @@ func (m *MockSettingsStore) SetMealGroups(ctx context.Context, groups []string) 
 	return args.Error(0)
 }
 
+func (m *MockSettingsStore) GetDirectoryInterestTags(ctx context.Context) ([]string, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockSettingsStore) SetDirectoryInterestTags(ctx context.Context, tags []string) error {
+	args := m.Called(tags)
+	return args.Error(0)
+}
+
 func (m *MockSettingsStore) GetMealGroupStats(ctx context.Context) (map[string]int, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -934,6 +947,14 @@ func (m *MockPushSubscriptionsStore) ListByRole(ctx context.Context, role *UserR
 	return args.Get(0).([]PushSubscription), args.Error(1)
 }
 
+func (m *MockPushSubscriptionsStore) ListByUserIDs(ctx context.Context, userIDs []string) ([]PushSubscription, error) {
+	args := m.Called(userIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]PushSubscription), args.Error(1)
+}
+
 // MockScheduledNotificationsStore is a mock implementation of the ScheduledNotifications interface
 type MockScheduledNotificationsStore struct {
 	mock.Mock
@@ -1108,5 +1129,144 @@ func NewMockStore() Storage {
 		ScheduledNotifications: &MockScheduledNotificationsStore{},
 		WalkIns:                &MockWalkInsStore{},
 		Referrals:              &MockReferralsStore{},
+		AttendeeDirectory:      &MockAttendeeDirectoryStore{},
 	}
+}
+
+// MockAttendeeDirectoryStore is a mock implementation of the AttendeeDirectory interface
+type MockAttendeeDirectoryStore struct {
+	mock.Mock
+}
+
+func (m *MockAttendeeDirectoryStore) IsEligible(ctx context.Context, userID string) (bool, error) {
+	args := m.Called(userID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) GetProfile(ctx context.Context, userID string) (*DirectoryProfile, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DirectoryProfile), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) UpsertProfile(ctx context.Context, p *DirectoryProfile) (*DirectoryProfile, error) {
+	args := m.Called(p)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DirectoryProfile), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) SetDiscoverable(ctx context.Context, userID string, discoverable bool) error {
+	args := m.Called(userID, discoverable)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) ConfirmStatus(ctx context.Context, userID string) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) SetModeration(ctx context.Context, userID, adminID string, hidden bool, reason *string) error {
+	args := m.Called(userID, adminID, hidden, reason)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) List(ctx context.Context, viewer DirectoryViewer, filters DirectoryFilters, cursor *DirectoryCursor, limit int) (*DirectoryListResult, error) {
+	args := m.Called(viewer, filters, cursor, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DirectoryListResult), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) ListContacts(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error) {
+	args := m.Called(viewer)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DirectoryCard), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) ListPokedMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error) {
+	args := m.Called(viewer)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DirectoryCard), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) ListPokedByMe(ctx context.Context, viewer DirectoryViewer) ([]DirectoryCard, error) {
+	args := m.Called(viewer)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]DirectoryCard), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) GetCard(ctx context.Context, viewer DirectoryViewer, targetID string) (*DirectoryCard, error) {
+	args := m.Called(viewer, targetID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DirectoryCard), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) GetTarget(ctx context.Context, viewerID, targetID string) (*DirectoryTarget, error) {
+	args := m.Called(viewerID, targetID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DirectoryTarget), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) Poke(ctx context.Context, pokerID, pokeeID string) (*PokeResult, error) {
+	args := m.Called(pokerID, pokeeID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*PokeResult), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) ListUnseenPokes(ctx context.Context, userID string, limit int) (*UnseenPokes, error) {
+	args := m.Called(userID, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UnseenPokes), args.Error(1)
+}
+
+func (m *MockAttendeeDirectoryStore) MarkPokesSeen(ctx context.Context, userID string, through time.Time) error {
+	args := m.Called(userID, through)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) AddContact(ctx context.Context, ownerID, contactID string) error {
+	args := m.Called(ownerID, contactID)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) RemoveContact(ctx context.Context, ownerID, contactID string) error {
+	args := m.Called(ownerID, contactID)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) Hide(ctx context.Context, ownerID, hiddenID string) error {
+	args := m.Called(ownerID, hiddenID)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) Unhide(ctx context.Context, ownerID, hiddenID string) error {
+	args := m.Called(ownerID, hiddenID)
+	return args.Error(0)
+}
+
+func (m *MockAttendeeDirectoryStore) AdminList(ctx context.Context, search string, cursor *DirectoryAdminCursor, limit int) (*DirectoryAdminListResult, error) {
+	args := m.Called(search, cursor, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DirectoryAdminListResult), args.Error(1)
 }

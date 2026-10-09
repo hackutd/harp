@@ -84,6 +84,7 @@ func Seed(_ store.Storage, db *sql.DB) {
 	seedEventData(db, staffIDs, superAdminIDs, apps, tl)
 	seedContent(db, superAdminIDs, apps, tl)
 	seedReferrals(db, hackerIDs)
+	seedDirectory(db, superAdminIDs, apps, tl)
 
 	promoted := promoteRealSuperAdmin(db)
 	seedSettings(db, append(superAdminIDs, promoted...), tl)
@@ -156,6 +157,17 @@ func summarize(db *sql.DB, tl timeline) {
 		{"faqs", "SELECT COUNT(*) FROM faqs"},
 		{"referrals", "SELECT COUNT(*) FROM referrals"},
 		{"referred users", "SELECT COUNT(*) FROM users WHERE referral_id IS NOT NULL"},
+		{"directory cards", "SELECT COUNT(*) FROM attendee_directory_profiles"},
+		{"browsable cards", `SELECT COUNT(*) FROM attendee_directory_profiles p
+			JOIN applications a ON a.user_id = p.user_id
+			WHERE p.discoverable AND p.moderation_hidden_at IS NULL
+			  AND a.status = 'accepted' AND a.rsvp_status = 'confirmed'`},
+		{"pokes", "SELECT COUNT(*) FROM pokes"},
+		{"matches", `SELECT COUNT(*) FROM pokes a
+			JOIN pokes b ON b.poker_id = a.pokee_id AND b.pokee_id = a.poker_id
+			WHERE a.poker_id < a.pokee_id`},
+		{"directory contacts", "SELECT COUNT(*) FROM directory_contacts"},
+		{"hidden cards", "SELECT COUNT(*) FROM directory_hidden_profiles"},
 		{"scheduled_notifications", "SELECT COUNT(*) FROM scheduled_notifications"},
 		{"push_subscriptions", "SELECT COUNT(*) FROM push_subscriptions"},
 		{"settings", "SELECT COUNT(*) FROM settings"},

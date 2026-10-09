@@ -29,12 +29,14 @@ import {
   deriveSections,
   groupFieldsBySection,
 } from "@/shared/lib/schema-utils";
+import { useAttendeeStore, useUserStore } from "@/shared/stores";
 import type { RSVPStatus } from "@/types";
 
 import { ApplicationSummary } from "../apply/components/ApplicationSummary";
 import { SchemaStepRenderer } from "../apply/steps/SchemaStepRenderer";
 import { StatusDetailSkeleton } from "../components/StatusDetailSkeleton";
 import { pillClass } from "../components/tones";
+import { DirectoryUnlockedDialog } from "../directory/components/DirectoryUnlockedDialog";
 import { fetchMyRSVP, submitMyRSVP } from "./api";
 import type { RSVPInfo } from "./types";
 
@@ -63,6 +65,9 @@ export default function RSVPPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [rsvp, setRSVP] = useState<RSVPInfo | null>(null);
+  const [unlockedOpen, setUnlockedOpen] = useState(false);
+  const userId = useUserStore((s) => s.user?.id);
+  const setAttendeeConfirmed = useAttendeeStore((s) => s.setConfirmed);
 
   const schema = useMemo(() => rsvp?.rsvp_schema ?? [], [rsvp]);
   const sections = useMemo(() => deriveSections(schema), [schema]);
@@ -113,6 +118,12 @@ export default function RSVPPage() {
     const res = await submitMyRSVP({ status, responses });
     if (res.status === 200 && res.data) {
       setRSVP(res.data);
+      // Only accepted hackers reach this page, so a confirmed RSVP is exactly
+      // what opens the directory. Reveal it in the nav and announce it now.
+      if (res.data.rsvp_status === "confirmed" && userId) {
+        setAttendeeConfirmed(userId, true);
+        setUnlockedOpen(true);
+      }
       toast.success(
         status === "confirmed"
           ? "Your spot is confirmed!"
@@ -158,6 +169,11 @@ export default function RSVPPage() {
       >
         <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
+
+      <DirectoryUnlockedDialog
+        open={unlockedOpen}
+        onOpenChange={setUnlockedOpen}
+      />
 
       <div className="min-w-0 flex-1">
         {rsvp.rsvp_status !== "pending" ? (

@@ -48,7 +48,11 @@ import {
 import { signOutExplicitly } from "@/shared/auth";
 import { cn } from "@/shared/lib/utils";
 import { ZERODAY_LOGO, ZERODAY_URL } from "@/shared/lib/zeroday";
-import { useSettingsDialogStore, useUserStore } from "@/shared/stores";
+import {
+  useAttendeeStore,
+  useSettingsDialogStore,
+  useUserStore,
+} from "@/shared/stores";
 import type { Theme, UserRole } from "@/types";
 
 export interface SidebarNavItem {
@@ -302,8 +306,9 @@ function AccountMenu({
   const clearUser = useUserStore((s) => s.clearUser);
   const updateTheme = useUserStore((s) => s.updateTheme);
   const openSettings = useSettingsDialogStore((s) => s.setOpen);
+  const name = useAttendeeStore((s) => (s.userId === user?.id ? s.name : null));
 
-  const label = user ? ROLE_LABELS[user.role] : "Hacker";
+  const label = name ?? (user ? ROLE_LABELS[user.role] : "Hacker");
   const isAdmin = isAdminRole(user?.role);
   const OtherIcon = config.other.icon;
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";

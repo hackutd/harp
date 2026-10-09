@@ -65,7 +65,7 @@ func seedHackers(db *sql.DB, count int) []string {
 	ids := make([]string, 0, count)
 	for i := 1; i <= count; i++ {
 		// Google sign-ins carry their account picture, which is what the
-		// profile falls back to without an uploaded photo.
+		// profile and directory card fall back to without an uploaded photo.
 		authMethod := "passwordless"
 		var avatar *string
 		if i%4 == 0 {

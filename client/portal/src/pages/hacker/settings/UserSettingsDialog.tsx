@@ -8,9 +8,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getRequest } from "@/shared/lib/api";
-import { useSettingsDialogStore, useUserStore } from "@/shared/stores";
+import {
+  useAttendeeStore,
+  useSettingsDialogStore,
+  useUserStore,
+} from "@/shared/stores";
 import type { Application } from "@/types";
 
+import { DirectoryVisibilityRow } from "../directory/components/ProfileAbout";
+import { useDirectoryStore } from "../directory/store";
 import { AccountRows } from "./components/AccountRows";
 import { AppearanceRow } from "./components/AppearanceRow";
 import { InstallAppRow } from "./components/InstallAppRow";
@@ -34,6 +40,15 @@ export function UserSettingsDialog() {
   const [application, setApplication] = useState<Application | null>(null);
   const [applicationLoading, setApplicationLoading] = useState(false);
 
+  const attendeeFor = useAttendeeStore((s) => s.userId);
+  const confirmed = useAttendeeStore((s) => s.confirmed);
+  const fetchAttendee = useAttendeeStore((s) => s.fetchAttendee);
+  const attendee = confirmed && attendeeFor != null && attendeeFor === userId;
+  const directoryMe = useDirectoryStore((s) => s.me);
+  const fetchDirectoryMe = useDirectoryStore((s) => s.fetchMe);
+  // Directory visibility only exists once the RSVP is confirmed.
+  const about = attendee && directoryMe?.eligible ? directoryMe : null;
+
   useEffect(() => {
     if (!open || !userId) return;
     const controller = new AbortController();
@@ -52,6 +67,22 @@ export function UserSettingsDialog() {
     return () => controller.abort();
   }, [open, userId]);
 
+  // The hacker layout already knows whether this is an attendee; the admin
+  // portal does not.
+  useEffect(() => {
+    if (!open || !userId || attendeeFor === userId) return;
+    const controller = new AbortController();
+    fetchAttendee(userId, controller.signal);
+    return () => controller.abort();
+  }, [open, userId, attendeeFor, fetchAttendee]);
+
+  useEffect(() => {
+    if (!open || !attendee) return;
+    const controller = new AbortController();
+    fetchDirectoryMe(controller.signal);
+    return () => controller.abort();
+  }, [open, attendee, fetchDirectoryMe]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[90svh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-4xl max-sm:top-0 max-sm:left-0 max-sm:h-svh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0">
@@ -66,6 +97,7 @@ export function UserSettingsDialog() {
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
           <SettingsGroup title="Preferences" className={GROUP_CLASS}>
             <InstallAppRow />
+            {about && <DirectoryVisibilityRow me={about} />}
             <PushNotificationsRow />
             <AppearanceRow />
             <ResumeRow

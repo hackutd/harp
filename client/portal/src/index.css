@@ -978,6 +978,17 @@ body.theme-dark
   color: var(--hacker-ink);
 }
 
+/* Directory cards are shaped like printed photos (a polaroid: picture on top,
+   caption below) but take the portal theme's colours: a dark card with white
+   ink in dark mode, the light panel in light mode. The hairline edge keeps the
+   card distinct from the canvas, and from a dialog of the same surface. */
+.directory-postcard {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  outline: 1px solid color-mix(in srgb, var(--hacker-ink) 9%, transparent);
+  outline-offset: -1px;
+}
+
 /* Placeholder block for hacker-side loading states (HackerSkeleton). A faint
    ink fill that breathes. */
 @keyframes zero-skeleton-pulse {

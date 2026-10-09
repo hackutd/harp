@@ -18,6 +18,7 @@ import type { Application, HackerLink, NotificationFeedItem } from "@/types";
 import { ApplicationStatusCards } from "../components/ApplicationStatusCards";
 import { SkyCardStack } from "../components/SkyCardStack";
 import { PILL_BASE, TONE_STYLES } from "../components/tones";
+import { DirectoryPromptBanner } from "../directory/components/DirectoryPromptBanner";
 import { getNotificationFeed } from "../notifications/api";
 import type { HackathonConfig } from "./api";
 import {
@@ -350,6 +351,8 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {application?.rsvp_status === "confirmed" && <DirectoryPromptBanner />}
       </SkyCardStack>
 
       {/* Important dates */}
