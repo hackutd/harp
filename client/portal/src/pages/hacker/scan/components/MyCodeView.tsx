@@ -6,8 +6,8 @@ import Session from "supertokens-auth-react/recipe/session";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/shared/stores";
 
-import { HackerQR } from "../../components/HackerQR";
 import { APPLE_WALLET_PASS_URL, getAppleWalletStatus } from "../api";
+import { QrCity } from "./QrCity";
 
 function isIOS(): boolean {
   if (typeof navigator === "undefined") {
@@ -63,9 +63,7 @@ export function MyCodeView({ className }: MyCodeViewProps) {
       </p>
 
       {user?.id ? (
-        <div className="mt-8 rounded-xl border border-[#E5E5E5] p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
-          <HackerQR value={user.id} size={240} />
-        </div>
+        <QrCity value={user.id} className="mt-8" />
       ) : (
         <p className="mt-8 text-sm font-light text-[#8A8A8A]">
           Sign in to view your code.
