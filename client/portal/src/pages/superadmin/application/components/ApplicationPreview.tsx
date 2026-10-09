@@ -2,6 +2,7 @@ import { CheckCircle2, ReceiptText, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  applicantVisibleFields,
   groupFieldsBySection,
   renderLabel,
   type SectionDef,
@@ -178,7 +179,7 @@ export function ApplicationPreview({
   sections,
   systemBlock,
 }: ApplicationPreviewProps) {
-  const grouped = groupFieldsBySection(fields);
+  const grouped = groupFieldsBySection(applicantVisibleFields(fields));
 
   const previewSections = sections.filter(
     (section) =>

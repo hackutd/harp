@@ -127,11 +127,12 @@ func (app *application) getMyTravelRSVPHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	schema, err := app.store.Settings.GetTravelRSVPSchema(r.Context())
+	fullSchema, err := app.store.Settings.GetTravelRSVPSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
+	schema, _ := applicantFields(fullSchema)
 
 	enabled, err := app.store.Settings.GetTravelRSVPEnabled(r.Context())
 	if err != nil {
@@ -215,11 +216,12 @@ func (app *application) submitMyTravelRSVPHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	schema, err := app.store.Settings.GetTravelRSVPSchema(r.Context())
+	fullSchema, err := app.store.Settings.GetTravelRSVPSchema(r.Context())
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
+	schema, _ := applicantFields(fullSchema)
 
 	// Declining the reimbursement never requires form answers or receipts;
 	// confirming must satisfy the configured travel RSVP schema.
