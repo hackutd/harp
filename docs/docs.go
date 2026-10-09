@@ -5784,7 +5784,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Sets any status on an application. Besides the final decisions (accepted, rejected, waitlisted), a super admin can move it back to submitted, or to draft to reopen it so the hacker can edit and resubmit.",
+                "description": "Sets any status on an application. Besides the final decisions (accepted, rejected, waitlisted), a super admin can move it back to submitted, or to draft to reopen it so the hacker can edit and resubmit. A new decision reaches the hacker with the next decision release; moving back to submitted or draft takes away the decision they could see immediately.",
                 "consumes": [
                     "application/json"
                 ],

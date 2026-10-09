@@ -42,7 +42,7 @@ function RSVPResult({ status }: { status: Exclude<RSVPStatus, "pending"> }) {
   const confirmed = status === "confirmed";
 
   return (
-    <div className="rounded-xl border border-ink/10 p-5">
+    <div className="hacker-card-surfaces hacker-application-card rounded-xl bg-surface p-5">
       <span className={pillClass(confirmed ? "success" : "neutral")}>
         {confirmed ? "Spot claimed" : "Spot declined"}
       </span>
@@ -143,7 +143,7 @@ export default function RSVPPage() {
   );
 
   if (loading) {
-    return <StatusDetailSkeleton label="RSVP" />;
+    return <StatusDetailSkeleton />;
   }
 
   if (!rsvp) return null;
@@ -154,7 +154,7 @@ export default function RSVPPage() {
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 2xl:-ml-10"
       >
         <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
@@ -165,7 +165,7 @@ export default function RSVPPage() {
             <RSVPResult status={rsvp.rsvp_status} />
             {rsvp.rsvp_status === "confirmed" && schema.length > 0 && (
               <section className="mt-5">
-                <h2 className="mb-3 text-xs font-light tracking-widest text-ink/65 uppercase">
+                <h2 className="mb-3 text-sm font-medium text-ink/65">
                   Your submission
                 </h2>
                 <ApplicationSummary
@@ -173,6 +173,7 @@ export default function RSVPPage() {
                   responses={rsvp.rsvp_responses ?? {}}
                   hasResume={false}
                   resumeSectionId={null}
+                  cardClassName="border-0 bg-admin-panel"
                 />
               </section>
             )}

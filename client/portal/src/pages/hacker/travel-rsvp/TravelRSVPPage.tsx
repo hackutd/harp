@@ -209,7 +209,7 @@ export default function TravelRSVPPage() {
   );
 
   if (loading) {
-    return <StatusDetailSkeleton label="Travel RSVP" />;
+    return <StatusDetailSkeleton />;
   }
 
   if (!travelRSVP) return null;
@@ -220,7 +220,7 @@ export default function TravelRSVPPage() {
         type="button"
         onClick={() => navigate("/app")}
         aria-label="Back"
-        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 md:-ml-10"
+        className="-ml-3 flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-transform hover:-translate-x-1 2xl:-ml-10"
       >
         <IconChevronLeft className="size-5" strokeWidth={1.75} />
       </button>
@@ -236,7 +236,7 @@ export default function TravelRSVPPage() {
               <>
                 {schema.length > 0 && (
                   <section className="mt-5">
-                    <h2 className="mb-3 text-xs font-light tracking-widest text-ink/65 uppercase">
+                    <h2 className="mb-3 text-sm font-medium text-ink/65">
                       Your submission
                     </h2>
                     <ApplicationSummary
@@ -249,7 +249,7 @@ export default function TravelRSVPPage() {
                 )}
                 {(travelRSVP.travel_receipt_paths ?? []).length > 0 && (
                   <section className="mt-5">
-                    <h2 className="mb-3 text-xs font-light tracking-widest text-ink/65 uppercase">
+                    <h2 className="mb-3 text-sm font-medium text-ink/65">
                       Receipts
                     </h2>
                     <div className="space-y-3">
@@ -312,7 +312,7 @@ export default function TravelRSVPPage() {
 
             {travelRSVP.travel_approved_amount_cents != null && (
               <div className="mt-6 rounded-xl bg-surface p-5">
-                <p className="text-[11px] font-medium tracking-wide text-ink/65 uppercase">
+                <p className="text-[11px] font-medium text-ink/65">
                   Approved amount
                 </p>
                 <p className="mt-1 text-3xl font-light tracking-tight text-ink">

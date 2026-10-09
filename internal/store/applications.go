@@ -825,9 +825,11 @@ func (s *ApplicationsStore) encodeCursorForItem(item ApplicationListItem, sortBy
 	return EncodeCursor(item.CreatedAt, item.ID)
 }
 
-// SetStatus sets an application's status. Every other change waits for the
-// next decision release to reach the hacker, but reopening to draft is meant
-// for them to act on now, so it also drops the decision they could see.
+// SetStatus sets an application's status. A new decision waits for the next
+// decision release to reach the hacker. Moving back to an undecided status
+// (draft or submitted) also drops the decision they could see, straight away:
+// releases only publish decisions, so none would ever take it back, and a
+// reopened draft is meant for the hacker to act on now.
 func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status ApplicationStatus) (*Application, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -835,11 +837,11 @@ func (s *ApplicationsStore) SetStatus(ctx context.Context, id string, status App
 	query := `
 		UPDATE applications
 		SET status = $2, updated_at = NOW(),
-		    released_status = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE released_status END,
-		    released_travel_status = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE released_travel_status END,
-		    released_travel_amount_cents = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE released_travel_amount_cents END,
-		    decision_release_id = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE decision_release_id END,
-		    decision_released_at = CASE WHEN $2::application_status = 'draft' THEN NULL ELSE decision_released_at END
+		    released_status = CASE WHEN $2::application_status IN ('draft', 'submitted') THEN NULL ELSE released_status END,
+		    released_travel_status = CASE WHEN $2::application_status IN ('draft', 'submitted') THEN NULL ELSE released_travel_status END,
+		    released_travel_amount_cents = CASE WHEN $2::application_status IN ('draft', 'submitted') THEN NULL ELSE released_travel_amount_cents END,
+		    decision_release_id = CASE WHEN $2::application_status IN ('draft', 'submitted') THEN NULL ELSE decision_release_id END,
+		    decision_released_at = CASE WHEN $2::application_status IN ('draft', 'submitted') THEN NULL ELSE decision_released_at END
 		WHERE id = $1
 		RETURNING ` + applicationSelectCols
 

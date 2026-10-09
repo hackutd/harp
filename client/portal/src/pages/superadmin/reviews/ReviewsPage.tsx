@@ -212,7 +212,7 @@ export default function ReviewsPage() {
   );
 
   const handleStatusFilter = useCallback(
-    (status: ApplicationStatus) => {
+    (status: ApplicationStatus | null) => {
       fetchApplications({ status });
     },
     [fetchApplications],
@@ -555,7 +555,7 @@ export default function ReviewsPage() {
         <div>
           <ReviewStatusTabs
             stats={stats}
-            currentStatus={currentStatus ?? "submitted"}
+            currentStatus={currentStatus}
             onStatusChange={handleStatusFilter}
           />
         </div>
@@ -581,8 +581,8 @@ export default function ReviewsPage() {
               <CardDescription className="font-light flex items-center gap-1.5">
                 <span>{applications.length} application(s) on this page</span>
                 <span>filtered by</span>
-                <Badge className={getStatusColor(currentStatus ?? "submitted")}>
-                  {currentStatus ?? "submitted"}
+                <Badge className={getStatusColor(currentStatus ?? "all")}>
+                  {currentStatus ?? "all"}
                 </Badge>
                 {currentSearch && <span>matching "{currentSearch}"</span>}
                 <span className="text-muted-foreground flex items-center gap-0.5">
@@ -612,7 +612,7 @@ export default function ReviewsPage() {
                   className="cursor-pointer font-light"
                   onClick={() => {
                     const params = new URLSearchParams();
-                    if (currentStatus) params.set("status", currentStatus);
+                    params.set("status", currentStatus ?? "all");
                     if (currentSortBy) params.set("sort_by", currentSortBy);
                     if (currentSearch) params.set("search", currentSearch);
                     navigate(`/admin/sa/reviews/grade?${params.toString()}`);
@@ -657,7 +657,7 @@ export default function ReviewsPage() {
         onGrade={() => {
           if (!selectedApplicationId) return;
           const params = new URLSearchParams();
-          if (currentStatus) params.set("status", currentStatus);
+          params.set("status", currentStatus ?? "all");
           if (currentSortBy) params.set("sort_by", currentSortBy);
           if (currentSearch) params.set("search", currentSearch);
           params.set("app", selectedApplicationId);

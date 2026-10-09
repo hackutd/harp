@@ -60,7 +60,7 @@ export function IncompleteFormAlert({
             <li key={section.id} className="space-y-1.5">
               {showSectionHeadings && (
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[11px] font-light tracking-widest text-ink/65 uppercase">
+                  <span className="text-[11px] font-light text-ink/65">
                     {section.label}
                   </span>
                   {onJumpToSection && (
