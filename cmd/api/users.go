@@ -27,7 +27,7 @@ func (app *application) deleteUserAndIdentity(r *http.Request, user *store.User)
 		return err
 	}
 
-	if paths != nil && (len(paths.Resumes) > 0 || len(paths.TravelReceipts) > 0) {
+	if paths != nil && (len(paths.Resumes) > 0 || len(paths.TravelReceipts) > 0 || len(paths.Photos) > 0) {
 		go app.deleteUserUploads(user.ID, paths)
 	}
 
@@ -41,7 +41,7 @@ func (app *application) deleteUserAndIdentity(r *http.Request, user *store.User)
 // deleteUserUploads removes the objects a user deletion orphaned. It runs on its
 // own context so the work outlives the request that triggered it.
 func (app *application) deleteUserUploads(userID string, paths *store.DeletedUserPaths) {
-	objectPaths := append(append([]string{}, paths.Resumes...), paths.TravelReceipts...)
+	objectPaths := append(append(append([]string{}, paths.Resumes...), paths.TravelReceipts...), paths.Photos...)
 
 	if app.gcsClient == nil {
 		app.logger.Warnw("skipping upload cleanup because gcs is not configured",

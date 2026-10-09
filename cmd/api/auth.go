@@ -10,25 +10,18 @@ import (
 )
 
 type UserResponse struct {
-	ID                string         `json:"id"`
-	Email             string         `json:"email"`
-	Role              store.UserRole `json:"role"`
-	ProfilePictureUrl *string        `json:"profilePictureUrl,omitempty"`
-	Theme             store.Theme    `json:"theme"`
-	CreatedAt         time.Time      `json:"createdAt"`
-	UpdatedAt         time.Time      `json:"updatedAt"`
-}
-
-func newUserResponse(user *store.User) UserResponse {
-	return UserResponse{
-		ID:                user.ID,
-		Email:             user.Email,
-		Role:              user.Role,
-		ProfilePictureUrl: user.ProfilePictureURL,
-		Theme:             user.Theme,
-		CreatedAt:         user.CreatedAt,
-		UpdatedAt:         user.UpdatedAt,
-	}
+	ID    string         `json:"id"`
+	Email string         `json:"email"`
+	Role  store.UserRole `json:"role"`
+	// ProfilePictureUrl is the picture to show: the uploaded photo if there is
+	// one, otherwise the Google picture.
+	ProfilePictureUrl *string          `json:"profilePictureUrl,omitempty"`
+	CustomPhoto       bool             `json:"customPhoto"`
+	GooglePictureUrl  *string          `json:"googlePictureUrl,omitempty"`
+	AuthMethod        store.AuthMethod `json:"authMethod"`
+	Theme             store.Theme      `json:"theme"`
+	CreatedAt         time.Time        `json:"createdAt"`
+	UpdatedAt         time.Time        `json:"updatedAt"`
 }
 
 // getCurrentUserHandler returns the authenticated user's profile

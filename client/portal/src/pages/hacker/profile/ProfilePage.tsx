@@ -2,7 +2,7 @@ import { IconSettings } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 import { AdminPortalButton } from "@/components/AdminPortalButton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfilePhotoEditor } from "@/components/ProfilePhotoEditor";
 import { getRequest } from "@/shared/lib/api";
 import {
   usePointsConfigStore,
@@ -80,21 +80,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Identity */}
-      <div className="flex items-center gap-4 rounded-xl bg-surface px-5 py-4 theme-light:border theme-light:border-ink/10">
-        <Avatar className="size-16 border border-ink/15">
-          {user?.profilePictureUrl && (
-            <AvatarImage
-              src={user.profilePictureUrl}
-              alt="Your photo"
-              referrerPolicy="no-referrer"
-              className="object-cover"
-            />
-          )}
-          <AvatarFallback className="bg-ice/15 text-lg font-light text-ice">
-            {initials(name, user?.email)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
+      <div className="rounded-xl bg-surface px-5 py-4 theme-light:border theme-light:border-ink/10">
+        <ProfilePhotoEditor fallback={initials(name, user?.email)}>
           <p className="truncate text-lg font-normal text-ink">
             {name ?? "Hacker"}
           </p>
@@ -103,7 +90,7 @@ export default function ProfilePage() {
               {user.email}
             </p>
           )}
-        </div>
+        </ProfilePhotoEditor>
       </div>
 
       {/* Points — hidden entirely when super admins turn the system off */}
