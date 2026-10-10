@@ -419,10 +419,19 @@ export function PhotoCropDialog({
             type="button"
             disabled={!source || busy}
             onClick={() => void save()}
-            className="h-11 flex-1 rounded-full bg-tide text-sm font-normal text-white hover:bg-tide-hover"
+            aria-busy={busy || undefined}
+            className={cn(
+              "relative h-11 flex-1 rounded-full bg-tide text-sm font-normal text-white hover:bg-tide-hover",
+              busy && "bg-tide/85 disabled:opacity-100",
+            )}
           >
-            {busy && <IconLoader2 className="size-4 animate-spin" />}
-            Save photo
+            <span className={busy ? "invisible" : undefined}>Save photo</span>
+            {busy && (
+              <span className="absolute inset-0 flex items-center justify-center gap-2">
+                <IconLoader2 className="size-4 animate-spin" />
+                Saving…
+              </span>
+            )}
           </Button>
         </div>
       </DialogContent>
