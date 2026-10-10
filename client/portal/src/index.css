@@ -1272,17 +1272,29 @@ body.theme-dark
   mask-image: linear-gradient(to top, #000 35%, transparent);
 }
 
-/* Frosted-glass disc for controls pinned over scrolling content (the
-   schedule's filter toggle): a translucent ink tint over a blur, a hairline
-   ring and a thin top highlight so it stays legible over events and the
-   black canvas alike. */
+/* Frosted glass for the schedule's sticky day strip and the filter disc
+   docked on it: a translucent ink tint over a blur, a hairline ring and a
+   thin top highlight so they stay legible over events and the black canvas
+   alike. The disc is one tint step brighter so it reads as sitting on the
+   strip. */
+.zero-glass-pill,
 .zero-glass-button {
-  background: color-mix(in srgb, var(--hacker-ink) 10%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   backdrop-filter: blur(14px) saturate(1.4);
+}
+
+.zero-glass-pill {
+  background: color-mix(in srgb, var(--hacker-ink) 6%, transparent);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--hacker-ink) 18%, transparent),
-    inset 0 1px 0 0 color-mix(in srgb, var(--hacker-ink) 22%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--hacker-ink) 12%, transparent),
+    inset 0 1px 0 0 color-mix(in srgb, var(--hacker-ink) 16%, transparent);
+}
+
+.zero-glass-button {
+  background: color-mix(in srgb, var(--hacker-ink) 12%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--hacker-ink) 20%, transparent),
+    inset 0 1px 0 0 color-mix(in srgb, var(--hacker-ink) 24%, transparent),
     0 4px 16px rgb(0 0 0 / 0.25);
 }
 
@@ -1370,6 +1382,7 @@ body.theme-dark
     background: var(--color-canvas);
   }
 
+  .zero-glass-pill,
   .zero-glass-button {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
