@@ -7,7 +7,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { format } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -194,6 +194,16 @@ export default function SchedulePage() {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // The filter disc rides the day strip, but at the top of the page it lifts
+  // up to sit level with the month title; once the strip pins, it snaps back
+  // onto the strip's corner. `stuck` comes from a sentinel just above the
+  // sticky header; `lift` is the distance between the two resting spots.
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [stuck, setStuck] = useState(false);
+  const [lift, setLift] = useState(0);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -306,6 +316,31 @@ export default function SchedulePage() {
     [],
   );
 
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setStuck(!entry.isIntersecting),
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loading, days.length]);
+
+  useLayoutEffect(() => {
+    if (stuck) return;
+    const measure = () => {
+      const title = titleRef.current;
+      const strip = stripRef.current;
+      if (!title || !strip) return;
+      const t = title.getBoundingClientRect();
+      const s = strip.getBoundingClientRect();
+      setLift(s.top + s.height / 2 - (t.top + t.height / 2));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [stuck, loading, days.length]);
+
   const toggleTag = (key: string) => {
     setSelectedTags((prev) => {
       const next = new Set(prev);
@@ -321,7 +356,10 @@ export default function SchedulePage() {
 
       {/* Header */}
       <div className="flex items-center">
-        <h1 className="text-[26px] leading-none font-light tracking-tight text-ink">
+        <h1
+          ref={titleRef}
+          className="text-[26px] leading-none font-light tracking-tight text-ink"
+        >
           {days.length > 0 ? formatMonthTitle(days) : "Schedule"}
         </h1>
       </div>
@@ -339,6 +377,7 @@ export default function SchedulePage() {
         <>
           {/* Calendar grid */}
           <div className="relative mt-3">
+            <div ref={sentinelRef} aria-hidden className="h-px" />
             {/* Sticky header — day strip + column labels stay pinned on scroll */}
             <div className="sticky top-0 z-30 bg-canvas/95 pt-2 backdrop-blur-md">
               {/* Day strip — one cell per hackathon day, today in a solid
@@ -361,6 +400,7 @@ export default function SchedulePage() {
                     </span>
                   ))}
                   <div
+                    ref={stripRef}
                     className="relative col-span-full grid rounded-full bg-surface-2 p-1"
                     style={{
                       gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
@@ -393,17 +433,21 @@ export default function SchedulePage() {
                     })}
 
                     {/* Filter toggle — a frosted-glass disc parked on the
-                        right end of the strip, so it rides along with the
-                        sticky header and stays reachable while scrolling. */}
+                        right end of the strip. At the top of the page it
+                        lifts to the month title; once the strip pins it
+                        snaps onto the strip's corner. */}
                     <Popover open={filterOpen} onOpenChange={setFilterOpen}>
                       <PopoverTrigger asChild>
                         <button
                           type="button"
                           aria-label="Filter events"
                           className={cn(
-                            "zero-glass-button absolute top-1/2 -right-px flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-ink transition-colors duration-200",
+                            "zero-glass-button absolute top-1/2 -right-px flex size-10 items-center justify-center rounded-full text-ink transition-[translate,background-color,box-shadow] duration-300 ease-out motion-reduce:transition-none",
                             filterOpen && "is-open",
                           )}
+                          style={{
+                            translate: `0 calc(-50% - ${stuck ? 0 : lift}px)`,
+                          }}
                         >
                           {filterOpen ? (
                             <IconChevronUp
