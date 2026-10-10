@@ -194,7 +194,6 @@ export default function SchedulePage() {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -222,14 +221,6 @@ export default function SchedulePage() {
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Fade the pinned filter button once the grid has been scrolled into.
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Day columns come straight from the admin-configured hackathon dates.
@@ -335,9 +326,10 @@ export default function SchedulePage() {
         </h1>
       </div>
 
-      {/* Pinned filter toggle — stays reachable while scrolling the grid, and
-          fades to translucent once the schedule has been scrolled into. The
-          wrapper mirrors the page container so the button lines up on the right. */}
+      {/* Pinned filter toggle — stays reachable while scrolling the grid. A
+          frosted-glass disc so it keeps reading over the events that pass under
+          it. The wrapper mirrors the page container so the button lines up on
+          the right. */}
       <div className="pointer-events-none fixed inset-x-0 top-6 z-50 md:top-10">
         <div className="mx-auto flex max-w-2xl justify-end px-5 md:max-w-5xl md:px-8">
           <Popover open={filterOpen} onOpenChange={setFilterOpen}>
@@ -346,10 +338,8 @@ export default function SchedulePage() {
                 type="button"
                 aria-label="Filter events"
                 className={cn(
-                  "pointer-events-auto flex size-10 items-center justify-center rounded-full bg-surface-2 text-ink transition-all duration-200 hover:bg-surface-2",
-                  scrolled && !filterOpen
-                    ? "opacity-55 hover:opacity-100"
-                    : "opacity-100",
+                  "zero-glass-button pointer-events-auto flex size-10 items-center justify-center rounded-full text-ink transition-colors duration-200",
+                  filterOpen && "is-open",
                 )}
               >
                 {filterOpen ? (
