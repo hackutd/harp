@@ -361,7 +361,7 @@ export default function SchedulePage() {
                     </span>
                   ))}
                   <div
-                    className="zero-glass-pill relative col-span-full grid rounded-full p-1"
+                    className="relative col-span-full grid rounded-full bg-surface-2 p-1"
                     style={{
                       gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
                     }}
