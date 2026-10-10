@@ -287,8 +287,8 @@ export function PhotoCropDialog({
 
   return (
     <Dialog open onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] gap-5 overflow-y-auto rounded-xl border-ink/10 bg-surface p-5 text-ink sm:max-w-md sm:p-6">
-        <DialogHeader className="text-left">
+      <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto rounded-xl border-ink/10 bg-surface p-5 text-ink sm:max-w-md sm:gap-5 sm:p-6">
+        <DialogHeader className="shrink-0 text-left">
           <DialogTitle className="text-lg font-normal tracking-tight">
             Your photo
           </DialogTitle>
@@ -299,6 +299,8 @@ export function PhotoCropDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* The frame is the only thing that gives when the dialog is taller
+            than the screen, so the whole card fits without scrolling. */}
         <div
           ref={frameRef}
           role={source ? "application" : undefined}
@@ -314,7 +316,7 @@ export function PhotoCropDialog({
           onPointerCancel={onPointerEnd}
           onKeyDown={onKeyDown}
           className={cn(
-            "relative mx-auto aspect-[4/5] w-full max-w-[17rem] touch-none overflow-hidden rounded-[3px] bg-surface-2 select-none focus-visible:ring-2 focus-visible:ring-ice/50 focus-visible:outline-none",
+            "relative mx-auto aspect-[4/5] max-w-full min-h-[10rem] flex-[0_1_21.25rem] touch-none overflow-hidden rounded-[3px] bg-surface-2 select-none focus-visible:ring-2 focus-visible:ring-ice/50 focus-visible:outline-none",
             source && "cursor-grab active:cursor-grabbing",
           )}
         >
@@ -352,7 +354,7 @@ export function PhotoCropDialog({
         </div>
 
         {source && (
-          <div className="mx-auto flex w-full max-w-[17rem] items-center gap-3">
+          <div className="mx-auto flex w-full max-w-[17rem] shrink-0 items-center gap-3">
             <IconZoomOut
               className="size-4 shrink-0 text-ink/65"
               strokeWidth={1.75}
@@ -375,7 +377,7 @@ export function PhotoCropDialog({
         )}
 
         {/* How the photo reads as an avatar. */}
-        <div className="flex items-end justify-center gap-8">
+        <div className="flex shrink-0 items-end justify-center gap-8">
           <figure className="flex flex-col items-center gap-2">
             <div className="relative size-16 overflow-hidden rounded-full border border-ink/15 bg-surface-2">
               {source ? (
@@ -400,7 +402,7 @@ export function PhotoCropDialog({
           onChange={(e) => void handleFile(e)}
         />
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+        <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row">
           {source && (
             <Button
               type="button"
