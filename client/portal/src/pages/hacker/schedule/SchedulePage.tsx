@@ -326,61 +326,6 @@ export default function SchedulePage() {
         </h1>
       </div>
 
-      {/* Pinned filter toggle — stays reachable while scrolling the grid. A
-          frosted-glass disc so it keeps reading over the events that pass under
-          it. The wrapper mirrors the page container so the button lines up on
-          the right. */}
-      <div className="pointer-events-none fixed inset-x-0 top-6 z-50 md:top-10">
-        <div className="mx-auto flex max-w-2xl justify-end px-5 md:max-w-5xl md:px-8">
-          <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label="Filter events"
-                className={cn(
-                  "zero-glass-button pointer-events-auto flex size-10 items-center justify-center rounded-full text-ink transition-colors duration-200",
-                  filterOpen && "is-open",
-                )}
-              >
-                {filterOpen ? (
-                  <IconChevronUp className="size-4.5" strokeWidth={1.75} />
-                ) : (
-                  <IconAdjustmentsHorizontal
-                    className="size-4.5"
-                    strokeWidth={1.75}
-                  />
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              className="pointer-events-auto w-56 rounded-2xl border border-ink/15 !bg-surface-2 p-1.5 text-ink"
-            >
-              {FILTER_OPTIONS.map(({ key, label, color }) => (
-                <label
-                  key={key}
-                  className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-ink/5"
-                >
-                  <span className="flex items-center gap-3">
-                    <span
-                      className="size-4 rounded"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="text-sm font-light">{label}</span>
-                  </span>
-                  <Checkbox
-                    checked={selectedTags.has(key)}
-                    onCheckedChange={() => toggleTag(key)}
-                    aria-label={`Filter by ${label}`}
-                    className="border-ink/25 data-[state=checked]:border-tide data-[state=checked]:bg-tide data-[state=checked]:text-ink"
-                  />
-                </label>
-              ))}
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
       {loading ? (
         <div className="mt-6 space-y-3">
           <Skeleton className="h-10 w-full rounded-2xl" />
@@ -396,7 +341,8 @@ export default function SchedulePage() {
           <div className="relative mt-3">
             {/* Sticky header — day strip + column labels stay pinned on scroll */}
             <div className="sticky top-0 z-30 bg-canvas/95 pt-2 backdrop-blur-md">
-              {/* Day strip — one cell per hackathon day, today circled. Offset by
+              {/* Day strip — one cell per hackathon day, today in a solid
+                  required-red disc. Offset by
                   the hour-gutter width so it lines up with the columns below. */}
               <div className="flex">
                 <div className="w-14 shrink-0" />
@@ -415,7 +361,7 @@ export default function SchedulePage() {
                     </span>
                   ))}
                   <div
-                    className="col-span-full grid rounded-full border border-ink/10 bg-surface-2 p-1"
+                    className="relative col-span-full grid rounded-full border border-ink/10 bg-surface-2 p-1"
                     style={{
                       gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
                     }}
@@ -431,15 +377,75 @@ export default function SchedulePage() {
                             className={cn(
                               "flex size-8 items-center justify-center rounded-full text-sm transition-colors",
                               isToday
-                                ? "bg-ice/10 font-medium text-ice ring-1 ring-ice/25"
+                                ? "font-medium text-white"
                                 : "font-light text-ink/65",
                             )}
+                            style={
+                              isToday
+                                ? { backgroundColor: TAG_COLORS.required.color }
+                                : undefined
+                            }
                           >
                             {format(day.date, "d")}
                           </span>
                         </div>
                       );
                     })}
+
+                    {/* Filter toggle — a frosted-glass disc parked on the
+                        right end of the strip, so it rides along with the
+                        sticky header and stays reachable while scrolling. */}
+                    <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Filter events"
+                          className={cn(
+                            "zero-glass-button absolute top-1/2 -right-px flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-ink transition-colors duration-200",
+                            filterOpen && "is-open",
+                          )}
+                        >
+                          {filterOpen ? (
+                            <IconChevronUp
+                              className="size-4.5"
+                              strokeWidth={1.75}
+                            />
+                          ) : (
+                            <IconAdjustmentsHorizontal
+                              className="size-4.5"
+                              strokeWidth={1.75}
+                            />
+                          )}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="end"
+                        className="w-56 rounded-2xl border border-ink/15 !bg-surface-2 p-1.5 text-ink"
+                      >
+                        {FILTER_OPTIONS.map(({ key, label, color }) => (
+                          <label
+                            key={key}
+                            className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-ink/5"
+                          >
+                            <span className="flex items-center gap-3">
+                              <span
+                                className="size-4 rounded"
+                                style={{ backgroundColor: color }}
+                              />
+                              <span className="text-sm font-light">
+                                {label}
+                              </span>
+                            </span>
+                            <Checkbox
+                              checked={selectedTags.has(key)}
+                              onCheckedChange={() => toggleTag(key)}
+                              aria-label={`Filter by ${label}`}
+                              className="border-ink/25 data-[state=checked]:border-tide data-[state=checked]:bg-tide data-[state=checked]:text-ink"
+                            />
+                          </label>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               </div>
