@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.18.0](https://github.com/hackutd/harp/compare/v0.17.0...v0.18.0) (2026-10-10)
+
+
+### Features
+
+* add priority to important dates ([f232f9f](https://github.com/hackutd/harp/commit/f232f9f1e39cb4ff4d86280c30f66df8d0180840))
+* add waves of releases for decisions  ([#226](https://github.com/hackutd/harp/issues/226)) ([9001d36](https://github.com/hackutd/harp/commit/9001d36cd7524d1c74a093f1c0d6984fc962494e))
+* let super admins hide schema fields from applicants ([#216](https://github.com/hackutd/harp/issues/216)) ([0fd297f](https://github.com/hackutd/harp/commit/0fd297fa4c3857a92001967489f8be68338500c4))
+* moveable city qr code ([#227](https://github.com/hackutd/harp/issues/227)) ([22250ab](https://github.com/hackutd/harp/commit/22250abeb906ad8db3b76bc6cd5b2b2f3e871b8b))
+* **portal:** 3D QR city on the hacker scan page ([14aafe0](https://github.com/hackutd/harp/commit/14aafe0469353d9c4f57bec252c160be4d3c31e1))
+* **portal:** enlarge the QR city card and zoom the iso view ([882f5df](https://github.com/hackutd/harp/commit/882f5df02ee9f2fe89546acdd28850833da663e4))
+* **portal:** grow QR city buildings into wide footprint slabs and lower the framing ([89fe0f3](https://github.com/hackutd/harp/commit/89fe0f3e91b3afac32479290060f5e064bcaf94f))
+* **portal:** login sky, facade tints, billboards, cranes and helicopter for the QR city ([0763b9a](https://github.com/hackutd/harp/commit/0763b9a1b62b901ab1155deffe11b0ff62e8ba06))
+* **portal:** merge QR city blocks, taller skyline, transparent canvas ([8bd4d0f](https://github.com/hackutd/harp/commit/8bd4d0f8092809f97c8583f0e39367246d443298))
+* **portal:** upload and crop a profile photo ([#225](https://github.com/hackutd/harp/issues/225)) ([930c0fd](https://github.com/hackutd/harp/commit/930c0fd49ce6b70d4edcfcdc505013d78e8d110c))
+* **portal:** Zero Day reskin, unified sidebar, and light/dark theme ([#222](https://github.com/hackutd/harp/issues/222)) ([8d2a8dd](https://github.com/hackutd/harp/commit/8d2a8dd962704b085ba2d58a6522e0e6116bbc27))
+* **push:** decision alerts and Chrome FCM endpoint support ([#215](https://github.com/hackutd/harp/issues/215)) ([6d09a3e](https://github.com/hackutd/harp/commit/6d09a3efa70291eb6ba783fd63a95985e04adf48))
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/net to v0.60.0 and Go to 1.27.2 for the http2 vulnerabilities ([#220](https://github.com/hackutd/harp/issues/220)) ([2cabc57](https://github.com/hackutd/harp/commit/2cabc57536afe2f15b76cfc6a6e7622b23ffb461))
+* **portal:** fit the photo cropper dialog on one screen ([a2eeaba](https://github.com/hackutd/harp/commit/a2eeabae8f560e3886265b3306379df05e23269f))
+* **portal:** glass day strip and filter toggle on the hacker schedule, red today disc ([#229](https://github.com/hackutd/harp/issues/229)) ([1ca8ed5](https://github.com/hackutd/harp/commit/1ca8ed563464744c19a655181c6f1b213acc36ec))
+* **portal:** keep the RSVP and travel cards under the night sky ([#228](https://github.com/hackutd/harp/issues/228)) ([bd6ecd0](https://github.com/hackutd/harp/commit/bd6ecd0d72af0d86de981b5eaeac2d6ad51bebd6))
+* **portal:** schedule filter snaps from the month title to the day strip; photo cropper fits one screen ([#230](https://github.com/hackutd/harp/issues/230)) ([c758215](https://github.com/hackutd/harp/commit/c758215ba60316c657078fed968e1357495ad111))
+
 ## [0.17.0](https://github.com/hackutd/harp/compare/v0.16.0...v0.17.0) (2026-10-07)
 
 
