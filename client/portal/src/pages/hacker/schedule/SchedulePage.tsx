@@ -484,7 +484,7 @@ export default function SchedulePage() {
                               checked={selectedTags.has(key)}
                               onCheckedChange={() => toggleTag(key)}
                               aria-label={`Filter by ${label}`}
-                              className="border-ink/25 data-[state=checked]:border-tide data-[state=checked]:bg-tide data-[state=checked]:text-ink"
+                              className="border-ink/25 data-[state=checked]:border-tide data-[state=checked]:bg-tide data-[state=checked]:text-white"
                             />
                           </label>
                         ))}
